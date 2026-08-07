@@ -4,6 +4,34 @@ All notable changes to `gdoc` are documented here. This project follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] — 2026-08-07
+
+### Added
+- **Real anchored comments via the Docs API (Developer Preview).**
+  `comment --quote "doc text"` now tries the Docs API `insertComment`
+  batchUpdate request first: the quote is located in the document (every
+  tab is searched, retrying with smart-quote/dash folding) and the comment
+  is anchored to that range — pinned to the searched revision via
+  `writeControl.requiredRevisionId` — so it shows up highlighted in the
+  Docs UI like a comment made by hand. The request is gated behind the
+  Google Workspace Developer Preview Program; when it's unavailable —
+  project not enrolled (400 for the unknown request type), comment-only
+  access that can't `batchUpdate` (403), or the doc changed between read
+  and write — the command falls back transparently to the existing Drive
+  `quotedFileContent` path, so behavior for non-preview users is unchanged.
+  Terse output gains an `(anchored)` suffix on success; `--json` and
+  `--plain` report `anchored` true/false whenever `--quote` is given. Adds
+  the `insert_comment` Docs API helper and a `PreviewUnavailableError`
+  sentinel (a `GdocError` subclass callers catch to fall back — it never
+  surfaces to the user).
+
+### Fixed
+- **Text search used Python code-point indices, not UTF-16.** Docs API
+  indices count UTF-16 code units, so in documents containing non-BMP
+  characters (emoji), `find_text_in_document` returned ranges shifted left
+  of the real match — affecting `edit` replacements as well as comment
+  anchoring. Offsets now advance by UTF-16 width.
+
 ## [0.13.0] — 2026-07-14
 
 ### Added

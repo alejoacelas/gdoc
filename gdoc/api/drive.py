@@ -284,11 +284,21 @@ def upload_temp_image(file_path: str, mime_type: str) -> dict:
             )
             .execute()
         )
-        # Make publicly readable for inline image insertion
-        service.permissions().create(
-            fileId=result["id"],
-            body={"type": "anyone", "role": "reader"},
-        ).execute()
+        # Make publicly readable for inline image insertion. If that is
+        # blocked (e.g. a Workspace policy forbids anyone-sharing), the
+        # caller never learns the file ID, so delete the orphan here
+        # rather than leaving a gdoc-temp-* file behind on every attempt.
+        try:
+            service.permissions().create(
+                fileId=result["id"],
+                body={"type": "anyone", "role": "reader"},
+            ).execute()
+        except HttpError:
+            try:
+                service.files().delete(fileId=result["id"]).execute()
+            except HttpError:
+                pass
+            raise
         return result
     except HttpError as e:
         _translate_http_error(e, file_path)

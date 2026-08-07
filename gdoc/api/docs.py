@@ -878,27 +878,13 @@ def _insert_table(
         _translate_http_error(e, doc_id)
 
 
-def list_inline_objects(doc_id: str) -> list[dict]:
-    """List all inline and positioned objects in a document.
+def _collect_object_refs(body: dict) -> list[tuple[str, int, str]]:
+    """Walk body.content for object references.
 
-    Walks body.content for inlineObjectElement and positionedObjectId
-    references, joins with document.inlineObjects and positionedObjects
-    maps, and classifies each object.
-
-    Returns list of dicts with id, type, title, description, dimensions,
-    content_uri, source_uri, start_index, and chart metadata.
+    Returns (object_id, start_index, source) tuples, where source is
+    "inline" or "positioned".
     """
-    try:
-        doc = get_document(doc_id)
-    except GdocError:
-        raise
-
-    inline_map = doc.get("inlineObjects", {})
-    positioned_map = doc.get("positionedObjects", {})
-
-    # Walk body.content to find references and their startIndex
-    refs: list[tuple[str, int, str]] = []  # (object_id, start_index, source)
-    body = doc.get("body", {})
+    refs: list[tuple[str, int, str]] = []
     for element in body.get("content", []):
         paragraph = element.get("paragraph")
         if paragraph is None:
@@ -914,68 +900,114 @@ def list_inline_objects(doc_id: str) -> list[dict]:
         para_start = element.get("startIndex", 0)
         for pid in positioned_ids:
             refs.append((pid, para_start, "positioned"))
+    return refs
+
+
+def list_inline_objects(doc_id: str) -> list[dict]:
+    """List all inline and positioned objects in a document, every tab.
+
+    Walks each tab's body.content for inlineObjectElement and
+    positionedObjectId references, joins with the tab's inlineObjects
+    and positionedObjects maps, and classifies each object.
+
+    Returns list of dicts with id, tab, type, title, description,
+    dimensions, content_uri, source_uri, start_index, and chart
+    metadata. `tab` is "" for documents fetched without tab content.
+    """
+    doc = get_document_with_tabs(doc_id)
+
+    # (tab_id, body, inline_map, positioned_map) per content segment
+    segments: list[tuple[str, dict, dict, dict]] = []
+    tabs = doc.get("tabs")
+    if tabs:
+        def walk(ts: list[dict]):
+            for t in ts:
+                doc_tab = t.get("documentTab", {})
+                yield (
+                    t.get("tabProperties", {}).get("tabId", ""),
+                    doc_tab.get("body", {}),
+                    doc_tab.get("inlineObjects", {}),
+                    doc_tab.get("positionedObjects", {}),
+                )
+                yield from walk(t.get("childTabs", []))
+
+        segments = list(walk(tabs))
+    else:
+        segments = [(
+            "",
+            doc.get("body", {}),
+            doc.get("inlineObjects", {}),
+            doc.get("positionedObjects", {}),
+        )]
 
     results = []
     seen = set()
 
-    for obj_id, start_index, source in refs:
-        if obj_id in seen:
-            continue
-        seen.add(obj_id)
+    for tab_id, body, inline_map, positioned_map in segments:
+        for obj_id, start_index, source in _collect_object_refs(body):
+            if (tab_id, obj_id) in seen:
+                continue
+            seen.add((tab_id, obj_id))
 
-        if source == "inline":
-            obj_data = inline_map.get(obj_id, {})
-        else:
-            obj_data = positioned_map.get(obj_id, {})
-
-        props = obj_data.get("inlineObjectProperties", {}) or obj_data.get(
-            "positionedObjectProperties", {}
-        )
-        embedded = props.get("embeddedObject", {})
-
-        # Classify type
-        obj_type = "image"
-        spreadsheet_id = None
-        chart_id = None
-        if "embeddedDrawingProperties" in embedded:
-            obj_type = "drawing"
-        elif "linkedContentReference" in embedded:
-            lcr = embedded["linkedContentReference"]
-            if "sheetsChartReference" in lcr:
-                obj_type = "chart"
-                scr = lcr["sheetsChartReference"]
-                spreadsheet_id = scr.get("spreadsheetId")
-                chart_id = scr.get("chartId")
-
-        # Extract dimensions
-        size = embedded.get("size", {})
-        width = size.get("width", {}).get("magnitude", 0)
-        height = size.get("height", {}).get("magnitude", 0)
-
-        # Content URI (None for drawings)
-        content_uri = None
-        if obj_type != "drawing":
-            image_props = embedded.get("imageProperties", {})
-            content_uri = image_props.get("contentUri")
-
-        entry = {
-            "id": obj_id,
-            "type": obj_type,
-            "title": embedded.get("title", ""),
-            "description": embedded.get("description", ""),
-            "width_pt": width,
-            "height_pt": height,
-            "content_uri": content_uri,
-            "source_uri": embedded.get("imageProperties", {}).get("sourceUri"),
-            "start_index": start_index,
-        }
-        if obj_type == "chart":
-            entry["spreadsheet_id"] = spreadsheet_id
-            entry["chart_id"] = chart_id
-
-        results.append(entry)
+            if source == "inline":
+                obj_data = inline_map.get(obj_id, {})
+            else:
+                obj_data = positioned_map.get(obj_id, {})
+            results.append(_classify_object(obj_id, obj_data, start_index, tab_id))
 
     return results
+
+
+def _classify_object(
+    obj_id: str, obj_data: dict, start_index: int, tab_id: str,
+) -> dict:
+    """Build the metadata entry for one inline/positioned object."""
+    props = obj_data.get("inlineObjectProperties", {}) or obj_data.get(
+        "positionedObjectProperties", {}
+    )
+    embedded = props.get("embeddedObject", {})
+
+    # Classify type
+    obj_type = "image"
+    spreadsheet_id = None
+    chart_id = None
+    if "embeddedDrawingProperties" in embedded:
+        obj_type = "drawing"
+    elif "linkedContentReference" in embedded:
+        lcr = embedded["linkedContentReference"]
+        if "sheetsChartReference" in lcr:
+            obj_type = "chart"
+            scr = lcr["sheetsChartReference"]
+            spreadsheet_id = scr.get("spreadsheetId")
+            chart_id = scr.get("chartId")
+
+    # Extract dimensions
+    size = embedded.get("size", {})
+    width = size.get("width", {}).get("magnitude", 0)
+    height = size.get("height", {}).get("magnitude", 0)
+
+    # Content URI (None for drawings)
+    content_uri = None
+    if obj_type != "drawing":
+        image_props = embedded.get("imageProperties", {})
+        content_uri = image_props.get("contentUri")
+
+    entry = {
+        "id": obj_id,
+        "tab": tab_id,
+        "type": obj_type,
+        "title": embedded.get("title", ""),
+        "description": embedded.get("description", ""),
+        "width_pt": width,
+        "height_pt": height,
+        "content_uri": content_uri,
+        "source_uri": embedded.get("imageProperties", {}).get("sourceUri"),
+        "start_index": start_index,
+    }
+    if obj_type == "chart":
+        entry["spreadsheet_id"] = spreadsheet_id
+        entry["chart_id"] = chart_id
+    return entry
 
 
 def download_image(content_uri: str, dest_path: str) -> None:

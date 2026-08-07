@@ -2399,6 +2399,7 @@ def cmd_images(args) -> int:
                 print(
                     f"{img['id']}\t{img['type']}\t{img['title']}"
                     f"\t{img['width_pt']}\t{img['height_pt']}"
+                    f"\t{img.get('tab', '')}"
                 )
         elif not images:
             print("No images.")
@@ -2669,8 +2670,17 @@ def _resolve_insert_index(
 
 def cmd_insert_image(args) -> int:
     """Handler for `gdoc insert-image`: add an image to an existing doc."""
+    import math
+
     doc_id = _resolve_doc_id(args.doc)
     quiet = getattr(args, "quiet", False)
+    for name in ("width", "height"):
+        val = getattr(args, name, None)
+        if val is not None and (not math.isfinite(val) or val <= 0):
+            raise GdocError(
+                f"--{name} must be a positive number of points",
+                exit_code=3,
+            )
     _validate_image_source(args.image)
 
     from gdoc.notify import pre_flight

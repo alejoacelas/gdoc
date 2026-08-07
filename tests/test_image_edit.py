@@ -398,6 +398,21 @@ class TestCmdInsertImage:
         assert "WARN" in err
         assert "tmp1" in err
 
+    @patch("gdoc.api.drive.upload_temp_image")
+    def test_invalid_dimensions_fail_fast(
+        self, mock_upload, mock_get, mock_insert, _ver, _update,
+    ):
+        for bad in (0.0, -5.0, float("nan"), float("inf")):
+            args = _make_args("insert-image", index=5, width=bad)
+            with pytest.raises(GdocError, match="--width") as exc_info:
+                cmd_insert_image(args)
+            assert exc_info.value.exit_code == 3
+        args = _make_args("insert-image", index=5, height=0.0)
+        with pytest.raises(GdocError, match="--height"):
+            cmd_insert_image(args)
+        mock_upload.assert_not_called()
+        mock_insert.assert_not_called()
+
     def test_missing_local_file_fails_fast(
         self, mock_get, mock_insert, _ver, _update, tmp_path,
     ):
@@ -449,6 +464,32 @@ class TestCmdInsertImage:
             cmd_insert_image(args)
         mock_delete.assert_called_once_with("tmp1")
         mock_insert.assert_not_called()
+
+
+class TestUploadTempImageCleanup:
+    @patch("gdoc.api.drive.get_drive_service")
+    def test_blocked_public_share_deletes_upload(self, mock_svc, tmp_path):
+        """A Workspace policy can forbid anyone-sharing; the just-created
+        temp file must not be orphaned when permissions.create fails."""
+        from gdoc.api.drive import upload_temp_image
+
+        img = tmp_path / "pic.png"
+        img.write_bytes(b"\x89PNG")
+
+        service = MagicMock()
+        files = service.files.return_value
+        files.create.return_value.execute.return_value = {
+            "id": "tmp1", "webContentLink": "https://dl/tmp1",
+        }
+        service.permissions.return_value.create.return_value.execute.side_effect = (
+            _http_error(403)
+        )
+        mock_svc.return_value = service
+
+        with pytest.raises(GdocError):
+            upload_temp_image(str(img), "image/png")
+
+        files.delete.assert_called_once_with(fileId="tmp1")
 
 
 _REPLACE_DOC = {

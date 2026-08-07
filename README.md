@@ -514,7 +514,9 @@ gdoc replace-image DOC kix.abc123 diagram-v2.png
 ```
 
 Multi-tab documents require `--tab` so the insert can't land in the wrong
-tab. Local files are uploaded to Drive as a temporary public-read file
+tab. Local files must be PNG, JPG, or GIF — the Docs API rejects WebP, so
+gdoc refuses it up front (markdown import via `new --file` still accepts
+WebP). Local files are uploaded to Drive as a temporary public-read file
 (Google's servers fetch the image by URL), then deleted immediately after
 the insert — if that cleanup ever fails, gdoc warns with the file ID
 instead of leaving the exposure silent.

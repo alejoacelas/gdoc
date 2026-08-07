@@ -101,6 +101,11 @@ class TestInsertInlineImage:
         with pytest.raises(GdocError, match="not found"):
             insert_inline_image("doc1", IMG_URL, 19)
 
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_empty_replies_returns_empty_id(self, mock_svc):
+        mock_svc.return_value = _mock_docs_service(batch_response={})
+        assert insert_inline_image("doc1", IMG_URL, 19) == ""
+
 
 class TestReplaceImage:
     @patch("gdoc.api.docs.get_docs_service")
@@ -415,6 +420,36 @@ class TestCmdInsertImage:
         assert exc_info.value.exit_code == 3
         mock_get.assert_not_called()
 
+    @patch("gdoc.api.drive.upload_temp_image")
+    def test_webp_rejected_before_upload(
+        self, mock_upload, mock_get, mock_insert, _ver, _update, tmp_path,
+    ):
+        # The Docs API rejects WebP (live-verified 400) — refuse it before
+        # a public-read temp file exists.
+        img = tmp_path / "pic.webp"
+        img.write_bytes(b"RIFF....WEBP")
+        args = _make_args("insert-image", image=str(img), index=5)
+        with pytest.raises(GdocError, match="unsupported") as exc_info:
+            cmd_insert_image(args)
+        assert exc_info.value.exit_code == 3
+        mock_upload.assert_not_called()
+
+    @patch("gdoc.api.drive.delete_file")
+    @patch("gdoc.api.drive.upload_temp_image", return_value={"id": "tmp1"})
+    def test_missing_web_content_link_cleans_up(
+        self, mock_upload, mock_delete, mock_get, mock_insert, _ver, _update,
+        tmp_path,
+    ):
+        # Drive can omit webContentLink; the already-public temp file must
+        # still be deleted and the failure reported.
+        img = tmp_path / "pic.png"
+        img.write_bytes(b"\x89PNG")
+        args = _make_args("insert-image", image=str(img), index=5)
+        with pytest.raises(GdocError, match="no download link"):
+            cmd_insert_image(args)
+        mock_delete.assert_called_once_with("tmp1")
+        mock_insert.assert_not_called()
+
 
 _REPLACE_DOC = {
     "revisionId": "rev1",
@@ -480,6 +515,23 @@ class TestCmdReplaceImage:
         assert rc == 0
         mock_upload.assert_called_once_with(str(img), "image/jpeg")
         assert mock_replace.call_args.args[2] == "https://dl/tmp2"
+        mock_delete.assert_called_once_with("tmp2")
+
+    @patch("gdoc.api.drive.delete_file")
+    @patch("gdoc.api.drive.upload_temp_image",
+           return_value={"id": "tmp2", "webContentLink": "https://dl/tmp2"})
+    def test_temp_cleaned_up_when_replace_fails(
+        self, mock_upload, mock_delete, mock_get, mock_replace, _ver,
+        _update, tmp_path,
+    ):
+        mock_replace.side_effect = GdocError("API error (400): bad image")
+        img = tmp_path / "new.jpg"
+        img.write_bytes(b"\xff\xd8")
+        args = _make_args(
+            "replace-image", object_id="kix.img1", image=str(img),
+        )
+        with pytest.raises(GdocError):
+            cmd_replace_image(args)
         mock_delete.assert_called_once_with("tmp2")
 
     def test_json_output(

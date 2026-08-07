@@ -2506,7 +2506,14 @@ def cmd_export(args) -> int:
         else:
             print(f"OK exported {out} ({fmt}, {len(content)} bytes)")
     else:
-        sys.stdout.write(content.decode("utf-8"))
+        from gdoc.format import format_json, get_output_mode
+
+        text = content.decode("utf-8")
+        if get_output_mode(args) == "json":
+            print(format_json(format=fmt, bytes=len(content), content=text))
+        else:
+            # terse/plain/verbose: the document content IS the output
+            sys.stdout.write(text)
 
     from gdoc.state import update_state_after_command
 
@@ -2514,6 +2521,19 @@ def cmd_export(args) -> int:
         doc_id, change_info, command="export", quiet=quiet,
     )
     return 0
+
+
+# Formats the Docs API insertInlineImage/replaceImage requests accept.
+# Deliberately narrower than markdown import (`new --file` also takes
+# WebP): the API rejects WebP, and failing fast here avoids creating a
+# public-read temp file that the API is guaranteed to refuse
+# (live-verified: 400 "should be ... in supported formats").
+_INSERT_IMAGE_MIMES = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+}
 
 
 def _validate_image_source(image: str) -> str | None:
@@ -2529,14 +2549,12 @@ def _validate_image_source(image: str) -> str | None:
     if not os.path.isfile(image):
         raise GdocError(f"image file not found: {image}", exit_code=3)
 
-    from gdoc.mdimport import _MIME_TYPES
-
     ext = os.path.splitext(image)[1].lower()
-    mime = _MIME_TYPES.get(ext)
+    mime = _INSERT_IMAGE_MIMES.get(ext)
     if not mime:
         raise GdocError(
             f"unsupported image type: {ext or image} "
-            "(png, jpg, gif, webp)",
+            "(the Docs API accepts png, jpg, gif)",
             exit_code=3,
         )
     return mime
@@ -2558,7 +2576,16 @@ def _resolve_image_source(image: str) -> tuple[str, str | None]:
     from gdoc.api.drive import upload_temp_image
 
     result = upload_temp_image(image, mime)
-    return result["webContentLink"], result["id"]
+    uri = result.get("webContentLink")
+    if not uri:
+        # The temp file is already public-read; don't leak it just
+        # because Drive omitted the download link from the response.
+        _cleanup_temp_image(result.get("id"))
+        raise GdocError(
+            "Drive returned no download link for the temporary image "
+            "upload; try again"
+        )
+    return uri, result["id"]
 
 
 def _cleanup_temp_image(temp_file_id: str | None) -> None:
@@ -2599,34 +2626,17 @@ def _resolve_image_target_tab(doc: dict, tab_name: str | None) -> dict | None:
     return tabs[0] if tabs else None
 
 
-def cmd_insert_image(args) -> int:
-    """Handler for `gdoc insert-image`: add an image to an existing doc."""
-    doc_id = _resolve_doc_id(args.doc)
-    quiet = getattr(args, "quiet", False)
-    after = getattr(args, "after", None)
-    index = getattr(args, "index", None)
-    _validate_image_source(args.image)
-
-    from gdoc.notify import pre_flight
-
-    change_info = pre_flight(doc_id, quiet=quiet)
-    _require_doc(doc_id, change_info)
-    if change_info and change_info.has_conflict:
-        print("WARN: doc changed since last read", file=sys.stderr)
-
-    from gdoc.api.docs import find_text_in_document, get_document_with_tabs
-
-    doc = get_document_with_tabs(doc_id)
-    revision_id = doc.get("revisionId", "")
-    tab = _resolve_image_target_tab(doc, getattr(args, "tab", None))
-    tab_id = tab["id"] if tab else None
-    body = tab["body"] if tab else doc.get("body", {})
+def _resolve_insert_index(
+    body: dict, index: int | None, after: str | None,
+) -> int:
+    """Resolve the UTF-16 insertion index from --index, --after, or --end."""
+    from gdoc.api.docs import find_text_in_document
 
     if index is not None:
         if index < 1:
             raise GdocError("--index must be >= 1", exit_code=3)
-        insert_at = index
-    elif after is not None:
+        return index
+    if after is not None:
         matches = find_text_in_document(None, after, body=body)
         if not matches:
             matches = find_text_in_document(
@@ -2650,12 +2660,37 @@ def cmd_insert_image(args) -> int:
                 "use a longer anchor",
                 exit_code=3,
             )
-        insert_at = matches[0]["endIndex"]
-    else:
-        # --end: last index inside the body's final structural element
-        # (the segment's closing newline — inserting there appends).
-        content = body.get("content", [])
-        insert_at = content[-1].get("endIndex", 2) - 1 if content else 1
+        return matches[0]["endIndex"]
+    # --end: last index inside the body's final structural element
+    # (the segment's closing newline — inserting there appends).
+    content = body.get("content", [])
+    return content[-1].get("endIndex", 2) - 1 if content else 1
+
+
+def cmd_insert_image(args) -> int:
+    """Handler for `gdoc insert-image`: add an image to an existing doc."""
+    doc_id = _resolve_doc_id(args.doc)
+    quiet = getattr(args, "quiet", False)
+    _validate_image_source(args.image)
+
+    from gdoc.notify import pre_flight
+
+    change_info = pre_flight(doc_id, quiet=quiet)
+    _require_doc(doc_id, change_info)
+    if change_info and change_info.has_conflict:
+        print("WARN: doc changed since last read", file=sys.stderr)
+
+    from gdoc.api.docs import get_document_with_tabs
+
+    doc = get_document_with_tabs(doc_id)
+    revision_id = doc.get("revisionId", "")
+    tab = _resolve_image_target_tab(doc, getattr(args, "tab", None))
+    tab_id = tab["id"] if tab else None
+    body = tab["body"] if tab else doc.get("body", {})
+
+    insert_at = _resolve_insert_index(
+        body, getattr(args, "index", None), getattr(args, "after", None),
+    )
 
     uri, temp_file_id = _resolve_image_source(args.image)
 

@@ -15,7 +15,8 @@ All notable changes to `gdoc` are documented here. This project follows
   formats print to stdout without it. Exports cover the whole document,
   all tabs included. (#35)
 - **`gdoc insert-image` — add an image to an existing document.**
-  Takes a local file (PNG/JPG/GIF/WebP) or a public image URL, anchored
+  Takes a local file (PNG/JPG/GIF — the Docs API rejects WebP, so it is
+  refused before any upload) or a public image URL, anchored
   by `--after TEXT` (retries with smart-quote folding; ambiguous anchors
   are refused), a raw `--index`, or `--end`; `--width`/`--height` set the
   display size in points. Multi-tab documents require `--tab`, and the

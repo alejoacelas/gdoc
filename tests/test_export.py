@@ -149,6 +149,30 @@ class TestCmdExport:
         assert "bytes\t5" in lines
 
     @patch("gdoc.state.update_state_after_command")
+    @patch("gdoc.api.drive.export_doc_bytes", return_value=b"12345")
+    def test_verbose_output(self, mock_export, _update, tmp_path, capsys):
+        out = tmp_path / "r.pdf"
+        args = _make_args(out=str(out), verbose=True)
+        cmd_export(args)
+        lines = capsys.readouterr().out.splitlines()
+        assert "Exported: doc123" in lines
+        assert "Format: pdf" in lines
+        assert f"Path: {out}" in lines
+        assert "Bytes: 5" in lines
+
+    @patch("gdoc.state.update_state_after_command")
+    @patch("gdoc.api.drive.export_doc_bytes", return_value=b"# Title\n")
+    def test_stdout_json_wraps_content(self, mock_export, _update, capsys):
+        args = _make_args(format="md", json=True)
+        rc = cmd_export(args)
+        assert rc == 0
+        data = json.loads(capsys.readouterr().out)
+        assert data["ok"] is True
+        assert data["format"] == "md"
+        assert data["bytes"] == 8
+        assert data["content"] == "# Title\n"
+
+    @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.api.drive.export_doc_bytes", return_value=b"x")
     def test_unwritable_out_errors(self, mock_export, _update, tmp_path):
         out = tmp_path / "missing-dir" / "r.pdf"

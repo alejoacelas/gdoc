@@ -43,16 +43,7 @@ def export_doc(doc_id: str, mime_type: str = "text/markdown") -> str:
 
     Returns the decoded UTF-8 content string.
     """
-    try:
-        service = get_drive_service()
-        content = (
-            service.files()
-            .export_media(fileId=doc_id, mimeType=mime_type)
-            .execute()
-        )
-        return content.decode("utf-8")
-    except HttpError as e:
-        _translate_http_error(e, doc_id)
+    return export_doc_bytes(doc_id, mime_type).decode("utf-8")
 
 
 def export_doc_bytes(doc_id: str, mime_type: str) -> bytes:

@@ -124,6 +124,16 @@ class TestUpdateStateAfterCommand:
             assert state.last_version == 50
             assert state.last_read_version == 50  # info is a read
 
+    def test_normal_export_is_a_read(self, tmp_path):
+        with patch("gdoc.state.STATE_DIR", tmp_path):
+            info = self._make_change_info(current_version=60)
+            update_state_after_command(
+                "doc1", info, command="export", quiet=False,
+            )
+            state = load_state("doc1")
+            assert state.last_version == 60
+            assert state.last_read_version == 60  # export reads the full doc
+
     def test_quiet_cat_version_stays_stale(self, tmp_path):
         """Decision #14: --quiet cat does not update version fields."""
         with patch("gdoc.state.STATE_DIR", tmp_path):

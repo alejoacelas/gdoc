@@ -4,6 +4,32 @@ All notable changes to `gdoc` are documented here. This project follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] — 2026-08-07
+
+### Added
+- **`gdoc export` — render a document to PDF, DOCX, and more.**
+  `gdoc export DOC --out report.pdf` writes a rendered artifact via Drive
+  export; the format is inferred from the `--out` extension or set with
+  `--format` (`pdf`, `docx`, `odt`, `epub`, `html`, `md`, `txt`, `rtf`).
+  Binary formats require `--out` (no PDF bytes to a terminal); text
+  formats print to stdout without it. Exports cover the whole document,
+  all tabs included. (#35)
+- **`gdoc insert-image` — add an image to an existing document.**
+  Takes a local file (PNG/JPG/GIF/WebP) or a public image URL, anchored
+  by `--after TEXT` (retries with smart-quote folding; ambiguous anchors
+  are refused), a raw `--index`, or `--end`; `--width`/`--height` set the
+  display size in points. Multi-tab documents require `--tab`, and the
+  write is pinned to the read revision via
+  `writeControl.requiredRevisionId`. Local files are uploaded to Drive as
+  a temporary public-read file and deleted after the insert — a failed
+  cleanup warns with the file ID instead of leaving the exposure silent.
+  Prints the new image object ID. (#35)
+- **`gdoc replace-image` — swap an image's content by object ID.**
+  `gdoc replace-image DOC OBJECT_ID new.png` replaces the image content
+  in place (IDs from `gdoc images`), keeping the existing display size
+  (CENTER_CROP). The owning tab is located automatically, including
+  nested child tabs. (#35)
+
 ## [0.14.0] — 2026-08-07
 
 ### Added

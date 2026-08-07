@@ -55,6 +55,23 @@ def export_doc(doc_id: str, mime_type: str = "text/markdown") -> str:
         _translate_http_error(e, doc_id)
 
 
+def export_doc_bytes(doc_id: str, mime_type: str) -> bytes:
+    """Export a Google Docs document as raw bytes.
+
+    Like export_doc, but without UTF-8 decoding — for binary formats
+    (PDF, DOCX, ODT, EPUB) that must be written to a file as-is.
+    """
+    try:
+        service = get_drive_service()
+        return (
+            service.files()
+            .export_media(fileId=doc_id, mimeType=mime_type)
+            .execute()
+        )
+    except HttpError as e:
+        _translate_http_error(e, doc_id)
+
+
 def list_files(query: str) -> list[dict]:
     """List files matching a Drive API query, auto-paginating."""
     try:

@@ -988,6 +988,130 @@ def download_image(content_uri: str, dest_path: str) -> None:
         f.write(data)
 
 
+def insert_inline_image(
+    doc_id: str,
+    uri: str,
+    index: int,
+    tab_id: str | None = None,
+    revision_id: str = "",
+    width_pt: float | None = None,
+    height_pt: float | None = None,
+) -> str:
+    """Insert an inline image at a document index via insertInlineImage.
+
+    Args:
+        doc_id: The document ID.
+        uri: Publicly fetchable image URL (Google's servers download it).
+        index: UTF-16 insertion index (from find_text_in_document).
+        tab_id: Tab the index lives in (omitted → first tab).
+        revision_id: If non-empty, sent as writeControl.requiredRevisionId
+            so the insert can't land on stale coordinates.
+        width_pt: Optional display width in points.
+        height_pt: Optional display height in points.
+
+    Returns:
+        The new inline object ID (usable with `gdoc images`/replace_image).
+    """
+    location: dict = {"index": index}
+    if tab_id:
+        location["tabId"] = tab_id
+    request: dict = {"location": location, "uri": uri}
+    size: dict = {}
+    if width_pt:
+        size["width"] = {"magnitude": width_pt, "unit": "PT"}
+    if height_pt:
+        size["height"] = {"magnitude": height_pt, "unit": "PT"}
+    if size:
+        request["objectSize"] = size
+    body: dict = {"requests": [{"insertInlineImage": request}]}
+    if revision_id:
+        body["writeControl"] = {"requiredRevisionId": revision_id}
+    try:
+        service = get_docs_service()
+        result = (
+            service.documents()
+            .batchUpdate(documentId=doc_id, body=body)
+            .execute()
+        )
+    except HttpError as e:
+        _raise_if_stale_revision(e)
+        _translate_http_error(e, doc_id)
+    replies = result.get("replies", [])
+    return (replies[0] if replies else {}).get(
+        "insertInlineImage", {},
+    ).get("objectId", "")
+
+
+def replace_image(
+    doc_id: str,
+    object_id: str,
+    uri: str,
+    tab_id: str | None = None,
+    revision_id: str = "",
+) -> None:
+    """Replace an existing image's content via replaceImage.
+
+    The existing image keeps its size; the new content is scaled and
+    center-cropped to fit (CENTER_CROP is the only supported method).
+
+    Args:
+        doc_id: The document ID.
+        object_id: Inline object ID of the image (see `gdoc images`).
+        uri: Publicly fetchable replacement image URL.
+        tab_id: Tab the image lives in (omitted → first tab).
+        revision_id: If non-empty, sent as writeControl.requiredRevisionId.
+    """
+    request: dict = {
+        "imageObjectId": object_id,
+        "uri": uri,
+        "imageReplaceMethod": "CENTER_CROP",
+    }
+    if tab_id:
+        request["tabId"] = tab_id
+    body: dict = {"requests": [{"replaceImage": request}]}
+    if revision_id:
+        body["writeControl"] = {"requiredRevisionId": revision_id}
+    try:
+        service = get_docs_service()
+        service.documents().batchUpdate(
+            documentId=doc_id, body=body,
+        ).execute()
+    except HttpError as e:
+        _raise_if_stale_revision(e)
+        _translate_http_error(e, doc_id)
+
+
+def _raise_if_stale_revision(e: HttpError) -> None:
+    """Turn a writeControl revision-mismatch 400 into a clear retry hint."""
+    if int(e.resp.status) == 400 and "revision" in str(e).lower():
+        raise GdocError(
+            "document changed while the command was running; re-run it"
+        )
+
+
+def find_object_tab(doc: dict, object_id: str) -> str | None:
+    """Find which tab holds an inline/positioned object ID.
+
+    Walks the tab tree of a documents.get(includeTabsContent=True) response.
+    Returns the tab ID, or None if no tab declares the object (including
+    docs fetched without tab content).
+    """
+    def walk(tabs: list[dict]) -> str | None:
+        for tab in tabs:
+            doc_tab = tab.get("documentTab", {})
+            if (
+                object_id in doc_tab.get("inlineObjects", {})
+                or object_id in doc_tab.get("positionedObjects", {})
+            ):
+                return tab.get("tabProperties", {}).get("tabId")
+            found = walk(tab.get("childTabs", []))
+            if found is not None:
+                return found
+        return None
+
+    return walk(doc.get("tabs", []))
+
+
 _HEADING_LEVELS = {
     "HEADING_1": 1, "HEADING_2": 2, "HEADING_3": 3,
     "HEADING_4": 4, "HEADING_5": 5, "HEADING_6": 6,

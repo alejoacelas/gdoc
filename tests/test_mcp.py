@@ -15,7 +15,6 @@ def _clean_gdoc_env(monkeypatch):
     account must not change tool construction or account tracking."""
     monkeypatch.delenv("GDOC_ALLOW_COMMANDS", raising=False)
     monkeypatch.delenv("GDOC_ACCOUNT", raising=False)
-    monkeypatch.setattr(mcp, "_serving_default", None)
     monkeypatch.setattr("gdoc.util.get_default_account", lambda: None)
 
 
@@ -326,56 +325,76 @@ def test_call_command_reports_exit_code(mocker):
     assert "nope" in stderr
 
 
-def test_account_state_is_reset_between_calls(mocker):
-    """A named account must not leak into the next tool call."""
+@pytest.fixture()
+def _service_probe(mocker):
+    """Run each tool call through a fake command that grabs the Drive
+    service, with build/credentials mocked to record the account used."""
+    from gdoc import api
+
+    api.clear_service_caches()
+    mocker.patch(
+        "gdoc.auth.get_credentials", side_effect=lambda account: f"creds:{account}"
+    )
+    built = {}
+
+    def fake_build(api_name, version, credentials):
+        service = object()
+        built[service] = credentials
+        return service
+
+    mocker.patch("gdoc.api.build", side_effect=fake_build)
+
+    services = []
+    mocker.patch(
+        "gdoc.cli.run_argv",
+        side_effect=lambda argv, check_updates=True: services.append(
+            api.get_drive_service()
+        )
+        or 0,
+    )
+    yield services, built
+    api.clear_service_caches()
+
+
+def test_account_does_not_leak_between_calls(mocker, _service_probe):
+    """A named account is scoped to its own tool call."""
     from gdoc import util
 
-    mocker.patch("gdoc.cli.run_argv", return_value=0)
-    clear = mocker.patch("gdoc.api.get_drive_service.cache_clear")
+    services, built = _service_probe
 
-    try:
-        mcp.call_command("cat", {"doc": "D", "account": "work"})
-        assert util.get_active_account() == "work"
-        assert clear.called
+    mcp.call_command("cat", {"doc": "D", "account": "work"})
+    assert built[services[0]] == "creds:work"
+    # Restored after the call, not left set until the next one.
+    assert util.get_active_account() is None
 
-        mcp.call_command("cat", {"doc": "D"})
-        assert util.get_active_account() is None
-    finally:
-        util.set_active_account(None)
+    mcp.call_command("cat", {"doc": "D"})
+    assert built[services[1]] == "creds:None"
 
 
-def test_account_state_reset_is_skipped_when_unchanged(mocker):
-    """Repeat calls on one account keep their cached service objects."""
-    from gdoc import util
+def test_repeat_calls_on_one_account_keep_cached_services(_service_probe):
+    """Repeat calls on one account reuse their cached service objects."""
+    services, _ = _service_probe
 
-    mocker.patch("gdoc.cli.run_argv", return_value=0)
-    try:
-        mcp.call_command("cat", {"doc": "D", "account": "work"})
-        clear = mocker.patch("gdoc.api.get_drive_service.cache_clear")
-        mcp.call_command("cat", {"doc": "D", "account": "work"})
-        assert not clear.called
-    finally:
-        util.set_active_account(None)
+    mcp.call_command("cat", {"doc": "D", "account": "work"})
+    mcp.call_command("cat", {"doc": "D", "account": "work"})
+    assert services[0] is services[1]
 
 
-def test_default_account_change_invalidates_caches(mocker):
+def test_default_account_change_reaches_next_unpinned_call(mocker, _service_probe):
     """`gdoc auth --set-default` in another terminal must not leave a
     running server on the old default's cached credentials."""
-    from gdoc import util
-
-    mocker.patch("gdoc.cli.run_argv", return_value=0)
+    services, built = _service_probe
     default = mocker.patch("gdoc.util.get_default_account", return_value="a")
-    try:
-        mcp.call_command("cat", {"doc": "D"})  # caches built under "a"
-        clear = mocker.patch("gdoc.api.clear_service_caches")
-        mcp.call_command("cat", {"doc": "D"})
-        assert not clear.called  # default unchanged: keep the caches
 
-        default.return_value = "b"
-        mcp.call_command("cat", {"doc": "D"})
-        assert clear.called  # default changed: drop them
-    finally:
-        util.set_active_account(None)
+    mcp.call_command("cat", {"doc": "D"})
+    mcp.call_command("cat", {"doc": "D"})
+    assert services[0] is services[1]  # default unchanged: cache kept
+    assert built[services[0]] == "creds:a"
+
+    default.return_value = "b"
+    mcp.call_command("cat", {"doc": "D"})
+    assert services[2] is not services[1]  # default changed: new service
+    assert built[services[2]] == "creds:b"
 
 
 def test_stdin_is_shielded_from_tool_calls(mocker):

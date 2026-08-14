@@ -458,9 +458,16 @@ def call_command(
     ):
         raise ValueError("`text` is required: the markdown content, inline")
 
-    _reset_account_state(arguments.get("account"))
+    from gdoc.util import account_context
 
-    with _materialised_text(command, arguments) as prepared:
+    # Scope the account like a fresh CLI invocation: an explicit account
+    # pins this call only, and an unpinned call re-resolves the configured
+    # default at call time (service caches key on the resolved account, so
+    # a default changed mid-serve is picked up automatically).
+    with (
+        account_context(arguments.get("account")),
+        _materialised_text(command, arguments) as prepared,
+    ):
         argv = _argv_for(command, prepared, subparser)
 
         out, err = io.StringIO(), io.StringIO()
@@ -499,47 +506,6 @@ def _reject_local_paths(command: str, arguments: dict[str, Any]) -> None:
                 f"{dest}={value} writes a local file and is not available "
                 "over MCP"
             )
-
-
-# The configured default account the cached services were built under.
-# Unpinned calls must notice `gdoc auth --set-default` happening in
-# another terminal while the server is running.
-_serving_default: str | None = None
-
-
-def _reset_account_state(account: str | None) -> None:
-    """Make each tool call behave like a fresh CLI invocation.
-
-    `set_active_account()` is process-global and the API service objects
-    are `lru_cache`d on the assumption of one account per process — true
-    for the CLI, false for a long-lived server. Without this, a call that
-    names an account would leak into every later call, and cached service
-    objects would keep using the first account's credentials.
-    """
-    global _serving_default
-    from gdoc.util import (
-        get_active_account,
-        get_default_account,
-        set_active_account,
-    )
-
-    if account == get_active_account():
-        if account is not None:
-            return
-        # No explicit account: credentials resolve through the configured
-        # default at call time, so a changed default must also drop the
-        # cached services.
-        default = get_default_account()
-        if default == _serving_default:
-            return
-        _serving_default = default
-    elif account is None:
-        _serving_default = get_default_account()
-
-    from gdoc.api import clear_service_caches
-
-    clear_service_caches()
-    set_active_account(account)
 
 
 @contextlib.contextmanager

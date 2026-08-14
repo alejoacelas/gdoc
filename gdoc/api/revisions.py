@@ -12,9 +12,9 @@ from functools import lru_cache
 
 from googleapiclient.errors import HttpError
 
-from gdoc.api import get_drive_service
+from gdoc.api import ACCOUNT_CACHE_SIZE, get_drive_service
 from gdoc.revdiff import pruned_error
-from gdoc.util import AuthError, GdocError
+from gdoc.util import AuthError, GdocError, resolve_account
 
 _REVISION_FIELDS = (
     "id, modifiedTime, keepForever, "
@@ -36,14 +36,18 @@ def _translate_http_error(e: HttpError, file_id: str) -> None:
     raise GdocError(f"API error ({status}): {e.reason}")
 
 
-@lru_cache(maxsize=1)
-def _get_session():
-    """One authorized HTTP session per process (exportLinks downloads)."""
+@lru_cache(maxsize=ACCOUNT_CACHE_SIZE)
+def _session_for(account: str | None):
     from google.auth.transport.requests import AuthorizedSession
 
     from gdoc.auth import get_credentials
 
-    return AuthorizedSession(get_credentials())
+    return AuthorizedSession(get_credentials(account))
+
+
+def _get_session():
+    """Authorized HTTP session for the current account (exportLinks downloads)."""
+    return _session_for(resolve_account())
 
 
 def list_revisions(file_id: str) -> list[dict]:

@@ -6,21 +6,26 @@ from functools import lru_cache
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+from gdoc.api import ACCOUNT_CACHE_SIZE
 from gdoc.util import (
     AuthError,
     GdocError,
     PreviewUnavailableError,
     fold_typography,
+    resolve_account,
 )
 
 
-@lru_cache(maxsize=1)
-def get_docs_service():
-    """Build and cache a Docs API v1 service object."""
+@lru_cache(maxsize=ACCOUNT_CACHE_SIZE)
+def _docs_service(account: str | None):
     from gdoc.auth import get_credentials
 
-    creds = get_credentials()
-    return build("docs", "v1", credentials=creds)
+    return build("docs", "v1", credentials=get_credentials(account))
+
+
+def get_docs_service():
+    """Build or reuse the Docs API v1 service for the current account."""
+    return _docs_service(resolve_account())
 
 
 def _translate_http_error(e: HttpError, doc_id: str) -> None:

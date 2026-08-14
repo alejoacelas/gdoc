@@ -4,6 +4,21 @@ All notable changes to `gdoc` are documented here. This project follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.1] — 2026-08-15
+
+### Changed
+- **Per-request credential injection.** The active account is now a
+  `contextvars.ContextVar` scoped per call (`account_context()`), and the
+  four cached API service objects are keyed by the resolved account
+  instead of one-per-process, with `get_credentials()` accepting the
+  resolved account so a cache key can never disagree with the credentials
+  behind it. Two accounts used concurrently in one process each see only
+  their own credentials and services, and an unpinned call in a long-lived
+  process picks up `gdoc auth --set-default` changes at call time. The CLI
+  behaves identically; the MCP server's account-reset machinery collapses
+  into one `account_context` per tool call. Groundwork for the hosted
+  multi-user server (#45).
+
 ## [0.20.0] — 2026-08-14
 
 ### Added

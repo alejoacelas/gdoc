@@ -13,8 +13,11 @@ All notable changes to `gdoc` are documented here. This project follows
   instead of one-per-process, with `get_credentials()` accepting the
   resolved account so a cache key can never disagree with the credentials
   behind it. Two accounts used concurrently in one process each see only
-  their own credentials and services, and an unpinned call in a long-lived
-  process picks up `gdoc auth --set-default` changes at call time. The CLI
+  their own credentials and services, an unpinned call in a long-lived
+  process picks up `gdoc auth --set-default` changes at call time, and the
+  token file's on-disk identity travels in the cache key so a token
+  re-authenticated or removed in another terminal is never served from a
+  stale cached service. The CLI
   behaves identically; the MCP server's account-reset machinery collapses
   into one `account_context` per tool call. Groundwork for the hosted
   multi-user server (#45).

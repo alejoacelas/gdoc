@@ -113,6 +113,28 @@ def test_every_factory_keys_on_the_account(mocker, _fake_services):
     assert sessions[session_b] == "creds:bob"
 
 
+def test_token_change_on_disk_drops_the_cached_service(
+    tmp_path, monkeypatch, _fake_services
+):
+    """`gdoc auth` re-writing or removing a token in another terminal must
+    not leave a long-lived server on the old cached credentials."""
+    monkeypatch.setattr("gdoc.util.CONFIG_DIR", tmp_path)
+    token = tmp_path / "accounts" / "work" / "token.json"
+    token.parent.mkdir(parents=True)
+    token.write_text("identity-one")
+
+    with util.account_context("work"):
+        first = api.get_drive_service()
+        assert api.get_drive_service() is first  # untouched token: cache kept
+
+        token.write_text("identity-two, different length")
+        second = api.get_drive_service()
+        assert second is not first  # re-auth: stale service dropped
+
+        token.unlink()
+        assert api.get_drive_service() is not second  # removal: dropped too
+
+
 def test_account_context_restores_previous_value():
     """The pre-call account survives even a set_active_account inside the
     block (run_argv sets it when argv carries --account)."""

@@ -345,13 +345,12 @@ def _service_probe(mocker):
     mocker.patch("gdoc.api.build", side_effect=fake_build)
 
     services = []
-    mocker.patch(
-        "gdoc.cli.run_argv",
-        side_effect=lambda argv, check_updates=True: services.append(
-            api.get_drive_service()
-        )
-        or 0,
-    )
+
+    def fake_run_argv(argv, check_updates=True):
+        services.append(api.get_drive_service())
+        return 0
+
+    mocker.patch("gdoc.cli.run_argv", side_effect=fake_run_argv)
     yield services, built
     api.clear_service_caches()
 
@@ -369,6 +368,16 @@ def test_account_does_not_leak_between_calls(mocker, _service_probe):
 
     mcp.call_command("cat", {"doc": "D"})
     assert built[services[1]] == "creds:None"
+
+
+def test_account_is_restored_when_a_call_raises(mocker):
+    """A failing tool call must not leave its account pinned."""
+    from gdoc import util
+
+    mocker.patch("gdoc.cli.run_argv", side_effect=RuntimeError("boom"))
+    with pytest.raises(RuntimeError):
+        mcp.call_command("cat", {"doc": "D", "account": "work"})
+    assert util.get_active_account() is None
 
 
 def test_repeat_calls_on_one_account_keep_cached_services(_service_probe):

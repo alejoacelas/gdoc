@@ -255,7 +255,82 @@ expired auth, still do).
 | `mkdir TITLE` | Create a Drive folder (`--parent FOLDER`) |
 | `mv DOC FOLDER` | Move a file into a folder (alias: `move`) |
 | `rename DOC TITLE` | Rename a file |
+| `mcp` | Serve gdoc to desktop chat apps over MCP (`--read-only`, `--allow`) |
 | `update` | Update gdoc to the latest release |
+
+## Desktop chat apps (MCP)
+
+`gdoc mcp` runs gdoc as a [Model Context Protocol](https://modelcontextprotocol.io)
+server on stdio, so clients that launch a local server — Claude Desktop,
+the Codex CLI, and others — can use gdoc without shell access.
+Each supported subcommand becomes a tool (`gdoc_cat`, `gdoc_edit`, …),
+with its parameters derived from the CLI itself.
+
+Authenticate first — the server cannot open a browser for the OAuth flow:
+
+```bash
+gdoc auth
+```
+
+**Claude Desktop** — add to `claude_desktop_config.json` (Settings →
+Developer → Edit Config), then restart the app:
+
+```json
+{
+  "mcpServers": {
+    "gdoc": {
+      "command": "gdoc",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+If the app can't find `gdoc` on its PATH, use the absolute path from
+`which gdoc`.
+
+**Codex CLI** — add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.gdoc]
+command = "gdoc"
+args = ["mcp"]
+```
+
+ChatGPT desktop itself only connects to *remote* MCP servers over HTTPS,
+so it cannot launch `gdoc mcp` directly.
+
+Useful flags:
+
+```bash
+# Reading only — nothing that can modify a Doc or Drive is exposed
+gdoc mcp --read-only
+
+# Expose a specific subset
+gdoc mcp --allow cat,find,comments,comment
+
+# Default account for every tool call (an explicit `account`
+# argument on a call still wins)
+gdoc mcp --account work
+```
+
+If `GDOC_ALLOW_COMMANDS` is set in the environment the client launches
+the server with, it restricts the tool surface too — and must include
+`mcp` for the server to start at all.
+
+How the tools differ from the CLI:
+
+- `write`, `insert`, and `new` take markdown content as inline `text`
+  instead of a local file path.
+- Parameters that name local files (`edit --old-file/--new-file`,
+  `diff FILE`/`--out`, `images --download`, …) are not exposed: a chat
+  client cannot see the server's filesystem, and hiding them keeps a
+  prompt-injected model from reading or writing files on the host.
+- `auth`, `update`, `config`, `pull`, `push`, `export`, `insert-image`,
+  and `replace-image` are not exposed: they need a browser, change the
+  install, or only work on local paths.
+- `diff` reporting "differences found" (exit code 1 in the CLI,
+  diff-style) is a normal result, not an error.
 
 ## Output modes
 

@@ -29,14 +29,24 @@ GOOGLE_AUTH_URI = "https://accounts.google.com/o/oauth2/auth"
 GOOGLE_TOKEN_URI = "https://oauth2.googleapis.com/token"
 
 
-def get_credentials() -> Credentials:
-    """Load or refresh credentials. Returns valid Credentials or raises AuthError."""
-    from gdoc.util import get_active_account
-    account = get_active_account() or get_default_account()
+# Sentinel default: "resolve the account from the current context".
+_RESOLVE = object()
+
+
+def get_credentials(account=_RESOLVE) -> Credentials:
+    """Load or refresh credentials. Returns valid Credentials or raises AuthError.
+
+    `account` is a *resolved* account name (None = legacy token) — the
+    per-account service caches pass their cache key here so the credentials
+    are guaranteed to match it. Omit it to resolve from the current context.
+    """
+    from gdoc.util import resolve_account, token_path_for
+    if account is _RESOLVE:
+        account = resolve_account()
     if not account:
         print("account: default (use --account to switch)", file=sys.stderr)
 
-    token_path = get_token_path()
+    token_path = token_path_for(account)
     creds = _load_token(token_path)
 
     if creds and creds.valid:

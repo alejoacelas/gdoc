@@ -553,6 +553,22 @@ class TestSuggestResponseIds:
 
     @patch("gdoc.api.docs.get_document_structure")
     @patch("gdoc.api.docs.get_docs_service")
+    def test_partial_save_failure_names_the_reported_ids(
+        self, mock_svc, mock_rb,
+    ):
+        """A non-ALL_SAVED response that still carries suggestion IDs must
+        name them, not just count them: some review objects may exist, and
+        a caller deciding whether to retry has to be able to find them."""
+        resp = _ok_response(created=("s.maybe1", "s.maybe2"))
+        resp["commentUpdateState"] = "ALL_FAILED_UNKNOWN_REASON"
+        mock_svc.return_value = _service(resp)
+        with pytest.raises(GdocError) as exc:
+            suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
+        assert "s.maybe1, s.maybe2" in str(exc.value)
+        mock_rb.assert_not_called()
+
+    @patch("gdoc.api.docs.get_document_structure")
+    @patch("gdoc.api.docs.get_docs_service")
     def test_readback_uses_suggestions_inline(self, mock_svc, mock_rb):
         mock_svc.return_value = _service(_ok_response())
         mock_rb.return_value = _readback("suggest.abc")

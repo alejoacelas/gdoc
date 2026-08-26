@@ -130,6 +130,14 @@ def test_cells_requires_a_value():
     assert schema["properties"]["value"]["minItems"] == 1
 
 
+def test_suggest_requires_the_text_pair():
+    schema = mcp.build_tools(allow={"suggest"})["gdoc_suggest"]["inputSchema"]
+    # With --old-file/--new-file hidden and no cell mode, the text pair is
+    # the only data source; a call without it would always fail at runtime.
+    assert "old_text" in schema["required"]
+    assert "new_text" in schema["required"]
+
+
 def test_delete_comment_requires_force():
     schema = mcp.build_tools(allow={"delete-comment"})[
         "gdoc_delete_comment"

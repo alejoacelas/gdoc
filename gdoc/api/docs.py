@@ -2182,9 +2182,18 @@ def suggest_replacement(
             raise GdocError(
                 "suggest mode was not applied: the server returned "
                 f"commentUpdateState={state or 'none'} and "
-                f"{len(outcome.suggestion_ids)} suggestion ID(s). The Cloud "
-                "project may lack Developer Preview access. Check the "
-                "document — the text may have been edited directly."
+                f"{len(outcome.suggestion_ids)} suggestion ID(s)"
+                + (
+                    # Name any IDs that did come back: some review objects
+                    # may exist, and a caller deciding whether to retry
+                    # must be able to find them.
+                    " (" + ", ".join(outcome.suggestion_ids) + ")"
+                    if outcome.suggestion_ids
+                    else ""
+                )
+                + ". The Cloud project may lack Developer Preview access. "
+                "Check the document — the text may have been edited "
+                "directly."
             )
 
         try:

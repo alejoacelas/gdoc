@@ -137,6 +137,9 @@ _EXTRA_REQUIRED: dict[str, tuple[str, ...]] = {
     "cells": ("value",),
     # confirm_destructive() cannot prompt over MCP (stdin is detached)
     "delete-comment": ("force",),
+    # --old-file/--new-file are hidden over MCP and suggest has no cell
+    # mode, so the text pair is the only way to supply the replacement
+    "suggest": ("old_text", "new_text"),
 }
 
 # Cross-parameter requirements JSON Schema could only express with a

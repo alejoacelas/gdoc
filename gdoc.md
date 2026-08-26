@@ -37,7 +37,9 @@ gdoc comment DOC_ID "text" --quote "doc text" --assign EMAIL   # Assigned anchor
 gdoc reply DOC_ID COMMENT_ID "text" --reassign EMAIL          # Reassign an assigned thread (preview)
 gdoc reply DOC_ID SUGGESTION_ID "text" --suggestion           # Reply on a suggestion thread (preview)
 gdoc edit-comment DOC_ID COMMENT_ID POST_ID "new text"        # Edit a post you wrote (preview)
+gdoc edit-suggestion-reply DOC_ID SUGGESTION_ID POST_ID "new"  # Same, on a suggestion thread (preview)
 gdoc delete-reply DOC_ID COMMENT_ID POST_ID --force           # Delete a reply you wrote (preview)
+gdoc delete-suggestion-reply DOC_ID SUGGESTION_ID POST_ID --force  # Same, on a suggestion thread (preview)
 gdoc resolve DOC_ID COMMENT_ID              # Resolve a comment
 gdoc reopen DOC_ID COMMENT_ID               # Reopen a resolved comment
 

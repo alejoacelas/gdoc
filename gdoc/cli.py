@@ -2427,10 +2427,13 @@ def _native_thread_or_fail(doc_id: str, thread_id: str, suggestion: bool) -> dic
     return thread
 
 
-def _validate_native_reply_args(args, thread_id: str) -> None:
+def _validate_native_reply_args(args) -> None:
     """Usage checks for `reply --suggestion` / `--reassign`, before any I/O."""
     suggestion = bool(getattr(args, "suggestion", False))
-    reassign = (getattr(args, "reassign", "") or "").strip()
+    reassign_raw = getattr(args, "reassign", None)
+    reassign = (reassign_raw or "").strip()
+    if reassign_raw is not None and not reassign:
+        raise GdocError("--reassign requires an email address", exit_code=3)
     if suggestion and reassign:
         raise GdocError(
             "--reassign applies to comment threads only; a suggestion "
@@ -2514,11 +2517,14 @@ def cmd_reply(args) -> int:
     quiet = getattr(args, "quiet", False)
     comment_id = args.comment_id
 
+    # Any --reassign value (even blank) selects the native path so that a
+    # blank one is a usage error rather than a silent Drive reply.
     native = bool(
-        getattr(args, "suggestion", False) or getattr(args, "reassign", None)
+        getattr(args, "suggestion", False)
+        or getattr(args, "reassign", None) is not None
     )
     if native:
-        _validate_native_reply_args(args, comment_id)
+        _validate_native_reply_args(args)
 
     from gdoc.notify import pre_flight
     change_info = pre_flight(doc_id, quiet=quiet)
@@ -2700,7 +2706,7 @@ def _cmd_edit_post(args, suggestion: bool) -> int:
             "and cannot be edited; name a reply post instead",
             exit_code=3,
         )
-    if post.get("author", {}).get("me") is False:
+    if (post.get("author") or {}).get("me") is False:
         raise GdocError(
             f"post {post_id} was written by another user; only its author "
             "can edit it",
@@ -2783,7 +2789,7 @@ def _cmd_delete_post(args, suggestion: bool) -> int:
             "assignment; Google does not allow deleting such replies",
             exit_code=3,
         )
-    if post.get("author", {}).get("me") is False:
+    if (post.get("author") or {}).get("me") is False:
         raise GdocError(
             f"post {post_id} was written by another user; only its author "
             "can delete it",

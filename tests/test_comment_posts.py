@@ -1019,6 +1019,23 @@ class TestCmdReplyNative:
         assert ei.value.exit_code == 3
         mock_add.assert_not_called()
 
+    @patch("gdoc.api.comments.create_reply")
+    @patch("gdoc.api.docs.add_comment_reply")
+    def test_blank_reassign_is_usage_error(
+        self, mock_add, mock_drive, _ver, mock_pf, _update, capsys,
+    ):
+        # Whitespace-only --reassign: neither a Drive reply nor a native one.
+        for value in ("", "   "):
+            args = _make_args("reply", comment_id="c1", text="t", suggestion=False,
+                              reassign=value, quiet=False)
+            with pytest.raises(GdocError, match="requires an email") as ei:
+                cmd_reply(args)
+            assert ei.value.exit_code == 3
+        mock_add.assert_not_called()
+        mock_drive.assert_not_called()
+        mock_pf.assert_not_called()
+        assert capsys.readouterr().out == ""
+
     @patch("gdoc.api.docs.add_comment_reply")
     def test_native_reply_validates_text(self, mock_add, _ver, _pf, _update):
         args = _make_args("reply", comment_id="suggest.s1", text="",
@@ -1118,6 +1135,14 @@ class TestEditPost:
             cmd_edit_comment(args)
         assert ei.value.exit_code == 3
         mock_update_post.assert_not_called()
+
+    def test_edit_null_author_does_not_crash(
+        self, mock_read, mock_update_post, _ver, _pf, _state,
+    ):
+        post = dict(_post("r1", "old"), author=None)
+        mock_read.return_value = _doc(comments=[_comment_thread("c1", replies=[post])])
+        args = _make_args("edit-comment", thread_id="c1", post_id="r1", text="new")
+        assert cmd_edit_comment(args) == 0  # authorship enforced by Google
 
     def test_edit_other_users_post_refused(
         self, mock_read, mock_update_post, _ver, _pf, _state,
@@ -1240,6 +1265,14 @@ class TestDeletePost:
         assert ei.value.exit_code == 3
         mock_delete.assert_not_called()
 
+    def test_delete_null_author_does_not_crash(
+        self, mock_read, mock_delete, _ver, _pf, _state,
+    ):
+        post = dict(_post("r1"), author=None)
+        mock_read.return_value = _doc(comments=[_comment_thread("c1", replies=[post])])
+        args = _make_args("delete-reply", thread_id="c1", post_id="r1", force=True)
+        assert cmd_delete_reply(args) == 0
+
     def test_delete_other_users_reply_refused(
         self, mock_read, mock_delete, _ver, _pf, _state,
     ):
@@ -1278,6 +1311,12 @@ class TestDeletePost:
 
 
 class TestParserAndMcp:
+    @pytest.fixture(autouse=True)
+    def _no_allow_env(self, monkeypatch):
+        # build_tools honours GDOC_ALLOW_COMMANDS; a developer shell must
+        # not turn these into KeyErrors.
+        monkeypatch.delenv("GDOC_ALLOW_COMMANDS", raising=False)
+
     def test_parser_flags(self):
         from gdoc.cli import build_parser
 

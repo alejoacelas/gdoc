@@ -7,6 +7,7 @@ All notable changes to `gdoc` are documented here. This project follows
 ## [Unreleased]
 
 ### Added
+
 - **Native comment assignment and post operations (developer preview).**
   `comment --quote TEXT --assign EMAIL` creates an anchored comment assigned
   to a user (`insertComment.assigneeEmailAddress`; requires `--quote`, no

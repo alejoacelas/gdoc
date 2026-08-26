@@ -1,6 +1,7 @@
 """Google Docs API v1 wrapper functions with error translation."""
 
 import re
+from dataclasses import dataclass, field
 from functools import lru_cache
 
 from googleapiclient.discovery import build
@@ -1490,6 +1491,44 @@ def insert_markdown_into_tab(
     }
 
 
+def _build_replacement_requests(
+    parsed, matches: list[dict], tab_id: str | None = None,
+) -> tuple[list[dict], list[dict]]:
+    """Build the delete+insert requests for a find/replace, last-to-first.
+
+    Pure function shared by ``replace_formatted`` (EDIT) and
+    ``suggest_replacement`` (SUGGEST). Matches are processed in descending
+    startIndex order so earlier ranges are unaffected by the length change
+    of later replacements within the one batch.
+
+    Returns (sorted_matches, requests).
+    """
+    from gdoc.mdparse import to_docs_requests
+
+    sorted_matches = sorted(
+        matches, key=lambda m: m["startIndex"], reverse=True,
+    )
+    all_requests: list[dict] = []
+    for match in sorted_matches:
+        # Delete the matched range (skip empty ranges — Docs API rejects
+        # them with "The range should not be empty", and a zero-width
+        # match is a pure insert).
+        if match["endIndex"] > match["startIndex"]:
+            delete_range = {
+                "startIndex": match["startIndex"],
+                "endIndex": match["endIndex"],
+            }
+            if tab_id:
+                delete_range["tabId"] = tab_id
+            all_requests.append({
+                "deleteContentRange": {"range": delete_range}
+            })
+        all_requests.extend(
+            to_docs_requests(parsed, match["startIndex"], tab_id=tab_id)
+        )
+    return sorted_matches, all_requests
+
+
 def replace_formatted(
     doc_id: str,
     matches: list[dict],
@@ -1513,41 +1552,15 @@ def replace_formatted(
     Returns:
         Number of replacements made.
     """
-    from gdoc.mdparse import parse_markdown, to_docs_requests
+    from gdoc.mdparse import parse_markdown
 
     parsed = parse_markdown(new_markdown)
 
     _strip_trailing_newline_unless_hr(parsed)
 
-    # Sort matches by startIndex descending (last-to-first)
-    sorted_matches = sorted(
-        matches, key=lambda m: m["startIndex"], reverse=True,
+    sorted_matches, all_requests = _build_replacement_requests(
+        parsed, matches, tab_id=tab_id,
     )
-
-    all_requests: list[dict] = []
-
-    for match in sorted_matches:
-        # Delete the matched range (skip empty ranges \u2014 Docs API rejects
-        # them with "The range should not be empty", and a zero-width
-        # match is a pure insert).
-        if match["endIndex"] > match["startIndex"]:
-            delete_range = {
-                "startIndex": match["startIndex"],
-                "endIndex": match["endIndex"],
-            }
-            if tab_id:
-                delete_range["tabId"] = tab_id
-            all_requests.append({
-                "deleteContentRange": {
-                    "range": delete_range,
-                }
-            })
-
-        # Insert formatted replacement
-        insert_requests = to_docs_requests(
-            parsed, match["startIndex"], tab_id=tab_id,
-        )
-        all_requests.extend(insert_requests)
 
     if not all_requests:
         return 0
@@ -1620,3 +1633,305 @@ def replace_formatted(
         return len(sorted_matches)
     except HttpError as e:
         _translate_http_error(e, doc_id)
+
+
+# ---------------------------------------------------------------------------
+# Suggested edits (Docs API Developer Preview: writeControl.writeMode=SUGGEST)
+# ---------------------------------------------------------------------------
+
+SUGGESTIONS_INLINE = "SUGGESTIONS_INLINE"
+
+_SUGGEST_UNSUPPORTED_HINT = (
+    "suggest supports plain text and inline formatting (bold, italic, "
+    "strikethrough, code, links); headings, lists, blockquotes, horizontal "
+    "rules, and tables are not supported yet. Use `gdoc edit` to apply "
+    "structural Markdown directly."
+)
+
+
+@dataclass
+class SuggestionResult:
+    """Outcome of a suggest-mode batchUpdate.
+
+    ``created_suggestion_ids`` come from ``suggestionResponses[].
+    createdSuggestionIds``; ``updated_suggestion_ids`` from
+    ``updatedSummarySuggestionIds`` minus anything created in the same batch
+    (Google merges an edit adjacent to the same author's open suggestion
+    into it instead of creating a new one, and also echoes new IDs under
+    "updated"). Both are flattened across responses and de-duplicated in
+    order.
+    """
+
+    occurrences: int
+    created_suggestion_ids: list[str] = field(default_factory=list)
+    updated_suggestion_ids: list[str] = field(default_factory=list)
+    comment_update_state: str = ""
+
+    @property
+    def suggestion_ids(self) -> list[str]:
+        """Every affected suggestion ID, created first, no duplicates."""
+        return _dedupe(self.created_suggestion_ids + self.updated_suggestion_ids)
+
+
+def _dedupe(ids: list[str]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for i in ids:
+        if i and i not in seen:
+            seen.add(i)
+            out.append(i)
+    return out
+
+
+def check_inline_only_markdown(parsed) -> None:
+    """Reject replacement Markdown that suggest mode can't represent yet.
+
+    Suggest mode runs one batch only — no read-back cleanup or table
+    insertion phases (those would each have to stay in SUGGEST mode and
+    Google's suggested-structure shapes are unverified). So anything that
+    is not plain text or an inline text style fails here, before any API
+    call, with a usage error (exit 3).
+    """
+    if parsed.tables:
+        raise GdocError(_SUGGEST_UNSUPPORTED_HINT, exit_code=3)
+    for sr in parsed.styles:
+        if sr.type == "text_style":
+            continue
+        if sr.type == "paragraph_style" and sr.style == {
+            "namedStyleType": "NORMAL_TEXT",
+        }:
+            # Plain paragraphs carry an explicit NORMAL_TEXT; harmless.
+            continue
+        raise GdocError(_SUGGEST_UNSUPPORTED_HINT, exit_code=3)
+
+
+def _inline_only(parsed):
+    """Copy of *parsed* keeping only text styles.
+
+    The NORMAL_TEXT paragraph-style requests ``edit`` sends would become
+    suggested paragraph-style changes on the surrounding paragraph — noise
+    in the review thread. Suggested text inherits the paragraph's style.
+    """
+    from gdoc.mdparse import ParsedMarkdown
+
+    return ParsedMarkdown(
+        plain_text=parsed.plain_text,
+        styles=[s for s in parsed.styles if s.type == "text_style"],
+        tables=[],
+        removed_tabs=0,
+    )
+
+
+def _walk_suggestion_ids(node, out: set[str]) -> None:
+    """Collect every suggestion ID referenced anywhere under *node*.
+
+    Schema-tolerant: any ``suggested*Ids`` list contributes its values and
+    any ``suggested*Changes`` map contributes its keys, so new suggestion
+    kinds are picked up without a code change.
+    """
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key.startswith("suggested"):
+                if key.endswith("Ids") and isinstance(value, list):
+                    out.update(v for v in value if isinstance(v, str))
+                    continue
+                if key.endswith("Changes") and isinstance(value, dict):
+                    out.update(value.keys())
+                    continue
+            _walk_suggestion_ids(value, out)
+    elif isinstance(node, list):
+        for item in node:
+            _walk_suggestion_ids(item, out)
+
+
+def collect_suggestion_ids(doc: dict) -> set[str]:
+    """All suggestion IDs present in a SUGGESTIONS_INLINE document read."""
+    out: set[str] = set()
+    _walk_suggestion_ids(doc, out)
+    return out
+
+
+def _overlaps(elem: dict, start: int, end: int) -> bool:
+    e_start = elem.get("startIndex", 0)
+    e_end = elem.get("endIndex", e_start)
+    if start == end:
+        # zero-width match: an insertion point inside (or at the end of)
+        # the element
+        return e_start <= start < e_end or (e_start < start <= e_end)
+    return e_start < end and start < e_end
+
+
+def find_suggestions_in_range(body: dict, start: int, end: int) -> set[str]:
+    """Suggestion IDs whose inline content or style map touches [start, end).
+
+    Walks paragraphs (recursing into table cells) read with
+    SUGGESTIONS_INLINE. For an overlapping paragraph, its paragraph-level
+    ``suggested*`` fields count, plus every overlapping element's
+    (``suggestedInsertionIds``, ``suggestedDeletionIds``,
+    ``suggestedTextStyleChanges``, ...). Table-row/cell style suggestions are
+    not inspected.
+    """
+    found: set[str] = set()
+    for elem in body.get("content", []):
+        if not _overlaps(elem, start, end):
+            continue
+        paragraph = elem.get("paragraph")
+        if paragraph is not None:
+            for key, value in paragraph.items():
+                if key.startswith("suggested"):
+                    _walk_suggestion_ids({key: value}, found)
+            for pe in paragraph.get("elements", []):
+                if _overlaps(pe, start, end):
+                    _walk_suggestion_ids(pe, found)
+            continue
+        table = elem.get("table")
+        if table is not None:
+            for row in table.get("tableRows", []):
+                for cell in row.get("tableCells", []):
+                    found |= find_suggestions_in_range(cell, start, end)
+    return found
+
+
+def _classify_suggest_error(e: HttpError, doc_id: str) -> None:
+    """Translate a suggest-mode batchUpdate HttpError, preserving the reason.
+
+    Never falls back: a suggestion that cannot be made must not become a
+    direct edit.
+    """
+    status = int(e.resp.status)
+    detail = str(e)
+    lowered = detail.lower()
+    if status == 400 and "revision" in lowered:
+        raise GdocError(
+            "document changed while the command was running; re-run it"
+        )
+    if status == 400 and (
+        "unknown name" in lowered
+        or "cannot find field" in lowered
+        or "no request set" in lowered
+        or "write_mode" in lowered
+        or "writemode" in lowered
+    ):
+        raise GdocError(
+            "suggest mode not available: the OAuth client's Cloud project "
+            "is not enrolled in the Google Workspace Developer Preview "
+            f"(server rejected the request: {e.reason}). No change was made."
+        )
+    if status == 403:
+        raise GdocError(
+            f"Permission denied: {doc_id} (suggesting through the API needs "
+            "comment or edit access on the document, or the project lacks "
+            "Developer Preview access)"
+        )
+    _translate_http_error(e, doc_id)
+
+
+def suggest_replacement(
+    doc_id: str,
+    matches: list[dict],
+    new_markdown: str,
+    revision_id: str,
+    tab_id: str | None = None,
+) -> SuggestionResult:
+    """Replace matched ranges as *suggested* edits (writeMode=SUGGEST).
+
+    One batchUpdate carries the delete + insert + inline-style requests for
+    every match, with ``writeControl.requiredRevisionId`` pinned to the
+    revision the matches were computed against. Success requires all of:
+    HTTP 200, ``commentUpdateState == ALL_SAVED``, at least one created or
+    updated suggestion ID in ``suggestionResponses``, and a SUGGESTIONS_INLINE
+    read-back containing every one of those IDs. Anything less raises —
+    there is deliberately no fallback to a direct edit.
+
+    Args:
+        doc_id: The document ID.
+        matches: ``{"startIndex", "endIndex"}`` ranges in the
+            SUGGESTIONS_INLINE index space of *tab_id*.
+        new_markdown: Replacement text; plain or inline Markdown only
+            (see ``check_inline_only_markdown``).
+        revision_id: Non-empty revision the ranges were read at.
+        tab_id: Tab holding the ranges (omitted → first tab).
+    """
+    from gdoc.mdparse import parse_markdown
+
+    if not revision_id:
+        raise GdocError(
+            "cannot suggest: the document read did not include a revision "
+            "ID, so the write cannot be pinned to the text that was "
+            "matched. Google withholds revisionId from users without "
+            "comment or edit access; suggesting through the API needs at "
+            "least commenter permission on the document."
+        )
+
+    parsed = parse_markdown(new_markdown)
+    check_inline_only_markdown(parsed)
+    _strip_trailing_newline_unless_hr(parsed)
+    sorted_matches, requests = _build_replacement_requests(
+        _inline_only(parsed), matches, tab_id=tab_id,
+    )
+    if not requests:
+        return SuggestionResult(occurrences=0)
+
+    body = {
+        "requests": requests,
+        "writeControl": {
+            "requiredRevisionId": revision_id,
+            "writeMode": "SUGGEST",
+        },
+    }
+    try:
+        service = get_docs_service()
+        result = (
+            service.documents()
+            .batchUpdate(documentId=doc_id, body=body)
+            .execute()
+        )
+    except HttpError as e:
+        _classify_suggest_error(e, doc_id)
+
+    state = result.get("commentUpdateState", "")
+    created: list[str] = []
+    updated: list[str] = []
+    for resp in result.get("suggestionResponses", []) or []:
+        created.extend(resp.get("createdSuggestionIds", []) or [])
+        updated.extend(resp.get("updatedSummarySuggestionIds", []) or [])
+    created = _dedupe(created)
+    # Google echoes a just-created ID under updatedSummarySuggestionIds as
+    # well; report as "updated" only threads that existed before this batch
+    # (i.e. the edit was merged into the author's open suggestion).
+    updated = [sid for sid in _dedupe(updated) if sid not in created]
+    outcome = SuggestionResult(
+        occurrences=len(sorted_matches),
+        created_suggestion_ids=created,
+        updated_suggestion_ids=updated,
+        comment_update_state=state,
+    )
+
+    if state != "ALL_SAVED" or not outcome.suggestion_ids:
+        # The server answered 200 but produced no durable review object:
+        # either it ignored writeMode (an unenrolled backend has been seen
+        # applying the change directly) or the suggestion thread failed to
+        # save. Say so loudly; the caller must inspect the document.
+        raise GdocError(
+            "suggest mode was not applied: the server returned "
+            f"commentUpdateState={state or 'none'} and "
+            f"{len(outcome.suggestion_ids)} suggestion ID(s). The Cloud "
+            "project may lack Developer Preview access. Check the document "
+            "— the text may have been edited directly."
+        )
+
+    readback = get_document_structure(
+        doc_id, suggestions_view_mode=SUGGESTIONS_INLINE,
+    )
+    missing = [
+        sid for sid in outcome.suggestion_ids
+        if sid not in collect_suggestion_ids(readback)
+    ]
+    if missing:
+        raise GdocError(
+            "suggestion not found on read-back: "
+            + ", ".join(missing)
+            + ". The server reported it but the document does not show "
+            "it as a pending suggestion; inspect the document."
+        )
+    return outcome

@@ -63,6 +63,7 @@ EXPOSED_COMMANDS: dict[str, bool] = {
     "drives": True,
     # writes
     "edit": False,
+    "suggest": False,
     "insert": False,
     "write": False,
     "cells": False,
@@ -100,6 +101,7 @@ _TEXT_DESCRIPTION = "Markdown content, supplied inline."
 # time.
 _LOCAL_PATH_PARAMS: dict[str, frozenset[str]] = {
     "edit": frozenset({"old_file", "new_file"}),
+    "suggest": frozenset({"old_file", "new_file"}),
     "write": frozenset({"file"}),
     "insert": frozenset({"file"}),
     "new": frozenset({"file_path"}),
@@ -138,6 +140,11 @@ _DESCRIPTION_NOTES: dict[str, str] = {
     "edit": (
         "Text replacement needs `old_text` and `new_text`; `cell` mode "
         "addresses a table cell instead."
+    ),
+    "suggest": (
+        "Needs `old_text` and `new_text`. The replacement lands as a "
+        "suggested edit for review, not a direct change; inline markdown "
+        "only."
     ),
 }
 

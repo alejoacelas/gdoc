@@ -127,6 +127,9 @@ gdoc info DOC_ID
 # Find and replace text (supports markdown formatting)
 gdoc edit DOC_ID "old text" "**new bold text**"
 
+# Same replacement, but as a suggested edit for a human to accept
+gdoc suggest DOC_ID "old text" "new text"
+
 # Overwrite a document from a local file
 gdoc write DOC_ID draft.md
 
@@ -198,6 +201,7 @@ gdoc cat 1aBcDeFg...
 |---------|-------------|
 | `edit DOC OLD NEW` | Find and replace text with Markdown formatting, including text inside tables (`--all` for all; `--normalize` to match through smart quotes/dashes; `-` reads an argument from stdin) |
 | `edit DOC --cell ADDR NEW` | Replace a table cell by label or `ROW,COL` coordinates (`--col`, `--table`) |
+| `suggest DOC OLD NEW` | Same find-and-replace as `edit`, made as a **suggested edit** the doc's reviewers accept or reject (same `--all`/`--normalize`/`--case-sensitive`/`--tab`/`--old-file`/`--new-file`/`-` flags; inline Markdown only — see below) |
 | `write DOC FILE` | Overwrite document from a local markdown file |
 | `cells SHEET RANGE` | Write values into a spreadsheet range (`-v VALUE` per cell, `--file rows.csv`, `--stdin` for TSV; `--append` adds rows, `--user-entered` parses formulas/dates) |
 | `new TITLE` | Create a blank document (`--folder` to specify location, `--file` to import markdown with images) |
@@ -542,6 +546,59 @@ Pass `-` for the old or new argument to read it from stdin (one stream, so at mo
 ```bash
 printf 'line one\nline two' | gdoc edit DOC --cell "Notes" -
 ```
+
+## Suggesting edits
+
+`suggest` is `edit` in suggest mode: the same anchor matching, but the change is
+written with the Docs API's `writeControl.writeMode: SUGGEST`, so the original
+text stays in place and the replacement appears as a pending suggestion with an
+accept/reject control — exactly as if a reviewer had typed it in *Suggesting*
+mode.
+
+```bash
+gdoc suggest DOC "ship in Q3" "ship in Q4"
+gdoc suggest DOC "colour" "color" --all --case-sensitive
+gdoc suggest DOC "old wording" "**bold** with a [link](https://example.com)"
+gdoc suggest DOC --tab "Draft" "old" "new"
+gdoc suggest DOC --old-file before.txt --new-file after.txt
+gdoc suggest DOC "old" "new" --json
+# → {"ok": true, "suggested": 1, "suggestionIds": ["suggest.abc"],
+#    "createdSuggestionIds": ["suggest.abc"], "updatedSuggestionIds": []}
+```
+
+Terse output names the review object: `OK suggested 1 occurrence (#suggest.abc)`.
+`--plain` prints `id`, `status suggested`, `suggested N`, and `suggestion_ids`.
+Google may fold an edit adjacent to your own open suggestion into it instead of
+creating a new one; those IDs are reported under `updatedSuggestionIds`.
+
+Requirements and limits:
+
+- **Developer Preview.** Suggest mode is a Docs API
+  [Workspace Developer Preview](https://developers.google.com/workspace/preview)
+  feature gated by the OAuth client's Cloud project. With an unenrolled project
+  the command fails with `suggest mode not available` and nothing is written.
+  Unlike `comment --quote`, there is **no fallback**: `suggest` never degrades to
+  a direct edit.
+- **Comment or edit access.** The write is pinned to the revision the text was
+  matched at (`requiredRevisionId`) and the document is read with suggestions
+  inline; both editors and commenters get that view and the revision ID, while
+  a reader is refused (`Permission denied`). If a read ever comes back without
+  a `revisionId`, the command refuses rather than write unpinned.
+- **Inline Markdown only.** Bold, italic, strikethrough, inline code, and links
+  are suggested along with the text. Headings, lists, blockquotes, horizontal
+  rules, tables, and `--cell` are rejected before any API call — use `edit` for
+  those.
+- **No overlap with existing suggestions.** The document is read with
+  suggestions inline; a match that touches text someone else has already
+  suggested inserting, deleting, or restyling is refused, so a review thread is
+  never silently modified.
+- **Verified, not assumed.** Success requires `commentUpdateState: ALL_SAVED`,
+  at least one suggestion ID in the response, and a read-back showing every ID
+  as a pending suggestion. Any other outcome is an error that tells you to
+  inspect the document.
+
+Like `edit`, a suggestion is a partial write: the awareness state records the
+new document version but does not advance the read baseline.
 
 ## Import from file
 

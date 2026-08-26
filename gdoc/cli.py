@@ -3,6 +3,7 @@
 import argparse
 import os
 import sys
+from dataclasses import dataclass
 
 from gdoc import __version__
 from gdoc.revdiff import DEFAULT_CONTEXT, DEFAULT_MIN_COMMON
@@ -1025,18 +1026,26 @@ def _read_file(path: str) -> str:
     return content
 
 
-def cmd_edit(args) -> int:
-    """Handler for `gdoc edit`."""
-    doc_id = _resolve_doc_id(args.doc)
-    quiet = getattr(args, "quiet", False)
-    replace_all = getattr(args, "all", False)
-    case_sensitive = getattr(args, "case_sensitive", False)
-    normalize = getattr(args, "normalize", False)
-    cell = getattr(args, "cell", None)
-    col = getattr(args, "col", None)
-    table_index = getattr(args, "table", None)
+@dataclass
+class _ReplacementPlan:
+    """Front half of a find/replace shared by `edit` and `suggest`."""
 
-    # Resolve text from args or files (fail fast before API calls)
+    doc_id: str
+    quiet: bool
+    change_info: object  # ChangeInfo | None
+    old_text: str | None
+    new_text: str
+    matches: list
+    revision_id: str
+    tab_id: str | None
+    search_body: dict
+
+
+def _resolve_replacement_text(args, cell) -> tuple[str | None, str | None]:
+    """Resolve old/new text from positionals, `-` (stdin), or --old/--new-file.
+
+    Fails fast (exit 3) before any API call when the combination is invalid.
+    """
     old_text = args.old_text
     new_text = args.new_text
     old_file = getattr(args, "old_file", None)
@@ -1099,6 +1108,27 @@ def cmd_edit(args) -> int:
                 "(or use --old-file/--new-file)",
                 exit_code=3,
             )
+    return old_text, new_text
+
+
+def _prepare_text_replacement(
+    args, doc_id: str, old_text: str | None, new_text: str,
+    *, suggest: bool = False,
+) -> _ReplacementPlan:
+    """Pre-flight, read the document, and locate the ranges to replace.
+
+    `edit` reads the default view (legacy `body`, or the named tab).
+    `suggest` always reads every tab with SUGGESTIONS_INLINE — the only
+    view whose indexes match what a suggest-mode batchUpdate addresses —
+    and targets an explicit tab (the first when --tab is absent).
+    """
+    quiet = getattr(args, "quiet", False)
+    replace_all = getattr(args, "all", False)
+    case_sensitive = getattr(args, "case_sensitive", False)
+    normalize = getattr(args, "normalize", False)
+    cell = getattr(args, "cell", None)
+    col = getattr(args, "col", None)
+    table_index = getattr(args, "table", None)
 
     # Pre-flight awareness check
     from gdoc.notify import pre_flight
@@ -1111,12 +1141,40 @@ def cmd_edit(args) -> int:
         print("WARN: doc changed since last read", file=sys.stderr)
 
     # Get document structure + revision ID
-    from gdoc.api.docs import find_text_in_document, get_document, replace_formatted
+    from gdoc.api.docs import find_text_in_document, get_document
 
     tab_name = getattr(args, "tab", None)
     tab_id = None
 
-    if tab_name:
+    if suggest:
+        from gdoc.api.docs import (
+            SUGGESTIONS_INLINE,
+            flatten_tabs,
+            get_document_structure,
+            resolve_tab,
+        )
+        try:
+            doc = get_document_structure(
+                doc_id, suggestions_view_mode=SUGGESTIONS_INLINE,
+            )
+        except GdocError as e:
+            # Live: a reader gets 403 "You do not have permission to access
+            # the document suggestions." on this view; commenters and
+            # editors read it fine.
+            if str(e).startswith("Permission denied"):
+                raise GdocError(
+                    f"{e} (reading suggestions inline needs comment or "
+                    "edit access on the document)", exit_code=e.exit_code,
+                )
+            raise
+        revision_id = doc.get("revisionId", "")
+        tabs = flatten_tabs(doc.get("tabs", []))
+        if not tabs:
+            raise GdocError(f"document has no tabs: {doc_id}")
+        tab_match = resolve_tab(tabs, tab_name) if tab_name else tabs[0]
+        tab_id = tab_match["id"]
+        search_body = tab_match["body"]
+    elif tab_name:
         from gdoc.api.docs import flatten_tabs, get_document_with_tabs, resolve_tab
         doc = get_document_with_tabs(doc_id)
         revision_id = doc.get("revisionId", "")
@@ -1157,6 +1215,24 @@ def cmd_edit(args) -> int:
                 exit_code=3,
             )
 
+    return _ReplacementPlan(
+        doc_id=doc_id, quiet=quiet, change_info=change_info,
+        old_text=old_text, new_text=new_text, matches=matches,
+        revision_id=revision_id, tab_id=tab_id, search_body=search_body,
+    )
+
+
+def cmd_edit(args) -> int:
+    """Handler for `gdoc edit`."""
+    doc_id = _resolve_doc_id(args.doc)
+    cell = getattr(args, "cell", None)
+
+    # Resolve text from args or files (fail fast before API calls)
+    old_text, new_text = _resolve_replacement_text(args, cell)
+
+    plan = _prepare_text_replacement(args, doc_id, old_text, new_text)
+    matches = plan.matches
+
     # Check if replacement contains tables — not supported with --all
     from gdoc.mdparse import parse_markdown as _parse_md
     _parsed = _parse_md(new_text)
@@ -1167,8 +1243,10 @@ def cmd_edit(args) -> int:
         )
 
     # Perform formatted replacement via Docs API batchUpdate
+    from gdoc.api.docs import replace_formatted
+
     occurrences = replace_formatted(
-        doc_id, matches, new_text, revision_id, tab_id=tab_id,
+        doc_id, matches, new_text, plan.revision_id, tab_id=plan.tab_id,
     )
 
     # Get post-edit version for state tracking (Decision #12)
@@ -1178,7 +1256,7 @@ def cmd_edit(args) -> int:
     command_version = version_data.get("version")
 
     # Output
-    from gdoc.format import get_output_mode, format_json
+    from gdoc.format import format_json, get_output_mode
 
     mode = get_output_mode(args)
     label = "occurrence" if occurrences == 1 else "occurrences"
@@ -1186,7 +1264,7 @@ def cmd_edit(args) -> int:
         print(format_json(replaced=occurrences))
     elif mode == "plain":
         print(f"id\t{doc_id}")
-        print(f"status\tupdated")
+        print("status\tupdated")
     else:
         print(f"OK replaced {occurrences} {label}")
 
@@ -1194,10 +1272,96 @@ def cmd_edit(args) -> int:
     from gdoc.state import update_state_after_command
 
     update_state_after_command(
-        doc_id, change_info, command="edit",
-        quiet=quiet, command_version=command_version,
+        doc_id, plan.change_info, command="edit",
+        quiet=plan.quiet, command_version=command_version,
     )
 
+    return 0
+
+
+def cmd_suggest(args) -> int:
+    """Handler for `gdoc suggest`: a find/replace made as a suggested edit.
+
+    Same matching as `edit`, but the batchUpdate runs with
+    writeControl.writeMode=SUGGEST (Docs API Developer Preview) so the
+    change lands as a reviewable suggestion — the original text stays in
+    place until someone accepts it. There is no fallback: if suggest mode
+    is unavailable or unverifiable the command fails and nothing is
+    edited directly.
+    """
+    doc_id = _resolve_doc_id(args.doc)
+
+    old_text, new_text = _resolve_replacement_text(args, None)
+
+    # Structural Markdown needs the multi-batch cleanup/table phases that
+    # suggest mode does not run — reject it before any API call.
+    from gdoc.api.docs import check_inline_only_markdown
+    from gdoc.mdparse import parse_markdown
+
+    check_inline_only_markdown(parse_markdown(new_text))
+
+    plan = _prepare_text_replacement(
+        args, doc_id, old_text, new_text, suggest=True,
+    )
+
+    # Never touch an existing review thread by accident: Google may merge a
+    # change into an overlapping open suggestion, so refuse any match that
+    # intersects one (v1; an explicit opt-in can come later).
+    from gdoc.api.docs import find_suggestions_in_range
+
+    for m in plan.matches:
+        overlapping = find_suggestions_in_range(
+            plan.search_body, m["startIndex"], m["endIndex"],
+        )
+        if overlapping:
+            ids = ", ".join(sorted(overlapping))
+            raise GdocError(
+                f"match at index {m['startIndex']} overlaps existing "
+                f"suggestion(s) {ids}; accept or reject them first, or "
+                "choose an anchor outside the suggested text",
+                exit_code=3,
+            )
+
+    from gdoc.api.docs import suggest_replacement
+
+    result = suggest_replacement(
+        doc_id, plan.matches, new_text, plan.revision_id, tab_id=plan.tab_id,
+    )
+
+    from gdoc.api.drive import get_file_version
+
+    command_version = get_file_version(doc_id).get("version")
+
+    from gdoc.format import format_json, get_output_mode
+
+    mode = get_output_mode(args)
+    ids = result.suggestion_ids
+    if mode == "json":
+        print(format_json(
+            suggested=result.occurrences,
+            suggestionIds=ids,
+            createdSuggestionIds=result.created_suggestion_ids,
+            updatedSuggestionIds=result.updated_suggestion_ids,
+        ))
+    elif mode == "plain":
+        print(f"id\t{doc_id}")
+        print("status\tsuggested")
+        print(f"suggested\t{result.occurrences}")
+        print("suggestion_ids\t" + ",".join(ids))
+    else:
+        label = "occurrence" if result.occurrences == 1 else "occurrences"
+        tags = ", ".join(f"#{i}" for i in ids)
+        print(f"OK suggested {result.occurrences} {label} ({tags})")
+
+    # A suggestion is a partial write like `edit`: record the new version
+    # but do not advance the read baseline (update_state_after_command
+    # only does that for full-document writes).
+    from gdoc.state import update_state_after_command
+
+    update_state_after_command(
+        doc_id, plan.change_info, command="suggest",
+        quiet=plan.quiet, command_version=command_version,
+    )
     return 0
 
 
@@ -3815,6 +3979,45 @@ def build_parser() -> GdocArgumentParser:
         "--tab", help="Target a specific tab by title or ID"
     )
     edit_p.set_defaults(func=cmd_edit)
+
+    # suggest
+    suggest_p = sub.add_parser(
+        "suggest", parents=[output_parent],
+        help="Find and replace text as a suggested edit (review, not commit)",
+        epilog="Like `edit`, but the change is made in suggest mode (Docs API "
+               "Developer Preview): the original text stays until a reviewer "
+               "accepts it. Replacement text supports inline markdown only "
+               "(bold, italic, strikethrough, code, links); headings, lists, "
+               "and tables are rejected. Needs edit access on the doc and an "
+               "OAuth client from a preview-enrolled Cloud project; never "
+               "falls back to a direct edit.",
+    )
+    suggest_p.add_argument("doc", help="Document ID or URL")
+    suggest_p.add_argument(
+        "old_text", nargs="?", default=None, help="Text to find",
+    )
+    suggest_p.add_argument(
+        "new_text", nargs="?", default=None, help="Replacement text",
+    )
+    suggest_p.add_argument("--old-file", help="Read old text from file")
+    suggest_p.add_argument("--new-file", help="Read new text from file")
+    suggest_p.add_argument(
+        "--all", action="store_true", help="Suggest for all occurrences"
+    )
+    suggest_p.add_argument(
+        "--case-sensitive", action="store_true", help="Case-sensitive matching"
+    )
+    suggest_p.add_argument(
+        "--normalize", action="store_true",
+        help="Match through smart-quote/dash differences (\u2019 matches ')",
+    )
+    suggest_p.add_argument(
+        "--quiet", action="store_true", help="Skip pre-flight checks"
+    )
+    suggest_p.add_argument(
+        "--tab", help="Target a specific tab by title or ID"
+    )
+    suggest_p.set_defaults(func=cmd_suggest)
 
     # diff
     diff_p = sub.add_parser(

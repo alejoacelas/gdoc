@@ -342,6 +342,20 @@ class TestSuggestRequestShape:
         service.documents.return_value.batchUpdate.assert_not_called()
 
     @patch("gdoc.api.docs.get_docs_service")
+    def test_credential_change_between_gate_and_write_aborts(self, mock_svc):
+        """A token rewrite between the enrollment gate and the write could
+        swap the OAuth client project — proving enrollment for one project
+        and writing through another. The write must abort pre-send."""
+        mock_svc.return_value = _service(_ok_response())
+        with patch(
+            "gdoc.api.docs.account_cache_key",
+            side_effect=[("acct", (1, 1, 1)), ("acct", (2, 2, 2))],
+        ):
+            with pytest.raises(GdocError, match="No change was made"):
+                suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
+        mock_svc.return_value.documents.return_value.batchUpdate.assert_not_called()
+
+    @patch("gdoc.api.docs.get_docs_service")
     def test_no_requests_returns_zero_without_calling_api(self, mock_svc):
         service = _service(_ok_response())
         mock_svc.return_value = service

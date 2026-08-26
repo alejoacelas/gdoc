@@ -2051,7 +2051,14 @@ def suggest_replacement(
     if not requests:
         return SuggestionResult(occurrences=0)
 
-    # Prove enrollment with a read before the write (see the gate's doc).
+    # Prove enrollment with a read before the write (see the gate's doc),
+    # pinning one credential identity across both: `gdoc auth` rewriting
+    # the token file between them could swap the OAuth client project, so
+    # the gate would prove enrollment for one project while the batch goes
+    # through another — which an unenrolled backend may apply as a direct
+    # edit. The key carries the token file's identity; if it is unchanged
+    # once the service is in hand, gate and write share one credential.
+    gate_key = account_cache_key()
     check_suggest_preview_access(doc_id)
 
     body = {
@@ -2062,6 +2069,13 @@ def suggest_replacement(
         },
     }
     service = get_docs_service()
+    if account_cache_key() != gate_key:
+        raise GdocError(
+            "credentials changed while preparing the suggest write (the "
+            "account's token was rewritten between the enrollment check "
+            "and the write, so they may belong to different OAuth client "
+            "projects). No change was made — rerun the command."
+        )
     try:
         result = (
             service.documents()

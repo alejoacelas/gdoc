@@ -2328,9 +2328,8 @@ def _try_anchored_comment(
             except PreviewUnavailableError as e:
                 if assignee_email:
                     raise GdocError(
-                        f"cannot create an assigned comment: {e}. Assigned "
-                        "comments need the Docs API developer preview and "
-                        "edit access; no comment was created."
+                        f"cannot create an assigned comment: {e}. "
+                        "No Drive fallback was attempted."
                     )
                 return ""
     if assignee_email:
@@ -2347,9 +2346,6 @@ def cmd_comment(args) -> int:
     doc_id = _resolve_doc_id(args.doc)
     quiet = getattr(args, "quiet", False)
 
-    from gdoc.notify import pre_flight
-    change_info = pre_flight(doc_id, quiet=quiet)
-
     quote = getattr(args, "quote", "") or ""
     assignee = (getattr(args, "assign", "") or "").strip()
     if assignee:
@@ -2363,6 +2359,10 @@ def cmd_comment(args) -> int:
                 exit_code=3,
             )
         _validate_post_text(args.text)
+
+    from gdoc.notify import pre_flight
+    change_info = pre_flight(doc_id, quiet=quiet)
+
     new_id = ""
     if quote and assignee:
         new_id = _try_anchored_comment(
@@ -2371,6 +2371,13 @@ def cmd_comment(args) -> int:
     elif quote:
         new_id = _try_anchored_comment(doc_id, args.text, quote)
     anchored = bool(new_id)
+    if not anchored and assignee:
+        # Unreachable by construction (the assigned path returns an ID or
+        # raises); guard the one Drive write this command must never make.
+        raise GdocError(
+            "internal error: assigned comment path returned no thread; "
+            "no comment was created"
+        )
     if not anchored:
         from gdoc.api.comments import create_comment
         result = create_comment(doc_id, args.text, quote=quote)
@@ -2446,12 +2453,10 @@ def _check_thread_namespace(thread_id: str, suggestion: bool) -> None:
         )
 
 
-def _native_reply(args, doc_id: str, change_info, thread_id: str) -> int:
-    """`gdoc reply --suggestion` / `--reassign`: Docs-native addCommentReply."""
-    quiet = getattr(args, "quiet", False)
+def _validate_native_reply_args(args, thread_id: str) -> None:
+    """Usage checks for `reply --suggestion` / `--reassign`, before any I/O."""
     suggestion = bool(getattr(args, "suggestion", False))
     reassign = (getattr(args, "reassign", "") or "").strip()
-    text = args.text or ""
     if suggestion and reassign:
         raise GdocError(
             "--reassign applies to comment threads only; a suggestion "
@@ -2459,7 +2464,15 @@ def _native_reply(args, doc_id: str, change_info, thread_id: str) -> int:
             exit_code=3,
         )
     _check_thread_namespace(thread_id, suggestion)
-    _validate_post_text(text, "reply text")
+    _validate_post_text(args.text or "", "reply text")
+
+
+def _native_reply(args, doc_id: str, change_info, thread_id: str) -> int:
+    """`gdoc reply --suggestion` / `--reassign`: Docs-native addCommentReply."""
+    quiet = getattr(args, "quiet", False)
+    suggestion = bool(getattr(args, "suggestion", False))
+    reassign = (getattr(args, "reassign", "") or "").strip()
+    text = args.text or ""
 
     from gdoc.api.docs import add_comment_reply, thread_assignee, thread_kind
 
@@ -2488,13 +2501,20 @@ def _native_reply(args, doc_id: str, change_info, thread_id: str) -> int:
     from gdoc.format import format_json, get_output_mode
     mode = get_output_mode(args)
     id_key = thread_kind(suggestion)
+    # Comment-thread replies keep the Drive `reply` key (`replyId`; the ID
+    # spaces are the same) and add `postId`, the name the edit/delete
+    # commands take; suggestion threads have only `postId`.
+    ids = {} if suggestion else {"replyId": post_id}
     if mode == "json":
         extra = {"assignee": reassign} if reassign else {}
         print(format_json(
-            **{id_key: thread_id}, postId=post_id, status="created", **extra,
+            **{id_key: thread_id}, **ids, postId=post_id, status="created",
+            **extra,
         ))
     elif mode == "plain":
         print(f"{id_key}\t{thread_id}")
+        if not suggestion:
+            print(f"replyId\t{post_id}")
         print(f"postId\t{post_id}")
         if reassign:
             print(f"assignee\t{reassign}")
@@ -2521,14 +2541,21 @@ def cmd_reply(args) -> int:
     quiet = getattr(args, "quiet", False)
     comment_id = args.comment_id
 
+    native = bool(
+        getattr(args, "suggestion", False) or getattr(args, "reassign", None)
+    )
+    if native:
+        _validate_native_reply_args(args, comment_id)
+    else:
+        # Drive path: a suggestion thread is not a Drive comment, so a bare
+        # suggestion ID would only produce a misleading Drive 404.
+        _check_thread_namespace(comment_id, suggestion=False)
+
     from gdoc.notify import pre_flight
     change_info = pre_flight(doc_id, quiet=quiet)
 
-    if getattr(args, "suggestion", False) or getattr(args, "reassign", None):
+    if native:
         return _native_reply(args, doc_id, change_info, comment_id)
-    # Drive path: a suggestion thread is not a Drive comment, so a bare
-    # suggestion ID would only produce a misleading Drive 404.
-    _check_thread_namespace(comment_id, suggestion=False)
 
     from gdoc.api.comments import create_reply
     result = create_reply(doc_id, comment_id, content=args.text)

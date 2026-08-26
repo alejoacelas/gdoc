@@ -279,8 +279,9 @@ enrolled Cloud project and fail with a message naming the reason otherwise:
   deleted — both are refused before any write.
 
 Every native write requires `commentUpdateState: ALL_SAVED` and is verified
-by reading the thread back; `--json` reports `postId` (plus `assignee` for
-`--assign`/`--reassign`). The awareness system is unchanged: comment threads
+by reading the thread back (an assignment must appear on the thread, not
+just in the response); `--json` reports `postId` (comment-thread replies also
+keep `replyId`, the same value) plus `assignee` for `--assign`/`--reassign`. The awareness system is unchanged: comment threads
 keep their Drive IDs, and suggestion-thread posts are not tracked as comments.
 
 ### Other

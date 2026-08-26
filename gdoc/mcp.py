@@ -169,6 +169,11 @@ _DESCRIPTION_NOTES: dict[str, str] = {
         "suggested edit for review, not a direct change; inline markdown "
         "only."
     ),
+    "comment": "`assign` requires `quote` (Docs API preview, no Drive fallback).",
+    "reply": (
+        "`suggestion` and `reassign` are mutually exclusive; `reassign` "
+        "needs a thread that already has an assignee (Docs API preview)."
+    ),
 }
 
 # `new` imports markdown images: extract_images() resolves non-http(s)

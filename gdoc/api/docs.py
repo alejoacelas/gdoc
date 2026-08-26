@@ -141,27 +141,25 @@ def insert_comment(
         )
     except HttpError as e:
         status = int(e.resp.status)
-        detail = str(e)
         # A non-enrolled project sees insertComment as an unknown field:
         # either rejected by name ("Unknown name"/"Cannot find field") or
         # silently dropped, leaving an empty request union ("No request
         # set" — the observed live behavior). We always set insertComment,
         # so an empty union can only mean the server didn't recognize it.
+        if _preview_parse_error(e):
+            raise PreviewUnavailableError(
+                "insertComment not available (preview not enabled)"
+            )
         # A revision mismatch means the doc changed between our read and
         # this write; the caller's unanchored fallback is still correct.
-        if status == 400 and (
-            "Unknown name" in detail
-            or "Cannot find field" in detail
-            or "No request set" in detail
-            or "revision" in detail.lower()
-        ):
+        if status == 400 and "revision" in str(e).lower():
             raise PreviewUnavailableError(
-                "insertComment not available or not applicable "
-                "(preview not enabled, or the document changed)"
+                "the document changed since it was read; re-run to retry"
             )
         if status == 403:
             raise PreviewUnavailableError(
-                "insertComment not permitted for this user"
+                "insertComment not permitted for this user "
+                "(comment-only access cannot batchUpdate)"
             )
         _translate_http_error(e, doc_id)
 
@@ -182,6 +180,16 @@ def insert_comment(
         raise PreviewUnavailableError(
             "no comment thread in insertComment response"
         )
+    if assignee_email:
+        # The assignment is the point of the request; verify it landed
+        # rather than echoing the requested address back as fact.
+        doc = get_document_threads(doc_id)
+        created = find_thread(doc, comment_id, suggestion=False)
+        if created is None or thread_assignee(created) != assignee_email:
+            raise GdocError(
+                f"comment #{comment_id} was created but the read-back does "
+                f"not show it assigned to {assignee_email}; inspect the thread"
+            )
     return comment_id
 
 
@@ -241,7 +249,10 @@ def _documents_get_raw(service, doc_id: str, params: dict) -> dict:
 
     Bypasses the discovery-generated method so preview query parameters
     the public Discovery document doesn't list (``commentsViewMode``) can
-    be sent. Raises HttpError on non-2xx exactly like a discovery call.
+    be sent: the generated ``documents().get`` rejects them client-side
+    ("Got an unexpected keyword argument"). Uses the service's authorized
+    transport (``service._http``, the same object every discovery call
+    uses) and raises HttpError on non-2xx exactly like a discovery call.
     """
     from urllib.parse import quote, urlencode
 
@@ -279,6 +290,11 @@ def get_document_threads(doc_id: str) -> dict:
         if _preview_parse_error(e):
             raise GdocError(_PREVIEW_UNAVAILABLE_MSG)
         _translate_http_error(e, doc_id)
+    # A registered project echoes the view mode. If the parameter was
+    # silently dropped instead of rejected, the response has no thread
+    # lists at all — that must not read as "no threads".
+    if doc.get("commentsViewMode") != COMMENTS_VIEW_MODE_INCLUDED:
+        raise GdocError(_PREVIEW_UNAVAILABLE_MSG)
     doc = dict(doc)
     doc.setdefault("comments", [])
     doc.setdefault("suggestions", [])
@@ -324,26 +340,16 @@ def find_post(thread: dict, post_id: str) -> dict | None:
 def thread_assignee(thread: dict) -> str:
     """Current assignee email of a comment thread, or "" when unassigned.
 
-    Google reports assignment on the thread (``assigneeEmail`` /
-    ``assignee``) and echoes each (re)assignment on the post that made it,
-    so the latest post carrying an assignee is the authority when the
-    thread-level field is absent.
+    Google reports assignment as ``assigneeEmail`` on the post that made
+    it (the head post for ``insertComment.assigneeEmailAddress``, a reply
+    for a reassignment — observed live), so the latest post carrying one
+    is the authority. Anything else is treated as unassigned (fail closed).
     """
-    for key in ("assigneeEmail", "assigneeEmailAddress"):
-        if thread.get(key):
-            return thread[key]
-    assignee = thread.get("assignee")
-    if isinstance(assignee, dict):
-        for key in ("emailAddress", "email", "user"):
-            if assignee.get(key):
-                return assignee[key]
-    elif isinstance(assignee, str) and assignee:
-        return assignee
     latest = ""
     for post in thread_posts(thread):
-        for key in ("assigneeEmail", "assigneeEmailAddress"):
-            if post.get(key):
-                latest = post[key]
+        value = post.get("assigneeEmail")
+        if isinstance(value, str) and value:
+            latest = value
     return latest
 
 
@@ -356,7 +362,7 @@ def post_is_action(post: dict) -> bool:
     action = post.get("commentAction") or post.get("suggestionAction") or ""
     if action and not action.startswith("NO_"):
         return True
-    return bool(post.get("assigneeEmail") or post.get("assigneeEmailAddress"))
+    return bool(post.get("assigneeEmail"))
 
 
 def _run_thread_request(doc_id: str, request: dict) -> dict:
@@ -447,12 +453,18 @@ def add_comment_reply(
     # Read back: the reply must be durable on the thread we named.
     doc = get_document_threads(doc_id)
     thread = find_thread(doc, thread_id, suggestion)
-    if thread is None or find_post(thread, post_id) is None:
+    saved = find_post(thread, post_id) if thread else None
+    if saved is None:
         raise GdocError(
             f"reply #{post_id} was reported saved but is not on "
             f"{thread_kind(suggestion)} {thread_id}; inspect the thread"
         )
-    return new_post
+    if assignee_email and saved.get("assigneeEmail") != assignee_email:
+        raise GdocError(
+            f"reply #{post_id} was saved but the read-back does not show "
+            f"the thread reassigned to {assignee_email}; inspect the thread"
+        )
+    return saved
 
 
 def update_comment_post(
@@ -479,7 +491,8 @@ def update_comment_post(
     doc = get_document_threads(doc_id)
     thread = find_thread(doc, thread_id, suggestion)
     post = find_post(thread, post_id) if thread else None
-    if post is None or post.get("content") != content:
+    # Google may normalize surrounding whitespace; compare stripped text.
+    if post is None or (post.get("content") or "").strip() != content.strip():
         raise GdocError(
             f"post #{post_id} edit was reported saved but the read-back "
             "does not show the new text; inspect the thread"

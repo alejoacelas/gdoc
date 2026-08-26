@@ -14,6 +14,7 @@ the thread ID. Drive reply IDs equal native post IDs.
 """
 
 import json
+import re
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -174,6 +175,14 @@ class TestThreadHelpers:
         assert thread_assignee(_comment_thread()) == ""
         assert thread_assignee(_comment_thread(replies=[_post("r1")])) == ""
 
+    def test_thread_assignee_ignores_unknown_shapes(self):
+        # Fail closed: only a string assigneeEmail on a post counts.
+        thread = _comment_thread()
+        thread["assigneeEmail"] = ME
+        thread["headPost"]["assignee"] = {"emailAddress": ME}
+        thread["replies"] = [dict(_post("r1"), assigneeEmail={"user": ME})]
+        assert thread_assignee(thread) == ""
+
     def test_post_is_action(self):
         assert post_is_action(_post("r1", assignee=ME))
         assert post_is_action(_post("r1", action="RESOLVE"))
@@ -191,7 +200,10 @@ class TestGetDocumentThreads:
     @patch("gdoc.api.docs._documents_get_raw")
     @patch("gdoc.api.docs.get_docs_service")
     def test_sends_preview_view_modes(self, _svc, mock_raw):
-        mock_raw.return_value = {"documentId": "abc123"}
+        mock_raw.return_value = {
+            "documentId": "abc123",
+            "commentsViewMode": "COMMENTS_VIEW_MODE_INCLUDED",
+        }
         doc = get_document_threads("abc123")
         params = mock_raw.call_args.args[2]
         assert params == {
@@ -215,6 +227,26 @@ class TestGetDocumentThreads:
 
     @patch("gdoc.api.docs._documents_get_raw")
     @patch("gdoc.api.docs.get_docs_service")
+    def test_silently_dropped_view_mode_is_preview_unavailable(self, _svc, mock_raw):
+        # No 400, but no echo and no thread lists: must not read as "no threads".
+        mock_raw.return_value = {"documentId": "abc123", "revisionId": "r"}
+        with pytest.raises(GdocError, match="not enrolled"):
+            get_document_threads("abc123")
+
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_raw_get_builds_preview_uri(self, mock_svc):
+        from gdoc.api.docs import _documents_get_raw
+
+        service = MagicMock()
+        with patch("googleapiclient.http.HttpRequest") as mock_req:
+            mock_req.return_value.execute.return_value = {"documentId": "d"}
+            _documents_get_raw(service, "doc/1", {"commentsViewMode": "X"})
+        uri = mock_req.call_args.args[2]
+        assert uri == "https://docs.googleapis.com/v1/documents/doc%2F1?commentsViewMode=X"
+        assert mock_req.call_args.kwargs["method"] == "GET"
+
+    @patch("gdoc.api.docs._documents_get_raw")
+    @patch("gdoc.api.docs.get_docs_service")
     def test_404_is_document_not_found(self, _svc, mock_raw):
         mock_raw.side_effect = _http_error(404)
         with pytest.raises(GdocError, match="Document not found"):
@@ -231,10 +263,12 @@ _INSERT_OK = {
 
 
 class TestInsertCommentAssignee:
+    @patch("gdoc.api.docs.get_document_threads")
     @patch("gdoc.api.docs.get_docs_service")
-    def test_assignee_sent_as_assignee_email_address(self, mock_svc):
+    def test_assignee_sent_as_assignee_email_address(self, mock_svc, mock_read):
         service = _mock_docs_service(_INSERT_OK)
         mock_svc.return_value = service
+        mock_read.return_value = _doc(comments=[_comment_thread("c_new", assignee=ME)])
         cid = insert_comment(
             "abc123", "hi", 5, 9, tab_id="t.0", revision_id="rev1",
             assignee_email=ME,
@@ -248,9 +282,20 @@ class TestInsertCommentAssignee:
             }}],
             "writeControl": {"requiredRevisionId": "rev1"},
         }
+        mock_read.assert_called_once_with("abc123")
 
+    @patch("gdoc.api.docs.get_document_threads")
     @patch("gdoc.api.docs.get_docs_service")
-    def test_no_assignee_leaves_request_unchanged(self, mock_svc):
+    def test_assignee_missing_on_read_back_is_error(self, mock_svc, mock_read):
+        mock_svc.return_value = _mock_docs_service(_INSERT_OK)
+        mock_read.return_value = _doc(comments=[_comment_thread("c_new")])
+        with pytest.raises(GdocError, match="does not show it assigned") as ei:
+            insert_comment("abc123", "hi", 5, 9, assignee_email=ME)
+        assert not isinstance(ei.value, PreviewUnavailableError)
+
+    @patch("gdoc.api.docs.get_document_threads")
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_no_assignee_leaves_request_unchanged(self, mock_svc, mock_read):
         service = _mock_docs_service(_INSERT_OK)
         mock_svc.return_value = service
         insert_comment("abc123", "hi", 5, 9)
@@ -259,6 +304,26 @@ class TestInsertCommentAssignee:
                 "content": "hi", "range": {"startIndex": 5, "endIndex": 9},
             }}],
         }
+        mock_read.assert_not_called()
+
+    @pytest.mark.parametrize("message, expect", [
+        ('Unknown name "insert_comment"', "preview not enabled"),
+        ("Invalid requests[0]: No request set.", "preview not enabled"),
+        ("The revision id does not match", "document changed"),
+    ])
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_distinct_preview_reasons(self, mock_svc, message, expect):
+        mock_svc.return_value = _mock_docs_service(
+            batch_error=_http_error(400, message)
+        )
+        with pytest.raises(PreviewUnavailableError, match=expect):
+            insert_comment("abc123", "hi", 5, 9, revision_id="rev1")
+
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_403_reason(self, mock_svc):
+        mock_svc.return_value = _mock_docs_service(batch_error=_http_error(403))
+        with pytest.raises(PreviewUnavailableError, match="not permitted"):
+            insert_comment("abc123", "hi", 5, 9)
 
     @patch("gdoc.api.docs.get_docs_service")
     def test_assigned_requires_comment_update_state(self, mock_svc):
@@ -342,6 +407,18 @@ class TestAddCommentReply:
         assert _batch_body(service)["requests"][0]["addCommentReply"]["post"] == {
             "content": "t", "assigneeEmail": OTHER,
         }
+
+    @patch("gdoc.api.docs.get_document_threads")
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_reassign_not_shown_on_read_back_is_error(self, mock_svc, mock_read):
+        mock_svc.return_value = _mock_docs_service(
+            _reply_ok("p_new", "t", assignee=OTHER)
+        )
+        mock_read.return_value = _doc(comments=[_comment_thread(
+            "c1", assignee=ME, replies=[_post("p_new", "t")],
+        )])
+        with pytest.raises(GdocError, match="not show the thread reassigned"):
+            add_comment_reply("abc123", "c1", content="t", assignee_email=OTHER)
 
     @patch("gdoc.api.docs.get_document_threads")
     @patch("gdoc.api.docs.get_docs_service")
@@ -453,6 +530,15 @@ class TestUpdateCommentPost:
         update_comment_post("abc123", "suggest.s1", "r1", "new", suggestion=True)
         request = _batch_body(service)["requests"][0]["updateCommentPost"]
         assert "suggestionId" in request
+
+    @patch("gdoc.api.docs.get_document_threads")
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_read_back_tolerates_whitespace_normalization(self, mock_svc, mock_read):
+        mock_svc.return_value = _mock_docs_service(_SAVED_EMPTY)
+        mock_read.return_value = _doc(
+            comments=[_comment_thread("c1", replies=[_post("r1", "new text")])]
+        )
+        update_comment_post("abc123", "c1", "r1", "new text\n")  # no raise
 
     @patch("gdoc.api.docs.get_document_threads")
     @patch("gdoc.api.docs.get_docs_service")
@@ -577,11 +663,13 @@ class TestCmdCommentAssign:
     @patch("gdoc.api.comments.create_comment")
     @patch("gdoc.api.docs.get_document_with_tabs")
     def test_assign_requires_quote(
-        self, mock_get, mock_create, _ver, _pf, _update, capsys,
+        self, mock_get, mock_create, _ver, mock_pf, _update, capsys,
     ):
         with pytest.raises(GdocError, match="requires --quote") as ei:
-            cmd_comment(_make_args("comment", text="p", quote=None, assign=ME))
+            cmd_comment(_make_args("comment", text="p", quote=None, assign=ME,
+                                   quiet=False))
         assert ei.value.exit_code == 3
+        mock_pf.assert_not_called()
         mock_get.assert_not_called()
         mock_create.assert_not_called()
         assert capsys.readouterr().out == ""
@@ -610,6 +698,21 @@ class TestCmdCommentAssign:
         with pytest.raises(GdocError, match="cannot create an assigned comment") as ei:
             cmd_comment(_make_args("comment", text="p", quote="quick", assign=ME))
         assert ei.value.exit_code == 1
+        mock_create.assert_not_called()
+
+    @patch("gdoc.api.comments.create_comment")
+    @patch("gdoc.api.docs.get_document_with_tabs", return_value=_TABS_DOC)
+    def test_assign_failure_message_keeps_reason(
+        self, _get, mock_create, _ver, _pf, _update,
+    ):
+        for reason in ("document changed since it was read",
+                       "comment not saved (commentUpdateState=PARTIAL)",
+                       "not permitted for this user"):
+            with patch("gdoc.api.docs.insert_comment",
+                       side_effect=PreviewUnavailableError(reason)):
+                with pytest.raises(GdocError, match=re.escape(reason)):
+                    cmd_comment(_make_args("comment", text="p", quote="quick",
+                                           assign=ME))
         mock_create.assert_not_called()
 
     @patch("gdoc.api.comments.create_comment", return_value={"id": "c_drive"})
@@ -708,8 +811,8 @@ class TestCmdReplyNative:
             assignee_email=OTHER,
         )
         assert json.loads(capsys.readouterr().out) == {
-            "ok": True, "commentId": "c1", "postId": "p9", "status": "created",
-            "assignee": OTHER,
+            "ok": True, "commentId": "c1", "replyId": "p9", "postId": "p9",
+            "status": "created", "assignee": OTHER,
         }
         assert mock_update.call_args.kwargs["comment_state_patch"] == {
             "add_comment_id": "c1",
@@ -745,9 +848,11 @@ class TestCmdReplyNative:
 
     @patch("gdoc.api.docs.get_document_threads")
     @patch("gdoc.api.docs.add_comment_reply")
-    def test_reassign_runs_preflight_even_with_quiet(
-        self, mock_add, mock_read, _ver, mock_pf, _update,
+    def test_reassign_reads_thread_even_with_quiet(
+        self, mock_add, mock_read, _ver, mock_pf, mock_update,
     ):
+        # --quiet skips only the awareness pre-flight; the precondition read
+        # is a correctness gate and always runs.
         mock_read.return_value = _doc(comments=[_comment_thread("c1")])
         args = _make_args("reply", comment_id="c1", text="t", suggestion=False,
                           reassign=OTHER, quiet=True)
@@ -755,6 +860,28 @@ class TestCmdReplyNative:
             cmd_reply(args)
         mock_pf.assert_called_once_with("abc123", quiet=True)
         mock_read.assert_called_once()
+        mock_read.return_value = _doc(comments=[_comment_thread("c1", assignee=ME)])
+        mock_add.return_value = _post("p9", "t", assignee=OTHER)
+        cmd_reply(args)
+        assert mock_update.call_args.kwargs["quiet"] is True
+
+    @patch("gdoc.api.docs.add_comment_reply")
+    def test_usage_errors_precede_preflight(self, mock_add, _ver, mock_pf, _update):
+        for kwargs in (
+            {"comment_id": "suggest.s1", "text": "t", "suggestion": True,
+             "reassign": OTHER},
+            {"comment_id": "AAACabc", "text": "t", "suggestion": True,
+             "reassign": None},
+            {"comment_id": "suggest.s1", "text": "", "suggestion": True,
+             "reassign": None},
+            {"comment_id": "suggest.s1", "text": "t", "suggestion": False,
+             "reassign": None},
+        ):
+            with pytest.raises(GdocError) as ei:
+                cmd_reply(_make_args("reply", quiet=False, **kwargs))
+            assert ei.value.exit_code == 3
+        mock_pf.assert_not_called()
+        mock_add.assert_not_called()
 
     @patch("gdoc.api.docs.add_comment_reply")
     def test_suggestion_and_reassign_conflict(self, mock_add, _ver, _pf, _update):
@@ -1075,6 +1202,13 @@ class TestParserAndMcp:
         names = set(build_tools())
         assert {"gdoc_edit_comment", "gdoc_delete_suggestion_reply"} <= names
         assert "gdoc_delete_reply" not in build_tools(read_only=True)
+
+    def test_mcp_descriptions_state_cross_parameter_rules(self):
+        from gdoc.mcp import build_tools
+
+        tools = build_tools()
+        assert "`assign` requires `quote`" in tools["gdoc_comment"]["description"]
+        assert "mutually exclusive" in tools["gdoc_reply"]["description"]
 
     def test_mcp_delete_reply_requires_force(self):
         from gdoc.mcp import build_tools, call_command

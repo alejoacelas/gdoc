@@ -42,7 +42,7 @@ from gdoc.cli import (
     cmd_edit_suggestion_reply,
     cmd_reply,
 )
-from gdoc.util import GdocError, PreviewUnavailableError
+from gdoc.util import AuthError, GdocError, PreviewUnavailableError
 
 ME = "me@example.com"
 OTHER = "other@example.com"
@@ -641,6 +641,53 @@ class TestDeleteCommentReply:
         mock_svc.return_value = _mock_docs_service(_SAVED_EMPTY)
         mock_read.return_value = _doc()
         delete_comment_reply("abc123", "c1", "r1")  # no raise
+
+
+# --- post-write verification failures are mutation-ambiguous ---------------
+
+
+class TestReadBackFailureIsAmbiguous:
+    """After ALL_SAVED, a failing verification read must never claim
+    "No change was made": the write may have landed."""
+
+    @pytest.mark.parametrize("error", [
+        GdocError(
+            "native comment threads are not available: … No change was made."
+        ),
+        GdocError("API error (503): Backend Error"),
+        AuthError("Authentication expired. Run `gdoc auth`."),
+    ])
+    @pytest.mark.parametrize("operation", ["insert", "reply", "edit", "delete"])
+    @patch("gdoc.api.docs.get_document_threads")
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_read_back_error_says_may_have_succeeded(
+        self, mock_svc, mock_read, operation, error,
+    ):
+        mock_read.side_effect = error
+        if operation == "insert":
+            mock_svc.return_value = _mock_docs_service(_INSERT_OK)
+            call = lambda: insert_comment(  # noqa: E731
+                "abc123", "hi", 5, 9, assignee_email=ME,
+            )
+        elif operation == "reply":
+            mock_svc.return_value = _mock_docs_service(_reply_ok("p_new"))
+            call = lambda: add_comment_reply("abc123", "c1", content="x")  # noqa: E731
+        elif operation == "edit":
+            mock_svc.return_value = _mock_docs_service(_SAVED_EMPTY)
+            call = lambda: update_comment_post("abc123", "c1", "r1", "x")  # noqa: E731
+        else:
+            mock_svc.return_value = _mock_docs_service(_SAVED_EMPTY)
+            call = lambda: delete_comment_reply("abc123", "c1", "r1")  # noqa: E731
+        with pytest.raises(GdocError) as ei:
+            call()
+        msg = str(ei.value)
+        assert "may have succeeded" in msg and "inspect" in msg
+        assert "reported saved" in msg
+        assert "No change was made" not in msg.split("verification read failed")[0]
+        assert ei.value.exit_code == error.exit_code
+        assert not isinstance(ei.value, PreviewUnavailableError)
+        # The write itself was sent exactly once; nothing is retried.
+        assert mock_svc.return_value.documents.return_value.batchUpdate.call_count == 1
 
 
 # --- cmd_comment --assign -------------------------------------------------

@@ -183,7 +183,7 @@ def insert_comment(
             )
         # The assignment is the point of the request; verify it landed
         # rather than echoing the requested address back as fact.
-        doc = get_document_threads(doc_id)
+        doc = _read_back_threads(doc_id, f"assigned comment #{comment_id}")
         created = find_thread(doc, comment_id, suggestion=False)
         if created is None or thread_assignee(created) != assignee_email:
             raise GdocError(
@@ -306,6 +306,25 @@ def get_document_threads(doc_id: str) -> dict:
     doc.setdefault("comments", [])
     doc.setdefault("suggestions", [])
     return doc
+
+
+def _read_back_threads(doc_id: str, what: str) -> dict:
+    """Verification read after a write that Google reported as ALL_SAVED.
+
+    Any failure here (preview parameter rejected, transient API error,
+    expired auth) is mutation-ambiguous: the write may well have landed.
+    Re-raise with that framing — never the pre-write "No change was made"
+    message — and keep the original exit code.
+    """
+    try:
+        return get_document_threads(doc_id)
+    except GdocError as e:
+        raise GdocError(
+            f"{what} was reported saved (commentUpdateState=ALL_SAVED) but "
+            f"the verification read failed: {e} The write may have "
+            "succeeded; inspect the thread before retrying.",
+            exit_code=e.exit_code,
+        ) from e
 
 
 def thread_kind(suggestion: bool) -> str:
@@ -459,7 +478,7 @@ def add_comment_reply(
             "retrying"
         )
     # Read back: the reply must be durable on the thread we named.
-    doc = get_document_threads(doc_id)
+    doc = _read_back_threads(doc_id, f"reply #{post_id}")
     thread = find_thread(doc, thread_id, suggestion)
     saved = find_post(thread, post_id) if thread else None
     if saved is None:
@@ -496,7 +515,7 @@ def update_comment_post(
         }
     }
     _run_thread_request(doc_id, request)
-    doc = get_document_threads(doc_id)
+    doc = _read_back_threads(doc_id, f"edit of post #{post_id}")
     thread = find_thread(doc, thread_id, suggestion)
     post = find_post(thread, post_id) if thread else None
     # Google may normalize surrounding whitespace; compare stripped text.
@@ -526,7 +545,7 @@ def delete_comment_reply(
         }
     }
     _run_thread_request(doc_id, request)
-    doc = get_document_threads(doc_id)
+    doc = _read_back_threads(doc_id, f"deletion of reply #{post_id}")
     thread = find_thread(doc, thread_id, suggestion)
     post = find_post(thread, post_id) if thread is not None else None
     # Gone, or kept as a tombstone (``deleted: true``), both mean deleted.

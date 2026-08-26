@@ -812,7 +812,13 @@ def _insert_table(
             return
 
         # Parse each cell's markdown to plain text + inline styles, once.
-        from gdoc.mdparse import StyleRange, parse_inline, text_style_fields
+        from gdoc.mdparse import (
+            StyleRange,
+            _utf16_prefix,
+            parse_inline,
+            text_style_fields,
+            utf16_len,
+        )
 
         parsed_cells: dict[tuple[int, int], tuple[str, list]] = {}
         for r_idx, row in enumerate(cell_indices):
@@ -857,10 +863,12 @@ def _insert_table(
                         0, len(plain), {"bold": True}, "text_style",
                     ))
                 base = row[c_idx] + shift
+                # Style offsets are code points; Docs indexes are UTF-16.
+                utf16 = _utf16_prefix(plain)
                 for s in cell_styles:
                     style_range = {
-                        "startIndex": base + s.start,
-                        "endIndex": base + s.end,
+                        "startIndex": base + utf16[s.start],
+                        "endIndex": base + utf16[s.end],
                     }
                     if tab_id:
                         style_range["tabId"] = tab_id
@@ -871,7 +879,7 @@ def _insert_table(
                             "fields": text_style_fields(s.style),
                         }
                     })
-                shift += len(plain)
+                shift += utf16_len(plain)
 
         if text_requests:
             service.documents().batchUpdate(
@@ -1423,7 +1431,7 @@ def insert_markdown_into_tab(
     Returns:
         Dict with "tab_id", "tab_title", "insert_index".
     """
-    from gdoc.mdparse import parse_markdown, to_docs_requests
+    from gdoc.mdparse import parse_markdown, to_docs_requests, utf16_len
 
     doc = get_document_with_tabs(doc_id)
     revision_id = doc.get("revisionId", "")
@@ -1478,7 +1486,8 @@ def insert_markdown_into_tab(
             # removed before this table, shifting its real position left.
             _insert_table(
                 doc_id,
-                insert_index + table.plain_text_offset
+                insert_index
+                + utf16_len(parsed.plain_text[:table.plain_text_offset])
                 - table.removed_tabs_before,
                 table,
                 tab_id=tab_id,
@@ -1552,7 +1561,7 @@ def replace_formatted(
     Returns:
         Number of replacements made.
     """
-    from gdoc.mdparse import parse_markdown
+    from gdoc.mdparse import parse_markdown, utf16_len
 
     parsed = parse_markdown(new_markdown)
 
@@ -1597,7 +1606,9 @@ def replace_formatted(
         # createParagraphBullets removes the nested-list indent tabs during
         # the main batch, so each match grows the doc by the post-removal
         # length, not len(plain_text).
-        effective_len = len(parsed.plain_text) - parsed.removed_tabs
+        # Lengths in UTF-16 units: an emoji in the replacement grows the
+        # doc by 2, not 1.
+        effective_len = utf16_len(parsed.plain_text) - parsed.removed_tabs
         delta = effective_len - match_len
         # Matches are sorted descending by startIndex; iterate in
         # that same order so higher positions are cleaned first.
@@ -1625,7 +1636,8 @@ def replace_formatted(
                 for j, match in enumerate(sorted_matches):
                     shift = (n - 1 - j) * delta
                     idx = (
-                        match["startIndex"] + table.plain_text_offset
+                        match["startIndex"]
+                        + utf16_len(parsed.plain_text[:table.plain_text_offset])
                         - table.removed_tabs_before + shift
                     )
                     _insert_table(doc_id, idx, table, tab_id=tab_id)
@@ -1886,21 +1898,35 @@ def check_suggest_preview_access(doc_id: str) -> None:
 
     from gdoc.auth import get_credentials
 
+    from google.auth.exceptions import GoogleAuthError
+    from requests.exceptions import RequestException
+
     account, _stamp = account_cache_key()
-    session = AuthorizedSession(get_credentials(account))
-    resp = session.get(
-        f"https://docs.googleapis.com/v1/documents/{doc_id}",
-        params={
-            # Google requires the two companions ("Comments view mode may
-            # only be specified if tabs content is also requested" /
-            # "... if inline suggestions are also explicitly requested").
-            "includeTabsContent": "true",
-            "suggestionsViewMode": "SUGGESTIONS_INLINE",
-            "commentsViewMode": "COMMENTS_VIEW_MODE_INCLUDED",
-            "fields": "documentId,commentsViewMode",
-        },
-        timeout=60,
-    )
+    try:
+        session = AuthorizedSession(get_credentials(account))
+        resp = session.get(
+            f"https://docs.googleapis.com/v1/documents/{doc_id}",
+            params={
+                # Google requires the two companions ("Comments view mode
+                # may only be specified if tabs content is also requested"
+                # / "... if inline suggestions are also explicitly
+                # requested").
+                "includeTabsContent": "true",
+                "suggestionsViewMode": "SUGGESTIONS_INLINE",
+                "commentsViewMode": "COMMENTS_VIEW_MODE_INCLUDED",
+                "fields": "documentId,commentsViewMode",
+            },
+            timeout=60,
+        )
+    except GoogleAuthError as e:
+        # Credentials that could not be refreshed (revoked, expired).
+        raise AuthError(f"Authentication expired ({e}). Run `gdoc auth`.")
+    except RequestException as e:
+        # Transport failure: fail closed — nothing has been written.
+        raise GdocError(
+            "suggest mode check failed before any write "
+            f"(network error: {e}). No change was made."
+        )
     status = resp.status_code
     if status == 200:
         try:

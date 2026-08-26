@@ -377,6 +377,44 @@ class TestReplaceFormattedCleanupPositions:
 
     @patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
     @patch("gdoc.api.docs.get_docs_service")
+    def test_cleanup_position_counts_emoji_as_two_units(self, mock_svc, mock_cleanup):
+        """Docs indexes are UTF-16: a non-BMP emoji in the replacement
+        grows the document by 2, so the cleanup position must reflect it."""
+        from gdoc.api.docs import replace_formatted
+
+        mock_svc.return_value.documents.return_value \
+            .batchUpdate.return_value.execute.return_value = {}
+        mock_svc.return_value.documents.return_value \
+            .get.return_value.execute.return_value = {"body": {"content": []}}
+
+        matches = [{"startIndex": 10, "endIndex": 13}]
+        replace_formatted("doc1", matches, "\U0001F600ab", "rev1")  # 3 chars, 4 units
+
+        pos = mock_cleanup.call_args[0][1]
+        assert pos == 14
+
+    @patch("gdoc.api.docs._insert_table")
+    @patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_table_index_after_emoji_is_utf16(
+        self, mock_svc, _cleanup, mock_table,
+    ):
+        from gdoc.api.docs import replace_formatted
+
+        mock_svc.return_value.documents.return_value \
+            .batchUpdate.return_value.execute.return_value = {}
+        mock_svc.return_value.documents.return_value \
+            .get.return_value.execute.return_value = {"body": {"content": []}}
+
+        md = "\U0001F600 x\n| a | b |\n|---|---|\n| 1 | 2 |"
+        replace_formatted("doc1", [{"startIndex": 5, "endIndex": 6}], md, "rev1")
+
+        # plain text before the table placeholder is "😀 x\n" = 4 code
+        # points but 5 UTF-16 units.
+        assert mock_table.call_args[0][1] == 5 + 5
+
+    @patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
+    @patch("gdoc.api.docs.get_docs_service")
     def test_same_length_replacement_no_drift(self, mock_svc, mock_cleanup):
         """When replacement is same length as original, delta=0."""
         from gdoc.api.docs import replace_formatted

@@ -762,6 +762,47 @@ class TestPreviewGate:
         with pytest.raises(GdocError, match=r"API error \(503\)"):
             self._run(_gate_response(503, text="backend", reason="Service Unavailable"))
 
+    def test_refresh_failure_is_auth_error(self):
+        from google.auth.exceptions import RefreshError
+
+        with patch("gdoc.api.docs.account_cache_key", return_value=("acct", None)), \
+             patch("gdoc.auth.get_credentials", return_value="creds"), \
+             patch(
+                 "google.auth.transport.requests.AuthorizedSession",
+                 side_effect=RefreshError("invalid_grant: Token has been revoked"),
+             ):
+            with pytest.raises(AuthError, match="Run `gdoc auth`"):
+                check_suggest_preview_access("doc1")
+
+    def test_network_failure_fails_closed_as_gdoc_error(self):
+        from requests.exceptions import ConnectionError as ReqConnectionError
+
+        session = MagicMock()
+        session.get.side_effect = ReqConnectionError("dns failure")
+        with patch("gdoc.api.docs.account_cache_key", return_value=("acct", None)), \
+             patch("gdoc.auth.get_credentials", return_value="creds"), \
+             patch(
+                 "google.auth.transport.requests.AuthorizedSession",
+                 return_value=session,
+             ):
+            with pytest.raises(GdocError, match="network error") as exc:
+                check_suggest_preview_access("doc1")
+        assert "No change was made" in str(exc.value)
+        assert not isinstance(exc.value, AuthError)
+
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_gate_network_failure_blocks_the_write(
+        self, mock_svc, _preview_gate_passes,
+    ):
+        service = _service(_ok_response())
+        mock_svc.return_value = service
+        _preview_gate_passes.side_effect = GdocError(
+            "suggest mode check failed before any write (network error: x)",
+        )
+        with pytest.raises(GdocError, match="network error"):
+            suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
+        service.documents.return_value.batchUpdate.assert_not_called()
+
     def test_other_400_is_api_error_not_enrollment(self):
         with pytest.raises(GdocError, match=r"API error \(400\)"):
             self._run(_gate_response(400, text="something else", reason="Bad Request"))
@@ -1080,6 +1121,24 @@ class TestCmdSuggest:
         assert "WARN: suggestion saved (#suggest.abc)" in err
         assert "API error (503)" in err
         assert "state not updated" in err
+        mock_state.assert_not_called()
+
+    @patch("gdoc.state.update_state_after_command")
+    @patch("gdoc.api.drive.get_file_version")
+    @patch("gdoc.api.docs.suggest_replacement", return_value=_result())
+    @patch("gdoc.api.docs.get_document_structure", return_value=_structure())
+    @patch("gdoc.notify.pre_flight", return_value=None)
+    def test_version_lookup_transport_error_after_write_still_reports_ids(
+        self, _pf, _doc, _sug, mock_ver, mock_state, capsys,
+    ):
+        """drive.get_file_version only translates HttpError; a raw
+        ConnectionError must not escape and hide the saved IDs either."""
+        mock_ver.side_effect = ConnectionError("connection reset")
+        assert cmd_suggest(_args()) == 0
+        out, err = capsys.readouterr()
+        assert out == "OK suggested 1 occurrence (#suggest.abc)\n"
+        assert "WARN: suggestion saved (#suggest.abc)" in err
+        assert "connection reset" in err
         mock_state.assert_not_called()
 
     @patch("gdoc.api.docs.suggest_replacement")

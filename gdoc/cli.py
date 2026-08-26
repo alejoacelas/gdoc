@@ -1338,7 +1338,9 @@ def cmd_suggest(args) -> int:
     command_version = None
     try:
         command_version = get_file_version(doc_id).get("version")
-    except GdocError as e:
+    except Exception as e:  # noqa: BLE001 — post-mutation; any failure here
+        # (HttpError already translated to GdocError, but also transport
+        # ConnectionError/timeout) must not hide the saved suggestion IDs.
         version_error = e
 
     from gdoc.format import format_json, get_output_mode

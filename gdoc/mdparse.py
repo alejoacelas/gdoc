@@ -565,6 +565,11 @@ def to_docs_requests(
     return requests
 
 
+def utf16_len(text: str) -> int:
+    """Length of *text* in UTF-16 code units (the Docs API index space)."""
+    return sum(2 if ord(ch) > 0xFFFF else 1 for ch in text)
+
+
 def _utf16_prefix(text: str) -> list[int]:
     """offsets[i] = UTF-16 length of text[:i] (len(text) + 1 entries)."""
     offsets = [0]

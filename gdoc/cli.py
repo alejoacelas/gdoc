@@ -2427,32 +2427,6 @@ def _native_thread_or_fail(doc_id: str, thread_id: str, suggestion: bool) -> dic
     return thread
 
 
-_SUGGESTION_ID_PREFIX = "suggest."
-
-
-def _check_thread_namespace(thread_id: str, suggestion: bool) -> None:
-    """Refuse an ID that visibly belongs to the other thread namespace.
-
-    Native suggestion IDs are prefixed ``suggest.`` (observed live);
-    comment IDs are not. The flag, not the ID, chooses the request field,
-    so an obvious mismatch is a usage error before any API call.
-    """
-    looks_like_suggestion = thread_id.startswith(_SUGGESTION_ID_PREFIX)
-    if suggestion and not looks_like_suggestion:
-        raise GdocError(
-            f"{thread_id} does not look like a suggestion ID "
-            f"(expected a '{_SUGGESTION_ID_PREFIX}' prefix); drop "
-            "--suggestion for a comment thread",
-            exit_code=3,
-        )
-    if not suggestion and looks_like_suggestion:
-        raise GdocError(
-            f"{thread_id} is a suggestion thread ID; use the "
-            "suggestion-thread form of this command",
-            exit_code=3,
-        )
-
-
 def _validate_native_reply_args(args, thread_id: str) -> None:
     """Usage checks for `reply --suggestion` / `--reassign`, before any I/O."""
     suggestion = bool(getattr(args, "suggestion", False))
@@ -2463,7 +2437,6 @@ def _validate_native_reply_args(args, thread_id: str) -> None:
             "thread has no assignee",
             exit_code=3,
         )
-    _check_thread_namespace(thread_id, suggestion)
     _validate_post_text(args.text or "", "reply text")
 
 
@@ -2477,13 +2450,13 @@ def _native_reply(args, doc_id: str, change_info, thread_id: str) -> int:
     from gdoc.api.docs import add_comment_reply, thread_assignee, thread_kind
 
     if reassign:
-        # Preflight: Google rejects Post.assigneeEmail on a thread with no
-        # assignee, so read the native thread and fail before writing. An
-        # unrecognised or missing assignee field fails closed.
+        # Preflight: Google rejects Post.assigneeEmail on a thread whose
+        # head post has no assignee, so read the native thread and fail
+        # before writing. Only headPost.assigneeEmail counts (fail closed).
         thread = _native_thread_or_fail(doc_id, thread_id, suggestion=False)
         if not thread_assignee(thread):
             raise GdocError(
-                f"comment #{thread_id} has no assignee (or none is reported); "
+                f"comment #{thread_id} has no assignee on its head post; "
                 "--reassign can only move an existing assignment. Create the "
                 "thread with `comment --quote ... --assign EMAIL` instead.",
                 exit_code=3,
@@ -2546,10 +2519,6 @@ def cmd_reply(args) -> int:
     )
     if native:
         _validate_native_reply_args(args, comment_id)
-    else:
-        # Drive path: a suggestion thread is not a Drive comment, so a bare
-        # suggestion ID would only produce a misleading Drive 404.
-        _check_thread_namespace(comment_id, suggestion=False)
 
     from gdoc.notify import pre_flight
     change_info = pre_flight(doc_id, quiet=quiet)
@@ -2701,13 +2670,17 @@ def _cmd_edit_post(args, suggestion: bool) -> int:
     thread_id = args.thread_id
     post_id = args.post_id
     text = args.text or ""
-    _check_thread_namespace(thread_id, suggestion)
     _validate_post_text(text, "new text")
 
     from gdoc.notify import pre_flight
     change_info = pre_flight(doc_id, quiet=quiet)
 
-    from gdoc.api.docs import find_post, thread_kind, update_comment_post
+    from gdoc.api.docs import (
+        find_post,
+        post_is_deleted,
+        thread_kind,
+        update_comment_post,
+    )
 
     thread = _native_thread_or_fail(doc_id, thread_id, suggestion)
     post = find_post(thread, post_id)
@@ -2715,6 +2688,10 @@ def _cmd_edit_post(args, suggestion: bool) -> int:
         raise GdocError(
             f"post {post_id} not found on {thread_kind(suggestion)} {thread_id}",
             exit_code=3,
+        )
+    if post_is_deleted(post):
+        raise GdocError(
+            f"post {post_id} on #{thread_id} has been deleted", exit_code=3,
         )
     head_id = (thread.get("headPost") or {}).get("postId")
     if suggestion and post_id == head_id:
@@ -2763,7 +2740,6 @@ def _cmd_delete_post(args, suggestion: bool) -> int:
     thread_id = args.thread_id
     post_id = args.post_id
     force = getattr(args, "force", False)
-    _check_thread_namespace(thread_id, suggestion)
 
     from gdoc.util import confirm_destructive
     confirm_destructive(f"delete reply {post_id} on #{thread_id}", force=force)
@@ -2775,6 +2751,7 @@ def _cmd_delete_post(args, suggestion: bool) -> int:
         delete_comment_reply,
         find_post,
         post_is_action,
+        post_is_deleted,
         thread_kind,
     )
 
@@ -2784,6 +2761,10 @@ def _cmd_delete_post(args, suggestion: bool) -> int:
         raise GdocError(
             f"post {post_id} not found on {thread_kind(suggestion)} {thread_id}",
             exit_code=3,
+        )
+    if post_is_deleted(post):
+        raise GdocError(
+            f"post {post_id} on #{thread_id} is already deleted", exit_code=3,
         )
     head_id = (thread.get("headPost") or {}).get("postId")
     if post_id == head_id:

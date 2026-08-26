@@ -265,18 +265,18 @@ enrolled Cloud project and fail with a message naming the reason otherwise:
   requires `--quote` and never degrades to an unassigned comment.
 - `reply DOC COMMENT_ID TEXT --reassign EMAIL` hands an **already assigned**
   thread to someone else. The thread is read first and the command stops
-  (exit 3) if it has no assignee — Google rejects reassignment of an
-  unassigned thread — so start with `comment --assign`.
+  (exit 3) unless its head post carries an assignee — Google rejects
+  reassignment of an unassigned thread — so start with `comment --assign`.
 - `reply DOC SUGGESTION_ID TEXT --suggestion` replies on a suggestion
-  thread. The flag, not the ID, selects the namespace; suggestion IDs look
-  like `suggest.xxxx` and are refused without the flag.
+  thread. IDs are opaque: the flag (or the `*-suggestion-reply` command),
+  never the ID's shape, selects the namespace.
 - `edit-comment` / `edit-suggestion-reply` change the text of a post you
   wrote; `delete-reply` / `delete-suggestion-reply` remove one reply you
   wrote. `POST_ID` is the reply ID shown by `comment-info` (native post IDs
   and Drive reply IDs are the same; a comment's head post ID equals its
-  comment ID). A suggestion's generated head post cannot be edited, and
+  comment ID). A suggestion's generated head post cannot be edited,
   replies that carry a resolve/reopen action or an assignment cannot be
-  deleted — both are refused before any write.
+  deleted, and an already-deleted post is refused — all before any write.
 
 Every native write requires `commentUpdateState: ALL_SAVED` and is verified
 by reading the thread back (an assignment must appear on the thread, not

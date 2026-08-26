@@ -11,7 +11,8 @@ All notable changes to `gdoc` are documented here. This project follows
   `comment --quote TEXT --assign EMAIL` creates an anchored comment assigned
   to a user (`insertComment.assigneeEmailAddress`; requires `--quote`, no
   Drive fallback). `reply --reassign EMAIL` hands an already-assigned thread
-  on and refuses (exit 3) before writing when the thread has no assignee;
+  on and refuses (exit 3) before writing when the thread's head post has
+  no assignee;
   `reply --suggestion` replies on a suggestion thread. New `edit-comment`,
   `edit-suggestion-reply`, `delete-reply` and `delete-suggestion-reply`
   commands edit or remove a single post you wrote (`updateCommentPost`,

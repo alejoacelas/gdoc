@@ -164,23 +164,23 @@ def insert_comment(
         _translate_http_error(e, doc_id)
 
     # Comment saves can fail even when the batchUpdate itself returns 200.
-    # An assigned comment has no fallback, so it also needs the state to be
-    # present: a response that doesn't say ALL_SAVED can't prove the save.
     state = result.get("commentUpdateState", "")
-    if state != "ALL_SAVED" and (state or assignee_email):
-        raise PreviewUnavailableError(
-            f"comment not saved (commentUpdateState={state or 'missing'})"
-        )
     replies = result.get("replies", [])
     thread = (replies[0] if replies else {}).get(
         "insertComment", {},
     ).get("commentThread", {})
     comment_id = thread.get("commentId", "")
-    if not comment_id:
-        raise PreviewUnavailableError(
-            "no comment thread in insertComment response"
-        )
     if assignee_email:
+        # No fallback exists for an assigned comment, and a 2xx whose state
+        # is not ALL_SAVED (or that names no thread) is mutation-ambiguous:
+        # a comment may or may not exist. Never call that "not created".
+        if state != "ALL_SAVED" or not comment_id:
+            raise GdocError(
+                "assigned comment outcome uncertain (commentUpdateState="
+                f"{state or 'missing'}, thread id "
+                f"{comment_id or 'missing'}): a comment may have been "
+                "created; inspect the document's comments before retrying"
+            )
         # The assignment is the point of the request; verify it landed
         # rather than echoing the requested address back as fact.
         doc = get_document_threads(doc_id)
@@ -190,6 +190,13 @@ def insert_comment(
                 f"comment #{comment_id} was created but the read-back does "
                 f"not show it assigned to {assignee_email}; inspect the thread"
             )
+        return comment_id
+    if state and state != "ALL_SAVED":
+        raise PreviewUnavailableError(f"comment not saved ({state})")
+    if not comment_id:
+        raise PreviewUnavailableError(
+            "no comment thread in insertComment response"
+        )
     return comment_id
 
 
@@ -309,8 +316,8 @@ def thread_kind(suggestion: bool) -> str:
 def find_thread(doc: dict, thread_id: str, suggestion: bool) -> dict | None:
     """Locate a native thread by ID in the namespace the caller named.
 
-    A comment ID is never looked up among suggestions or vice versa: the
-    two namespaces are distinct request fields and are kept explicit.
+    IDs are opaque; the caller's flag/command selects the namespace. A
+    comment ID is never looked up among suggestions or vice versa.
     """
     key = thread_kind(suggestion)
     threads = doc.get("suggestions" if suggestion else "comments") or []
@@ -340,17 +347,18 @@ def find_post(thread: dict, post_id: str) -> dict | None:
 def thread_assignee(thread: dict) -> str:
     """Current assignee email of a comment thread, or "" when unassigned.
 
-    Google reports assignment as ``assigneeEmail`` on the post that made
-    it (the head post for ``insertComment.assigneeEmailAddress``, a reply
-    for a reassignment — observed live), so the latest post carrying one
-    is the authority. Anything else is treated as unassigned (fail closed).
+    Per the API contract the thread's assignee is ``headPost.assigneeEmail``
+    (observed live for ``insertComment.assigneeEmailAddress``). A reply
+    that carries ``assigneeEmail`` records the reassignment event, not the
+    current state, so it is not consulted: an unassigned head fails closed.
     """
-    latest = ""
-    for post in thread_posts(thread):
-        value = post.get("assigneeEmail")
-        if isinstance(value, str) and value:
-            latest = value
-    return latest
+    value = (thread.get("headPost") or {}).get("assigneeEmail")
+    return value if isinstance(value, str) else ""
+
+
+def post_is_deleted(post: dict) -> bool:
+    """True for a tombstone: Google keeps deleted posts with ``deleted``."""
+    return bool(post.get("deleted"))
 
 
 def post_is_action(post: dict) -> bool:
@@ -508,7 +516,8 @@ def delete_comment_reply(
     """Delete one reply post (deleteCommentReply) and verify it is gone.
 
     Only the reply's author can delete it, and action or assignment
-    replies cannot be deleted; Google enforces this with a 400.
+    replies cannot be deleted; Google enforces this with a 400. The
+    read-back accepts either a missing post or a ``deleted`` tombstone.
     """
     request = {
         "deleteCommentReply": {
@@ -519,7 +528,9 @@ def delete_comment_reply(
     _run_thread_request(doc_id, request)
     doc = get_document_threads(doc_id)
     thread = find_thread(doc, thread_id, suggestion)
-    if thread is not None and find_post(thread, post_id) is not None:
+    post = find_post(thread, post_id) if thread is not None else None
+    # Gone, or kept as a tombstone (``deleted: true``), both mean deleted.
+    if post is not None and not post_is_deleted(post):
         raise GdocError(
             f"reply #{post_id} deletion was reported saved but the post "
             "is still on the thread; inspect the thread"

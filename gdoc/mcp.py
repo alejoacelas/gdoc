@@ -263,6 +263,10 @@ def _schema_for(command: str, parser: argparse.ArgumentParser) -> dict[str, Any]
             prop["enum"] = [c for c in prop["enum"] if c not in removed]
         if action.dest in extra_required and prop.get("type") == "array":
             prop["minItems"] = 1
+        if action.dest == "force" and command in _FORCE_REQUIRED:
+            # `required` alone would admit `force: false`, which always
+            # fails at runtime; say in the schema that only true is valid.
+            prop["const"] = True
         properties[action.dest] = prop
 
         is_positional = not action.option_strings

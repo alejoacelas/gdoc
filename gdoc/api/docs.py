@@ -640,7 +640,8 @@ def _cell_text_range(cell: dict) -> dict | None:
         content = cell.get("content", [])
         fs = content[0].get("startIndex") if content else None
         return {"startIndex": fs, "endIndex": fs} if fs is not None else None
-    end = last_start + len(last_content)
+    # Doc indexes are UTF-16 code units: an emoji in the cell counts as 2.
+    end = last_start + sum(_utf16_len(ch) for ch in last_content)
     if last_content.endswith("\n"):
         end -= 1  # keep the cell's final paragraph mark
     if end < first_start:
@@ -1565,6 +1566,11 @@ def replace_formatted(
 
     parsed = parse_markdown(new_markdown)
 
+    # Same guard as suggest_replacement: overlapping matches ("aa" in
+    # "aaa" with --all) would make the last-to-first delete/insert plan
+    # land on already-shifted text and corrupt the document.
+    _reject_overlapping_matches(matches)
+
     _strip_trailing_newline_unless_hr(parsed)
 
     sorted_matches, all_requests = _build_replacement_requests(
@@ -1633,11 +1639,15 @@ def replace_formatted(
         # Insert tables if any (after main batchUpdate + cleanup)
         if parsed.tables:
             for table in reversed(parsed.tables):
+                # UTF-16 offset of the table placeholder; invariant per
+                # table, so hoisted out of the per-match loop.
+                offset16 = utf16_len(
+                    parsed.plain_text[:table.plain_text_offset],
+                )
                 for j, match in enumerate(sorted_matches):
                     shift = (n - 1 - j) * delta
                     idx = (
-                        match["startIndex"]
-                        + utf16_len(parsed.plain_text[:table.plain_text_offset])
+                        match["startIndex"] + offset16
                         - table.removed_tabs_before + shift
                     )
                     _insert_table(doc_id, idx, table, tab_id=tab_id)
@@ -1792,6 +1802,9 @@ def find_suggestions_in_range(body: dict, start: int, end: int) -> set[str]:
     table's, each overlapping row's, and each overlapping cell's own
     ``suggested*`` fields count too (suggested table/row/cell insertions,
     deletions, and style changes), before recursing into the cell content.
+    Any other overlapping structural element (a section break, a table of
+    contents) has no index-aware model here, so every suggestion anywhere
+    under it counts — conservative, like ``_container_overlaps``.
     """
     found: set[str] = set()
     for elem in body.get("content", []):
@@ -1799,9 +1812,7 @@ def find_suggestions_in_range(body: dict, start: int, end: int) -> set[str]:
             continue
         paragraph = elem.get("paragraph")
         if paragraph is not None:
-            for key, value in paragraph.items():
-                if key.startswith("suggested"):
-                    _walk_suggestion_ids({key: value}, found)
+            _walk_container_suggestions(paragraph, found)
             for pe in paragraph.get("elements", []):
                 if _overlaps(pe, start, end):
                     _walk_suggestion_ids(pe, found)
@@ -1821,6 +1832,11 @@ def find_suggestions_in_range(body: dict, start: int, end: int) -> set[str]:
                         continue
                     _walk_container_suggestions(cell, found)
                     found |= find_suggestions_in_range(cell, start, end)
+            continue
+        # sectionBreak, tableOfContents, or a future element type: a match
+        # can span one (segments concatenate across them), and a suggested
+        # section break / TOC entry is someone's review thread too.
+        _walk_suggestion_ids(elem, found)
     return found
 
 
@@ -1894,12 +1910,11 @@ def check_suggest_preview_access(doc_id: str) -> None:
     Sent as a raw authorized GET because the bundled discovery document
     predates the field and the generated client refuses unknown parameters.
     """
+    from google.auth.exceptions import GoogleAuthError, TransportError
     from google.auth.transport.requests import AuthorizedSession
+    from requests.exceptions import RequestException
 
     from gdoc.auth import get_credentials
-
-    from google.auth.exceptions import GoogleAuthError
-    from requests.exceptions import RequestException
 
     account, _stamp = account_cache_key()
     try:
@@ -1917,6 +1932,15 @@ def check_suggest_preview_access(doc_id: str) -> None:
                 "fields": "documentId,commentsViewMode",
             },
             timeout=60,
+        )
+    except TransportError as e:
+        # google-auth wraps a network failure during token refresh in
+        # TransportError (a GoogleAuthError subclass) — it is a transport
+        # problem, not bad credentials, so it must not become "run
+        # `gdoc auth`". Fail closed — nothing has been written.
+        raise GdocError(
+            "suggest mode check failed before any write "
+            f"(network error: {e}). No change was made."
         )
     except GoogleAuthError as e:
         # Credentials that could not be refreshed (revoked, expired).
@@ -2004,6 +2028,8 @@ def suggest_replacement(
         revision_id: Non-empty revision the ranges were read at.
         tab_id: Tab holding the ranges (omitted → first tab).
     """
+    from google.auth.exceptions import GoogleAuthError, TransportError
+
     from gdoc.mdparse import parse_markdown
 
     if not revision_id:
@@ -2044,6 +2070,17 @@ def suggest_replacement(
         )
     except HttpError as e:
         _classify_suggest_error(e, doc_id)
+    except TransportError as e:
+        # Raised only while refreshing the access token, which happens
+        # before the request is sent — nothing reached Google.
+        raise GdocError(
+            "the suggest write failed before it was sent (network error "
+            f"during token refresh: {e}). No change was made."
+        )
+    except GoogleAuthError as e:
+        # Credential failure (revoked/expired beyond refresh) — also
+        # pre-send, and an auth problem, not an indeterminate write.
+        raise AuthError(f"Authentication expired ({e}). Run `gdoc auth`.")
     except Exception as e:  # noqa: BLE001 — .execute() is the network call;
         # a timeout or reset here can land after Google has accepted the
         # write, so the outcome is genuinely indeterminate. A generic
@@ -2101,9 +2138,9 @@ def suggest_replacement(
             f"({str(e) or type(e).__name__}); inspect the document",
             exit_code=getattr(e, "exit_code", 1),
         )
+    present = collect_suggestion_ids(readback)
     missing = [
-        sid for sid in outcome.suggestion_ids
-        if sid not in collect_suggestion_ids(readback)
+        sid for sid in outcome.suggestion_ids if sid not in present
     ]
     if missing:
         raise GdocError(

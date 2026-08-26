@@ -532,6 +532,36 @@ class TestSuggestErrors:
             suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
 
     @patch("gdoc.api.docs.get_docs_service")
+    def test_batch_refresh_network_failure_is_pre_send(self, mock_svc):
+        """TransportError is raised while refreshing the token, before the
+        request is sent — the error must say nothing was written, not that
+        the outcome is unknown."""
+        from google.auth.exceptions import TransportError
+
+        mock_svc.return_value = _service(
+            batch_error=TransportError("connection refused"),
+        )
+        with pytest.raises(GdocError) as exc:
+            suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
+        msg = str(exc.value)
+        assert "No change was made" in msg
+        assert "outcome is unknown" not in msg
+        assert not isinstance(exc.value, AuthError)
+
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_batch_refresh_credential_failure_is_auth_error(self, mock_svc):
+        """A revoked/expired-beyond-refresh credential fails before the
+        request is sent and must keep its AuthError classification
+        (exit 2), not be reported as an indeterminate write."""
+        from google.auth.exceptions import RefreshError
+
+        mock_svc.return_value = _service(
+            batch_error=RefreshError("invalid_grant: Token has been revoked"),
+        )
+        with pytest.raises(AuthError, match="Run `gdoc auth`"):
+            suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
+
+    @patch("gdoc.api.docs.get_docs_service")
     def test_400_unknown_name_means_no_preview(self, mock_svc):
         mock_svc.return_value = _service(batch_error=_http_error(
             400, b'{"error": {"message": "Invalid JSON payload received. '
@@ -744,6 +774,42 @@ class TestFindSuggestionsInRange:
     def test_zero_width_insert_inside_suggested_run(self):
         assert find_suggestions_in_range(self._body_with_insertion(), 9, 9) == {"s.ins"}
 
+    def test_suggested_section_break_inside_match_blocks(self):
+        """A match can span a section break (segments concatenate across
+        it); a suggested break inside the range is a review thread too."""
+        body = _body(
+            _para(_run("Hello wor", 1, 10)),
+            {
+                "startIndex": 10, "endIndex": 11,
+                "sectionBreak": {"suggestedInsertionIds": ["s.sec"]},
+            },
+            _para(_run("ld!\n", 11, 15)),
+        )
+        assert find_suggestions_in_range(body, 7, 13) == {"s.sec"}
+
+    def test_plain_section_break_does_not_block(self):
+        body = _body(
+            _para(_run("Hello wor", 1, 10)),
+            {"startIndex": 10, "endIndex": 11, "sectionBreak": {}},
+            _para(_run("ld!\n", 11, 15)),
+        )
+        assert find_suggestions_in_range(body, 7, 13) == set()
+
+    def test_suggestion_inside_overlapping_toc_blocks(self):
+        body = _body({
+            "startIndex": 8, "endIndex": 20,
+            "tableOfContents": {"content": [_para({
+                "startIndex": 9, "endIndex": 19,
+                "textRun": {
+                    "content": "toc entry\n",
+                    "suggestedInsertionIds": ["s.toc"],
+                },
+            })]},
+        })
+        assert find_suggestions_in_range(body, 5, 12) == {"s.toc"}
+        # A range that never reaches the TOC stays clear.
+        assert find_suggestions_in_range(body, 1, 5) == set()
+
 
 class TestPreviewGate:
     """check_suggest_preview_access: the raw preview-only read."""
@@ -821,6 +887,26 @@ class TestPreviewGate:
 
         session = MagicMock()
         session.get.side_effect = ReqConnectionError("dns failure")
+        with patch("gdoc.api.docs.account_cache_key", return_value=("acct", None)), \
+             patch("gdoc.auth.get_credentials", return_value="creds"), \
+             patch(
+                 "google.auth.transport.requests.AuthorizedSession",
+                 return_value=session,
+             ):
+            with pytest.raises(GdocError, match="network error") as exc:
+                check_suggest_preview_access("doc1")
+        assert "No change was made" in str(exc.value)
+        assert not isinstance(exc.value, AuthError)
+
+    def test_refresh_network_failure_is_not_an_auth_error(self):
+        """google-auth wraps a network failure during token refresh in
+        TransportError, a GoogleAuthError subclass — it must take the
+        fail-closed network branch, not become "run `gdoc auth`" (exit 2)
+        over a Wi-Fi blip."""
+        from google.auth.exceptions import TransportError
+
+        session = MagicMock()
+        session.get.side_effect = TransportError("connection refused")
         with patch("gdoc.api.docs.account_cache_key", return_value=("acct", None)), \
              patch("gdoc.auth.get_credentials", return_value="creds"), \
              patch(

@@ -161,12 +161,12 @@ class TestReplaceAllText:
             replace_all_text("abc123", "old", "new")
 
 
-@patch("gdoc.api.docs.get_docs_service")
 class TestGetDocsServiceCaches:
-    def test_caches_service(self, mock_get_service):
-        """Verify the @lru_cache is applied (tested indirectly via import)."""
-        from gdoc.api.docs import get_docs_service
-        assert hasattr(get_docs_service, "cache_info")
+    def test_caches_service(self):
+        """The per-account @lru_cache lives on _docs_service; the public
+        get_docs_service is a thin wrapper that resolves the account."""
+        from gdoc.api.docs import _docs_service
+        assert hasattr(_docs_service, "cache_info")
 
 
 class TestGetDocumentWithTabs:

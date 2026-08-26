@@ -1030,11 +1030,8 @@ def _read_file(path: str) -> str:
 class _ReplacementPlan:
     """Front half of a find/replace shared by `edit` and `suggest`."""
 
-    doc_id: str
     quiet: bool
     change_info: object  # ChangeInfo | None
-    old_text: str | None
-    new_text: str
     matches: list
     revision_id: str
     tab_id: str | None
@@ -1112,7 +1109,7 @@ def _resolve_replacement_text(args, cell) -> tuple[str | None, str | None]:
 
 
 def _prepare_text_replacement(
-    args, doc_id: str, old_text: str | None, new_text: str,
+    args, doc_id: str, old_text: str | None,
     *, suggest: bool = False,
 ) -> _ReplacementPlan:
     """Pre-flight, read the document, and locate the ranges to replace.
@@ -1216,8 +1213,7 @@ def _prepare_text_replacement(
             )
 
     return _ReplacementPlan(
-        doc_id=doc_id, quiet=quiet, change_info=change_info,
-        old_text=old_text, new_text=new_text, matches=matches,
+        quiet=quiet, change_info=change_info, matches=matches,
         revision_id=revision_id, tab_id=tab_id, search_body=search_body,
     )
 
@@ -1230,7 +1226,7 @@ def cmd_edit(args) -> int:
     # Resolve text from args or files (fail fast before API calls)
     old_text, new_text = _resolve_replacement_text(args, cell)
 
-    plan = _prepare_text_replacement(args, doc_id, old_text, new_text)
+    plan = _prepare_text_replacement(args, doc_id, old_text)
     matches = plan.matches
 
     # Check if replacement contains tables — not supported with --all
@@ -1301,7 +1297,7 @@ def cmd_suggest(args) -> int:
     check_inline_only_markdown(parse_markdown(new_text))
 
     plan = _prepare_text_replacement(
-        args, doc_id, old_text, new_text, suggest=True,
+        args, doc_id, old_text, suggest=True,
     )
 
     # Never touch an existing review thread by accident: Google may merge a

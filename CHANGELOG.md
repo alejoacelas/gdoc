@@ -35,6 +35,26 @@ All notable changes to `gdoc` are documented here. This project follows
   `_prepare_text_replacement`) and one request builder
   (`_build_replacement_requests`); `edit` behaviour is unchanged.
 
+### Fixed
+- **`edit --all` with a self-overlapping anchor** (`aa` matching twice in
+  `aaa`) is refused before any write (exit 3) instead of corrupting the
+  document — the last-to-first delete/insert plan would land on
+  already-shifted text. The same guard `suggest` ships with.
+- **`edit --cell` on a cell containing characters outside the Basic
+  Multilingual Plane** (emoji) computed the cell's editable end in code
+  points instead of UTF-16 units, so the replacement range could split a
+  surrogate pair (a 400 from the API) or leave the cell's last character
+  behind.
+- **MCP: a literal `-` in `old_text`/`new_text` of `gdoc_edit` and
+  `gdoc_suggest` is rejected.** The CLI reads `-` from stdin, but over MCP
+  stdin is the JSON-RPC stream (shielded to empty for the call), so
+  `new_text: "-"` silently became an empty replacement — deleting the
+  matched text instead of erroring.
+- **MCP: an unpinned tool call resolves the configured default account
+  once at call entry** instead of per service access, so a
+  `gdoc auth --set-default` made while a command runs can no longer hand
+  the same command's read and write to different accounts.
+
 ## [0.20.1] — 2026-08-15
 
 ### Changed

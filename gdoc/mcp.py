@@ -116,6 +116,15 @@ _LOCAL_PATH_CHOICES: dict[str, dict[str, frozenset[str]]] = {
     "diff": {"format": frozenset({"html"})},
 }
 
+# Parameters where the CLI treats a literal `-` as "read from stdin".
+# Over MCP stdin is the JSON-RPC stream, shielded to an empty string for
+# the call's duration, so `-` would silently resolve to "" — turning a
+# replacement into a deletion — instead of reading anything.
+_STDIN_SENTINEL_PARAMS: dict[str, frozenset[str]] = {
+    "edit": frozenset({"old_text", "new_text"}),
+    "suggest": frozenset({"old_text", "new_text"}),
+}
+
 # Commands that use diff-style exit codes: 1 means "differences found",
 # not failure. Real errors still print an ERR: line to stderr.
 _DIFF_EXIT_COMMANDS = frozenset({"diff"})
@@ -440,6 +449,7 @@ def call_command(
         raise ValueError(f"unknown command: {command}")
 
     _reject_local_paths(command, arguments)
+    _reject_stdin_sentinels(command, arguments)
 
     # Schema `required` cannot force a boolean to be true, so guard here:
     # with stdin detached, confirm_destructive() can never prompt.
@@ -465,14 +475,16 @@ def call_command(
     ):
         raise ValueError("`text` is required: the markdown content, inline")
 
-    from gdoc.util import account_context
+    from gdoc.util import account_context, resolve_account
 
     # Scope the account like a fresh CLI invocation: an explicit account
-    # pins this call only, and an unpinned call re-resolves the configured
-    # default at call time (service caches key on the resolved account, so
-    # a default changed mid-serve is picked up automatically).
+    # pins this call only, and an unpinned call resolves the configured
+    # default once at call entry (service caches key on the resolved
+    # account, so a default changed mid-serve is picked up on the next
+    # call). Resolving once, not per service access, keeps a single call
+    # from straddling a `gdoc auth --set-default` made while it runs.
     with (
-        account_context(arguments.get("account")),
+        account_context(arguments.get("account") or resolve_account()),
         _materialised_text(command, arguments) as prepared,
     ):
         argv = _argv_for(command, prepared, subparser)
@@ -512,6 +524,16 @@ def _reject_local_paths(command: str, arguments: dict[str, Any]) -> None:
             raise ValueError(
                 f"{dest}={value} writes a local file and is not available "
                 "over MCP"
+            )
+
+
+def _reject_stdin_sentinels(command: str, arguments: dict[str, Any]) -> None:
+    """Refuse the CLI's `-` (stdin) convention, which MCP cannot honour."""
+    for param in _STDIN_SENTINEL_PARAMS.get(command, frozenset()):
+        if arguments.get(param) == "-":
+            raise ValueError(
+                f'`{param}: "-"` (read from stdin) is not available over '
+                "MCP; pass the text itself"
             )
 
 

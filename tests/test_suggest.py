@@ -392,6 +392,42 @@ class TestSuggestRequestShape:
         assert result.suggestion_ids == ["suggest.abc"]
 
     @patch("gdoc.api.docs.get_docs_service")
+    def test_expected_identity_from_before_the_read_is_the_baseline(
+        self, mock_svc,
+    ):
+        """The CLI captures the token identity before the document read and
+        passes it in; a re-auth landing anywhere between that read and the
+        write must abort pre-send, not just one between gate and write."""
+        mock_svc.return_value = _service(_ok_response())
+        with patch(
+            "gdoc.api.docs._token_identity",
+            return_value=("client-a.apps", "rt2"),  # current, post-re-auth
+        ):
+            with pytest.raises(GdocError, match="No change was made"):
+                suggest_replacement(
+                    "doc1", MATCH, "x", "rev", tab_id="t.0",
+                    expected_token_identity=("client-a.apps", "rt1"),
+                )
+        mock_svc.return_value.documents.return_value.batchUpdate.assert_not_called()
+
+    @patch(
+        "gdoc.api.docs.get_document_structure",
+        return_value=_readback("suggest.abc"),
+    )
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_matching_expected_identity_writes(self, mock_svc, _rb):
+        mock_svc.return_value = _service(_ok_response())
+        with patch(
+            "gdoc.api.docs._token_identity",
+            return_value=("client-a.apps", "rt1"),
+        ):
+            result = suggest_replacement(
+                "doc1", MATCH, "x", "rev", tab_id="t.0",
+                expected_token_identity=("client-a.apps", "rt1"),
+            )
+        assert result.suggestion_ids == ["suggest.abc"]
+
+    @patch("gdoc.api.docs.get_docs_service")
     def test_no_requests_returns_zero_without_calling_api(self, mock_svc):
         service = _service(_ok_response())
         mock_svc.return_value = service
@@ -1248,21 +1284,25 @@ class TestCmdSuggest:
             "suggestion_ids\ts.1,s.2",
         ]
 
+    @patch("gdoc.api.docs._token_identity", return_value=("cid.apps", "rt1"))
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.api.drive.get_file_version", return_value=_VERSION)
     @patch("gdoc.api.docs.suggest_replacement", return_value=_result())
     @patch("gdoc.api.docs.get_document_structure", return_value=_structure())
     @patch("gdoc.notify.pre_flight", return_value=None)
     def test_reads_inline_view_and_targets_first_tab(
-        self, _pf, mock_doc, mock_sug, _ver, _state,
+        self, _pf, mock_doc, mock_sug, _ver, _state, _tid,
     ):
         cmd_suggest(_args(doc="https://docs.google.com/document/d/abc123/edit"))
         mock_doc.assert_called_once_with(
             "abc123", suggestions_view_mode="SUGGESTIONS_INLINE",
         )
+        # The token identity captured before the read travels to the write,
+        # so a re-auth anywhere between them aborts pre-send.
         mock_sug.assert_called_once_with(
             "abc123", [{"startIndex": 1, "endIndex": 6}], "world", "rev123",
             tab_id="t.first",
+            expected_token_identity=("cid.apps", "rt1"),
         )
 
     @patch("gdoc.state.update_state_after_command")

@@ -2029,6 +2029,7 @@ def suggest_replacement(
     new_markdown: str,
     revision_id: str,
     tab_id: str | None = None,
+    expected_token_identity: tuple[str | None, str | None] | None = None,
 ) -> SuggestionResult:
     """Replace matched ranges as *suggested* edits (writeMode=SUGGEST).
 
@@ -2051,6 +2052,11 @@ def suggest_replacement(
             (see ``check_inline_only_markdown``).
         revision_id: Non-empty revision the ranges were read at.
         tab_id: Tab holding the ranges (omitted → first tab).
+        expected_token_identity: ``_token_identity()`` captured before the
+            document read; when given, the pre-write identity check uses it
+            as the baseline, extending the re-auth guard across the read
+            (the CLI passes it). Omitted → the baseline is captured here,
+            guarding the gate→write pair only.
     """
     from google.auth.exceptions import GoogleAuthError, TransportError
 
@@ -2087,7 +2093,11 @@ def suggest_replacement(
     # file but keeps both, and must not abort; any new grant mints a new
     # refresh_token.
     account, _stamp = account_cache_key()
-    gate_identity = _token_identity(account)
+    gate_identity = (
+        expected_token_identity
+        if expected_token_identity is not None
+        else _token_identity(account)
+    )
     check_suggest_preview_access(doc_id)
 
     body = {

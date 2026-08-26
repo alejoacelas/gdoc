@@ -1296,6 +1296,14 @@ def cmd_suggest(args) -> int:
 
     check_inline_only_markdown(parse_markdown(new_text))
 
+    # Capture the token identity before the document read: the write
+    # verifies against this baseline, so the grant that read the ranges is
+    # the grant that authors the suggestion (see suggest_replacement).
+    from gdoc.api import account_cache_key
+    from gdoc.api.docs import _token_identity
+
+    read_identity = _token_identity(account_cache_key()[0])
+
     plan = _prepare_text_replacement(
         args, doc_id, old_text, suggest=True,
     )
@@ -1322,6 +1330,7 @@ def cmd_suggest(args) -> int:
 
     result = suggest_replacement(
         doc_id, plan.matches, new_text, plan.revision_id, tab_id=plan.tab_id,
+        expected_token_identity=read_identity,
     )
 
     # The suggestion is saved and verified at this point. A failure of the

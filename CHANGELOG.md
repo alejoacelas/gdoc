@@ -4,6 +4,24 @@ All notable changes to `gdoc` are documented here. This project follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Native comment assignment and post operations (developer preview).**
+  `comment --quote TEXT --assign EMAIL` creates an anchored comment assigned
+  to a user (`insertComment.assigneeEmailAddress`; requires `--quote`, no
+  Drive fallback). `reply --reassign EMAIL` hands an already-assigned thread
+  on and refuses (exit 3) before writing when the thread has no assignee;
+  `reply --suggestion` replies on a suggestion thread. New `edit-comment`,
+  `edit-suggestion-reply`, `delete-reply` and `delete-suggestion-reply`
+  commands edit or remove a single post you wrote (`updateCommentPost`,
+  `deleteCommentReply`), with pre-write refusals for a suggestion's
+  generated head post and for action/assignment replies. Each native write
+  requires `commentUpdateState: ALL_SAVED` and is verified by reading the
+  thread back. Ordinary comment reads and writes, and the awareness system,
+  stay on the Drive API. The four new commands are exposed over MCP as
+  writes; the delete commands require `force: true` there.
+
 ## [0.21.0] — 2026-08-26
 
 ### Added
@@ -54,7 +72,6 @@ All notable changes to `gdoc` are documented here. This project follows
   once at call entry** instead of per service access, so a
   `gdoc auth --set-default` made while a command runs can no longer hand
   the same command's read and write to different accounts.
-
 ## [0.20.1] — 2026-08-15
 
 ### Changed

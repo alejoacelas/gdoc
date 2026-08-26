@@ -33,6 +33,11 @@ gdoc comments DOC_ID                         # List open comments
 gdoc comments DOC_ID --all                   # Include resolved
 gdoc comment DOC_ID "comment text"           # Add unanchored comment
 gdoc reply DOC_ID COMMENT_ID "reply text"    # Reply to a comment
+gdoc comment DOC_ID "text" --quote "doc text" --assign EMAIL   # Assigned anchored comment (preview)
+gdoc reply DOC_ID COMMENT_ID "text" --reassign EMAIL          # Reassign an assigned thread (preview)
+gdoc reply DOC_ID SUGGESTION_ID "text" --suggestion           # Reply on a suggestion thread (preview)
+gdoc edit-comment DOC_ID COMMENT_ID POST_ID "new text"        # Edit a post you wrote (preview)
+gdoc delete-reply DOC_ID COMMENT_ID POST_ID --force           # Delete a reply you wrote (preview)
 gdoc resolve DOC_ID COMMENT_ID              # Resolve a comment
 gdoc reopen DOC_ID COMMENT_ID               # Reopen a resolved comment
 

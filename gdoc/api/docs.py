@@ -1794,10 +1794,34 @@ def find_suggestions_in_range(body: dict, start: int, end: int) -> set[str]:
             continue
         table = elem.get("table")
         if table is not None:
+            # Container-level suggestions (a suggested table, row, or cell
+            # insertion/deletion/style) are recorded on the container, not
+            # on the text runs inside it.
+            _walk_container_suggestions(table, found)
             for row in table.get("tableRows", []):
+                if not _container_overlaps(row, start, end):
+                    continue
+                _walk_container_suggestions(row, found)
                 for cell in row.get("tableCells", []):
+                    if not _container_overlaps(cell, start, end):
+                        continue
+                    _walk_container_suggestions(cell, found)
                     found |= find_suggestions_in_range(cell, start, end)
     return found
+
+
+def _container_overlaps(node: dict, start: int, end: int) -> bool:
+    """Rows/cells without index fields are not skipped (be conservative)."""
+    if "startIndex" not in node or "endIndex" not in node:
+        return True
+    return _overlaps(node, start, end)
+
+
+def _walk_container_suggestions(node: dict, out: set[str]) -> None:
+    """Collect this node's own ``suggested*`` fields (no recursion)."""
+    for key, value in node.items():
+        if key.startswith("suggested"):
+            _walk_suggestion_ids({key: value}, out)
 
 
 def _classify_suggest_error(e: HttpError, doc_id: str) -> None:
@@ -1842,6 +1866,87 @@ def _classify_suggest_error(e: HttpError, doc_id: str) -> None:
     _translate_http_error(e, doc_id)
 
 
+def check_suggest_preview_access(doc_id: str) -> None:
+    """Non-mutating gate: is this OAuth client's project preview-enrolled?
+
+    An unenrolled backend has been observed *ignoring* ``writeMode: SUGGEST``
+    and applying the batch as a direct edit, so enrollment must be proven
+    before the write, not inferred from its response. The decisive probe
+    is a ``documents.get`` with the preview-only ``commentsViewMode`` field:
+    a registered project echoes it (HTTP 200), an unregistered one rejects
+    it (400 ``Unknown name "comments_view_mode"``). Same account, document,
+    and scopes — only the client project changes the answer.
+
+    Sent as a raw authorized GET because the bundled discovery document
+    predates the field and the generated client refuses unknown parameters.
+    """
+    from google.auth.transport.requests import AuthorizedSession
+
+    from gdoc.auth import get_credentials
+
+    account, _stamp = account_cache_key()
+    session = AuthorizedSession(get_credentials(account))
+    resp = session.get(
+        f"https://docs.googleapis.com/v1/documents/{doc_id}",
+        params={
+            # Google requires the two companions ("Comments view mode may
+            # only be specified if tabs content is also requested" /
+            # "... if inline suggestions are also explicitly requested").
+            "includeTabsContent": "true",
+            "suggestionsViewMode": "SUGGESTIONS_INLINE",
+            "commentsViewMode": "COMMENTS_VIEW_MODE_INCLUDED",
+            "fields": "documentId,commentsViewMode",
+        },
+        timeout=60,
+    )
+    status = resp.status_code
+    if status == 200:
+        try:
+            mode = resp.json().get("commentsViewMode", "")
+        except ValueError:
+            mode = ""
+        if mode != "COMMENTS_VIEW_MODE_INCLUDED":
+            raise GdocError(
+                "suggest mode not available: the server accepted but did "
+                "not apply the Developer Preview read field, so suggest "
+                "mode cannot be trusted. No change was made."
+            )
+        return
+    detail = resp.text.lower()
+    if status == 400 and (
+        "unknown name" in detail or "cannot find field" in detail
+    ):
+        raise GdocError(
+            "suggest mode not available: the OAuth client's Cloud project "
+            "is not enrolled in the Google Workspace Developer Preview "
+            "(preview read field rejected). No change was made."
+        )
+    if status == 401:
+        raise AuthError("Authentication expired. Run `gdoc auth`.")
+    if status == 403:
+        raise GdocError(
+            f"Permission denied: {doc_id} (reading suggestions needs comment "
+            "or edit access on the document)"
+        )
+    if status == 404:
+        raise GdocError(f"Document not found: {doc_id}")
+    raise GdocError(f"API error ({status}): {resp.reason}")
+
+
+def _reject_overlapping_matches(matches: list[dict]) -> None:
+    """Two matches sharing text (``aa`` in ``aaa``) can't both be replaced:
+    the last-to-first delete/insert plan would land on shifted text."""
+    ordered = sorted(matches, key=lambda m: m["startIndex"])
+    for prev, cur in zip(ordered, ordered[1:]):
+        if cur["startIndex"] < prev["endIndex"]:
+            raise GdocError(
+                "matches overlap each other (the anchor repeats within "
+                f"itself around index {cur['startIndex']}); use a longer "
+                "anchor or drop --all",
+                exit_code=3,
+            )
+
+
 def suggest_replacement(
     doc_id: str,
     matches: list[dict],
@@ -1853,7 +1958,10 @@ def suggest_replacement(
 
     One batchUpdate carries the delete + insert + inline-style requests for
     every match, with ``writeControl.requiredRevisionId`` pinned to the
-    revision the matches were computed against. Success requires all of:
+    revision the matches were computed against. Before it, a non-mutating
+    preview read (``check_suggest_preview_access``) proves the project is
+    enrolled, because an unenrolled backend may silently apply the batch as
+    a direct edit. Success requires all of:
     HTTP 200, ``commentUpdateState == ALL_SAVED``, at least one created or
     updated suggestion ID in ``suggestionResponses``, and a SUGGESTIONS_INLINE
     read-back containing every one of those IDs. Anything less raises —
@@ -1881,12 +1989,16 @@ def suggest_replacement(
 
     parsed = parse_markdown(new_markdown)
     check_inline_only_markdown(parsed)
+    _reject_overlapping_matches(matches)
     _strip_trailing_newline_unless_hr(parsed)
     sorted_matches, requests = _build_replacement_requests(
         _inline_only(parsed), matches, tab_id=tab_id,
     )
     if not requests:
         return SuggestionResult(occurrences=0)
+
+    # Prove enrollment with a read before the write (see the gate's doc).
+    check_suggest_preview_access(doc_id)
 
     body = {
         "requests": requests,

@@ -1328,9 +1328,18 @@ def cmd_suggest(args) -> int:
         doc_id, plan.matches, new_text, plan.revision_id, tab_id=plan.tab_id,
     )
 
+    # The suggestion is saved and verified at this point. A failure of the
+    # follow-up version lookup must not turn that into an ordinary error
+    # that hides the IDs — report success, then warn that state was not
+    # refreshed.
     from gdoc.api.drive import get_file_version
 
-    command_version = get_file_version(doc_id).get("version")
+    version_error = None
+    command_version = None
+    try:
+        command_version = get_file_version(doc_id).get("version")
+    except GdocError as e:
+        version_error = e
 
     from gdoc.format import format_json, get_output_mode
 
@@ -1352,6 +1361,16 @@ def cmd_suggest(args) -> int:
         label = "occurrence" if result.occurrences == 1 else "occurrences"
         tags = ", ".join(f"#{i}" for i in ids)
         print(f"OK suggested {result.occurrences} {label} ({tags})")
+
+    if version_error is not None:
+        print(
+            "WARN: suggestion saved ("
+            + ", ".join(f"#{i}" for i in ids)
+            + f") but the document version could not be refreshed: "
+            f"{version_error}; awareness state not updated",
+            file=sys.stderr,
+        )
+        return 0
 
     # A suggestion is a partial write like `edit`: record the new version
     # but do not advance the read baseline (update_state_after_command

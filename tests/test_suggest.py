@@ -18,6 +18,7 @@ from gdoc.api.docs import (
     SUGGESTIONS_INLINE,
     SuggestionResult,
     check_inline_only_markdown,
+    check_suggest_preview_access,
     collect_suggestion_ids,
     find_suggestions_in_range,
     find_text_in_document,
@@ -107,6 +108,27 @@ def _body(*structural):
 
 
 MATCH = [{"startIndex": 1, "endIndex": 6}]
+
+
+@pytest.fixture(autouse=True)
+def _preview_gate_passes():
+    """The non-mutating enrollment gate is exercised by TestPreviewGate;
+    everywhere else it is assumed to pass so the write path is what's
+    under test."""
+    with patch("gdoc.api.docs.check_suggest_preview_access") as gate:
+        yield gate
+
+
+def _gate_response(status, body=None, text="", reason="Error"):
+    resp = MagicMock()
+    resp.status_code = status
+    resp.reason = reason
+    resp.text = text if text else json.dumps(body or {})
+    if body is not None:
+        resp.json.return_value = body
+    else:
+        resp.json.side_effect = ValueError("no json")
+    return resp
 
 
 # ---------------------------------------------------------------------------
@@ -254,6 +276,61 @@ class TestSuggestRequestShape:
         assert result.created_suggestion_ids == ["suggest.abc"]
         assert result.updated_suggestion_ids == []
         assert result.suggestion_ids == ["suggest.abc"]
+
+    @patch(
+        "gdoc.api.docs.get_document_structure",
+        return_value=_readback("suggest.abc"),
+    )
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_style_ranges_in_replacement_are_utf16(self, mock_svc, _rb):
+        """An emoji inside the replacement shifts later style ranges by 2."""
+        mock_svc.return_value = _service(_ok_response())
+        suggest_replacement(
+            "doc1", [{"startIndex": 10, "endIndex": 15}], "\U0001F600 **bold**",
+            "rev", tab_id="t.0",
+        )
+        reqs = _batch_call(mock_svc.return_value).kwargs["body"]["requests"]
+        style = next(r["updateTextStyle"] for r in reqs if "updateTextStyle" in r)
+        # plain text is "😀 bold": emoji = 2 units, space = 1 → bold at +3..+7
+        assert style["range"] == {"startIndex": 13, "endIndex": 17, "tabId": "t.0"}
+
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_overlapping_matches_are_rejected(self, mock_svc):
+        """`aa` in `aaa` matches [1,3) and [2,4); replacing both is undefined."""
+        service = _service(_ok_response())
+        mock_svc.return_value = service
+        body = _body(_para(_run("aaa\n", 1, 5)))
+        matches = find_text_in_document(None, "aa", body=body)
+        assert matches == [
+            {"startIndex": 1, "endIndex": 3}, {"startIndex": 2, "endIndex": 4},
+        ]
+        with pytest.raises(GdocError, match="overlap each other") as exc:
+            suggest_replacement("doc1", matches, "b", "rev", tab_id="t.0")
+        assert exc.value.exit_code == 3
+        service.documents.return_value.batchUpdate.assert_not_called()
+
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_preview_gate_runs_before_the_write(self, mock_svc, _preview_gate_passes):
+        service = _service(_ok_response())
+        mock_svc.return_value = service
+        _preview_gate_passes.side_effect = GdocError(
+            "suggest mode not available: not enrolled",
+        )
+        with pytest.raises(GdocError, match="not enrolled"):
+            suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
+        _preview_gate_passes.assert_called_once_with("doc1")
+        service.documents.return_value.batchUpdate.assert_not_called()
+
+    @patch(
+        "gdoc.api.docs.get_document_structure",
+        return_value=_readback("suggest.abc"),
+    )
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_preview_gate_not_needed_when_nothing_to_send(
+        self, mock_svc, _rb, _preview_gate_passes,
+    ):
+        suggest_replacement("doc1", [{"startIndex": 3, "endIndex": 3}], "", "rev")
+        _preview_gate_passes.assert_not_called()
 
     @patch("gdoc.api.docs.get_docs_service")
     def test_empty_revision_never_sent(self, mock_svc):
@@ -626,6 +703,108 @@ class TestFindSuggestionsInRange:
         assert find_suggestions_in_range(self._body_with_insertion(), 9, 9) == {"s.ins"}
 
 
+class TestPreviewGate:
+    """check_suggest_preview_access: the raw preview-only read."""
+
+    def _run(self, resp):
+        session = MagicMock()
+        session.get.return_value = resp
+        with patch("gdoc.api.docs.account_cache_key", return_value=("acct", None)), \
+             patch("gdoc.auth.get_credentials", return_value="creds"), \
+             patch(
+                 "google.auth.transport.requests.AuthorizedSession",
+                 return_value=session,
+             ):
+            check_suggest_preview_access("doc1")
+        return session
+
+    def test_registered_project_echoes_the_field(self):
+        session = self._run(_gate_response(200, {
+            "documentId": "doc1", "commentsViewMode": "COMMENTS_VIEW_MODE_INCLUDED",
+        }))
+        call = session.get.call_args
+        assert call.args[0] == "https://docs.googleapis.com/v1/documents/doc1"
+        assert call.kwargs["params"] == {
+            "includeTabsContent": "true",
+            "suggestionsViewMode": "SUGGESTIONS_INLINE",
+            "commentsViewMode": "COMMENTS_VIEW_MODE_INCLUDED",
+            "fields": "documentId,commentsViewMode",
+        }
+
+    def test_unregistered_project_400_unknown_name(self):
+        with pytest.raises(GdocError, match="not enrolled") as exc:
+            self._run(_gate_response(
+                400,
+                text='{"error": {"message": "Invalid JSON payload received. '
+                     'Unknown name \\"comments_view_mode\\": Cannot find field."}}',
+            ))
+        assert "No change was made" in str(exc.value)
+
+    def test_200_without_echo_is_refused(self):
+        """A backend that silently drops the preview field can't be trusted
+        to honour writeMode either."""
+        with pytest.raises(GdocError, match="did not apply"):
+            self._run(_gate_response(200, {"documentId": "doc1"}))
+
+    def test_403_is_permission(self):
+        with pytest.raises(GdocError, match="Permission denied: doc1"):
+            self._run(_gate_response(403, text="forbidden"))
+
+    def test_401_is_auth_error(self):
+        with pytest.raises(AuthError):
+            self._run(_gate_response(401, text="unauthorized"))
+
+    def test_404_is_not_found(self):
+        with pytest.raises(GdocError, match="Document not found: doc1"):
+            self._run(_gate_response(404, text="nope"))
+
+    def test_other_status_is_api_error(self):
+        with pytest.raises(GdocError, match=r"API error \(503\)"):
+            self._run(_gate_response(503, text="backend", reason="Service Unavailable"))
+
+    def test_other_400_is_api_error_not_enrollment(self):
+        with pytest.raises(GdocError, match=r"API error \(400\)"):
+            self._run(_gate_response(400, text="something else", reason="Bad Request"))
+
+
+class TestTableContainerSuggestions:
+    def _table(self, table_extra=None, row_extra=None, cell_extra=None):
+        para = _para(_run("cell\n", 10, 15))
+        cell = {"startIndex": 9, "endIndex": 15, "content": [para]}
+        cell.update(cell_extra or {})
+        row = {"startIndex": 8, "endIndex": 15, "tableCells": [cell]}
+        row.update(row_extra or {})
+        table = {"tableRows": [row]}
+        table.update(table_extra or {})
+        return _body({"startIndex": 7, "endIndex": 17, "table": table})
+
+    def test_suggested_table_insertion_blocks_cell_edit(self):
+        body = self._table(table_extra={"suggestedInsertionIds": ["s.table"]})
+        assert find_suggestions_in_range(body, 11, 13) == {"s.table"}
+
+    def test_suggested_row_deletion_blocks_cell_edit(self):
+        body = self._table(row_extra={"suggestedDeletionIds": ["s.row"]})
+        assert find_suggestions_in_range(body, 11, 13) == {"s.row"}
+
+    def test_suggested_cell_style_blocks_cell_edit(self):
+        body = self._table(cell_extra={
+            "suggestedTableCellStyleChanges": {"s.cell": {}},
+        })
+        assert find_suggestions_in_range(body, 11, 13) == {"s.cell"}
+
+    def test_row_outside_range_is_ignored(self):
+        body = self._table(row_extra={"suggestedDeletionIds": ["s.row"]})
+        # Second, clean row at a later index holds the match.
+        body["content"][0]["table"]["tableRows"].append({
+            "startIndex": 15, "endIndex": 22,
+            "tableCells": [{"startIndex": 16, "endIndex": 22, "content": [
+                _para(_run("other\n", 17, 22)),
+            ]}],
+        })
+        body["content"][0]["endIndex"] = 23
+        assert find_suggestions_in_range(body, 18, 20) == set()
+
+
 class TestCollectSuggestionIds:
     def test_walks_ids_lists_and_changes_maps(self):
         doc = {"tabs": [{"documentTab": {"body": {"content": [
@@ -865,6 +1044,43 @@ class TestCmdSuggest:
             cmd_suggest(_args())
         assert exc.value.exit_code == 3
         mock_sug.assert_not_called()
+
+    @patch("gdoc.api.drive.get_file_version")
+    @patch("gdoc.api.docs.get_docs_service")
+    @patch("gdoc.api.docs.get_document_structure")
+    @patch("gdoc.notify.pre_flight", return_value=None)
+    def test_self_overlapping_all_matches_exit_3(
+        self, _pf, mock_doc, mock_svc, mock_ver,
+    ):
+        mock_doc.return_value = _structure(tabs=[
+            ("t.0", "Tab 1", _body(_para(_run("aaa\n", 1, 5)))),
+        ])
+        service = _service(_ok_response())
+        mock_svc.return_value = service
+        with pytest.raises(GdocError, match="overlap each other") as exc:
+            cmd_suggest(_args(old_text="aa", new_text="b", all=True))
+        assert exc.value.exit_code == 3
+        service.documents.return_value.batchUpdate.assert_not_called()
+        mock_ver.assert_not_called()
+
+    @patch("gdoc.state.update_state_after_command")
+    @patch("gdoc.api.drive.get_file_version")
+    @patch("gdoc.api.docs.suggest_replacement", return_value=_result())
+    @patch("gdoc.api.docs.get_document_structure", return_value=_structure())
+    @patch("gdoc.notify.pre_flight", return_value=None)
+    def test_version_lookup_failure_after_write_still_reports_ids(
+        self, _pf, _doc, _sug, mock_ver, mock_state, capsys,
+    ):
+        """The suggestion is saved and verified; a Drive hiccup afterwards
+        must not hide its ID behind an ordinary error."""
+        mock_ver.side_effect = GdocError("API error (503): Backend Error")
+        assert cmd_suggest(_args(json=True)) == 0
+        out, err = capsys.readouterr()
+        assert json.loads(out)["suggestionIds"] == ["suggest.abc"]
+        assert "WARN: suggestion saved (#suggest.abc)" in err
+        assert "API error (503)" in err
+        assert "state not updated" in err
+        mock_state.assert_not_called()
 
     @patch("gdoc.api.docs.suggest_replacement")
     @patch("gdoc.api.docs.get_document_structure")

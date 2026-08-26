@@ -18,8 +18,12 @@ All notable changes to `gdoc` are documented here. This project follows
   Success is verified, not assumed: HTTP 200 plus `commentUpdateState:
   ALL_SAVED`, at least one suggestion ID in `suggestionResponses`, and a
   `SUGGESTIONS_INLINE` read-back that shows every ID — anything less is an
-  error, and there is deliberately no fallback to a direct edit (an
-  unenrolled project fails with `suggest mode not available`). The document
+  error, and there is deliberately no fallback to a direct edit: a
+  non-mutating preview-only read proves the project is enrolled *before*
+  the write (an unenrolled project fails with `suggest mode not
+  available`). Inline style ranges in the replacement are converted to
+  UTF-16 (`to_docs_requests`, also fixing `edit`/`insert` with emoji in
+  formatted replacement text). The document
   is read with suggestions inline before matching and a match that touches
   an existing suggested insertion, deletion, or style change is refused, so
   another reviewer's thread is never modified by accident. Replacement text

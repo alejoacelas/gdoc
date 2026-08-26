@@ -575,8 +575,11 @@ Requirements and limits:
 
 - **Developer Preview.** Suggest mode is a Docs API
   [Workspace Developer Preview](https://developers.google.com/workspace/preview)
-  feature gated by the OAuth client's Cloud project. With an unenrolled project
-  the command fails with `suggest mode not available` and nothing is written.
+  feature gated by the OAuth client's Cloud project. Because an unenrolled
+  backend has been seen silently applying `writeMode: SUGGEST` as a direct
+  edit, `suggest` first proves enrollment with a non-mutating preview-only
+  read (`commentsViewMode`); with an unenrolled project that read is rejected,
+  the command fails with `suggest mode not available`, and nothing is written.
   Unlike `comment --quote`, there is **no fallback**: `suggest` never degrades to
   a direct edit.
 - **Comment or edit access.** The write is pinned to the revision the text was

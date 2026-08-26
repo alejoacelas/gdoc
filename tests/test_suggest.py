@@ -645,6 +645,21 @@ class TestSuggestResponseIds:
 
 class TestSuggestErrors:
     @patch("gdoc.api.docs.get_docs_service")
+    def test_5xx_on_the_batch_is_indeterminate(self, mock_svc):
+        """A 503 can arrive after Google applied the mutation: like a
+        transport failure it must say the outcome is unknown, not read as
+        a generic API error inviting a blind retry."""
+        mock_svc.return_value = _service(
+            batch_error=_http_error(503, reason="Backend Error"),
+        )
+        with pytest.raises(GdocError) as exc:
+            suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
+        msg = str(exc.value)
+        assert "outcome is unknown" in msg
+        assert "503" in msg
+        assert "Inspect the document" in msg
+
+    @patch("gdoc.api.docs.get_docs_service")
     def test_batch_transport_failure_reports_unknown_outcome(self, mock_svc):
         """A timeout/reset on batchUpdate itself can land after Google has
         accepted the write: the error must say the outcome is unknown and

@@ -1893,6 +1893,15 @@ def _classify_suggest_error(e: HttpError, doc_id: str) -> None:
             "comment or edit access on the document, or the project lacks "
             "Developer Preview access)"
         )
+    if status >= 500:
+        # A 5xx can arrive after Google applied the mutation: like a
+        # transport failure, the outcome is unknown and a blind retry may
+        # create a duplicate suggestion.
+        raise GdocError(
+            f"the suggest write returned a server error ({status}: "
+            f"{e.reason}). The outcome is unknown — the suggestion may or "
+            "may not have been saved. Inspect the document before retrying."
+        )
     _translate_http_error(e, doc_id)
 
 

@@ -391,6 +391,43 @@ class TestSuggestRequestShape:
             result = suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
         assert result.suggestion_ids == ["suggest.abc"]
 
+    @patch(
+        "gdoc.api.docs.get_document_structure",
+        return_value=_readback("suggest.abc"),
+    )
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_direct_call_pins_the_resolved_account(
+        self, mock_svc, _rb, _preview_gate_passes, monkeypatch,
+    ):
+        """Called directly (no CLI/MCP pinning), a default-account flip
+        between the gate and the service lookup must not split them across
+        two accounts — the gate could prove enrollment for one account
+        while the write goes through another, possibly unenrolled, one."""
+        from gdoc import util
+
+        util.set_active_account(None)
+        default = ["acct-a"]
+        monkeypatch.setattr(
+            "gdoc.util.get_default_account", lambda: default[0],
+        )
+        seen = []
+
+        def gate_spy(doc_id):
+            seen.append(util.resolve_account())
+            default[0] = "acct-b"  # the flip lands right after the gate
+
+        _preview_gate_passes.side_effect = gate_spy
+
+        def service_spy():
+            seen.append(util.resolve_account())
+            return _service(_ok_response())
+
+        mock_svc.side_effect = service_spy
+
+        result = suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
+        assert result.suggestion_ids == ["suggest.abc"]
+        assert seen == ["acct-a", "acct-a"]
+
     @patch("gdoc.api.docs.get_docs_service")
     def test_expected_identity_from_before_the_read_is_the_baseline(
         self, mock_svc,

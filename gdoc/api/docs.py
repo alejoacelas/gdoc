@@ -2098,109 +2098,119 @@ def suggest_replacement(
         if expected_token_identity is not None
         else _token_identity(account)
     )
-    check_suggest_preview_access(doc_id)
+    # The gate, the service lookup, and the verification read each resolve
+    # the active account themselves; pin the one captured above so an
+    # unpinned direct call cannot have a concurrent default-account change
+    # split them across two accounts (the CLI and MCP already pin — they
+    # re-enter the same value).
+    from gdoc.util import account_context
 
-    body = {
-        "requests": requests,
-        "writeControl": {
-            "requiredRevisionId": revision_id,
-            "writeMode": "SUGGEST",
-        },
-    }
-    service = get_docs_service()
-    if _token_identity(account) != gate_identity:
-        raise GdocError(
-            "credentials changed while preparing the suggest write (the "
-            "account was re-authenticated between the enrollment check "
-            "and the write, so the check may have proven a different "
-            "OAuth client project or user). No change was made — rerun "
-            "the command."
-        )
-    try:
-        result = (
-            service.documents()
-            .batchUpdate(documentId=doc_id, body=body)
-            .execute()
-        )
-    except HttpError as e:
-        _classify_suggest_error(e, doc_id)
-    except TransportError as e:
-        # Raised only while refreshing the access token, which happens
-        # before the request is sent — nothing reached Google.
-        raise GdocError(
-            "the suggest write failed before it was sent (network error "
-            f"during token refresh: {e}). No change was made."
-        )
-    except GoogleAuthError as e:
-        # Credential failure (revoked/expired beyond refresh) — also
-        # pre-send, and an auth problem, not an indeterminate write.
-        raise AuthError(f"Authentication expired ({e}). Run `gdoc auth`.")
-    except Exception as e:  # noqa: BLE001 — .execute() is the network call;
-        # a timeout or reset here can land after Google has accepted the
-        # write, so the outcome is genuinely indeterminate. A generic
-        # unexpected error would let the caller retry blindly.
-        raise GdocError(
-            "the suggest write failed in transit "
-            f"({str(e) or type(e).__name__}). The outcome is unknown — "
-            "the suggestion may or may not have been saved. Inspect the "
-            "document before retrying."
-        )
+    with account_context(account):
+        check_suggest_preview_access(doc_id)
 
-    state = result.get("commentUpdateState", "")
-    created: list[str] = []
-    updated: list[str] = []
-    for resp in result.get("suggestionResponses", []) or []:
-        created.extend(resp.get("createdSuggestionIds", []) or [])
-        updated.extend(resp.get("updatedSummarySuggestionIds", []) or [])
-    created = _dedupe(created)
-    # Google echoes a just-created ID under updatedSummarySuggestionIds as
-    # well; report as "updated" only threads that existed before this batch
-    # (i.e. the edit was merged into the author's open suggestion).
-    updated = [sid for sid in _dedupe(updated) if sid not in created]
-    outcome = SuggestionResult(
-        occurrences=len(sorted_matches),
-        created_suggestion_ids=created,
-        updated_suggestion_ids=updated,
-        comment_update_state=state,
-    )
+        body = {
+            "requests": requests,
+            "writeControl": {
+                "requiredRevisionId": revision_id,
+                "writeMode": "SUGGEST",
+            },
+        }
+        service = get_docs_service()
+        if _token_identity(account) != gate_identity:
+            raise GdocError(
+                "credentials changed while preparing the suggest write "
+                "(the account was re-authenticated between the enrollment "
+                "check and the write, so the check may have proven a "
+                "different OAuth client project or user). No change was "
+                "made — rerun the command."
+            )
+        try:
+            result = (
+                service.documents()
+                .batchUpdate(documentId=doc_id, body=body)
+                .execute()
+            )
+        except HttpError as e:
+            _classify_suggest_error(e, doc_id)
+        except TransportError as e:
+            # Raised only while refreshing the access token, which happens
+            # before the request is sent — nothing reached Google.
+            raise GdocError(
+                "the suggest write failed before it was sent (network "
+                f"error during token refresh: {e}). No change was made."
+            )
+        except GoogleAuthError as e:
+            # Credential failure (revoked/expired beyond refresh) — also
+            # pre-send, and an auth problem, not an indeterminate write.
+            raise AuthError(f"Authentication expired ({e}). Run `gdoc auth`.")
+        except Exception as e:  # noqa: BLE001 — .execute() is the network
+            # call; a timeout or reset here can land after Google has
+            # accepted the write, so the outcome is genuinely
+            # indeterminate. A generic unexpected error would let the
+            # caller retry blindly.
+            raise GdocError(
+                "the suggest write failed in transit "
+                f"({str(e) or type(e).__name__}). The outcome is unknown — "
+                "the suggestion may or may not have been saved. Inspect "
+                "the document before retrying."
+            )
 
-    if state != "ALL_SAVED" or not outcome.suggestion_ids:
-        # The server answered 200 but produced no durable review object:
-        # either it ignored writeMode (an unenrolled backend has been seen
-        # applying the change directly) or the suggestion thread failed to
-        # save. Say so loudly; the caller must inspect the document.
-        raise GdocError(
-            "suggest mode was not applied: the server returned "
-            f"commentUpdateState={state or 'none'} and "
-            f"{len(outcome.suggestion_ids)} suggestion ID(s). The Cloud "
-            "project may lack Developer Preview access. Check the document "
-            "— the text may have been edited directly."
+        state = result.get("commentUpdateState", "")
+        created: list[str] = []
+        updated: list[str] = []
+        for resp in result.get("suggestionResponses", []) or []:
+            created.extend(resp.get("createdSuggestionIds", []) or [])
+            updated.extend(resp.get("updatedSummarySuggestionIds", []) or [])
+        created = _dedupe(created)
+        # Google echoes a just-created ID under updatedSummarySuggestionIds
+        # as well; report as "updated" only threads that existed before this
+        # batch (i.e. the edit was merged into the author's open suggestion).
+        updated = [sid for sid in _dedupe(updated) if sid not in created]
+        outcome = SuggestionResult(
+            occurrences=len(sorted_matches),
+            created_suggestion_ids=created,
+            updated_suggestion_ids=updated,
+            comment_update_state=state,
         )
 
-    try:
-        readback = get_document_structure(
-            doc_id, suggestions_view_mode=SUGGESTIONS_INLINE,
-        )
-    except Exception as e:  # noqa: BLE001 — the write succeeded; only the
-        # verification read failed, either as a GdocError from the API
-        # layer or as an untranslated transport error (timeout, reset).
-        # A bare "API error (503)" — or a naked ConnectionError — would
-        # hide that a suggestion very likely exists now.
-        raise GdocError(
-            "suggestion(s) " + ", ".join(outcome.suggestion_ids)
-            + " were reported saved but could not be verified "
-            f"({str(e) or type(e).__name__}); inspect the document",
-            exit_code=getattr(e, "exit_code", 1),
-        )
-    present = collect_suggestion_ids(readback)
-    missing = [
-        sid for sid in outcome.suggestion_ids if sid not in present
-    ]
-    if missing:
-        raise GdocError(
-            "suggestion not found on read-back: "
-            + ", ".join(missing)
-            + ". The server reported it but the document does not show "
-            "it as a pending suggestion; inspect the document."
-        )
-    return outcome
+        if state != "ALL_SAVED" or not outcome.suggestion_ids:
+            # The server answered 200 but produced no durable review object:
+            # either it ignored writeMode (an unenrolled backend has been
+            # seen applying the change directly) or the suggestion thread
+            # failed to save. Say so loudly; the caller must inspect the
+            # document.
+            raise GdocError(
+                "suggest mode was not applied: the server returned "
+                f"commentUpdateState={state or 'none'} and "
+                f"{len(outcome.suggestion_ids)} suggestion ID(s). The Cloud "
+                "project may lack Developer Preview access. Check the "
+                "document — the text may have been edited directly."
+            )
+
+        try:
+            readback = get_document_structure(
+                doc_id, suggestions_view_mode=SUGGESTIONS_INLINE,
+            )
+        except Exception as e:  # noqa: BLE001 — the write succeeded; only
+            # the verification read failed, either as a GdocError from the
+            # API layer or as an untranslated transport error (timeout,
+            # reset). A bare "API error (503)" — or a naked ConnectionError
+            # — would hide that a suggestion very likely exists now.
+            raise GdocError(
+                "suggestion(s) " + ", ".join(outcome.suggestion_ids)
+                + " were reported saved but could not be verified "
+                f"({str(e) or type(e).__name__}); inspect the document",
+                exit_code=getattr(e, "exit_code", 1),
+            )
+        present = collect_suggestion_ids(readback)
+        missing = [
+            sid for sid in outcome.suggestion_ids if sid not in present
+        ]
+        if missing:
+            raise GdocError(
+                "suggestion not found on read-back: "
+                + ", ".join(missing)
+                + ". The server reported it but the document does not show "
+                "it as a pending suggestion; inspect the document."
+            )
+        return outcome

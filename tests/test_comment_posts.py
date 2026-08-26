@@ -643,6 +643,109 @@ class TestDeleteCommentReply:
         delete_comment_reply("abc123", "c1", "r1")  # no raise
 
 
+# --- dispatch failures after the request was sent are mutation-ambiguous ---
+
+
+_TABS_DOC = {
+    "revisionId": "rev1",
+    "tabs": [{
+        "tabProperties": {"tabId": "t.0", "title": "Tab 1"},
+        "documentTab": {"body": {"content": [{
+            "startIndex": 1, "endIndex": 20,
+            "paragraph": {"elements": [{
+                "startIndex": 1, "endIndex": 20,
+                "textRun": {"content": "the quick brown fox\n"},
+            }]},
+        }]}},
+    }],
+}
+
+
+def _transport_errors():
+    import socket
+    import ssl
+
+    import httplib2
+
+    return [
+        socket.timeout("timed out"),
+        ConnectionResetError(104, "Connection reset by peer"),
+        ssl.SSLError("EOF occurred in violation of protocol"),
+        httplib2.HttpLib2Error("connection dropped"),
+    ]
+
+
+class TestDispatchFailureIsAmbiguous:
+    """A 5xx or transport error from batchUpdate may follow a write Google
+    already applied: report uncertainty, never fall back or invite a retry."""
+
+    @pytest.mark.parametrize("error", [
+        *[_http_error(status) for status in (500, 502, 503)],
+        *_transport_errors(),
+    ])
+    @pytest.mark.parametrize("operation", ["insert", "insert_assigned", "reply",
+                                           "edit", "delete"])
+    @patch("gdoc.api.docs.get_document_threads")
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_5xx_and_transport_errors_say_may_have_succeeded(
+        self, mock_svc, mock_read, operation, error,
+    ):
+        mock_svc.return_value = _mock_docs_service(batch_error=error)
+        calls = {
+            "insert": lambda: insert_comment("abc123", "hi", 5, 9),
+            "insert_assigned": lambda: insert_comment(
+                "abc123", "hi", 5, 9, assignee_email=ME,
+            ),
+            "reply": lambda: add_comment_reply("abc123", "c1", content="x"),
+            "edit": lambda: update_comment_post("abc123", "c1", "r1", "x"),
+            "delete": lambda: delete_comment_reply("abc123", "c1", "r1"),
+        }
+        with pytest.raises(GdocError) as ei:
+            calls[operation]()
+        msg = str(ei.value)
+        assert "outcome uncertain" in msg and "may have succeeded" in msg
+        assert "inspect" in msg
+        # Not the fallback sentinel: comment --quote must not degrade to a
+        # Drive comment that could duplicate an anchored one.
+        assert not isinstance(ei.value, PreviewUnavailableError)
+        assert ei.value.exit_code == 1
+        mock_read.assert_not_called()
+        assert mock_svc.return_value.documents.return_value.batchUpdate.call_count == 1
+
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_4xx_diagnostics_unchanged(self, mock_svc):
+        # Definite rejections keep their specific diagnosis.
+        mock_svc.return_value = _mock_docs_service(
+            batch_error=_http_error(400, 'Unknown name "insert_comment"')
+        )
+        with pytest.raises(PreviewUnavailableError, match="preview not enabled"):
+            insert_comment("abc123", "hi", 5, 9)
+        mock_svc.return_value = _mock_docs_service(
+            batch_error=_http_error(400, "Only the author can edit this post.")
+        )
+        with pytest.raises(GdocError, match="Only the author") as ei:
+            update_comment_post("abc123", "c1", "r1", "x")
+        assert "uncertain" not in str(ei.value)
+        mock_svc.return_value = _mock_docs_service(batch_error=_http_error(404))
+        with pytest.raises(GdocError, match="Not found"):
+            add_comment_reply("abc123", "c1", content="x")
+
+    @patch("gdoc.api.comments.create_comment")
+    @patch("gdoc.api.docs.insert_comment", side_effect=GdocError(
+        "insertComment outcome uncertain: … may have succeeded; inspect …"
+    ))
+    @patch("gdoc.api.docs.get_document_with_tabs", return_value=_TABS_DOC)
+    def test_cmd_comment_quote_does_not_fall_back_on_uncertain_outcome(
+        self, _get, _insert, mock_create,
+    ):
+        with patch("gdoc.notify.pre_flight", return_value=None), \
+                patch("gdoc.api.drive.get_file_version"), \
+                patch("gdoc.state.update_state_after_command"):
+            with pytest.raises(GdocError, match="outcome uncertain"):
+                cmd_comment(_make_args("comment", text="p", quote="quick", assign=None))
+        mock_create.assert_not_called()
+
+
 # --- post-write verification failures are mutation-ambiguous ---------------
 
 
@@ -693,19 +796,6 @@ class TestReadBackFailureIsAmbiguous:
 # --- cmd_comment --assign -------------------------------------------------
 
 
-_TABS_DOC = {
-    "revisionId": "rev1",
-    "tabs": [{
-        "tabProperties": {"tabId": "t.0", "title": "Tab 1"},
-        "documentTab": {"body": {"content": [{
-            "startIndex": 1, "endIndex": 20,
-            "paragraph": {"elements": [{
-                "startIndex": 1, "endIndex": 20,
-                "textRun": {"content": "the quick brown fox\n"},
-            }]},
-        }]}},
-    }],
-}
 
 
 @patch("gdoc.state.update_state_after_command")

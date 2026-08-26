@@ -133,12 +133,10 @@ def insert_comment(
     if revision_id:
         body["writeControl"] = {"requiredRevisionId": revision_id}
     try:
-        service = get_docs_service()
-        result = (
-            service.documents()
-            .batchUpdate(documentId=doc_id, body=body)
-            .execute()
-        )
+        # 5xx/transport failures raise GdocError (outcome uncertain) here
+        # and are deliberately not PreviewUnavailableError: falling back to
+        # a Drive comment could duplicate one Google already created.
+        result = _dispatch_native_write(doc_id, body, "insertComment")
     except HttpError as e:
         status = int(e.resp.status)
         # A non-enrolled project sees insertComment as an unknown field:
@@ -392,6 +390,48 @@ def post_is_action(post: dict) -> bool:
     return bool(post.get("assigneeEmail"))
 
 
+_TRANSPORT_ERRORS: tuple[type[BaseException], ...] = (
+    ConnectionError, TimeoutError, OSError,  # socket/ssl errors are OSErrors
+)
+
+
+def _dispatch_native_write(doc_id: str, body: dict, what: str) -> dict:
+    """Send one native-thread batchUpdate and return the raw response.
+
+    Definite rejections (4xx) propagate as HttpError for the caller to
+    diagnose (preview, permission, concurrency). A 5xx or a transport
+    failure (timeout, dropped connection, TLS error) after the request
+    was dispatched is mutation-ambiguous — Google may have applied it
+    before the response was lost — so it is reported as such, never as a
+    plain failure a caller might retry or fall back from (which could
+    duplicate the comment or reply).
+    """
+    import httplib2
+
+    service = get_docs_service()
+    try:
+        return (
+            service.documents()
+            .batchUpdate(documentId=doc_id, body=body)
+            .execute()
+        )
+    except HttpError as e:
+        if int(e.resp.status) >= 500:
+            raise GdocError(
+                f"{what} outcome uncertain: the Docs API returned "
+                f"{e.resp.status} after the request was sent. The write may "
+                "have succeeded; inspect the document's comments before "
+                "retrying."
+            ) from e
+        raise
+    except (*_TRANSPORT_ERRORS, httplib2.HttpLib2Error) as e:
+        raise GdocError(
+            f"{what} outcome uncertain: the connection failed after the "
+            f"request was sent ({type(e).__name__}: {e}). The write may have "
+            "succeeded; inspect the document's comments before retrying."
+        ) from e
+
+
 def _run_thread_request(doc_id: str, request: dict) -> dict:
     """Send one comment-thread batchUpdate request and return its reply.
 
@@ -402,13 +442,9 @@ def _run_thread_request(doc_id: str, request: dict) -> dict:
     reply fail on a stale revision).
     """
     body = {"requests": [request]}
+    what = next(iter(request))
     try:
-        service = get_docs_service()
-        result = (
-            service.documents()
-            .batchUpdate(documentId=doc_id, body=body)
-            .execute()
-        )
+        result = _dispatch_native_write(doc_id, body, what)
     except HttpError as e:
         if _preview_parse_error(e):
             raise GdocError(_PREVIEW_UNAVAILABLE_MSG)

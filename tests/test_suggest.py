@@ -455,6 +455,22 @@ class TestSuggestResponseIds:
 
     @patch("gdoc.api.docs.get_document_structure")
     @patch("gdoc.api.docs.get_docs_service")
+    def test_readback_transport_failure_names_the_saved_ids(
+        self, mock_svc, mock_rb,
+    ):
+        """Only HttpError is translated inside the verification read; an
+        untranslated ConnectionError must still report the IDs the batch
+        already saved instead of escaping as a generic error."""
+        mock_svc.return_value = _service(_ok_response(created=("s.saved",)))
+        mock_rb.side_effect = ConnectionError("connection reset")
+        with pytest.raises(GdocError, match=r"s\.saved") as exc:
+            suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
+        assert "could not be verified" in str(exc.value)
+        assert "connection reset" in str(exc.value)
+        assert exc.value.exit_code == 1
+
+    @patch("gdoc.api.docs.get_document_structure")
+    @patch("gdoc.api.docs.get_docs_service")
     def test_readback_missing_id_is_an_error(self, mock_svc, mock_rb):
         mock_svc.return_value = _service(_ok_response(created=("s.1", "s.2")))
         mock_rb.return_value = _readback("s.1")
@@ -489,6 +505,32 @@ class TestSuggestResponseIds:
 
 
 class TestSuggestErrors:
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_batch_transport_failure_reports_unknown_outcome(self, mock_svc):
+        """A timeout/reset on batchUpdate itself can land after Google has
+        accepted the write: the error must say the outcome is unknown and
+        point at the document, not surface as a generic unexpected error."""
+        mock_svc.return_value = _service(
+            batch_error=ConnectionError("connection reset"),
+        )
+        with pytest.raises(GdocError) as exc:
+            suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
+        msg = str(exc.value)
+        assert "outcome is unknown" in msg
+        assert "connection reset" in msg
+        assert "Inspect the document" in msg
+        assert exc.value.exit_code == 1
+
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_batch_transport_failure_with_no_message_names_the_type(
+        self, mock_svc,
+    ):
+        """str(TimeoutError()) is empty; the error must fall back to the
+        exception type instead of an empty pair of parentheses."""
+        mock_svc.return_value = _service(batch_error=TimeoutError())
+        with pytest.raises(GdocError, match="TimeoutError"):
+            suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
+
     @patch("gdoc.api.docs.get_docs_service")
     def test_400_unknown_name_means_no_preview(self, mock_svc):
         mock_svc.return_value = _service(batch_error=_http_error(

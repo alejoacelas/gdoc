@@ -2035,8 +2035,8 @@ def suggest_replacement(
             "writeMode": "SUGGEST",
         },
     }
+    service = get_docs_service()
     try:
-        service = get_docs_service()
         result = (
             service.documents()
             .batchUpdate(documentId=doc_id, body=body)
@@ -2044,6 +2044,16 @@ def suggest_replacement(
         )
     except HttpError as e:
         _classify_suggest_error(e, doc_id)
+    except Exception as e:  # noqa: BLE001 — .execute() is the network call;
+        # a timeout or reset here can land after Google has accepted the
+        # write, so the outcome is genuinely indeterminate. A generic
+        # unexpected error would let the caller retry blindly.
+        raise GdocError(
+            "the suggest write failed in transit "
+            f"({str(e) or type(e).__name__}). The outcome is unknown — "
+            "the suggestion may or may not have been saved. Inspect the "
+            "document before retrying."
+        )
 
     state = result.get("commentUpdateState", "")
     created: list[str] = []
@@ -2080,14 +2090,16 @@ def suggest_replacement(
         readback = get_document_structure(
             doc_id, suggestions_view_mode=SUGGESTIONS_INLINE,
         )
-    except GdocError as e:
-        # The write succeeded; only the verification read failed. Say so —
-        # a bare "API error (503)" would hide that a suggestion very likely
-        # exists now.
+    except Exception as e:  # noqa: BLE001 — the write succeeded; only the
+        # verification read failed, either as a GdocError from the API
+        # layer or as an untranslated transport error (timeout, reset).
+        # A bare "API error (503)" — or a naked ConnectionError — would
+        # hide that a suggestion very likely exists now.
         raise GdocError(
             "suggestion(s) " + ", ".join(outcome.suggestion_ids)
             + " were reported saved but could not be verified "
-            f"({e}); inspect the document", exit_code=e.exit_code,
+            f"({str(e) or type(e).__name__}); inspect the document",
+            exit_code=getattr(e, "exit_code", 1),
         )
     missing = [
         sid for sid in outcome.suggestion_ids

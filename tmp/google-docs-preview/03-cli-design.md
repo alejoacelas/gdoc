@@ -297,5 +297,6 @@ For each PR:
 - request review from Luca and the maintainers who reviewed anchored-comment PR
   [#40](https://github.com/LucaDeLeo/gdoc/pull/40).
 
-See [the API inventory](01-preview-api.md) and
-[the access experiment](02-access-tests.md).
+See [the API inventory](01-preview-api.md),
+[the access experiment](02-access-tests.md), and
+[the development process](04-development-process.md).

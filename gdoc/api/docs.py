@@ -1776,8 +1776,10 @@ def find_suggestions_in_range(body: dict, start: int, end: int) -> set[str]:
     SUGGESTIONS_INLINE. For an overlapping paragraph, its paragraph-level
     ``suggested*`` fields count, plus every overlapping element's
     (``suggestedInsertionIds``, ``suggestedDeletionIds``,
-    ``suggestedTextStyleChanges``, ...). Table-row/cell style suggestions are
-    not inspected.
+    ``suggestedTextStyleChanges``, ...). For an overlapping table, the
+    table's, each overlapping row's, and each overlapping cell's own
+    ``suggested*`` fields count too (suggested table/row/cell insertions,
+    deletions, and style changes), before recursing into the cell content.
     """
     found: set[str] = set()
     for elem in body.get("content", []):

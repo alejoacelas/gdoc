@@ -2421,9 +2421,16 @@ def collect_suggestion_locations(doc: dict) -> dict[str, list[dict]]:
         })
 
     def marked_ids(node: dict, key: str) -> list[str]:
+        """Suggestion IDs under *key* in any of the three API shapes:
+        a list (suggestedInsertionIds/suggestedDeletionIds), a single
+        string (suggestedInsertionId on objects/lists), or a map keyed by
+        suggestion ID (Paragraph.suggestedPositionedObjectIds →
+        ObjectReferences)."""
         value = node.get(key)
         if isinstance(value, str):
             return [value]
+        if isinstance(value, dict):
+            return list(value)
         return list(value) if isinstance(value, list) else []
 
     def walk(node, ctx: dict, enclosing: dict) -> None:
@@ -2448,8 +2455,9 @@ def collect_suggestion_locations(doc: dict) -> dict[str, list[dict]]:
             add(sid, ctx, "insert", enclosing, text)
         for sid in marked_ids(node, "suggestedDeletionIds"):
             add(sid, ctx, "delete", enclosing, text)
-        # Paragraph.suggestedPositionedObjectIds: objects suggested to be
-        # anchored to this paragraph; the paragraph's range is the location.
+        # Paragraph.suggestedPositionedObjectIds (map suggestion ID →
+        # ObjectReferences): objects suggested to be anchored to this
+        # paragraph; the paragraph's range is the location.
         for sid in marked_ids(node, "suggestedPositionedObjectIds"):
             add(sid, ctx, "positioned-object", enclosing, text)
         for key, kind in _SUGGESTION_STYLE_KEYS.items():

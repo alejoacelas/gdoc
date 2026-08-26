@@ -534,7 +534,10 @@ class TestCollectSuggestionLocations:
                             _text_run(7, 12, " ok\n"),
                         ],
                         "positionedObjectIds": [],
-                        "suggestedPositionedObjectIds": ["suggest.pos"],
+                        # API shape: map keyed by suggestion ID.
+                        "suggestedPositionedObjectIds": {
+                            "suggest.pos": {"objectIds": ["kix.pos"]}
+                        },
                     },
                 }
             ],

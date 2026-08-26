@@ -245,9 +245,12 @@ gdoc cat 1aBcDeFg...
 
 These read Google's native suggestion threads (`documents.get` with
 `commentsViewMode=COMMENTS_VIEW_MODE_INCLUDED`) and send one
-`acceptSuggestion`/`rejectSuggestion`/`deleteSuggestion` request per command,
-pinned to the revision that was just read. Unlike comments there is **no Drive
-fallback**: the OAuth client's Cloud project must be enrolled in the
+`acceptSuggestion`/`rejectSuggestion`/`deleteSuggestion` request per command.
+`accept-suggestion` is always pinned to the revision that was just read (it
+needs edit access, which is also what Google requires for a `revisionId`);
+`reject-suggestion`/`delete-suggestion` are pinned whenever the read returned a
+revision and are sent unpinned only when it did not (a suggestion's author may
+be a commenter). Unlike comments there is **no Drive fallback**: the OAuth client's Cloud project must be enrolled in the
 [Workspace Developer Preview Program](https://developers.google.com/workspace/preview),
 otherwise the commands fail with an explicit "not enrolled" error (exit 1) and
 nothing is changed. A decision is only reported as `OK` after a read-back shows

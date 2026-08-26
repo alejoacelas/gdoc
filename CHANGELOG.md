@@ -41,10 +41,13 @@ All notable changes to `gdoc` are documented here. This project follows
   preview (`documents.get?commentsViewMode=COMMENTS_VIEW_MODE_INCLUDED`,
   sent over the authorized transport because the public Discovery document
   doesn't list the parameter) and decides one suggestion per command with
-  `acceptSuggestion`/`rejectSuggestion`/`deleteSuggestion`, pinned to
-  `requiredRevisionId`. Each decision checks `commentUpdateState`, then
-  reads the document back and only reports `OK` when the thread is in the
-  requested state. Threads carry no range, so each command derives the
+  `acceptSuggestion`/`rejectSuggestion`/`deleteSuggestion`. Accept is
+  always pinned to `requiredRevisionId`; reject/delete are pinned when the
+  read returned a revision and go unpinned only when it did not (a
+  suggestion's commenter-author may not receive one). Each decision
+  requires `commentUpdateState: ALL_SAVED` and its ID in
+  `suggestionResponses`, then reads the document back and only reports
+  `OK` when the thread is in the requested state. Threads carry no range, so each command derives the
   tab and UTF-16 range(s) a suggestion touches from the
   `SUGGESTIONS_INLINE` structure (`suggestedInsertionIds`,
   `suggestedDeletionIds`, `suggested*Changes`, header/footer/footnote

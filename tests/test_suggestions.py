@@ -246,6 +246,31 @@ class TestDocumentsGetRaw:
 # --- derived locations / summaries ----------------------------------------
 
 
+def _single_tab_doc(body, **document_tab_extras):
+    """One tab "Main"/t.0 with the given body content and extra
+    documentTab keys (headers, footers, footnotes, inlineObjects, ...)."""
+    return {
+        "tabs": [
+            {
+                "tabProperties": {"tabId": "t.0", "title": "Main"},
+                "documentTab": {"body": {"content": body}, **document_tab_extras},
+            }
+        ]
+    }
+
+
+def _loc(kind, start, end, segment="", text=""):
+    return {
+        "tab": "Main",
+        "tabId": "t.0",
+        "segmentId": segment,
+        "kind": kind,
+        "startIndex": start,
+        "endIndex": end,
+        "text": text,
+    }
+
+
 class TestCollectSuggestionLocations:
     def test_insert_delete_style_and_child_tab(self):
         locs = collect_suggestion_locations(_DOC)
@@ -408,8 +433,165 @@ class TestCollectSuggestionLocations:
             }
         ]
 
-    def test_legacy_body_shape_and_no_marks(self):
-        assert collect_suggestion_locations({"body": {"content": []}}) == {}
+    def test_pure_style_change_is_reported(self):
+        doc = _single_tab_doc(
+            body=[
+                {
+                    "startIndex": 1,
+                    "endIndex": 6,
+                    "paragraph": {
+                        "elements": [
+                            _text_run(
+                                1,
+                                6,
+                                "gamma",
+                                suggestedTextStyleChanges={"suggest.c": {}},
+                            )
+                        ]
+                    },
+                }
+            ]
+        )
+        assert collect_suggestion_locations(doc)["suggest.c"] == [
+            _loc("style", 1, 6, text="gamma")
+        ]
+
+    def test_header_footer_footnote_carry_segment_id(self):
+        # Segment indexes restart at 0: a header range 0-4 must not be
+        # confused with body 0-4.
+        def seg(start, end, text, **marks):
+            return {
+                "content": [
+                    {
+                        "startIndex": start,
+                        "endIndex": end,
+                        "paragraph": {
+                            "elements": [_text_run(start, end, text, **marks)]
+                        },
+                    }
+                ]
+            }
+
+        doc = _single_tab_doc(
+            body=[
+                {
+                    "startIndex": 0,
+                    "endIndex": 4,
+                    "paragraph": {"elements": [_text_run(0, 4, "body")]},
+                }
+            ],
+            headers={"h1": seg(0, 4, "head", suggestedInsertionIds=["suggest.hd"])},
+            footers={"f1": seg(0, 3, "foo", suggestedDeletionIds=["suggest.ft"])},
+            footnotes={
+                "kix.fn": seg(0, 5, "note\n", suggestedInsertionIds=["suggest.fn"])
+            },
+        )
+        locs = collect_suggestion_locations(doc)
+        assert locs["suggest.hd"] == [_loc("insert", 0, 4, segment="h1", text="head")]
+        assert locs["suggest.ft"] == [_loc("delete", 0, 3, segment="f1", text="foo")]
+        assert locs["suggest.fn"] == [
+            _loc("insert", 0, 5, segment="kix.fn", text="note\n")
+        ]
+
+    def test_object_and_list_maps_singular_id_and_no_fake_range(self):
+        doc = _single_tab_doc(
+            body=[],
+            inlineObjects={
+                "kix.img": {
+                    "objectId": "kix.img",
+                    "suggestedInsertionId": "suggest.img",
+                    "suggestedDeletionIds": ["suggest.rm"],
+                }
+            },
+            lists={"kix.l": {"suggestedListPropertiesChanges": {"suggest.lp": {}}}},
+            suggestedDocumentStyleChanges={"suggest.ds": {}},
+        )
+        locs = collect_suggestion_locations(doc)
+        assert locs["suggest.img"] == [_loc("insert", None, None)]
+        assert locs["suggest.rm"] == [_loc("delete", None, None)]
+        assert locs["suggest.lp"] == [_loc("list-properties", None, None)]
+        assert locs["suggest.ds"] == [_loc("document-style", None, None)]
+
+    def test_date_properties_and_positioned_object_ids(self):
+        doc = _single_tab_doc(
+            body=[
+                {
+                    "startIndex": 1,
+                    "endIndex": 12,
+                    "paragraph": {
+                        "elements": [
+                            _text_run(1, 6, "when "),
+                            {
+                                "startIndex": 6,
+                                "endIndex": 7,
+                                "dateElement": {
+                                    "dateElementProperties": {},
+                                    "suggestedDateElementPropertiesChanges": {
+                                        "suggest.date": {}
+                                    },
+                                },
+                            },
+                            _text_run(7, 12, " ok\n"),
+                        ],
+                        "positionedObjectIds": [],
+                        "suggestedPositionedObjectIds": ["suggest.pos"],
+                    },
+                }
+            ],
+            positionedObjects={
+                "kix.pos": {
+                    "objectId": "kix.pos",
+                    "suggestedInsertionId": "suggest.pos",
+                }
+            },
+        )
+        locs = collect_suggestion_locations(doc)
+        assert locs["suggest.date"] == [_loc("date-properties", 6, 7)]
+        # The paragraph anchor is ranged; the positionedObjects-map mirror
+        # (no range, kind insert) is dropped in its favour.
+        assert locs["suggest.pos"] == [_loc("positioned-object", 1, 12)]
+
+    def test_object_map_mirror_deduped_but_property_change_kept(self):
+        doc = _single_tab_doc(
+            body=[
+                {
+                    "startIndex": 1,
+                    "endIndex": 3,
+                    "paragraph": {
+                        "elements": [
+                            {
+                                "startIndex": 1,
+                                "endIndex": 2,
+                                "inlineObjectElement": {
+                                    "inlineObjectId": "kix.img",
+                                    "suggestedInsertionIds": ["suggest.img"],
+                                },
+                            },
+                            _text_run(2, 3, "\n"),
+                        ]
+                    },
+                }
+            ],
+            inlineObjects={
+                "kix.img": {
+                    "objectId": "kix.img",
+                    "suggestedInsertionId": "suggest.img",
+                    "suggestedInlineObjectPropertiesChanges": {
+                        "suggest.img": {},
+                        "suggest.props": {},
+                    },
+                }
+            },
+        )
+        locs = collect_suggestion_locations(doc)
+        assert locs["suggest.img"] == [
+            _loc("insert", 1, 2),
+            _loc("object-properties", None, None),
+        ]
+        assert locs["suggest.props"] == [_loc("object-properties", None, None)]
+
+    def test_no_tabs_or_marks(self):
+        assert collect_suggestion_locations({"tabs": []}) == {}
         assert collect_suggestion_locations({}) == {}
 
 
@@ -507,10 +689,37 @@ class TestDecideSuggestion:
         }
 
     @patch("gdoc.api.docs.get_docs_service")
-    def test_empty_revision_never_sent(self, mock_svc):
+    def test_accept_without_revision_is_refused_before_any_call(self, mock_svc):
         with pytest.raises(GdocError, match="no revisionId"):
             decide_suggestion("doc1", "suggest.a", "accept", "")
         mock_svc.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "decision,key,resp_key",
+        [
+            ("reject", "rejectSuggestion", "rejectedSuggestionIds"),
+            ("delete", "deleteSuggestion", "deletedSuggestionIds"),
+        ],
+    )
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_reject_delete_without_revision_go_unpinned(
+        self, mock_svc, decision, key, resp_key
+    ):
+        # A commenter-author may reject/delete their own suggestion and may
+        # not receive a revisionId; the request then carries no writeControl
+        # at all — never requiredRevisionId: "".
+        service = _mock_docs_service(
+            {
+                "replies": [{}],
+                "suggestionResponses": [{resp_key: ["suggest.a"]}],
+                "commentUpdateState": "ALL_SAVED",
+            }
+        )
+        mock_svc.return_value = service
+        decide_suggestion("doc1", "suggest.a", decision, "")
+        assert _batch_body(service) == {
+            "requests": [{key: {"suggestionId": "suggest.a"}}],
+        }
 
     def test_unknown_decision_is_programming_error(self):
         with pytest.raises(ValueError):

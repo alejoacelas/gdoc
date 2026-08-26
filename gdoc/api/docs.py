@@ -2375,6 +2375,7 @@ _SUGGESTION_STYLE_KEYS = {
     "suggestedDocumentStyleChanges": "document-style",
     "suggestedNamedStylesChanges": "named-styles",
     "suggestedListPropertiesChanges": "list-properties",
+    "suggestedDateElementPropertiesChanges": "date-properties",
 }
 
 # Non-body segments of a tab whose indexes restart at 0 (Docs API
@@ -2399,7 +2400,9 @@ def collect_suggestion_locations(doc: dict) -> dict[str, list[dict]]:
     meaningful together with it. Marks on objects that have no indexes at
     all (document style, named styles, the inlineObjects/lists maps) are
     reported with ``startIndex``/``endIndex`` of None rather than a fake
-    0-0 range. A textRun's insertion carries the same ID in its
+    0-0 range — unless the same insertion/deletion also appears on a
+    ranged element, in which case only the ranged entry is kept. A
+    textRun's insertion carries the same ID in its
     ``suggestedTextStyleChanges``; that mirror entry is dropped so plain
     insertions are not reported twice.
     """
@@ -2445,6 +2448,10 @@ def collect_suggestion_locations(doc: dict) -> dict[str, list[dict]]:
             add(sid, ctx, "insert", enclosing, text)
         for sid in marked_ids(node, "suggestedDeletionIds"):
             add(sid, ctx, "delete", enclosing, text)
+        # Paragraph.suggestedPositionedObjectIds: objects suggested to be
+        # anchored to this paragraph; the paragraph's range is the location.
+        for sid in marked_ids(node, "suggestedPositionedObjectIds"):
+            add(sid, ctx, "positioned-object", enclosing, text)
         for key, kind in _SUGGESTION_STYLE_KEYS.items():
             changes = node.get(key)
             if isinstance(changes, dict):
@@ -2455,7 +2462,7 @@ def collect_suggestion_locations(doc: dict) -> dict[str, list[dict]]:
         for key, value in node.items():
             if key in _SUGGESTION_STYLE_KEYS or key in (
                 "suggestedInsertionIds", "suggestedInsertionId",
-                "suggestedDeletionIds",
+                "suggestedDeletionIds", "suggestedPositionedObjectIds",
             ):
                 continue
             if key in _SEGMENT_MAPS and isinstance(value, dict):
@@ -2479,6 +2486,17 @@ def collect_suggestion_locations(doc: dict) -> dict[str, list[dict]]:
             walk_tabs(tab.get("childTabs", []))
 
     walk_tabs(doc.get("tabs", []))
+    # An inserted/deleted object is marked twice: on its ranged element in
+    # the paragraph and, without a range, in the inlineObjects/
+    # positionedObjects map. Keep the ranged one; unrelated no-range
+    # entries (e.g. an object-properties change) are preserved.
+    for sid, entries in locations.items():
+        if any(e["startIndex"] is not None for e in entries):
+            locations[sid] = [
+                e for e in entries
+                if e["startIndex"] is not None
+                or e["kind"] not in ("insert", "delete")
+            ]
     return locations
 
 
@@ -2507,10 +2525,12 @@ def decide_suggestion(
     """Send one acceptSuggestion/rejectSuggestion/deleteSuggestion request.
 
     One ID per call keeps a failure atomic and auditable. The write is
-    pinned to *revision_id* (must be non-empty: the caller has just read
-    the document, and an unpinned decision could land after a collaborator
-    changed it). The raw batchUpdate response is returned so the caller
-    can inspect ``suggestionResponses``/``commentUpdateState``; a
+    pinned to *revision_id* when the read returned one (editors always
+    get it; live, a commenter did too). Accept refuses to run unpinned;
+    reject/delete — which a commenter-author may perform — go unpinned
+    only when no revisionId was available. The raw batchUpdate response
+    is returned so the caller can inspect ``suggestionResponses`` /
+    ``commentUpdateState``; a
     ``commentUpdateState`` other than ALL_SAVED is raised here because it
     means the thread update was not durably saved.
 
@@ -2523,15 +2543,23 @@ def decide_suggestion(
     if decision not in SUGGESTION_DECISIONS:
         raise ValueError(f"unknown suggestion decision: {decision}")
     request_key, rule = SUGGESTION_DECISIONS[decision]
-    if not revision_id:
-        raise GdocError(
-            f"cannot {decision} suggestion: the document read returned no "
-            "revisionId (suggestion decisions need edit-level read access)"
-        )
-    body = {
+    body: dict = {
         "requests": [{request_key: {"suggestionId": suggestion_id}}],
-        "writeControl": {"requiredRevisionId": revision_id},
     }
+    if revision_id:
+        body["writeControl"] = {"requiredRevisionId": revision_id}
+    elif decision == "accept":
+        # Google documents revisionId as available to users with edit
+        # access, which accept requires anyway; without it we cannot pin
+        # the content change to what was just read, so refuse.
+        raise GdocError(
+            "cannot accept suggestion: the document read returned no "
+            "revisionId (accepting needs edit access)"
+        )
+    # reject/delete are also open to the suggestion's author, who may be a
+    # commenter and may not receive a revisionId. Neither request depends
+    # on document coordinates, so they are sent unpinned in that case —
+    # never with an empty requiredRevisionId.
     try:
         service = get_docs_service()
         result = (

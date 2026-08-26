@@ -35,6 +35,25 @@ All notable changes to `gdoc` are documented here. This project follows
   `_prepare_text_replacement`) and one request builder
   (`_build_replacement_requests`); `edit` behaviour is unchanged.
 
+- **Suggestion threads: `suggestions`, `suggestion-info`,
+  `accept-suggestion`, `reject-suggestion`, `delete-suggestion`.** Reads
+  Google's native suggestion threads through the Docs API developer
+  preview (`documents.get?commentsViewMode=COMMENTS_VIEW_MODE_INCLUDED`,
+  sent over the authorized transport because the public Discovery document
+  doesn't list the parameter) and decides one suggestion per command with
+  `acceptSuggestion`/`rejectSuggestion`/`deleteSuggestion`, pinned to
+  `requiredRevisionId`. Each decision checks `commentUpdateState`, then
+  reads the document back and only reports `OK` when the thread is in the
+  requested state. Threads carry no range, so each command derives the
+  tab and UTF-16 range(s) a suggestion touches from the
+  `SUGGESTIONS_INLINE` structure (`suggestedInsertionIds`,
+  `suggestedDeletionIds`, `suggested*Changes`, header/footer/footnote
+  segment IDs) and reports them separately from the raw thread. No Drive fallback: a project without preview access
+  gets an explicit error and no mutation. Permission failures name the
+  rule Google applies (accept: edit access; reject: edit access or author;
+  delete: author). `delete-suggestion` uses the standard destructive
+  confirmation / `--force`. All five are exposed over MCP.
+
 ### Fixed
 - **`edit --all` with a self-overlapping anchor** (`aa` matching twice in
   `aaa`) is refused before any write (exit 3) instead of corrupting the

@@ -1896,13 +1896,15 @@ def _classify_suggest_error(e: HttpError, doc_id: str) -> None:
     _translate_http_error(e, doc_id)
 
 
-def _token_client_id(account: str | None) -> str | None:
-    """The OAuth client_id recorded in the account's token file.
+def _token_identity(account: str | None) -> tuple[str | None, str | None]:
+    """The (client_id, refresh_token) pair in the account's token file.
 
-    Developer Preview enrollment belongs to the OAuth client project, so
-    this is the identity that must hold still between the enrollment gate
-    and the write. A routine token refresh rewrites the file but keeps it;
-    only re-authenticating with a different client config changes it.
+    The identity that must hold still between the enrollment gate and the
+    write: Developer Preview enrollment belongs to the OAuth client
+    project (client_id), and the suggestion's author is the granted user
+    (refresh_token — any new grant mints a new one, whether the client or
+    the Google user changed). A routine access-token refresh rewrites the
+    file but keeps both. Missing or unreadable token reads as (None, None).
     """
     import json
 
@@ -1912,8 +1914,10 @@ def _token_client_id(account: str | None) -> str | None:
         with token_path_for(account).open() as f:
             data = json.load(f)
     except (OSError, ValueError):
-        return None
-    return data.get("client_id") if isinstance(data, dict) else None
+        return (None, None)
+    if not isinstance(data, dict):
+        return (None, None)
+    return (data.get("client_id"), data.get("refresh_token"))
 
 
 def check_suggest_preview_access(doc_id: str) -> None:
@@ -2072,16 +2076,18 @@ def suggest_replacement(
         return SuggestionResult(occurrences=0)
 
     # Prove enrollment with a read before the write (see the gate's doc),
-    # pinning one OAuth client identity across both: a re-auth with a
-    # different client config landing between them could otherwise prove
-    # enrollment for one project while the batch goes through another —
-    # which an unenrolled backend may apply as a direct edit. The pin is
-    # the token's client_id, not the file's identity: a routine
+    # pinning one OAuth identity across both: a re-auth landing between
+    # them could otherwise swap the client project (proving enrollment for
+    # one project while the batch goes through another — which an
+    # unenrolled backend may apply as a direct edit) or the granted user
+    # (authoring the suggestion as someone else). The pin is the token's
+    # (client_id, refresh_token) pair, not the file's identity: a routine
     # access-token refresh (the gate's own get_credentials persists one
     # when a long-lived process refreshed only in memory) rewrites the
-    # file without changing the client project, and must not abort.
+    # file but keeps both, and must not abort; any new grant mints a new
+    # refresh_token.
     account, _stamp = account_cache_key()
-    gate_client = _token_client_id(account)
+    gate_identity = _token_identity(account)
     check_suggest_preview_access(doc_id)
 
     body = {
@@ -2092,13 +2098,13 @@ def suggest_replacement(
         },
     }
     service = get_docs_service()
-    if _token_client_id(account) != gate_client:
+    if _token_identity(account) != gate_identity:
         raise GdocError(
             "credentials changed while preparing the suggest write (the "
-            "account's OAuth client was replaced between the enrollment "
-            "check and the write, so enrollment was proven for a "
-            "different client project). No change was made — rerun the "
-            "command."
+            "account was re-authenticated between the enrollment check "
+            "and the write, so the check may have proven a different "
+            "OAuth client project or user). No change was made — rerun "
+            "the command."
         )
     try:
         result = (

@@ -348,8 +348,23 @@ class TestSuggestRequestShape:
         project and write through another. The write must abort pre-send."""
         mock_svc.return_value = _service(_ok_response())
         with patch(
-            "gdoc.api.docs._token_client_id",
-            side_effect=["client-a.apps", "client-b.apps"],
+            "gdoc.api.docs._token_identity",
+            side_effect=[("client-a.apps", "rt1"), ("client-b.apps", "rt1")],
+        ):
+            with pytest.raises(GdocError, match="No change was made"):
+                suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
+        mock_svc.return_value.documents.return_value.batchUpdate.assert_not_called()
+
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_user_swap_between_gate_and_write_aborts(self, mock_svc):
+        """Re-authenticating the same account name to a different Google
+        user through the same client keeps client_id equal but mints a new
+        refresh_token; the suggestion must not be authored by the
+        replacement user."""
+        mock_svc.return_value = _service(_ok_response())
+        with patch(
+            "gdoc.api.docs._token_identity",
+            side_effect=[("client-a.apps", "rt1"), ("client-a.apps", "rt2")],
         ):
             with pytest.raises(GdocError, match="No change was made"):
                 suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
@@ -365,13 +380,13 @@ class TestSuggestRequestShape:
     ):
         """The gate's own get_credentials persists a refreshed access token
         (a long-lived process may have refreshed only in memory), rewriting
-        the token file with the same client_id. That must not read as a
-        credential swap — a file-identity comparison aborted the first
-        suggest after token expiry."""
+        the token file with the same client_id and refresh_token. That must
+        not read as a credential swap — a file-identity comparison aborted
+        the first suggest after token expiry."""
         mock_svc.return_value = _service(_ok_response())
         with patch(
-            "gdoc.api.docs._token_client_id",
-            side_effect=["client-a.apps", "client-a.apps"],
+            "gdoc.api.docs._token_identity",
+            side_effect=[("client-a.apps", "rt1"), ("client-a.apps", "rt1")],
         ):
             result = suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
         assert result.suggestion_ids == ["suggest.abc"]
@@ -971,19 +986,23 @@ class TestPreviewGate:
             self._run(_gate_response(400, text="something else", reason="Bad Request"))
 
 
-class TestTokenClientId:
+class TestTokenIdentity:
     def test_reads_parses_and_fails_soft(self, tmp_path):
-        from gdoc.api.docs import _token_client_id
+        from gdoc.api.docs import _token_identity
 
         token = tmp_path / "token.json"
         with patch("gdoc.util.token_path_for", return_value=token):
-            assert _token_client_id("acct") is None  # missing file
+            assert _token_identity("acct") == (None, None)  # missing file
+            token.write_text(
+                '{"client_id": "abc.apps", "refresh_token": "rt1"}'
+            )
+            assert _token_identity("acct") == ("abc.apps", "rt1")
             token.write_text('{"client_id": "abc.apps"}')
-            assert _token_client_id("acct") == "abc.apps"
+            assert _token_identity("acct") == ("abc.apps", None)
             token.write_text("not json")
-            assert _token_client_id("acct") is None
+            assert _token_identity("acct") == (None, None)
             token.write_text('["a", "list"]')
-            assert _token_client_id("acct") is None
+            assert _token_identity("acct") == (None, None)
 
 
 class TestTableContainerSuggestions:

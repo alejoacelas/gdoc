@@ -1375,10 +1375,21 @@ def cmd_suggest(args) -> int:
     # only does that for full-document writes).
     from gdoc.state import update_state_after_command
 
-    update_state_after_command(
-        doc_id, plan.change_info, command="suggest",
-        quiet=plan.quiet, command_version=command_version,
-    )
+    try:
+        update_state_after_command(
+            doc_id, plan.change_info, command="suggest",
+            quiet=plan.quiet, command_version=command_version,
+        )
+    except Exception as e:  # noqa: BLE001 — post-mutation; the local state
+        # file failing to write (read-only dir, full disk) must not turn
+        # the saved suggestion into a reported failure that an automated
+        # caller would blindly retry.
+        print(
+            "WARN: suggestion saved ("
+            + ", ".join(f"#{i}" for i in ids)
+            + f") but awareness state was not persisted: {e}",
+            file=sys.stderr,
+        )
     return 0
 
 
@@ -4581,7 +4592,17 @@ def run_argv(argv: list[str] | None = None, *, check_updates: bool = True) -> in
             from gdoc.update import check_for_update
             check_for_update()
 
-        return args.func(args)
+        # Pin one account for the whole invocation: unpinned, every service
+        # access re-resolves the configured default, so a `gdoc auth
+        # --set-default` from another process could hand one command's read
+        # and write to different accounts. The MCP server is exempt — it
+        # pins per tool call instead, so a default changed mid-serve is
+        # still picked up on the next call.
+        if args.command == "mcp":
+            return args.func(args)
+        from gdoc.util import account_context, resolve_account
+        with account_context(resolve_account()):
+            return args.func(args)
     except AuthError as e:
         print(f"ERR: {e}", file=sys.stderr)
         return 2

@@ -1128,6 +1128,26 @@ class TestCmdSuggest:
         out = capsys.readouterr().out
         assert out == "OK suggested 1 occurrence (#suggest.abc)\n"
 
+    @patch(
+        "gdoc.state.update_state_after_command",
+        side_effect=OSError("disk full"),
+    )
+    @patch("gdoc.api.drive.get_file_version", return_value=_VERSION)
+    @patch("gdoc.api.docs.suggest_replacement", return_value=_result())
+    @patch("gdoc.api.docs.get_document_structure", return_value=_structure())
+    @patch("gdoc.notify.pre_flight", return_value=None)
+    def test_state_persistence_failure_after_write_still_succeeds(
+        self, _pf, _doc, _sug, _ver, _state, capsys,
+    ):
+        """The local state file failing to write after the verified
+        suggestion must warn and exit 0 — reporting failure would invite an
+        automated caller to retry a mutation that already succeeded."""
+        assert cmd_suggest(_args()) == 0
+        captured = capsys.readouterr()
+        assert "OK suggested 1 occurrence (#suggest.abc)" in captured.out
+        assert "WARN: suggestion saved" in captured.err
+        assert "disk full" in captured.err
+
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.api.drive.get_file_version", return_value=_VERSION)
     @patch(

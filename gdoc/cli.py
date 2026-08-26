@@ -3988,9 +3988,9 @@ def build_parser() -> GdocArgumentParser:
                "Developer Preview): the original text stays until a reviewer "
                "accepts it. Replacement text supports inline markdown only "
                "(bold, italic, strikethrough, code, links); headings, lists, "
-               "and tables are rejected. Needs edit access on the doc and an "
-               "OAuth client from a preview-enrolled Cloud project; never "
-               "falls back to a direct edit.",
+               "and tables are rejected. Needs comment or edit access on the "
+               "doc and an OAuth client from a preview-enrolled Cloud "
+               "project; never falls back to a direct edit.",
     )
     suggest_p.add_argument("doc", help="Document ID or URL")
     suggest_p.add_argument(

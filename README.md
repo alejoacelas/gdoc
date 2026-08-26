@@ -587,7 +587,10 @@ Requirements and limits:
 - **Inline Markdown only.** Bold, italic, strikethrough, inline code, and links
   are suggested along with the text. Headings, lists, blockquotes, horizontal
   rules, tables, and `--cell` are rejected before any API call — use `edit` for
-  those.
+  those. Newlines are fine: they become suggested paragraph breaks, and the new
+  paragraphs inherit the anchor paragraph's style (unlike `edit`, which resets
+  inserted paragraphs to normal text). Fenced code blocks are accepted as
+  code-font paragraphs.
 - **No overlap with existing suggestions.** The document is read with
   suggestions inline; a match that touches text someone else has already
   suggested inserting, deleting, or restyling is refused, so a review thread is

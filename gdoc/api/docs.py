@@ -1691,6 +1691,11 @@ def check_inline_only_markdown(parsed) -> None:
     Google's suggested-structure shapes are unverified). So anything that
     is not plain text or an inline text style fails here, before any API
     call, with a usage error (exit 3).
+
+    Newlines are allowed: they become suggested paragraph breaks, and the
+    new paragraphs inherit the anchor paragraph's style (no paragraph-style
+    requests are sent in suggest mode). Fenced code blocks pass too — they
+    parse to plain NORMAL_TEXT paragraphs in the code font.
     """
     if parsed.tables:
         raise GdocError(_SUGGEST_UNSUPPORTED_HINT, exit_code=3)
@@ -1725,17 +1730,20 @@ def _inline_only(parsed):
 def _walk_suggestion_ids(node, out: set[str]) -> None:
     """Collect every suggestion ID referenced anywhere under *node*.
 
-    Schema-tolerant: any ``suggested*Ids`` list contributes its values and
-    any ``suggested*Changes`` map contributes its keys, so new suggestion
-    kinds are picked up without a code change.
+    Schema-tolerant: any ``suggested*`` list contributes its string values
+    (``suggestedInsertionIds``) and any ``suggested*`` map contributes its
+    keys (``suggestedTextStyleChanges``, and also
+    ``suggestedPositionedObjectIds``, which is a map keyed by suggestion ID
+    despite its name), so new suggestion kinds are picked up without a
+    code change.
     """
     if isinstance(node, dict):
         for key, value in node.items():
             if key.startswith("suggested"):
-                if key.endswith("Ids") and isinstance(value, list):
+                if isinstance(value, list):
                     out.update(v for v in value if isinstance(v, str))
                     continue
-                if key.endswith("Changes") and isinstance(value, dict):
+                if isinstance(value, dict):
                     out.update(value.keys())
                     continue
             _walk_suggestion_ids(value, out)
@@ -1801,9 +1809,17 @@ def _classify_suggest_error(e: HttpError, doc_id: str) -> None:
     status = int(e.resp.status)
     detail = str(e)
     lowered = detail.lower()
-    if status == 400 and "revision" in lowered:
+    if (
+        status == 400
+        and "revision" in lowered
+        and "invalid value" not in lowered
+    ):
+        # A stale requiredRevisionId. A malformed one ("Invalid value at
+        # 'write_control.required_revision_id'") is a bug, not a race, and
+        # must not be reported as "re-run it".
         raise GdocError(
-            "document changed while the command was running; re-run it"
+            "document changed while the command was running; re-run it "
+            f"(server: {e.reason})"
         )
     if status == 400 and (
         "unknown name" in lowered
@@ -1920,9 +1936,19 @@ def suggest_replacement(
             "— the text may have been edited directly."
         )
 
-    readback = get_document_structure(
-        doc_id, suggestions_view_mode=SUGGESTIONS_INLINE,
-    )
+    try:
+        readback = get_document_structure(
+            doc_id, suggestions_view_mode=SUGGESTIONS_INLINE,
+        )
+    except GdocError as e:
+        # The write succeeded; only the verification read failed. Say so —
+        # a bare "API error (503)" would hide that a suggestion very likely
+        # exists now.
+        raise GdocError(
+            "suggestion(s) " + ", ".join(outcome.suggestion_ids)
+            + " were reported saved but could not be verified "
+            f"({e}); inspect the document", exit_code=e.exit_code,
+        )
     missing = [
         sid for sid in outcome.suggestion_ids
         if sid not in collect_suggestion_ids(readback)

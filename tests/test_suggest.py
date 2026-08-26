@@ -364,6 +364,20 @@ class TestSuggestResponseIds:
 
     @patch("gdoc.api.docs.get_document_structure")
     @patch("gdoc.api.docs.get_docs_service")
+    def test_readback_api_failure_names_the_saved_ids(self, mock_svc, mock_rb):
+        """A 5xx on the verification read must not hide that the write
+        already succeeded."""
+        service = _service(_ok_response(created=("s.saved",)))
+        mock_svc.return_value = service
+        mock_rb.side_effect = GdocError("API error (503): Backend Error")
+        with pytest.raises(GdocError, match="s.saved") as exc:
+            suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
+        assert "could not be verified" in str(exc.value)
+        assert "API error (503)" in str(exc.value)
+        assert service.documents.return_value.batchUpdate.call_count == 1
+
+    @patch("gdoc.api.docs.get_document_structure")
+    @patch("gdoc.api.docs.get_docs_service")
     def test_readback_missing_id_is_an_error(self, mock_svc, mock_rb):
         mock_svc.return_value = _service(_ok_response(created=("s.1", "s.2")))
         mock_rb.return_value = _readback("s.1")
@@ -435,6 +449,17 @@ class TestSuggestErrors:
             suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
 
     @patch("gdoc.api.docs.get_docs_service")
+    def test_400_malformed_revision_is_not_reported_as_a_race(self, mock_svc):
+        mock_svc.return_value = _service(batch_error=_http_error(
+            400, b'{"error": {"message": "Invalid value at '
+                 b'\'write_control.required_revision_id\'"}}',
+            reason="Bad Request",
+        ))
+        with pytest.raises(GdocError) as exc:
+            suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
+        assert "re-run it" not in str(exc.value)
+
+    @patch("gdoc.api.docs.get_docs_service")
     def test_403_reports_both_possibilities(self, mock_svc):
         mock_svc.return_value = _service(batch_error=_http_error(403))
         with pytest.raises(GdocError, match="Permission denied: doc1") as exc:
@@ -492,12 +517,30 @@ class TestCheckInlineOnly:
     @pytest.mark.parametrize("markdown", [
         "plain",
         "two\nparagraphs",
+        "a\n\nb",
+        "```\ncode\n```",
         "**bold** and *italic* and ~~strike~~",
         "`code` and [a link](https://example.com)",
         "",
     ])
     def test_inline_markdown_accepted(self, markdown):
         check_inline_only_markdown(parse_markdown(markdown))
+
+    @patch(
+        "gdoc.api.docs.get_document_structure",
+        return_value=_readback("suggest.abc"),
+    )
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_multi_paragraph_replacement_sends_no_paragraph_style(
+        self, mock_svc, _rb,
+    ):
+        """Newlines become suggested paragraph breaks; the new paragraphs
+        inherit the anchor's style rather than being reset to NORMAL_TEXT."""
+        mock_svc.return_value = _service(_ok_response())
+        suggest_replacement("doc1", MATCH, "a\n\nb", "rev", tab_id="t.0")
+        reqs = _batch_call(mock_svc.return_value).kwargs["body"]["requests"]
+        assert [next(iter(r)) for r in reqs] == ["deleteContentRange", "insertText"]
+        assert reqs[1]["insertText"]["text"] == "a\n\nb"
 
     @pytest.mark.parametrize("markdown", [
         "## Heading", "* bullet", "2. numbered", "***", "> quoted",
@@ -601,6 +644,15 @@ class TestCollectSuggestionIds:
 
     def test_empty_document(self):
         assert collect_suggestion_ids({"tabs": []}) == set()
+
+    def test_positioned_object_ids_map_is_keyed_by_suggestion_id(self):
+        """suggestedPositionedObjectIds is a map despite the *Ids name."""
+        para = _para(
+            _run("hello\n", 1, 7),
+            suggestedPositionedObjectIds={"s.pos": {"objectIds": ["kix.1"]}},
+        )
+        assert collect_suggestion_ids({"body": _body(para)}) == {"s.pos"}
+        assert find_suggestions_in_range(_body(para), 2, 4) == {"s.pos"}
 
 
 class TestSuggestionResult:

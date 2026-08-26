@@ -4,6 +4,33 @@ All notable changes to `gdoc` are documented here. This project follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.0] — 2026-08-26
+
+### Added
+- **Suggested edits: `gdoc suggest DOC OLD NEW`.** The same find-and-replace
+  as `edit` (`--all`, `--case-sensitive`, `--normalize`, `--tab`,
+  `--old-file`/`--new-file`, `-` for stdin), but the batchUpdate runs with
+  `writeControl.writeMode: SUGGEST` (Docs API Developer Preview), so the
+  change lands as a pending suggestion with an accept/reject control and
+  the original text stays until a reviewer accepts it. Output names the
+  review object (`OK suggested 1 occurrence (#suggest.abc)`; `--json`
+  reports `suggestionIds`, `createdSuggestionIds`, `updatedSuggestionIds`).
+  Success is verified, not assumed: HTTP 200 plus `commentUpdateState:
+  ALL_SAVED`, at least one suggestion ID in `suggestionResponses`, and a
+  `SUGGESTIONS_INLINE` read-back that shows every ID — anything less is an
+  error, and there is deliberately no fallback to a direct edit (an
+  unenrolled project fails with `suggest mode not available`). The document
+  is read with suggestions inline before matching and a match that touches
+  an existing suggested insertion, deletion, or style change is refused, so
+  another reviewer's thread is never modified by accident. Replacement text
+  may use inline Markdown only (bold, italic, strikethrough, code, links);
+  headings, lists, blockquotes, horizontal rules, tables, and `--cell` are
+  rejected before any API call. Needs comment or edit access on the doc.
+  Exposed over MCP as `gdoc_suggest` (a write tool). `edit` and `suggest`
+  share one text-resolution/matching front half (`_resolve_replacement_text`,
+  `_prepare_text_replacement`) and one request builder
+  (`_build_replacement_requests`); `edit` behaviour is unchanged.
+
 ## [0.20.1] — 2026-08-15
 
 ### Changed

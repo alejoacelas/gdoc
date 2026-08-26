@@ -1896,6 +1896,26 @@ def _classify_suggest_error(e: HttpError, doc_id: str) -> None:
     _translate_http_error(e, doc_id)
 
 
+def _token_client_id(account: str | None) -> str | None:
+    """The OAuth client_id recorded in the account's token file.
+
+    Developer Preview enrollment belongs to the OAuth client project, so
+    this is the identity that must hold still between the enrollment gate
+    and the write. A routine token refresh rewrites the file but keeps it;
+    only re-authenticating with a different client config changes it.
+    """
+    import json
+
+    from gdoc.util import token_path_for
+
+    try:
+        with token_path_for(account).open() as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return None
+    return data.get("client_id") if isinstance(data, dict) else None
+
+
 def check_suggest_preview_access(doc_id: str) -> None:
     """Non-mutating gate: is this OAuth client's project preview-enrolled?
 
@@ -2052,13 +2072,16 @@ def suggest_replacement(
         return SuggestionResult(occurrences=0)
 
     # Prove enrollment with a read before the write (see the gate's doc),
-    # pinning one credential identity across both: `gdoc auth` rewriting
-    # the token file between them could swap the OAuth client project, so
-    # the gate would prove enrollment for one project while the batch goes
-    # through another — which an unenrolled backend may apply as a direct
-    # edit. The key carries the token file's identity; if it is unchanged
-    # once the service is in hand, gate and write share one credential.
-    gate_key = account_cache_key()
+    # pinning one OAuth client identity across both: a re-auth with a
+    # different client config landing between them could otherwise prove
+    # enrollment for one project while the batch goes through another —
+    # which an unenrolled backend may apply as a direct edit. The pin is
+    # the token's client_id, not the file's identity: a routine
+    # access-token refresh (the gate's own get_credentials persists one
+    # when a long-lived process refreshed only in memory) rewrites the
+    # file without changing the client project, and must not abort.
+    account, _stamp = account_cache_key()
+    gate_client = _token_client_id(account)
     check_suggest_preview_access(doc_id)
 
     body = {
@@ -2069,12 +2092,13 @@ def suggest_replacement(
         },
     }
     service = get_docs_service()
-    if account_cache_key() != gate_key:
+    if _token_client_id(account) != gate_client:
         raise GdocError(
             "credentials changed while preparing the suggest write (the "
-            "account's token was rewritten between the enrollment check "
-            "and the write, so they may belong to different OAuth client "
-            "projects). No change was made — rerun the command."
+            "account's OAuth client was replaced between the enrollment "
+            "check and the write, so enrollment was proven for a "
+            "different client project). No change was made — rerun the "
+            "command."
         )
     try:
         result = (

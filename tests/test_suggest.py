@@ -342,18 +342,39 @@ class TestSuggestRequestShape:
         service.documents.return_value.batchUpdate.assert_not_called()
 
     @patch("gdoc.api.docs.get_docs_service")
-    def test_credential_change_between_gate_and_write_aborts(self, mock_svc):
-        """A token rewrite between the enrollment gate and the write could
-        swap the OAuth client project — proving enrollment for one project
-        and writing through another. The write must abort pre-send."""
+    def test_client_swap_between_gate_and_write_aborts(self, mock_svc):
+        """A re-auth with a different OAuth client landing between the
+        enrollment gate and the write would prove enrollment for one
+        project and write through another. The write must abort pre-send."""
         mock_svc.return_value = _service(_ok_response())
         with patch(
-            "gdoc.api.docs.account_cache_key",
-            side_effect=[("acct", (1, 1, 1)), ("acct", (2, 2, 2))],
+            "gdoc.api.docs._token_client_id",
+            side_effect=["client-a.apps", "client-b.apps"],
         ):
             with pytest.raises(GdocError, match="No change was made"):
                 suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
         mock_svc.return_value.documents.return_value.batchUpdate.assert_not_called()
+
+    @patch(
+        "gdoc.api.docs.get_document_structure",
+        return_value=_readback("suggest.abc"),
+    )
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_routine_token_refresh_between_gate_and_write_is_allowed(
+        self, mock_svc, _rb,
+    ):
+        """The gate's own get_credentials persists a refreshed access token
+        (a long-lived process may have refreshed only in memory), rewriting
+        the token file with the same client_id. That must not read as a
+        credential swap — a file-identity comparison aborted the first
+        suggest after token expiry."""
+        mock_svc.return_value = _service(_ok_response())
+        with patch(
+            "gdoc.api.docs._token_client_id",
+            side_effect=["client-a.apps", "client-a.apps"],
+        ):
+            result = suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
+        assert result.suggestion_ids == ["suggest.abc"]
 
     @patch("gdoc.api.docs.get_docs_service")
     def test_no_requests_returns_zero_without_calling_api(self, mock_svc):
@@ -948,6 +969,21 @@ class TestPreviewGate:
     def test_other_400_is_api_error_not_enrollment(self):
         with pytest.raises(GdocError, match=r"API error \(400\)"):
             self._run(_gate_response(400, text="something else", reason="Bad Request"))
+
+
+class TestTokenClientId:
+    def test_reads_parses_and_fails_soft(self, tmp_path):
+        from gdoc.api.docs import _token_client_id
+
+        token = tmp_path / "token.json"
+        with patch("gdoc.util.token_path_for", return_value=token):
+            assert _token_client_id("acct") is None  # missing file
+            token.write_text('{"client_id": "abc.apps"}')
+            assert _token_client_id("acct") == "abc.apps"
+            token.write_text("not json")
+            assert _token_client_id("acct") is None
+            token.write_text('["a", "list"]')
+            assert _token_client_id("acct") is None
 
 
 class TestTableContainerSuggestions:

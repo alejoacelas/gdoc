@@ -662,13 +662,12 @@ _TABS_DOC = {
 
 
 def _transport_errors():
-    import socket
     import ssl
 
     import httplib2
 
     return [
-        socket.timeout("timed out"),
+        TimeoutError("timed out"),  # socket.timeout is an alias since 3.10
         ConnectionResetError(104, "Connection reset by peer"),
         ssl.SSLError("EOF occurred in violation of protocol"),
         httplib2.HttpLib2Error("connection dropped"),

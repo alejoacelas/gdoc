@@ -28,9 +28,9 @@ from gdoc.api.docs import (
     find_post,
     find_thread,
     get_document_threads,
+    head_post_assignee,
     insert_comment,
     post_is_action,
-    thread_assignee,
     update_comment_post,
 )
 from gdoc.cli import (
@@ -161,31 +161,32 @@ class TestThreadHelpers:
         assert find_post(thread, "r1")["postId"] == "r1"
         assert find_post(thread, "nope") is None
 
-    def test_thread_assignee_from_head_post(self):
-        assert thread_assignee(_comment_thread(assignee=ME)) == ME
+    def test_head_post_assignee_from_head_post(self):
+        assert head_post_assignee(_comment_thread(assignee=ME)) == ME
 
-    def test_thread_assignee_is_head_post_only(self):
-        # A reply's assigneeEmail records a reassignment event; the current
-        # assignee per the API contract is headPost.assigneeEmail.
+    def test_head_post_assignee_is_head_post_only(self):
+        # A reply's assigneeEmail records a reassignment event (observed
+        # live: the head keeps the original); the preflight fact Google
+        # requires is headPost.assigneeEmail.
         thread = _comment_thread(
             assignee=ME,
             replies=[_post("r1", assignee=OTHER), _post("r2")],
         )
-        assert thread_assignee(thread) == ME
+        assert head_post_assignee(thread) == ME
         unassigned_head = _comment_thread(replies=[_post("r1", assignee=OTHER)])
-        assert thread_assignee(unassigned_head) == ""
+        assert head_post_assignee(unassigned_head) == ""
 
-    def test_thread_assignee_unassigned_is_empty(self):
-        assert thread_assignee(_comment_thread()) == ""
-        assert thread_assignee(_comment_thread(replies=[_post("r1")])) == ""
+    def test_head_post_assignee_unassigned_is_empty(self):
+        assert head_post_assignee(_comment_thread()) == ""
+        assert head_post_assignee(_comment_thread(replies=[_post("r1")])) == ""
 
-    def test_thread_assignee_ignores_unknown_shapes(self):
+    def test_head_post_assignee_ignores_unknown_shapes(self):
         # Fail closed: only a string assigneeEmail on a post counts.
         thread = _comment_thread()
         thread["assigneeEmail"] = ME
         thread["headPost"]["assignee"] = {"emailAddress": ME}
         thread["replies"] = [dict(_post("r1"), assigneeEmail={"user": ME})]
-        assert thread_assignee(thread) == ""
+        assert head_post_assignee(thread) == ""
 
     def test_post_is_deleted(self):
         from gdoc.api.docs import post_is_deleted
@@ -433,6 +434,8 @@ class TestAddCommentReply:
     @patch("gdoc.api.docs.get_document_threads")
     @patch("gdoc.api.docs.get_docs_service")
     def test_reassign_sends_assignee_email_in_same_post(self, mock_svc, mock_read):
+        # Event-sourced verification: the head keeps ME, the new reply
+        # carries OTHER — that is a verified reassignment.
         service = _mock_docs_service(_reply_ok("p_new", "t", assignee=OTHER))
         mock_svc.return_value = service
         mock_read.return_value = _doc(comments=[_comment_thread(
@@ -758,6 +761,9 @@ class TestReadBackFailureIsAmbiguous:
         ),
         GdocError("API error (503): Backend Error"),
         AuthError("Authentication expired. Run `gdoc auth`."),
+        TimeoutError("timed out"),
+        ConnectionResetError(104, "Connection reset by peer"),
+        __import__("httplib2").HttpLib2Error("connection dropped"),
     ])
     @pytest.mark.parametrize("operation", ["insert", "reply", "edit", "delete"])
     @patch("gdoc.api.docs.get_document_threads")
@@ -786,7 +792,8 @@ class TestReadBackFailureIsAmbiguous:
         assert "may have succeeded" in msg and "inspect" in msg
         assert "reported saved" in msg
         assert "No change was made" not in msg.split("verification read failed")[0]
-        assert ei.value.exit_code == error.exit_code
+        expected_code = getattr(error, "exit_code", 1)
+        assert ei.value.exit_code == expected_code
         assert not isinstance(ei.value, PreviewUnavailableError)
         # The write itself was sent exactly once; nothing is retried.
         assert mock_svc.return_value.documents.return_value.batchUpdate.call_count == 1
@@ -1149,6 +1156,67 @@ class TestCmdReplyNative:
         assert mock_update.call_args.kwargs["comment_state_patch"] == {
             "add_comment_id": "c1",
         }
+
+
+# --- post-write Drive version lookup is best-effort -------------------------
+
+
+@patch("gdoc.state.update_state_after_command")
+@patch("gdoc.notify.pre_flight", return_value=None)
+@patch("gdoc.api.drive.get_file_version", side_effect=GdocError("API error (503)"))
+class TestPostWriteVersionBestEffort:
+    """A verified native write must not fail on the awareness version
+    lookup: that would invite a duplicate retry."""
+
+    @patch("gdoc.api.docs.insert_comment", return_value="c_assigned")
+    @patch("gdoc.api.docs.get_document_with_tabs", return_value=_TABS_DOC)
+    def test_assigned_insert(self, _get, _ins, _ver, _pf, mock_update, capsys):
+        args = _make_args("comment", text="p", quote="quick", assign=ME, json=True)
+        assert cmd_comment(args) == 0
+        out, err = capsys.readouterr()
+        assert json.loads(out)["id"] == "c_assigned"
+        assert "WARN: write succeeded" in err
+        kwargs = mock_update.call_args.kwargs
+        assert kwargs["command_version"] is None
+        assert kwargs["comment_state_patch"] == {"add_comment_id": "c_assigned"}
+
+    @patch("gdoc.api.docs.add_comment_reply", return_value=_post("p9", "hi"))
+    def test_native_reply(self, _add, _ver, _pf, mock_update, capsys):
+        args = _make_args("reply", comment_id="s1", text="hi", suggestion=True,
+                          reassign=None)
+        assert cmd_reply(args) == 0
+        out, err = capsys.readouterr()
+        assert "OK reply on suggestion #s1" in out and "WARN" in err
+        assert mock_update.call_args.kwargs["command_version"] is None
+
+    @patch("gdoc.api.docs.update_comment_post")
+    @patch("gdoc.api.docs.get_document_threads")
+    def test_edit(self, mock_read, _upd, _ver, _pf, mock_update, capsys):
+        thread = _comment_thread("c1", replies=[_post("r1")])
+        mock_read.return_value = _doc(comments=[thread])
+        args = _make_args("edit-comment", thread_id="c1", post_id="r1", text="new")
+        assert cmd_edit_comment(args) == 0
+        assert "WARN" in capsys.readouterr().err
+        kwargs = mock_update.call_args.kwargs
+        assert kwargs["command_version"] is None
+        assert kwargs["comment_state_patch"] == {"add_comment_id": "c1"}
+
+    @patch("gdoc.api.docs.delete_comment_reply")
+    @patch("gdoc.api.docs.get_document_threads")
+    def test_delete(self, mock_read, _del, _ver, _pf, mock_update, capsys):
+        thread = _comment_thread("c1", replies=[_post("r1")])
+        mock_read.return_value = _doc(comments=[thread])
+        args = _make_args("delete-reply", thread_id="c1", post_id="r1", force=True)
+        assert cmd_delete_reply(args) == 0
+        assert "WARN" in capsys.readouterr().err
+        assert mock_update.call_args.kwargs["command_version"] is None
+
+    @patch("gdoc.api.comments.get_drive_service")
+    @patch("gdoc.api.comments.create_comment", return_value={"id": "c_drive"})
+    def test_drive_comment_path_unchanged(self, _create, _svc, _ver, _pf, _update):
+        # Ordinary Drive comment creation keeps its existing contract.
+        with pytest.raises(GdocError, match="API error"):
+            cmd_comment(_make_args("comment", text="p", quote=None, assign=None))
 
 
 # --- edit-comment / edit-suggestion-reply ---------------------------------

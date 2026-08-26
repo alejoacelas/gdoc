@@ -183,7 +183,7 @@ def insert_comment(
         # rather than echoing the requested address back as fact.
         doc = _read_back_threads(doc_id, f"assigned comment #{comment_id}")
         created = find_thread(doc, comment_id, suggestion=False)
-        if created is None or thread_assignee(created) != assignee_email:
+        if created is None or head_post_assignee(created) != assignee_email:
             raise GdocError(
                 f"comment #{comment_id} was created but the read-back does "
                 f"not show it assigned to {assignee_email}; inspect the thread"
@@ -306,6 +306,11 @@ def get_document_threads(doc_id: str) -> dict:
     return doc
 
 
+_TRANSPORT_ERRORS: tuple[type[BaseException], ...] = (
+    ConnectionError, TimeoutError, OSError,  # socket/ssl errors are OSErrors
+)
+
+
 def _read_back_threads(doc_id: str, what: str) -> dict:
     """Verification read after a write that Google reported as ALL_SAVED.
 
@@ -314,6 +319,8 @@ def _read_back_threads(doc_id: str, what: str) -> dict:
     Re-raise with that framing — never the pre-write "No change was made"
     message — and keep the original exit code.
     """
+    import httplib2
+
     try:
         return get_document_threads(doc_id)
     except GdocError as e:
@@ -322,6 +329,12 @@ def _read_back_threads(doc_id: str, what: str) -> dict:
             f"the verification read failed: {e} The write may have "
             "succeeded; inspect the thread before retrying.",
             exit_code=e.exit_code,
+        ) from e
+    except (*_TRANSPORT_ERRORS, httplib2.HttpLib2Error) as e:
+        raise GdocError(
+            f"{what} was reported saved (commentUpdateState=ALL_SAVED) but "
+            f"the verification read failed ({type(e).__name__}: {e}). The "
+            "write may have succeeded; inspect the thread before retrying."
         ) from e
 
 
@@ -361,13 +374,15 @@ def find_post(thread: dict, post_id: str) -> dict | None:
     return None
 
 
-def thread_assignee(thread: dict) -> str:
-    """Current assignee email of a comment thread, or "" when unassigned.
+def head_post_assignee(thread: dict) -> str:
+    """``headPost.assigneeEmail`` of a comment thread, or "" when absent.
 
-    Per the API contract the thread's assignee is ``headPost.assigneeEmail``
-    (observed live for ``insertComment.assigneeEmailAddress``). A reply
-    that carries ``assigneeEmail`` records the reassignment event, not the
-    current state, so it is not consulted: an unassigned head fails closed.
+    This is the precondition Google enforces for ``Post.assigneeEmail`` on
+    a reply (400 on an unassigned parent) and the field a fresh
+    ``insertComment.assigneeEmailAddress`` lands on. Assignment history is
+    event-sourced: a reassignment reply carries the new ``assigneeEmail``
+    while the head post keeps the original (observed live), so this
+    function makes no claim about the thread's *current* assignee.
     """
     value = (thread.get("headPost") or {}).get("assigneeEmail")
     return value if isinstance(value, str) else ""
@@ -388,11 +403,6 @@ def post_is_action(post: dict) -> bool:
     if action and not action.startswith("NO_"):
         return True
     return bool(post.get("assigneeEmail"))
-
-
-_TRANSPORT_ERRORS: tuple[type[BaseException], ...] = (
-    ConnectionError, TimeoutError, OSError,  # socket/ssl errors are OSErrors
-)
 
 
 def _dispatch_native_write(doc_id: str, body: dict, what: str) -> dict:

@@ -372,7 +372,7 @@ No other dependencies. Intentionally minimal.
 
 3. **`edit` is the workhorse for agents** — mirrors Claude Code's Edit tool. Agents `cat` the doc, find the text to change, and `edit` it with an exact unique match. No index math needed.
 
-4. **Comments use Drive API, not Docs API** — The Docs API can read comments embedded in the document structure, but CRUD operations on comments are exclusively through the Drive API v3.
+4. **Ordinary comment CRUD uses the Drive API; a few operations use the Docs API preview** — Listing, creating, replying, resolving, reopening and deleting comments go through Drive v3 `comments`/`replies`. Anchored comments (`comment --quote`), assignment (`--assign`, `reply --reassign`), suggestion-thread replies, and editing or deleting a single post use the Docs API's native comment threads (`documents.batchUpdate` `insertComment` / `addCommentReply` / `updateCommentPost` / `deleteCommentReply`, Workspace Developer Preview), verified by `documents.get` with `commentsViewMode`. Drive reply IDs and native post IDs are the same values.
 
 5. **`write` is destructive** — Full doc replacement. Blocked when doc changed since last read unless `--force` is passed. Agents should prefer `edit` for targeted edits.
 

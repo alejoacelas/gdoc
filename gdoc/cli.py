@@ -2347,7 +2347,12 @@ def cmd_comment(args) -> int:
     quiet = getattr(args, "quiet", False)
 
     quote = getattr(args, "quote", "") or ""
-    assignee = (getattr(args, "assign", "") or "").strip()
+    assign_raw = getattr(args, "assign", None)
+    assignee = (assign_raw or "").strip()
+    if assign_raw is not None and not assignee:
+        # A supplied but blank --assign must not silently become an
+        # unassigned Drive comment.
+        raise GdocError("--assign requires an email address", exit_code=3)
     if assignee:
         # Assignment is Docs-native only (insertComment.assigneeEmailAddress),
         # and insertComment needs a range, so --assign implies --quote and
@@ -2383,8 +2388,11 @@ def cmd_comment(args) -> int:
         result = create_comment(doc_id, args.text, quote=quote)
         new_id = result["id"]
 
-    from gdoc.api.drive import get_file_version
-    command_version = get_file_version(doc_id).get("version")
+    if assignee:
+        command_version = _post_write_version(doc_id)
+    else:
+        from gdoc.api.drive import get_file_version
+        command_version = get_file_version(doc_id).get("version")
 
     from gdoc.format import get_output_mode, format_json
     mode = get_output_mode(args)
@@ -2413,6 +2421,28 @@ def cmd_comment(args) -> int:
     )
 
     return 0
+
+
+def _post_write_version(doc_id: str) -> int | None:
+    """Drive version after a verified native write, best-effort.
+
+    The write has already been confirmed by read-back; failing the command
+    here would invite a duplicate retry. Warn on stderr and record no
+    version instead (the next pre-flight re-baselines from Drive).
+    """
+    import sys
+
+    from gdoc.api.drive import get_file_version
+
+    try:
+        return get_file_version(doc_id).get("version")
+    except Exception as e:  # noqa: BLE001 - any failure is non-fatal here
+        print(
+            f"WARN: write succeeded but the Drive version lookup failed "
+            f"({type(e).__name__}: {e}); awareness state not versioned",
+            file=sys.stderr,
+        )
+        return None
 
 
 def _native_thread_or_fail(doc_id: str, thread_id: str, suggestion: bool) -> dict:
@@ -2450,14 +2480,14 @@ def _native_reply(args, doc_id: str, change_info, thread_id: str) -> int:
     reassign = (getattr(args, "reassign", "") or "").strip()
     text = args.text or ""
 
-    from gdoc.api.docs import add_comment_reply, thread_assignee, thread_kind
+    from gdoc.api.docs import add_comment_reply, head_post_assignee, thread_kind
 
     if reassign:
         # Preflight: Google rejects Post.assigneeEmail on a thread whose
         # head post has no assignee, so read the native thread and fail
         # before writing. Only headPost.assigneeEmail counts (fail closed).
         thread = _native_thread_or_fail(doc_id, thread_id, suggestion=False)
-        if not thread_assignee(thread):
+        if not head_post_assignee(thread):
             raise GdocError(
                 f"comment #{thread_id} has no assignee on its head post; "
                 "--reassign can only move an existing assignment. Create the "
@@ -2471,8 +2501,7 @@ def _native_reply(args, doc_id: str, change_info, thread_id: str) -> int:
     )
     post_id = post.get("postId", "")
 
-    from gdoc.api.drive import get_file_version
-    command_version = get_file_version(doc_id).get("version")
+    command_version = _post_write_version(doc_id)
 
     from gdoc.format import format_json, get_output_mode
     mode = get_output_mode(args)
@@ -2715,8 +2744,7 @@ def _cmd_edit_post(args, suggestion: bool) -> int:
 
     update_comment_post(doc_id, thread_id, post_id, text, suggestion=suggestion)
 
-    from gdoc.api.drive import get_file_version
-    command_version = get_file_version(doc_id).get("version")
+    command_version = _post_write_version(doc_id)
 
     from gdoc.format import format_json, get_output_mode
     mode = get_output_mode(args)
@@ -2798,8 +2826,7 @@ def _cmd_delete_post(args, suggestion: bool) -> int:
 
     delete_comment_reply(doc_id, thread_id, post_id, suggestion=suggestion)
 
-    from gdoc.api.drive import get_file_version
-    command_version = get_file_version(doc_id).get("version")
+    command_version = _post_write_version(doc_id)
 
     from gdoc.format import format_json, get_output_mode
     mode = get_output_mode(args)

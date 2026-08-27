@@ -158,3 +158,50 @@ def test_token_path_for_resolved_accounts():
         util.token_path_for("work")
         == util.CONFIG_DIR / "accounts" / "work" / "token.json"
     )
+
+
+def test_run_argv_pins_one_account_across_the_command(mocker):
+    """A `gdoc auth --set-default` from another process landing mid-command
+    must not hand the command's later service accesses (the write) a
+    different account than its earlier ones (the read)."""
+    from gdoc import cli
+
+    default = ["acct-a"]
+    mocker.patch(
+        "gdoc.util.get_default_account", side_effect=lambda: default[0],
+    )
+    seen = []
+
+    def fake_cmd(args):
+        seen.append(util.resolve_account())
+        default[0] = "acct-b"  # the flip lands mid-command
+        seen.append(util.resolve_account())
+        return 0
+
+    mocker.patch("gdoc.cli.cmd_tabs", side_effect=fake_cmd)
+    assert cli.run_argv(["tabs", "doc123"], check_updates=False) == 0
+    assert seen == ["acct-a", "acct-a"]
+    assert util.get_active_account() is None  # the pin is scoped, not leaked
+
+
+def test_run_argv_leaves_the_mcp_server_unpinned(mocker):
+    """The MCP server pins per tool call (call_command), so the server
+    process itself must keep floating resolution — a default changed
+    mid-serve is picked up on the next call, not frozen at startup."""
+    from gdoc import cli
+
+    default = ["acct-a"]
+    mocker.patch(
+        "gdoc.util.get_default_account", side_effect=lambda: default[0],
+    )
+    seen = []
+
+    def fake_mcp(args):
+        seen.append(util.resolve_account())
+        default[0] = "acct-b"
+        seen.append(util.resolve_account())
+        return 0
+
+    mocker.patch("gdoc.cli.cmd_mcp", side_effect=fake_mcp)
+    assert cli.run_argv(["mcp"], check_updates=False) == 0
+    assert seen == ["acct-a", "acct-b"]

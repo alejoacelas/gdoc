@@ -4,6 +4,57 @@ All notable changes to `gdoc` are documented here. This project follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.0] — 2026-08-26
+
+### Added
+- **Suggested edits: `gdoc suggest DOC OLD NEW`.** The same find-and-replace
+  as `edit` (`--all`, `--case-sensitive`, `--normalize`, `--tab`,
+  `--old-file`/`--new-file`, `-` for stdin), but the batchUpdate runs with
+  `writeControl.writeMode: SUGGEST` (Docs API Developer Preview), so the
+  change lands as a pending suggestion with an accept/reject control and
+  the original text stays until a reviewer accepts it. Output names the
+  review object (`OK suggested 1 occurrence (#suggest.abc)`; `--json`
+  reports `suggestionIds`, `createdSuggestionIds`, `updatedSuggestionIds`).
+  Success is verified, not assumed: HTTP 200 plus `commentUpdateState:
+  ALL_SAVED`, at least one suggestion ID in `suggestionResponses`, and a
+  `SUGGESTIONS_INLINE` read-back that shows every ID — anything less is an
+  error, and there is deliberately no fallback to a direct edit: a
+  non-mutating preview-only read proves the project is enrolled *before*
+  the write (an unenrolled project fails with `suggest mode not
+  available`). Inline style ranges in the replacement are converted to
+  UTF-16 (`to_docs_requests`, also fixing `edit`/`insert` with emoji in
+  formatted replacement text). The document
+  is read with suggestions inline before matching and a match that touches
+  an existing suggested insertion, deletion, or style change is refused, so
+  another reviewer's thread is never modified by accident. Replacement text
+  may use inline Markdown only (bold, italic, strikethrough, code, links);
+  headings, lists, blockquotes, horizontal rules, tables, and `--cell` are
+  rejected before any API call. Needs comment or edit access on the doc.
+  Exposed over MCP as `gdoc_suggest` (a write tool). `edit` and `suggest`
+  share one text-resolution/matching front half (`_resolve_replacement_text`,
+  `_prepare_text_replacement`) and one request builder
+  (`_build_replacement_requests`); `edit` behaviour is unchanged.
+
+### Fixed
+- **`edit --all` with a self-overlapping anchor** (`aa` matching twice in
+  `aaa`) is refused before any write (exit 3) instead of corrupting the
+  document — the last-to-first delete/insert plan would land on
+  already-shifted text. The same guard `suggest` ships with.
+- **`edit --cell` on a cell containing characters outside the Basic
+  Multilingual Plane** (emoji) computed the cell's editable end in code
+  points instead of UTF-16 units, so the replacement range could split a
+  surrogate pair (a 400 from the API) or leave the cell's last character
+  behind.
+- **MCP: a literal `-` in `old_text`/`new_text` of `gdoc_edit` and
+  `gdoc_suggest` is rejected.** The CLI reads `-` from stdin, but over MCP
+  stdin is the JSON-RPC stream (shielded to empty for the call), so
+  `new_text: "-"` silently became an empty replacement — deleting the
+  matched text instead of erroring.
+- **MCP: an unpinned tool call resolves the configured default account
+  once at call entry** instead of per service access, so a
+  `gdoc auth --set-default` made while a command runs can no longer hand
+  the same command's read and write to different accounts.
+
 ## [0.20.1] — 2026-08-15
 
 ### Changed

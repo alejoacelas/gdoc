@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from google.auth.exceptions import TransportError
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -15,6 +16,7 @@ from gdoc.util import (
     CREDS_PATH,
     TOKEN_PATH,
     AuthError,
+    GdocError,
     get_default_account,
     get_token_path,
     set_default_account,
@@ -34,7 +36,12 @@ _RESOLVE = object()
 
 
 def get_credentials(account=_RESOLVE) -> Credentials:
-    """Load or refresh credentials. Returns valid Credentials or raises AuthError.
+    """Load or refresh credentials. Returns valid Credentials.
+
+    Raises AuthError when there are no usable credentials (missing token,
+    revoked or invalid grant — re-authenticating is the fix) and GdocError
+    when a network failure prevents the token refresh (retrying is the
+    fix; the stored credentials are fine).
 
     `account` is a *resolved* account name (None = legacy token) — the
     per-account service caches pass their cache key here so the credentials
@@ -57,6 +64,13 @@ def get_credentials(account=_RESOLVE) -> Credentials:
             creds.refresh(Request())
             _save_token(creds, token_path)
             return creds
+        except TransportError as e:
+            # A network failure during refresh is not bad credentials —
+            # "run `gdoc auth`" would be wrong advice for a Wi-Fi blip.
+            raise GdocError(
+                f"network error while refreshing credentials ({e}); "
+                "check the connection and try again"
+            )
         except Exception:
             pass
 

@@ -130,6 +130,14 @@ def test_cells_requires_a_value():
     assert schema["properties"]["value"]["minItems"] == 1
 
 
+def test_suggest_requires_the_text_pair():
+    schema = mcp.build_tools(allow={"suggest"})["gdoc_suggest"]["inputSchema"]
+    # With --old-file/--new-file hidden and no cell mode, the text pair is
+    # the only data source; a call without it would always fail at runtime.
+    assert "old_text" in schema["required"]
+    assert "new_text" in schema["required"]
+
+
 def test_delete_comment_requires_force():
     schema = mcp.build_tools(allow={"delete-comment"})[
         "gdoc_delete_comment"
@@ -404,6 +412,19 @@ def test_default_account_change_reaches_next_unpinned_call(mocker, _service_prob
     mcp.call_command("cat", {"doc": "D"})
     assert services[2] is not services[1]  # default changed: new service
     assert built[services[2]] == "creds:b"
+
+
+@pytest.mark.parametrize("command", ["edit", "suggest"])
+@pytest.mark.parametrize("param", ["old_text", "new_text"])
+def test_stdin_sentinel_dash_is_rejected(mocker, command, param):
+    """The CLI's `-` (stdin) convention cannot work over MCP: stdin is
+    shielded to an empty string, so `-` would silently resolve to "" and
+    turn a replacement into a deletion of the anchor."""
+    run = mocker.patch("gdoc.cli.run_argv", return_value=0)
+    arguments = {"doc": "D", "old_text": "x", "new_text": "y", param: "-"}
+    with pytest.raises(ValueError, match="stdin.*not available over MCP"):
+        mcp.call_command(command, arguments)
+    run.assert_not_called()
 
 
 def test_stdin_is_shielded_from_tool_calls(mocker):

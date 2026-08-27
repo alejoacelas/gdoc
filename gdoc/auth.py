@@ -36,7 +36,12 @@ _RESOLVE = object()
 
 
 def get_credentials(account=_RESOLVE) -> Credentials:
-    """Load or refresh credentials. Returns valid Credentials or raises AuthError.
+    """Load or refresh credentials. Returns valid Credentials.
+
+    Raises AuthError when there are no usable credentials (missing token,
+    revoked or invalid grant — re-authenticating is the fix) and GdocError
+    when a network failure prevents the token refresh (retrying is the
+    fix; the stored credentials are fine).
 
     `account` is a *resolved* account name (None = legacy token) — the
     per-account service caches pass their cache key here so the credentials

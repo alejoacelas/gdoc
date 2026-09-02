@@ -1,0 +1,8 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+No comments.
+{'suggestedInsertionIds': 0, 'dateElement': 2, 'footnoteReference': 0, 'strikethrough': 1}
+docs_revision ANLCKQkp7DaFh1EY83AO1b5laWhE5-CAcatPmyfzR1dxCz9teLMesTufFltt3QDzAc5bmlz35g-zSCdSqfJkHY5Xpl48Pl-RwIBSy8ZkqvU
+drive_revision 1 2026-09-02T21:58:02.015Z
+captured -> tables/v01/runs/20260902-paused-until-q1/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0

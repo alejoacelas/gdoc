@@ -1,0 +1,8 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+No comments.
+{'suggestedInsertionIds': 0, 'dateElement': 2, 'footnoteReference': 0, 'strikethrough': 1}
+docs_revision ANLCKQkxcuoUJhtvVLVu_RGbSbb3SqoMPaO9f7tekTcQitVLvFNBa6Xa-KrHOGHtTB5_duFsyw3pGNjolggfrKr0l_jFFF0rh9W_FKoJQdo
+drive_revision 1 2026-09-02T21:57:30.929Z
+captured -> tables/v01/runs/20260902-northwind-quote/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0

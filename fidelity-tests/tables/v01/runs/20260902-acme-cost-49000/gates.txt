@@ -1,0 +1,8 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+No comments.
+{'suggestedInsertionIds': 0, 'dateElement': 2, 'footnoteReference': 0, 'strikethrough': 1}
+docs_revision ANLCKQmdB8wfzUEHOIXkYKSdS5jOGkdpoDPd4rvPPi2UeQnzWnVRDj6eHa-yDj7rtrVeTmuPR9MfGoRgDCq2K1uZXZndMMf5pMnRZ1E-Oys
+drive_revision 1 2026-09-02T21:57:20.460Z
+captured -> tables/v01/runs/20260902-acme-cost-49000/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0

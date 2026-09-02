@@ -1,0 +1,8 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+No comments.
+{'suggestedInsertionIds': 0, 'dateElement': 0, 'footnoteReference': 1, 'strikethrough': 3}
+docs_revision ANLCKQlEak9iMCTeGU1vCARg9bmAp9u2h_ReqBej4-MNGCvU2DDCNwCzyvrWrT5ZgYl8mrspJ6J_mTLkImU0T9yTxr-7MylX1FqkXGYdfNU
+drive_revision 1 2026-09-02T22:44:51.704Z
+captured -> text/v01/runs/20260902-hyphen-date-fix/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0

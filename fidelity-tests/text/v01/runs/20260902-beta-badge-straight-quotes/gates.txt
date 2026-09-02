@@ -1,0 +1,8 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+No comments.
+{'suggestedInsertionIds': 0, 'dateElement': 0, 'footnoteReference': 1, 'strikethrough': 3}
+docs_revision ANLCKQkrpiG-QYrY0CnQ-jOVbyVCrvGfW4Xx-rnN-FXa1Vrx-kOdKvJ8t7WB60_jP88Dt_MecfeTTvSu9AgiViBl8vvbIlBM9tJ2zYfGJGQ
+drive_revision 1 2026-09-02T22:44:41.325Z
+captured -> text/v01/runs/20260902-beta-badge-straight-quotes/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0

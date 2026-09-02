@@ -89,3 +89,15 @@ entries once you agree; disagreements go back into the skill.
   driver's context; 15 views per batch is unsustainable. A "shooter" agent takes the views
   and runs `gdt-shot`, returning paths only. Same for the visual judge, which reads the
   JPEGs itself and returns verbatim answers.
+- **A style change the request asks for was always "unexpected".** Retargeting a link or
+  removing a highlight changes a run's textStyle on unchanged text, which the diff treated as
+  collateral by definition. Now, inside the Target, a style item is `expected` when every
+  differing style key is named in the **Request or Allowed** text (link/url, highlight/
+  background, colour, bold, italic, font, size …). Matching against Expected was tried first
+  and rejected: Expected usually says what must stay intact, which turned the first run's
+  strikethrough loss into an expected item. Regression: kitchen-sink next-steps-effort-2 must
+  stay 1 expected / 2 unexpected.
+- **Task agents that decline may still create Drive files.** Two lists agents made scratch
+  copies with `gdoc cp` to try an edit safely, then could not delete them (gdoc has no trash
+  command). Both were renamed `… SCRATCH (agent trial, safe to delete)` and moved into the
+  runs folder. The task-agent prompt should say whether trial copies are allowed and where.

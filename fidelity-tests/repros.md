@@ -28,3 +28,21 @@ Expect: one replacement inside footnote kix.sodj60jamoog (the Docs API addresses
 segmentId in deleteContentRange/insertText).
 Observed: exit 3 "no match found" although `gdoc cat` prints the footnote; same with --normalize.
 Run: kitchen-sink/v01/runs/20260902-footnote-v8.
+
+## lists-v01-edit-across-font-boundary-flattens-run   (lists/v01, 2026-09-02, COLLATERAL, no issue)
+gdoc edit --account $A <copy> "deploy/api -n staging" "deploy/api -n staging-eu"
+Expect: `Kubectl rollout restart deploy/api` keeps Courier New 10pt; only ` -n staging` → ` -n staging-eu`.
+Observed: "OK replaced 1 occurrence"; the whole item became one default-style run (Courier New and 10pt gone).
+Same shape: gdoc edit <copy> "Approved by Legal on 14 Aug" "Approved by Legal on 21 Aug" drops Georgia 13pt from
+`14 Aug, see the thread` although the match ends before the Georgia run starts.
+Runs: lists/v01/runs/20260902-kubectl-namespace, lists/v01/runs/20260902-legal-approval-date-georgia-run.
+
+## lists-v01-markdown-bullet-ignores-nesting   (lists/v01, 2026-09-02, GAP-CLI, no issue)
+gdoc edit --account $A <copy> --old-file old.txt --new-file new.txt    # new.txt = "  * Also a read replica…\n  * Staging shares…"
+Expect: a way to put a paragraph into an existing list at a chosen nesting level (Docs API: createParagraphBullets
+over a range that includes the neighbouring item, then indentStart/indentFirstLine for the level).
+Observed (on the agent's scratch copy): the markdown bullet joins the nearest list at the level implied by the
+paragraph's existing indent (108pt → level 2), leading spaces are ignored, and a multi-level markdown block
+flattens to level 0 with literal tab characters left in the text. `gdoc edit` on the `-⇥Staging…` line alone made a
+new list (● at 36pt) instead of joining `kix.73yxf78mr7x1`.
+Runs: lists/v01/runs/20260902-staging-line-to-bullet, lists/v01/runs/20260902-environments-nest-stray-lines-under-production.

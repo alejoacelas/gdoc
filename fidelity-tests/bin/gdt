@@ -4,6 +4,9 @@
 #   validate-fixture DIR        five task fields, baseline files, frozen revision present
 #   capture DOC OUTDIR          structure/cat/comments/revisions (screenshots: see gdt-shot)
 #   gates FIXTURE_DIR COPY_DOC  source-matches-baseline + precondition hints for a run copy
+#   run-start FIXTURE_DIR SLUG [--copy-id ID]   copy (gdoc cp) or adopt a UI-made copy, rename, move to runs/,
+#                               gates, before capture; prints the run dir and copy URL
+#   run-end RUN_DIR             after capture, revision-later gate, gdt-diff
 #   index                       regenerate INDEX.md
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd); root=$(dirname "$here")
@@ -60,6 +63,44 @@ print("gate source_matches_baseline:", "pass" if a==b else "FAIL (fixture drifte
 PY
     echo "gate preconditions: check tasks.md preconditions against:"; gdoc comments --all --quiet --account "$A" "$copy" | head -5
     gdoc structure --account "$A" "$copy" 2>/dev/null | python3 -c "import sys,json;s=sys.stdin.read();print({k:s.count(k) for k in ('suggestedInsertionIds','dateElement','footnoteReference','strikethrough')})";;
+  run-start)
+    fx=${1:?fixture dir}; slug=${2:?slug}; shift 2; copy=""
+    while [ $# -gt 0 ]; do case "$1" in --copy-id) copy=$2; shift 2;; *) die "unknown arg $1";; esac; done
+    A=$(acct); fx=${fx%/}
+    src=$(grep -E '^doc:' "$fx/fixture.md" | sed 's/^doc:[[:space:]]*//')
+    runs_folder=$(grep -E '^runs_folder:' "$fx/fixture.md" | sed 's/^runs_folder:[[:space:]]*//')
+    [ -n "$runs_folder" ] || die "$fx/fixture.md has no runs_folder:"
+    area=$(basename "$(dirname "$fx")"); ver=$(basename "$fx"); date=$(date +%Y%m%d)
+    title="gdt-$area-$ver run $date $slug"
+    run="$fx/runs/$date-$slug"; n=1; while [ -e "$run" ]; do n=$((n+1)); run="$fx/runs/$date-$slug-$n"; done
+    mkdir -p "$run"
+    if [ -z "$copy" ]; then
+      copy=$(gdoc cp --quiet --json --account "$A" "$src" "$title" | python3 -c "import json,sys;print(json.load(sys.stdin)['id'])")
+      echo "copy_method: gdoc cp" > "$run/copy_method.txt"
+    else
+      gdoc rename --quiet --account "$A" "$copy" "$title" >/dev/null
+      echo "copy_method: Docs UI (comments+suggestions)" > "$run/copy_method.txt"
+    fi
+    gdoc mv --account "$A" "$copy" "$runs_folder" >/dev/null
+    echo "$copy" > "$run/copy_id.txt"
+    "$0" gates "$fx" "$copy" | tee "$run/gates.txt"
+    "$0" capture "$copy" "$run/before" | tee -a "$run/gates.txt"
+    echo "gdoc_version: $(gdoc --version)" >> "$run/gates.txt"
+    echo "run_dir: $run"; echo "copy_url: https://docs.google.com/document/d/$copy/edit";;
+  run-end)
+    run=${1:?run dir}; run=${run%/}; A=$(acct); copy=$(cat "$run/copy_id.txt")
+    slug=$(basename "$run" | sed -E 's/^[0-9]{8}-//; s/-[0-9]+$//')
+    fx=$(dirname "$(dirname "$run")")
+    "$0" capture "$copy" "$run/after" | tee -a "$run/gates.txt"
+    python3 - "$run" <<'PY2'
+import json,sys
+run=sys.argv[1]
+b=json.load(open(f"{run}/before/revisions.json"))['revisions'][-1]; a=json.load(open(f"{run}/after/revisions.json"))['revisions'][-1]
+bd=json.load(open(f"{run}/before/structure.json"))['revisionId']; ad=json.load(open(f"{run}/after/structure.json"))['revisionId']
+later = (a['modifiedTime'] > b['modifiedTime']) or (bd != ad)
+print(f"gate after_revision_later: {'pass' if later else 'FAIL (no new revision)'}  drive {b['id']}->{a['id']}  docs {bd[:12]}..->{ad[:12]}..")
+PY2
+    "$here/gdt-diff" "$run/before" "$run/after" --task "$fx/tasks.md#$slug" --out "$run";;
   index) exec python3 "$here/gdt-index";;
   *) sed -n '2,8p' "$0";;
 esac

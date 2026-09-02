@@ -1,0 +1,8 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+No comments.
+{'suggestedInsertionIds': 0, 'dateElement': 2, 'footnoteReference': 1, 'strikethrough': 2}
+docs_revision ANLCKQkuoV5NMSvOF1REKHF00W_ulGjYS31cKXgH15l8U3JXCUNMydL3Fabd9ny_d_ZhU-rKj5fYLN7JfzYsrAO8w3ekLawr4MELMdDXfhE
+drive_revision 1 2026-09-02T20:40:14.995Z
+captured -> kitchen-sink/v01/runs/20260902-footnote-v8/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0

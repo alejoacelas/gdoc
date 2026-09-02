@@ -1,0 +1,8 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+No comments.
+{'suggestedInsertionIds': 0, 'dateElement': 2, 'footnoteReference': 1, 'strikethrough': 2}
+docs_revision ANLCKQmwm7hrPBMYlFsPRkJxMv0pyD8BR9v5trEVqXeMDUjriYHMfI5VH-scCioDB3-807h-h8Qm3wPP1Tf6cN-YFXZMjSQyXkVNxKsZ-3M
+drive_revision 1 2026-09-02T20:40:02.965Z
+captured -> kitchen-sink/v01/runs/20260902-rollout-to-launch-window/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0

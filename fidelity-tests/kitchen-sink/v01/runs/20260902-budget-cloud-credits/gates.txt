@@ -1,0 +1,8 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+No comments.
+{'suggestedInsertionIds': 0, 'dateElement': 2, 'footnoteReference': 1, 'strikethrough': 2}
+docs_revision ANLCKQkK4oIvbczAWcg_HPreUQGCl0Bh6qmTC_JmWpCVt_AXbbdzvsDbd6JVo13HtsPZe5at9Q3APyr7DraQzWgZEpbmpsqJrh4mEuBiboE
+drive_revision 1 2026-09-02T20:39:51.251Z
+captured -> kitchen-sink/v01/runs/20260902-budget-cloud-credits/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0

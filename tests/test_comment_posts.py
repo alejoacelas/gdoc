@@ -20,6 +20,7 @@ from unittest.mock import MagicMock, patch
 
 import httplib2
 import pytest
+from google.auth.exceptions import RefreshError, TransportError
 from googleapiclient.errors import HttpError
 
 from gdoc.api.docs import (
@@ -764,6 +765,8 @@ class TestReadBackFailureIsAmbiguous:
         TimeoutError("timed out"),
         ConnectionResetError(104, "Connection reset by peer"),
         __import__("httplib2").HttpLib2Error("connection dropped"),
+        RefreshError("token refresh failed"),
+        TransportError("credential transport failed"),
     ])
     @pytest.mark.parametrize("operation", ["insert", "reply", "edit", "delete"])
     @patch("gdoc.api.docs.get_document_threads")

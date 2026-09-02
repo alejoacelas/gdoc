@@ -320,6 +320,7 @@ def _read_back_threads(doc_id: str, what: str) -> dict:
     message — and keep the original exit code.
     """
     import httplib2
+    from google.auth.exceptions import GoogleAuthError
 
     try:
         return get_document_threads(doc_id)
@@ -330,7 +331,7 @@ def _read_back_threads(doc_id: str, what: str) -> dict:
             "succeeded; inspect the thread before retrying.",
             exit_code=e.exit_code,
         ) from e
-    except (*_TRANSPORT_ERRORS, httplib2.HttpLib2Error) as e:
+    except (*_TRANSPORT_ERRORS, httplib2.HttpLib2Error, GoogleAuthError) as e:
         raise GdocError(
             f"{what} was reported saved (commentUpdateState=ALL_SAVED) but "
             f"the verification read failed ({type(e).__name__}: {e}). The "

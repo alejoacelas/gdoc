@@ -1,0 +1,8 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+No comments.
+{'suggestedInsertionIds': 0, 'dateElement': 0, 'footnoteReference': 1, 'strikethrough': 3}
+docs_revision ANLCKQnsxqdQJux2sryiv8pMIxK6TNtt1QrF8p3VIDLsVIOfwwE-FEg2aTERvkktdCKBAkT2a6dJ7cjYaORVY-BzjNv8snsCIpZGqFGGtpM
+drive_revision 1 2026-09-02T22:49:10.566Z
+captured -> text/v01/runs/20260902-rename-key-dates-fake-heading/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0

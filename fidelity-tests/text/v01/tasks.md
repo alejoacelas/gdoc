@@ -90,3 +90,37 @@ twins matter the Expected field names the exact code points.
 - **Target:** tab `Tab 1`, paragraph beginning `— Marta`.
 - **Allowed:** revision list grows; `modifiedTime` changes.
 - **Preconditions:** the paragraph has alignment END; the three empty/tab paragraphs follow.
+
+<!-- The four tasks below were written by a second agent that read the document cold (CLI only). -->
+
+## key-dates-en-dash-slip
+
+- **Request:** Key dates: the launch window has slipped a day — it now opens 15–19 Sept 2026. Please change just that first sentence; leave the "v2 draft" and "CMS" examples as they are, and don't touch the old-plan paragraph further down, I'm still confirming that with Legal.
+- **Expected:** The paragraph beginning `The launch window opens` now reads `The launch window opens 15–19 Sept 2026, not 14-18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the "beta"  badge hidden in the same release.` The new range is `15–19` with U+2013 EN DASH. Later in the same sentence `14-18` (U+002D HYPHEN-MINUS) and `14—18` (U+2014 EM DASH) are unchanged. `launch window` at the start of the paragraph is still bold; the rest of the paragraph is plain. Elsewhere, the paragraph beginning `The old plan` still contains `new plan is 14–18 Sept` (U+2013) with its yellow background highlight — that string is not updated. Nothing else changes.
+- **Target:** tab `Tab 1`, paragraph beginning `The launch window opens`.
+- **Allowed:** revision list grows; `modifiedTime` changes.
+- **Preconditions:** The `The launch window opens` paragraph contains, in order, `14–18` (U+2013), `14-18` (U+002D) and `14—18` (U+2014), with `launch window` bold and everything after it plain. The `The old plan` paragraph contains a second `14–18` (U+2013) inside the run `new plan is 14–18 Sept`, which carries a yellow background (rgb 1,1,0).
+
+## marta-quote-tuesday-afternoon
+
+- **Request:** In the announcement copy paragraph, Marta's Slack quote is truncated — what she actually wrote in #launch was "we finally fixed the sync bug that ate everyone's Tuesday afternoon". Can you fix the quote?
+- **Expected:** In the paragraph beginning `Northstar 2.1 is the biggest release`, the quoted run now reads `as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday afternoon” ` — the opening quote is U+201C, the closing quote U+201D, the apostrophe in `everyone’s` U+2019, and the whole run including the new word `afternoon` is Georgia 13 pt. The runs around it are unchanged: `release-notes-2.1.md` is Courier New 9 pt, underlined, blue, hyperlinked to `http://release-notes-2.1.md`; ` (more soon...) ` is Courier New 9 pt with three U+002E FULL STOP characters; `and the landing-page draft says Faster sync. Fewer surprises. More soon… ` is Times New Roman with U+2026 HORIZONTAL ELLIPSIS; the opening `Northstar 2.1 is the biggest release since 1.0: ` and the closing `(Tomás pasted that last bit from the web page, hence the fonts.)` are in the default font. The paragraph keeps JUSTIFIED alignment. `Legal signed off on Tuesday` in the Key dates paragraph is unchanged. Nothing else changes.
+- **Target:** tab `Tab 1`, paragraph beginning `Northstar 2.1 is the biggest release`.
+- **Allowed:** revision list grows; `modifiedTime` changes.
+- **Preconditions:** The `Northstar 2.1 is the biggest release` paragraph has five differently formatted runs: default font; Courier New 9 pt hyperlink; Courier New 9 pt plain with `...` as three U+002E; Georgia 13 pt containing the curly-quoted Marta quote (U+201C … U+201D, apostrophe U+2019); Times New Roman containing `More soon…` (U+2026); then default font. Paragraph alignment is JUSTIFIED. The word `Tuesday` also occurs in the Key dates paragraph.
+
+## rename-key-dates-fake-heading
+
+- **Request:** Rename the "Key dates" subheading to "Key dates and labels" — that section now covers the beta label as well.
+- **Expected:** The paragraph that read `Key dates` now reads exactly `Key dates and labels`. It is still a NORMAL_TEXT paragraph (not a Docs heading — no HEADING_n named style, no headingId), and the entire text is bold and 14 pt, matching how `Key dates` was formatted. The real heading directly above, `What we are shipping`, is still HEADING_2 with headingId `h.1x7abc6lswku` and its direct bold + underline formatting. The `Summary` paragraph above that is still NORMAL_TEXT, bold, 14 pt. The following paragraph `The launch window opens …` is unchanged, including the bold `launch window` run. Nothing else changes.
+- **Target:** tab `Tab 1`, paragraph beginning `Key dates`.
+- **Allowed:** revision list grows; `modifiedTime` changes.
+- **Preconditions:** `Key dates` is a NORMAL_TEXT paragraph whose single run has direct bold + 14 pt formatting (a fake heading). `Summary` has identical formatting. `What we are shipping` is a real HEADING_2 with direct bold + underline on its text.
+
+## tidy-double-spaces
+
+- **Request:** There are a bunch of stray double spaces in this draft — can you tidy them up?
+- **Expected:** These five in-sentence double spaces (two U+0020) become a single U+0020, with the text on either side unchanged: `rendered it.  Legal` → `rendered it. Legal` and `"beta"  badge` → `"beta" badge` (paragraph `The launch window opens`); `by design.  See also` → `by design. See also` (paragraph `Ana’s note`); `14–18 Sept.  This draft` → `14–18 Sept. This draft` (paragraph `The old plan`); `existing users?  Ana says` → `existing users? Ana says` (paragraph `Open question`). The trailing `DRAFT  ` in the `Owner:` line may be left as is or trimmed to `DRAFT`; the tabs in that line stay. Everything else is byte-identical: the U+00A0 NO-BREAK SPACE in `Northstar 2.1 (non-breaking space)` is not converted to a space; en dash / hyphen / em dash, curly and straight quotes, `...` vs `…` all survive; the `Open question` paragraph still holds the pending suggestion (inserted `maybe`, deleted `yes`, bold-italic style suggestion) with `Ana says` immediately before it and `, Marta says no.` after it, and the comment anchored on `question for Tomás` still resolves to that text across the bold/plain boundary. In `The old plan`, the strikethrough on `The old plan was to ship in August` (bold on the first three words), the yellow highlight on `new plan is 14–18 Sept`, the red `do not forward`, the underlined `read this first ` and the green highlight on `agreed with Legal` all survive. The multi-font paragraph `Northstar 2.1 is the biggest release` is untouched (it has no double spaces). Nothing else changes.
+- **Target:** tab `Tab 1`, paragraph beginning `The launch window opens`, paragraph beginning `Ana’s note`, paragraph beginning `The old plan`, paragraph beginning `Open question`; optionally paragraph beginning `Owner:`.
+- **Allowed:** revision list grows; `modifiedTime` changes; the trailing two spaces after `DRAFT` may be removed.
+- **Preconditions:** Exactly the five in-sentence double spaces listed above exist, plus the trailing `DRAFT  `. The `Open question` paragraph carries one pending suggestion (`maybe` inserted / `yes` deleted, suggestion id starting `suggest.`) and the open comment whose anchor is `question for Tomás`. `Northstar 2.1 (non-breaking space)` contains U+00A0. The `The old plan` paragraph has the strikethrough, highlight, red-text and underline runs listed above.

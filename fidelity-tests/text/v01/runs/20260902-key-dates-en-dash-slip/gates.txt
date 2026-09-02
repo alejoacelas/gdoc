@@ -1,0 +1,8 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+No comments.
+{'suggestedInsertionIds': 0, 'dateElement': 0, 'footnoteReference': 1, 'strikethrough': 3}
+docs_revision ANLCKQm0EW1SAQXNRRF65-1xN3hHbaErt48KlhQ1upQuMBFSuJEljUcx9TdMb582By9orLG3llCgy3E6rg5gLTHgabp8lB5FsMS0SccGTDA
+drive_revision 1 2026-09-02T22:48:44.075Z
+captured -> text/v01/runs/20260902-key-dates-en-dash-slip/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0

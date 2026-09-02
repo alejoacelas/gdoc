@@ -1,0 +1,8 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+No comments.
+{'suggestedInsertionIds': 0, 'dateElement': 0, 'footnoteReference': 1, 'strikethrough': 3}
+docs_revision ANLCKQkisyxoxEahGy9SHgJauuSpqeh_LOlpe5sE3UWFP7RKqNsj_Xp5sJ2CHjjXzq897KFdYuLgL5-byj_23G5HC_t5pRrWM4DifEl7zOg
+drive_revision 1 2026-09-02T22:48:58.605Z
+captured -> text/v01/runs/20260902-marta-quote-tuesday-afternoon/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0

@@ -6,3 +6,6 @@ docs_revision ANLCKQmXSo_xS0vUEbxh8UxVP1OvQc5tst71_IJxxhl5dfohhH0GE4dY1R4OKxJ6zb
 drive_revision 1 2026-09-02T22:45:05.216Z
 captured -> text/v01/runs/20260902-launch-to-release-window/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQkZYVH8tFrZvxf7VKjvFYRpWw__VZy4r8KQ11FtqvA8oleY3SpidE1qcdN7wDG6ToWKcTfqKO9nBNx5wea4r6Eu2wGIDF8bnj4m_Is
+drive_revision 8 2026-09-02T23:14:00.449Z
+captured -> text/v01/runs/20260902-launch-to-release-window/after (screenshots: gdt-shot)

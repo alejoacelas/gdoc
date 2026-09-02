@@ -6,3 +6,6 @@ docs_revision ANLCKQnIV6cDFZAunxyWysTjjQbRkZDPoDga0Xu8Vw2vdUoPRFeH7IIOXW8ssGFhmR
 drive_revision 1 2026-09-02T22:45:35.958Z
 captured -> text/v01/runs/20260902-co2-formula/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQnmgkJ42b1E_rjwBxo3sDn2X_K-BA0v5hpadk40bQH0updThzTQLzGsveLUKSITY6DcJEJ3MzTYkHYI-nGjvPD-wgV1OQMUWLFvet0
+drive_revision 3 2026-09-02T23:11:55.354Z
+captured -> text/v01/runs/20260902-co2-formula/after (screenshots: gdt-shot)

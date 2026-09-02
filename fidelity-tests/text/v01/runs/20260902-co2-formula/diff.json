@@ -1,0 +1,41 @@
+{
+ "task": "co2-formula",
+ "items": [
+  {
+   "path": "tab[Tab 1]/para[10:The formula card still reads H].paragraphStyle.lineSpacing",
+   "before": 150,
+   "after": "∅",
+   "kind": "para",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[10:The formula card still reads H].text",
+   "kind": "text",
+   "before": "H",
+   "after": "CO",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[10:The formula card still reads H].text",
+   "kind": "text",
+   "before": "O",
+   "after": "",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -15,3 +15,3 @@\n Northstar 2.1 is the biggest release since 1.0: [release-notes-2.1.md](http://release-notes-2.1.md) (more soon...) as Marta put it in \\#launch, “we finally fixed the sync bug that ate everyone’s Tuesday” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)  \n-The formula card still reads H2O and x2, the old deck typed its footnote marker as \\[1\\] instead of using a real footnote[^1], and the style rule is Northstar 2.1 (non-breaking space) in headlines but Northstar 2.1 (plain space) in body copy.  \n+The formula card still reads CO2 and x2, the old deck typed its footnote marker as \\[1\\] instead of using a real footnote[^1], and the style rule is Northstar 2.1 (non-breaking space) in headlines but Northstar 2.1 (plain space) in body copy.  \n **~~The old plan~~** ~~was to ship in August~~; the new plan is 14–18 Sept.  This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.  ",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 2,
+  "allowed": 0,
+  "unexpected": 1,
+  "visible_unexpected": 1,
+  "invisible_unexpected": 0
+ }
+}

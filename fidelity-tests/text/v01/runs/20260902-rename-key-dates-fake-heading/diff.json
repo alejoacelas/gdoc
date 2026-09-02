@@ -1,0 +1,65 @@
+{
+ "task": "rename-key-dates-fake-heading",
+ "items": [
+  {
+   "path": "tab[Tab 1]/para[4:Key dates⏎].style@\"Key dates\"",
+   "before": {
+    "textStyle": {
+     "bold": true,
+     "fontSize": {
+      "magnitude": 14,
+      "unit": "PT"
+     }
+    }
+   },
+   "after": {
+    "textStyle": {
+     "bold": true
+    }
+   },
+   "kind": "style",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[4:Key dates⏎].text",
+   "kind": "text",
+   "before": "",
+   "after": " and labels",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[4:Key dates⏎].style@\"⏎\"",
+   "before": {
+    "textStyle": {
+     "bold": true,
+     "fontSize": {
+      "magnitude": 14,
+      "unit": "PT"
+     }
+    }
+   },
+   "after": {
+    "textStyle": {
+     "bold": true
+    }
+   },
+   "kind": "style",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -7,3 +7,3 @@\n \n-**Key dates**  \n+**Key dates and labels**  \n The **launch window** opens 14–18 Sept 2026, not 14-18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"beta\"  badge hidden in the same release.  ",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 1,
+  "allowed": 0,
+  "unexpected": 2,
+  "visible_unexpected": 2,
+  "invisible_unexpected": 0
+ }
+}

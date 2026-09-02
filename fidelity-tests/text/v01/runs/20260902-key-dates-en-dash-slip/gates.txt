@@ -6,3 +6,6 @@ docs_revision ANLCKQm0EW1SAQXNRRF65-1xN3hHbaErt48KlhQ1upQuMBFSuJEljUcx9TdMb582By
 drive_revision 1 2026-09-02T22:48:44.075Z
 captured -> text/v01/runs/20260902-key-dates-en-dash-slip/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQnllbJRThoOCV1bEf8DghlykP9faBBROW8PSaIH21Vzuvc6M943tSfietntMU3yQeYksckJMwKDuwYgsFazWEuaF9StTNaJwihphg8
+drive_revision 3 2026-09-02T23:12:41.834Z
+captured -> text/v01/runs/20260902-key-dates-en-dash-slip/after (screenshots: gdt-shot)

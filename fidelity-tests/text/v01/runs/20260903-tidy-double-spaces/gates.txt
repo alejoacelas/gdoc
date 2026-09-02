@@ -8,3 +8,6 @@ docs_revision ANLCKQmpVArYWOHt2x6IYkwU5ose4lY1_aGlhqWzrGQqFSHQih-C0KeEEVDQDpqOm-
 drive_revision 1 2026-09-02T23:06:49.531Z
 captured -> text/v01/runs/20260903-tidy-double-spaces/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQnsLd3aShexQijCghON4VbsFr_NgLJx6NJ_884jpqyP1jt3eXx8k7_bFEWocfRol0wFyfxVuwULTB2-Xbv-khTUduEyA2mfNigmGTk
+drive_revision 3 2026-09-02T23:12:55.570Z
+captured -> text/v01/runs/20260903-tidy-double-spaces/after (screenshots: gdt-shot)

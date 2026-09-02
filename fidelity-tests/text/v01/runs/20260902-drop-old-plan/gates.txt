@@ -6,3 +6,6 @@ docs_revision ANLCKQkPQY-y7-zuqHbananPbV73wG3j9OdSsw1K9gnBPG0AD97kokuczGxxAjhx9b
 drive_revision 1 2026-09-02T22:45:25.980Z
 captured -> text/v01/runs/20260902-drop-old-plan/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQk78N3j-JiWzRgNmGN602NJueOhWKJhRHDRRYqlpm8ax7uLtHmBsoEu44d0cLnv4UjugPaW-8hN56gbVOd9K7GQcDrj1savunMss9Q
+drive_revision 3 2026-09-02T23:11:25.713Z
+captured -> text/v01/runs/20260902-drop-old-plan/after (screenshots: gdt-shot)

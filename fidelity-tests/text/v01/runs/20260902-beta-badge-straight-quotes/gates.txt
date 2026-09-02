@@ -6,3 +6,6 @@ docs_revision ANLCKQkrpiG-QYrY0CnQ-jOVbyVCrvGfW4Xx-rnN-FXa1Vrx-kOdKvJ8t7WB60_jP8
 drive_revision 1 2026-09-02T22:44:41.325Z
 captured -> text/v01/runs/20260902-beta-badge-straight-quotes/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision AIroW364MzhrNsCCefzmPElDyiihhn73VgTdBk2JDXOaG-bBa8vhKhSPvNjRoQxViLnyWgwo9VlRQIK72_S43L0Wpa2F6WXGxpiv6DGCwm0
+drive_revision 3 2026-09-02T23:11:29.519Z
+captured -> text/v01/runs/20260902-beta-badge-straight-quotes/after (screenshots: gdt-shot)

@@ -6,3 +6,6 @@ docs_revision ANLCKQlEak9iMCTeGU1vCARg9bmAp9u2h_ReqBej4-MNGCvU2DDCNwCzyvrWrT5ZgY
 drive_revision 1 2026-09-02T22:44:51.704Z
 captured -> text/v01/runs/20260902-hyphen-date-fix/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQmzRyU2aqCgp0dl8VZSMikc44wSUlNFb5QM6Qe421h0Hqs4gkMqSJynG0y_tPLUo-TXEFz2le3K068sRDbCB3oB3Aws8e4FEfKxcAQ
+drive_revision 3 2026-09-02T23:12:46.081Z
+captured -> text/v01/runs/20260902-hyphen-date-fix/after (screenshots: gdt-shot)

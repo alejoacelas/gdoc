@@ -1,0 +1,158 @@
+{
+ "task": "launch-to-release-window",
+ "items": [
+  {
+   "path": "tab[Tab 1]/para[0:Northstar 2.1 launch window — ].paragraphStyle.headingId",
+   "before": "h.fhr9e3eq4raj",
+   "after": "h.wvksaq6uclq3",
+   "kind": "para",
+   "class": "unexpected",
+   "visible": false,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[0:Northstar 2.1 launch window — ].text",
+   "kind": "text",
+   "before": "",
+   "after": "re",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[0:Northstar 2.1 launch window — ].text",
+   "kind": "text",
+   "before": "",
+   "after": "e",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[0:Northstar 2.1 launch window — ].text",
+   "kind": "text",
+   "before": "unch",
+   "after": "se",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[5:The launch window opens 14–18 ].text",
+   "kind": "text",
+   "before": "",
+   "after": "re",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[5:The launch window opens 14–18 ].text",
+   "kind": "text",
+   "before": "",
+   "after": "e",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[5:The launch window opens 14–18 ].text",
+   "kind": "text",
+   "before": "unch",
+   "after": "se",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[6:Ana’s note: the launch window ].text",
+   "kind": "text",
+   "before": "",
+   "after": "re",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[6:Ana’s note: the launch window ].text",
+   "kind": "text",
+   "before": "",
+   "after": "e",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[6:Ana’s note: the launch window ].text",
+   "kind": "text",
+   "before": "unch",
+   "after": "se",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[6:Ana’s note: the launch window ].text",
+   "kind": "text",
+   "before": "",
+   "after": "re",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[6:Ana’s note: the launch window ].text",
+   "kind": "text",
+   "before": "",
+   "after": "e",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[6:Ana’s note: the launch window ].text",
+   "kind": "text",
+   "before": "unch",
+   "after": "se",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[7:If anything slips, the launch ].text",
+   "kind": "text",
+   "before": "",
+   "after": "re",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[7:If anything slips, the launch ].text",
+   "kind": "text",
+   "before": "",
+   "after": "e",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[7:If anything slips, the launch ].text",
+   "kind": "text",
+   "before": "unch",
+   "after": "se",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -1,2 +1,2 @@\n-# Northstar 2.1 launch window — announcement draft (v3)\n+# Northstar 2.1 release window — announcement draft (v3)\n \n@@ -8,5 +8,5 @@\n **Key dates**  \n-The **launch window** opens 14–18 Sept 2026, not 14-18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"beta\"  badge hidden in the same release.  \n-Ana’s note: the *launch window* is not the same thing as the Launch Window banner in the app; the banner string lives in the [release **checklist**](https://example.com/northstar/checklist) and is owned by design.  See also the [launch window FAQ](https://example.com/northstar/faq) before replying to customers.  \n-If anything slips, the launch window moves as a whole; we do not ship half the features. Live status: [https://status.example.com/northstar](https://status.example.com/northstar) (updated hourly).\n+The **release window** opens 14–18 Sept 2026, not 14-18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"beta\"  badge hidden in the same release.  \n+Ana’s note: the *release window* is not the same thing as the Launch Window banner in the app; the banner string lives in the [release **checklist**](https://example.com/northstar/checklist) and is owned by design.  See also the [release window FAQ](https://example.com/northstar/faq) before replying to customers.  \n+If anything slips, the release window moves as a whole; we do not ship half the features. Live status: [https://status.example.com/northstar](https://status.example.com/northstar) (updated hourly).\n ",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 15,
+  "allowed": 0,
+  "unexpected": 1,
+  "visible_unexpected": 0,
+  "invisible_unexpected": 1
+ }
+}

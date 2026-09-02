@@ -1,0 +1,32 @@
+{
+ "task": "signature-date",
+ "items": [
+  {
+   "path": "tab[Tab 1]/para[13:— Marta, 2 Sept 2026⏎].paragraphStyle.alignment",
+   "before": "END",
+   "after": "∅",
+   "kind": "para",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[13:— Marta, 2 Sept 2026⏎].text",
+   "kind": "text",
+   "before": "2",
+   "after": "3",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -18,3 +18,3 @@\n Ship🚀ping starts Monday; the café team in 東京 and the Москва office get the build first, and the Arabic landing page (مرحباً بنورث ستار) ships a week later.  \n-— Marta, 2 Sept 2026  \n+— Marta, 3 Sept 2026  \n \t",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 1,
+  "allowed": 0,
+  "unexpected": 1,
+  "visible_unexpected": 1,
+  "invisible_unexpected": 0
+ }
+}

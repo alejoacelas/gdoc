@@ -6,3 +6,6 @@ docs_revision ANLCKQk5YshkfWA97K2vF3nUtuBm8Tdb-yD3eq0oHdYR20wd8W9tMSfhJz6SAURcDo
 drive_revision 1 2026-09-02T22:45:15.202Z
 captured -> text/v01/runs/20260902-northstar-2-2/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQlThZ6GLwrGT-cfrOwmehWKZzP52WGLyZizdbcUeYQIgjwhrk8iyQYHwKQzNcUrAmqB_tanQKO94f4ta3futGo1X0e8SCi2udjDlT0
+drive_revision 4 2026-09-02T23:11:43.731Z
+captured -> text/v01/runs/20260902-northstar-2-2/after (screenshots: gdt-shot)

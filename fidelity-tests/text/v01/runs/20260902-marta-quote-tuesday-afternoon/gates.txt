@@ -6,3 +6,6 @@ docs_revision ANLCKQkisyxoxEahGy9SHgJauuSpqeh_LOlpe5sE3UWFP7RKqNsj_Xp5sJ2CHjjXzq
 drive_revision 1 2026-09-02T22:48:58.605Z
 captured -> text/v01/runs/20260902-marta-quote-tuesday-afternoon/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision AIroW35NktgmwIrq644l5szB5z7m_qC_fVOmj0Ad6MXQN2vyBWvsSE1OpcEDnv_xP2v5B0e22BoVASgETv5MrwurPiD3IDC2vx7GYinpelA
+drive_revision 2 2026-09-02T23:11:39.367Z
+captured -> text/v01/runs/20260902-marta-quote-tuesday-afternoon/after (screenshots: gdt-shot)

@@ -6,3 +6,6 @@ docs_revision ANLCKQnsxqdQJux2sryiv8pMIxK6TNtt1QrF8p3VIDLsVIOfwwE-FEg2aTERvkktdC
 drive_revision 1 2026-09-02T22:49:10.566Z
 captured -> text/v01/runs/20260902-rename-key-dates-fake-heading/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision AIroW34-mVzriAoU4eO-C371dFCh59ULBTSJcCn-HrQDrbjw5x5e2xYLqBrDcu7Tvrbbfb3c8vyie2anPB0X_X6oC4oqWrnSsi9oheJVFy0
+drive_revision 3 2026-09-02T23:12:18.402Z
+captured -> text/v01/runs/20260902-rename-key-dates-fake-heading/after (screenshots: gdt-shot)

@@ -17,7 +17,7 @@ DROP_KEYS = {"revisionId", "documentId", "suggestionsViewMode", "commentsViewMod
 STYLE_WORDS = {"link": ("link", "url"), "backgroundColor": ("highlight", "background"),
                "foregroundColor": ("colour", "color", "red", "blue"), "bold": ("bold",), "italic": ("italic",),
                "underline": ("underline", "link", "url"), "strikethrough": ("strikethrough", "struck"),
-               "fontSize": ("pt", "size"), "weightedFontFamily": ("font",), "baselineOffset": ("superscript", "subscript"),
+               "fontSize": ("size", "font"), "weightedFontFamily": ("font",), "baselineOffset": ("superscript", "subscript"),
                "smallCaps": ("small caps",)}
 PAGINATION_RE = re.compile(r"\.(avoidWidowAndOrphan|keepLinesTogether|keepWithNext)$")
 # properties whose change a reader cannot see on the page
@@ -317,7 +317,7 @@ def target_matcher(task):
         else:
             preds.append(lambda p, tn=tn: f"/table[{tn}]" in p)
     for pm in re.finditer(r"(?:paragraph beginning|heading|new paragraph|paragraph) `([^`]+)`", t):
-        prefix = pm.group(1)
+        prefix = label(pm.group(1))   # labels are 30 chars; a longer locator must still match
         preds.append(lambda p, prefix=prefix: f":{prefix}" in p and "/para[" in p)
     if "footnote" in t.lower():
         preds.append(lambda p: "/footnotes[" in p)
@@ -328,6 +328,10 @@ def target_matcher(task):
     if "comment" in t.lower():
         preds.append(lambda p: p.startswith("comments"))
     return lambda p: any(f(p) for f in preds)
+
+
+def mentions(text, words):
+    return any(re.search(r"(?<![a-z])" + re.escape(w) + r"(?:s|es|ed|ing)?(?![a-z])", text) for w in words)
 
 
 def classify(item, in_target, task):
@@ -343,7 +347,7 @@ def classify(item, in_target, task):
         if in_target(p):
             b = (item["before"] or {}).get("textStyle", {}); a_ = (item["after"] or {}).get("textStyle", {})
             keys = {k for k in set(b) | set(a_) if b.get(k) != a_.get(k)}
-            if keys and all(any(w in request or w in allowed for w in STYLE_WORDS.get(k, (k.lower(),))) for k in keys):
+            if keys and all(mentions(request + " " + allowed, STYLE_WORDS.get(k, (k.lower(),))) for k in keys):
                 return "expected"
         return "unexpected"
     if p.startswith("revisions") and "revision" in allowed:
@@ -358,8 +362,8 @@ def classify(item, in_target, task):
             # a paragraph-level property changed inside the target: expected only if the
             # task talks about that kind of change
             prop = p.rsplit(".", 1)[-1].lower()
-            words = ("bullet", "list", "indent", "heading", "style", "alignment", "renumber", "checkbox", prop)
-            if any(w in expected or w in allowed for w in words):
+            words = ("bullet", "indent", "numbering", "heading", "style", "align", "renumber", "checkbox", "spacing", "merge", prop.lower()) + tuple(w for ws in STYLE_WORDS.values() for w in ws)
+            if mentions(request + " " + allowed, words):
                 return "expected"
             return "unexpected"
         return "expected"

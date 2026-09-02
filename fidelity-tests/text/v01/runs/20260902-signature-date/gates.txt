@@ -6,3 +6,6 @@ docs_revision ANLCKQnxis94QvADLAbFllU9ugvgKQ_72P5LSJdIS1qX7GE3v1G8BnFbdVmL-3dS6v
 drive_revision 1 2026-09-02T22:45:45.719Z
 captured -> text/v01/runs/20260902-signature-date/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQlTs0jbKglhWDxorgR_qbKKfE0-fm-KB1Aj8mLTd9LeCgIp7D6dDgLHLwNYIn0KH7n5VwxlCNMsRT8jrdmBFMdgYtRCEQqksd_vc2A
+drive_revision 2 2026-09-02T23:11:01.240Z
+captured -> text/v01/runs/20260902-signature-date/after (screenshots: gdt-shot)

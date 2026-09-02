@@ -113,3 +113,6 @@ entries once you agree; disagreements go back into the skill.
 - **Parallel task agents shared one scratch directory** and clobbered each other's
   `structure.json`; one agent noticed and re-verified from a uniquely named dump. Give each
   task agent its own empty directory (`scratchpad/empty/<slug>`).
+- **The Docs-UI copy drops resolved comments** (open comments and pending suggestions are
+  copied, resolved ones are not). collab/v01 `reopen-three-forms` is INVALID for this reason;
+  a "reopen" task needs a different design (resolve on the copy first, as part of the run).

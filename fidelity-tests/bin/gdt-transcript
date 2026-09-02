@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# gdt-transcript RUN_DIR < report   — files a task agent's report as transcript.md, then runs run-end
+set -euo pipefail
+run=${1%/}; slug=$(basename "$run" | sed -E 's/^[0-9]{8}-//; s/-[0-9]+$//')
+{ echo "# transcript — $slug (agent track)"; echo
+  echo "Agent: Claude Fable 5.1 via the Agent tool (general-purpose), gdoc $(gdoc --version | awk '{print $2}'). Given only the"
+  echo "request, the copy URL, the account to pass, \"no browser\", and told to cd into an empty scratch"
+  echo "directory and read nothing outside it (isolation by instruction; PWD reported as the empty directory)."
+  echo; echo "## Agent's report (verbatim)"; echo
+  sed 's/&lt;/</g; s/&gt;/>/g; s#/private/tmp/claude-501/[^ ]*/scratchpad/empty#/private/tmp/…/scratchpad/empty#g; s/--account alejandro\.acelas-contractor@80000hours\.org/--account A/g'
+} > "$run/transcript.md"
+"$(dirname "$0")/gdt" run-end "$run" 2>&1 | grep -E "gate after|expected="

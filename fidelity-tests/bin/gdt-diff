@@ -14,6 +14,11 @@ from pathlib import Path
 
 DROP_KEYS = {"revisionId", "documentId", "suggestionsViewMode", "commentsViewMode",
              "startIndex", "endIndex"}
+STYLE_WORDS = {"link": ("link", "url"), "backgroundColor": ("highlight", "background"),
+               "foregroundColor": ("colour", "color", "red", "blue"), "bold": ("bold",), "italic": ("italic",),
+               "underline": ("underline", "link", "url"), "strikethrough": ("strikethrough", "struck"),
+               "fontSize": ("pt", "size"), "weightedFontFamily": ("font",), "baselineOffset": ("superscript", "subscript"),
+               "smallCaps": ("small caps",)}
 PAGINATION_RE = re.compile(r"\.(avoidWidowAndOrphan|keepLinesTogether|keepWithNext)$")
 # properties whose change a reader cannot see on the page
 INVISIBLE_RE = re.compile(
@@ -327,11 +332,20 @@ def target_matcher(task):
 
 def classify(item, in_target, task):
     p = item["path"]
-    # a style change on text the edit did not touch is collateral even inside the target
-    if item.get("kind") == "style":
-        return "unexpected"
     allowed = (task or {}).get("allowed", "").lower()
     expected = (task or {}).get("expected", "").lower()
+    request = (task or {}).get("request", "").lower()
+    # a style change on text the edit did not touch is collateral even inside the target,
+    # unless the task itself asks for that kind of style change (a link retarget, a
+    # highlight removed): every differing style key must be named in the Request or Allowed
+    # (not Expected, which usually says what must stay intact)
+    if item.get("kind") == "style":
+        if in_target(p):
+            b = (item["before"] or {}).get("textStyle", {}); a_ = (item["after"] or {}).get("textStyle", {})
+            keys = {k for k in set(b) | set(a_) if b.get(k) != a_.get(k)}
+            if keys and all(any(w in request or w in allowed for w in STYLE_WORDS.get(k, (k.lower(),))) for k in keys):
+                return "expected"
+        return "unexpected"
     if p.startswith("revisions") and "revision" in allowed:
         return "allowed"
     if p.startswith("comments") and p.endswith("modifiedTime") and "modifiedtime" in allowed:

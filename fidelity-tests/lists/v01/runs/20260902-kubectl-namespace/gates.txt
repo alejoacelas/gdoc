@@ -6,3 +6,6 @@ docs_revision ANLCKQnnjvfOmetI0iFqi3G4_zMgLFYOB8GAApuZZmfCUJ4zGCQ-QzrZu6os09lFxV
 drive_revision 1 2026-09-02T21:07:21.393Z
 captured -> lists/v01/runs/20260902-kubectl-namespace/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQmJVxCy_W33v1CWdHI6MZCWSetv1Lv2mE80z8w-Cjdrqt0FzrSWNZEKGcdg9QM37Z8wZMrFRa1t4BhFDeej0mZuI3f7LY5JhPz5XKc
+drive_revision 2 2026-09-02T21:26:22.814Z
+captured -> lists/v01/runs/20260902-kubectl-namespace/after (screenshots: gdt-shot)

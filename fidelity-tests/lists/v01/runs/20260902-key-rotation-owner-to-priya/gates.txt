@@ -9,3 +9,6 @@ docs_revision ANLCKQmKLOLzr6E9RtF1m_X7yt4uIkQ9rW5tTquzzWPA6bwNjcnZGwjQSVM8v2COeN
 drive_revision 1 2026-09-02T21:15:23.457Z
 captured -> lists/v01/runs/20260902-key-rotation-owner-to-priya/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQnPqbVGGCImgRUAffSCGAnvvKb5jAepgZYFADnAntk20iaYtbxsyrJqMBo5XFZZFuXBGZ1SqeIbNkE-MmSlHhLTTuRTZgoynmybv3A
+drive_revision 2 2026-09-02T21:26:40.877Z
+captured -> lists/v01/runs/20260902-key-rotation-owner-to-priya/after (screenshots: gdt-shot)

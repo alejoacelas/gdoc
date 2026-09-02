@@ -9,3 +9,6 @@ docs_revision ANLCKQlyMu0u24HtFgufFThYfJPSLBphriW9MwGHLNu4AscJgjfoCmUwwWwowO8dwc
 drive_revision 1 2026-09-02T21:13:53.397Z
 captured -> lists/v01/runs/20260902-russian-readme/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQmWJC1ZTk560UN-J_QNTpfiMMqhg9PoF8QpZRzplh7RSgy4Z3Z_2vquPmvGtXJ1h9wCy-ItIoh9LLS6sEtdcQhWD9lvcWZ9um2U-f4
+drive_revision 2 2026-09-02T21:26:05.196Z
+captured -> lists/v01/runs/20260902-russian-readme/after (screenshots: gdt-shot)

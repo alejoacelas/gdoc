@@ -1,0 +1,32 @@
+{
+ "task": "key-rotation-owner-to-priya",
+ "items": [
+  {
+   "path": "tab[Tab 1]/para[36:Marco to rotate the API keys b].text",
+   "kind": "text",
+   "before": "M",
+   "after": "Priy",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[36:Marco to rotate the API keys b].text",
+   "kind": "text",
+   "before": "rco",
+   "after": "",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -52,3 +52,3 @@\n * Обновить README на русском, спросить Дмитрия  \n-* Marco to [rotate the API keys](https://example.com/rotate-keys) before Friday  \n+* Priya to [rotate the API keys](https://example.com/rotate-keys) before Friday  \n * Contact for infra questions:  ",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 2,
+  "allowed": 0,
+  "unexpected": 0,
+  "visible_unexpected": 0,
+  "invisible_unexpected": 0
+ }
+}

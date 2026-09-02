@@ -6,3 +6,6 @@ docs_revision ANLCKQmgA-B6DE4wg6FSWOk-empySaRadhaKKKAbBl7gzOhdpyYw-t1zuiWXcoQjPh
 drive_revision 1 2026-09-02T21:07:10.546Z
 captured -> lists/v01/runs/20260902-unblock-security-review/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQkL1L0E8TnRc6BqMVw2AenSahDPKZ4ELVDCv7z4jWoIl2ZKO3Z9_vuJn3qPF92AO6MY-x0dndsSgol8BAKj7UCOnVv-Of0ASlGCPxY
+drive_revision 2 2026-09-02T21:26:47.199Z
+captured -> lists/v01/runs/20260902-unblock-security-review/after (screenshots: gdt-shot)

@@ -9,3 +9,6 @@ docs_revision ANLCKQlKD3WuYv7hGbdQOkJ8IqGVF93WwtYDtT2QHdP71bz11HFhiHNORFGwzB5riH
 drive_revision 1 2026-09-02T21:16:50.408Z
 captured -> lists/v01/runs/20260902-legal-approval-date-georgia-run/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQlM_gPl29J1UyPahgw8WujlBN74eCzDgqEZh7o-Qj0NAEjo5mmHD13i6CRrU9bnbHDZwTfHc4JV3il2KgpdmwoqLAVNWomsiLzSM7M
+drive_revision 2 2026-09-02T21:27:01.641Z
+captured -> lists/v01/runs/20260902-legal-approval-date-georgia-run/after (screenshots: gdt-shot)

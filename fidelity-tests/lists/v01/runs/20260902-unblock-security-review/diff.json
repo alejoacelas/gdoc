@@ -1,0 +1,248 @@
+{
+ "task": "unblock-security-review",
+ "items": [
+  {
+   "path": "tab[Tab 1]/para[42:BLOCKED: waiting on the securi].bullet.textStyle",
+   "before": "∅",
+   "after": {},
+   "kind": "para",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[42:BLOCKED: waiting on the securi].bullet.textStyle.backgroundColor.color.rgbColor.green",
+   "before": 1,
+   "after": "∅",
+   "kind": "para",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[42:BLOCKED: waiting on the securi].bullet.textStyle.backgroundColor.color.rgbColor.red",
+   "before": 1,
+   "after": "∅",
+   "kind": "para",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[42:BLOCKED: waiting on the securi].text",
+   "kind": "text",
+   "before": "BL",
+   "after": "D",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[42:BLOCKED: waiting on the securi].style@\"O\"",
+   "before": {
+    "textStyle": {
+     "backgroundColor": {
+      "color": {
+       "rgbColor": {
+        "green": 1,
+        "red": 1
+       }
+      }
+     },
+     "foregroundColor": {
+      "color": {
+       "rgbColor": {
+        "red": 1
+       }
+      }
+     }
+    }
+   },
+   "after": {
+    "textStyle": {}
+   },
+   "kind": "style",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[42:BLOCKED: waiting on the securi].text",
+   "kind": "text",
+   "before": "CK",
+   "after": "N",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[42:BLOCKED: waiting on the securi].style@\"E\"",
+   "before": {
+    "textStyle": {
+     "backgroundColor": {
+      "color": {
+       "rgbColor": {
+        "green": 1,
+        "red": 1
+       }
+      }
+     },
+     "foregroundColor": {
+      "color": {
+       "rgbColor": {
+        "red": 1
+       }
+      }
+     }
+    }
+   },
+   "after": {
+    "textStyle": {}
+   },
+   "kind": "style",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[42:BLOCKED: waiting on the securi].text",
+   "kind": "text",
+   "before": "D",
+   "after": "",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[42:BLOCKED: waiting on the securi].style@\":\"",
+   "before": {
+    "textStyle": {
+     "backgroundColor": {
+      "color": {
+       "rgbColor": {
+        "green": 1,
+        "red": 1
+       }
+      }
+     },
+     "foregroundColor": {
+      "color": {
+       "rgbColor": {
+        "red": 1
+       }
+      }
+     }
+    }
+   },
+   "after": {
+    "textStyle": {}
+   },
+   "kind": "style",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[42:BLOCKED: waiting on the securi].text",
+   "kind": "text",
+   "before": " waiting on the",
+   "after": "",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[42:BLOCKED: waiting on the securi].style@\" security review \"",
+   "before": {
+    "textStyle": {
+     "backgroundColor": {
+      "color": {
+       "rgbColor": {
+        "green": 1,
+        "red": 1
+       }
+      }
+     }
+    }
+   },
+   "after": {
+    "textStyle": {}
+   },
+   "kind": "style",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[42:BLOCKED: waiting on the securi].text",
+   "kind": "text",
+   "before": "",
+   "after": "signed off ",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[42:BLOCKED: waiting on the securi].style@\"(Sam, \"",
+   "before": {
+    "textStyle": {
+     "backgroundColor": {
+      "color": {
+       "rgbColor": {
+        "green": 1,
+        "red": 1
+       }
+      }
+     }
+    }
+   },
+   "after": {
+    "textStyle": {}
+   },
+   "kind": "style",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[42:BLOCKED: waiting on the securi].text",
+   "kind": "text",
+   "before": "again",
+   "after": "2 Sep",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[42:BLOCKED: waiting on the securi].style@\")⏎\"",
+   "before": {
+    "textStyle": {
+     "backgroundColor": {
+      "color": {
+       "rgbColor": {
+        "green": 1,
+        "red": 1
+       }
+      }
+     }
+    }
+   },
+   "after": {
+    "textStyle": {}
+   },
+   "kind": "style",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -59,3 +59,3 @@\n * Owner:\tMarco    \n-* BLOCKED: waiting on the security review (Sam, again)  \n+* DONE: security review signed off (Sam, 2 Sep)  \n * ",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 15,
+  "allowed": 0,
+  "unexpected": 0,
+  "visible_unexpected": 0,
+  "invisible_unexpected": 0
+ }
+}

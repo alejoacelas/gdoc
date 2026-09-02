@@ -6,3 +6,6 @@ docs_revision ANLCKQk_u94M8AZ1OrqmRdKyOiLcXGJYXnRxxrc1q0xPgTGfqp2SCshr1Q2bfAaZRH
 drive_revision 1 2026-09-02T21:06:58.974Z
 captured -> lists/v01/runs/20260902-staging-line-to-bullet/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQk_u94M8AZ1OrqmRdKyOiLcXGJYXnRxxrc1q0xPgTGfqp2SCshr1Q2bfAaZRHW3w7F-MVBXGl_vhiUb0ad_ABJSFvLyNJUQSmkiQO8
+drive_revision 1 2026-09-02T21:06:58.974Z
+captured -> lists/v01/runs/20260902-staging-line-to-bullet/after (screenshots: gdt-shot)

@@ -6,3 +6,6 @@ docs_revision ANLCKQn1axiTgDXm0tcep3bAA7NufkJtp6aa_eAkT6dxT6JM4hKy1ccmaUQhng_eqo
 drive_revision 1 2026-09-02T21:06:36.828Z
 captured -> lists/v01/runs/20260902-insert-migration-step/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQkPzFa-klQIdV5SYjBb0ktA7atHpaRLe3kwpxOn01LPCScR4TXDSbJeaNenXVatSnQvOlMMJZnMEZBJxcY0K0I_YQS1xa1ncgvG590
+drive_revision 2 2026-09-02T21:26:26.178Z
+captured -> lists/v01/runs/20260902-insert-migration-step/after (screenshots: gdt-shot)

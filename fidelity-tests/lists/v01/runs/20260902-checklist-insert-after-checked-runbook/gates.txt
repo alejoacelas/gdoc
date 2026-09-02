@@ -6,3 +6,6 @@ docs_revision ANLCKQnnuJoA_ql8d5HYUfWy-d9F7swm4EsoJSBi_LwILpGGSRIM0xEz-Y_ZhlZHpl
 drive_revision 1 2026-09-02T21:07:33.039Z
 captured -> lists/v01/runs/20260902-checklist-insert-after-checked-runbook/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision AIroW35Sdtj0JpfR29oeKU87W5_mG8_0q0rMkHj4RV5VET79-0FFAe-VlLP2daUUOSaE1mI5iDMmJ1YKw8DjDjw2kpWpkARv7adbjB9mWV0
+drive_revision 2 2026-09-02T21:27:10.674Z
+captured -> lists/v01/runs/20260902-checklist-insert-after-checked-runbook/after (screenshots: gdt-shot)

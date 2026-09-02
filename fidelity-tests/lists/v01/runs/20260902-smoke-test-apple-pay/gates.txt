@@ -6,3 +6,6 @@ docs_revision ANLCKQmvYiuxO0SdlfAGkO3LG8XC_bUiXfylvo-3T3FRjZB1fRMUsZSb3Po8KoD_1I
 drive_revision 1 2026-09-02T21:06:25.441Z
 captured -> lists/v01/runs/20260902-smoke-test-apple-pay/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQl5pbevXYpnjuPVtB3POiU2BgMOmbFggf9bCMkDow3DKvsq78pq0gDw3VMlAEyP6hoOQq6FlJXsmV9VMzdcXXmrxuWqb5HGoLdsh5Y
+drive_revision 2 2026-09-02T21:25:42.568Z
+captured -> lists/v01/runs/20260902-smoke-test-apple-pay/after (screenshots: gdt-shot)

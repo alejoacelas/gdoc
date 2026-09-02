@@ -6,3 +6,6 @@ docs_revision ANLCKQmpSX-vCemt7x2OE1E1NQ3WbRlGpO5jz-RZvqjh6X3coCI1MJwIcq4Ovv4871
 drive_revision 1 2026-09-02T21:07:44.100Z
 captured -> lists/v01/runs/20260902-environments-nest-stray-lines-under-production/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQmpSX-vCemt7x2OE1E1NQ3WbRlGpO5jz-RZvqjh6X3coCI1MJwIcq4Ovv4871vdI-8MoKIoGsYuiFP4n_k2O3pwGmN4BmckjEJXXgQ
+drive_revision 1 2026-09-02T21:07:44.100Z
+captured -> lists/v01/runs/20260902-environments-nest-stray-lines-under-production/after (screenshots: gdt-shot)

@@ -9,3 +9,6 @@ docs_revision ANLCKQmWYA1FSVUxeDq1CYfG_Q1_nF3Uyu0VXrsAtHC_aYYMLtwWq0JdjflFN-Ojyz
 drive_revision 1 2026-09-02T21:11:55.509Z
 captured -> lists/v01/runs/20260902-relink-rotate-keys/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQn63APO0zgA4pc2n12rVCY3dxQjsNXZ6UrSS4JvJJTEtPZXBV0t9Eqchjf7xz7loyeKfLv01pmz2rJQA0efJyzRGKk3nqJuKugLQ3s
+drive_revision 2 2026-09-02T21:26:27.272Z
+captured -> lists/v01/runs/20260902-relink-rotate-keys/after (screenshots: gdt-shot)

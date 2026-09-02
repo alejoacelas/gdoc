@@ -1,0 +1,14 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+#AAACGeAxyJI [open] Alejandro Acelas 2026-09-02
+  "Dmitry is out until 15 Sep, so this and the key rotation both slip. Who picks them up?"
+  on "спросить Дмитрия
+Marco to"
+{'suggestedInsertionIds': 1, 'dateElement': 0, 'footnoteReference': 0, 'strikethrough': 1}
+docs_revision ANLCKQmPMnrSUl_pEJwoiv78jSYiXaET3r8XBF0JB6P__UUXPfRq9FhX1WMm5D63G4jfLHdk8lmsF3zWbbi2o4Z6ttU3ReqzZKvUtkYFQ2E
+drive_revision 1 2026-09-02T22:55:16.588Z
+captured -> lists/v01/runs/20260902-legal-approval-date-georgia-run-2/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQmE1xyLTSGFbxGG92tcvI9KraVnt-nMiexQ9z40l2npTT9E9Lef7tLQi06mjhlLjVn81o-bhs2dJ0t8vuyZgIuBwzpLfKLJuZlc7gw
+drive_revision 2 2026-09-02T22:57:58.965Z
+captured -> lists/v01/runs/20260902-legal-approval-date-georgia-run-2/after (screenshots: gdt-shot)

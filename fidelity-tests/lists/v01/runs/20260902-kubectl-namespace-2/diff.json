@@ -1,0 +1,45 @@
+{
+ "task": "kubectl-namespace",
+ "items": [
+  {
+   "path": "tab[Tab 1]/para[39:Kubectl rollout restart deploy].style@\"Kubectl rollout restart deploy/api\"",
+   "before": {
+    "textStyle": {
+     "fontSize": {
+      "magnitude": 10,
+      "unit": "PT"
+     },
+     "weightedFontFamily": {
+      "fontFamily": "Courier New",
+      "weight": 400
+     }
+    }
+   },
+   "after": {
+    "textStyle": {}
+   },
+   "kind": "style",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[39:Kubectl rollout restart deploy].text",
+   "kind": "text",
+   "before": "",
+   "after": "-eu",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -56,3 +56,3 @@\n   Actually the retro room is booked till 3pm on the 12th, use Zoom instead and skip the next two items if you are not on infra.  \n-* Kubectl rollout restart deploy/api \\-n staging  \n+* Kubectl rollout restart deploy/api \\-n staging-eu  \n * Approved by Legal on 14 Aug, see the thread  ",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 1,
+  "allowed": 0,
+  "unexpected": 1,
+  "visible_unexpected": 1,
+  "invisible_unexpected": 0
+ }
+}

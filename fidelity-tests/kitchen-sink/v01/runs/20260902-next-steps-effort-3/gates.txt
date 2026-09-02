@@ -1,0 +1,13 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+#AAACGeHZ4dE [open] Alejandro Acelas 2026-09-02
+  "Is v3 actually the final name? Tomás called it v2.1 in the standup."
+  on "script v3"
+{'suggestedInsertionIds': 2, 'dateElement': 2, 'footnoteReference': 1, 'strikethrough': 3}
+docs_revision ANLCKQlBV0MzfJF3D5OLB6s_-t2TmHyOImeD-dwOiync3Rhx9-xkrOJLoQs8CTh-M7vwbiCDro74KhZMpQqrwezXe7Um3GEg57U4h3-X67o
+drive_revision 1 2026-09-02T22:51:54.426Z
+captured -> kitchen-sink/v01/runs/20260902-next-steps-effort-3/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQkptQwYnWfeLsN49jfriuNRvdhnmRGjV0MFwYDZKLYuKg5MP5vH_YLQgWQx8hm3DVor5BOZgRJUIYKDhiFI39zJkhHiEuhRNFRuVeA
+drive_revision 2 2026-09-02T22:57:49.865Z
+captured -> kitchen-sink/v01/runs/20260902-next-steps-effort-3/after (screenshots: gdt-shot)

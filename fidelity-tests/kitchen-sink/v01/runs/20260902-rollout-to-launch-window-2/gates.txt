@@ -6,3 +6,6 @@ docs_revision AIroW36-_nPEuhEeXR8jO9T1_jdwLpjIyKLrTd41GxrWu9wKLzV8yW4qfCbXKwOpT7
 drive_revision 1 2026-09-02T22:08:10.679Z
 captured -> kitchen-sink/v01/runs/20260902-rollout-to-launch-window-2/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQkvF_JwLRQFLHgynLQE3klQ-D7C1_gkai2cQE63C7cz7s2eg3IGyUaUzr3fxZSWyjQODu8ZKJut1KUQHOOy5h2RrU5Dlz1Jgr8EjEc
+drive_revision 2 2026-09-02T22:57:52.874Z
+captured -> kitchen-sink/v01/runs/20260902-rollout-to-launch-window-2/after (screenshots: gdt-shot)

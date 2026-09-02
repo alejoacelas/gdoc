@@ -72,7 +72,7 @@ PY
     [ -n "$runs_folder" ] || die "$fx/fixture.md has no runs_folder:"
     area=$(basename "$(dirname "$fx")"); ver=$(basename "$fx"); date=$(date +%Y%m%d)
     title="gdt-$area-$ver run $date $slug"
-    run="$fx/runs/$date-$slug"; n=1; while [ -e "$run" ]; do n=$((n+1)); run="$fx/runs/$date-$slug-$n"; done
+    run="$fx/runs/$date-$slug"; n=1; while [ -e "$run/copy_id.txt" ]; do n=$((n+1)); run="$fx/runs/$date-$slug-$n"; done
     mkdir -p "$run"
     if [ -z "$copy" ]; then
       copy=$(gdoc cp --quiet --json --account "$A" "$src" "$title" | python3 -c "import json,sys;print(json.load(sys.stdin)['id'])")

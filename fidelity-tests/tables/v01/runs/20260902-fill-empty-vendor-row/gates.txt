@@ -1,0 +1,13 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+#AAACGePZQas [open] Alejandro Acelas 2026-09-02
+  "Who actually owns this line? Finance says it is Ops, Ops says it went back to Finance in July."
+  on "shared between Ops and Finance"
+{'suggestedInsertionIds': 1, 'dateElement': 2, 'footnoteReference': 0, 'strikethrough': 1}
+docs_revision ANLCKQlwYYwWUTTi1GNMilYFs7I9ZHwqeSmgGZrZO5tS3STPyVhTgv_PLONvU50OcXoyPSbyEm2l86IF1EtqlNkjTStlCmr_Mt3jf-t-ECk
+drive_revision 1 2026-09-02T22:07:37.174Z
+captured -> tables/v01/runs/20260902-fill-empty-vendor-row/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0
+docs_revision AIroW36mJ7RMzBtuC4gxTIFio2UDI8f5y4SvgdeaxqdqcXE72n_wSNb1voVRSutvPtjL0SJyzWYqYbeseDhaKI1Nea3FOnvEuslYibZ5U80
+drive_revision 5 2026-09-02T22:23:08.003Z
+captured -> tables/v01/runs/20260902-fill-empty-vendor-row/after (screenshots: gdt-shot)

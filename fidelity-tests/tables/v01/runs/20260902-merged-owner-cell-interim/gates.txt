@@ -1,0 +1,13 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+#AAACGePZQas [open] Alejandro Acelas 2026-09-02
+  "Who actually owns this line? Finance says it is Ops, Ops says it went back to Finance in July."
+  on "shared between Ops and Finance"
+{'suggestedInsertionIds': 1, 'dateElement': 2, 'footnoteReference': 0, 'strikethrough': 1}
+docs_revision ANLCKQnFg9FUtdqmg9owUvYzrOIKPrbH9PTi0mkm0BZ202BHdKZ_Ic9p0LbNdeZUkKYbZakyJWfbUCxa74LVOIbBcMTFeWrA41g2fxngRpM
+drive_revision 1 2026-09-02T22:09:00.101Z
+captured -> tables/v01/runs/20260902-merged-owner-cell-interim/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQnjxf2tF0NZMeaLrUNCwQ9-4MS2IkAKWNHmag13KxsxrjZnv0g4eM4FcZGbawkn2qbhfCJLitqXNIhW3z3wrzdMwKL7_qyUlXO9YpE
+drive_revision 2 2026-09-02T22:22:57.003Z
+captured -> tables/v01/runs/20260902-merged-owner-cell-interim/after (screenshots: gdt-shot)

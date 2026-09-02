@@ -6,3 +6,6 @@ docs_revision ANLCKQmdB8wfzUEHOIXkYKSdS5jOGkdpoDPd4rvPPi2UeQnzWnVRDj6eHa-yDj7rtr
 drive_revision 1 2026-09-02T21:57:20.460Z
 captured -> tables/v01/runs/20260902-acme-cost-49000/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQn7YdYJL9okslsKK4QizHvxSaeB_nFTj0ntKH3zda3qJxMk2U4jwwfi-Md3ajb9MySzYsgsgs2nEhv-1nRymrAsTRoIxRqRg6ekr14
+drive_revision 2 2026-09-02T22:22:08.750Z
+captured -> tables/v01/runs/20260902-acme-cost-49000/after (screenshots: gdt-shot)

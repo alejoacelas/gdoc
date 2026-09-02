@@ -6,3 +6,6 @@ docs_revision ANLCKQlBG0hEzw1Rq6VDujnEl6mJ35W7OZLJRYmocC8WtEAKk84PaqSI2ykIqEGn8z
 drive_revision 1 2026-09-02T21:57:41.800Z
 captured -> tables/v01/runs/20260902-remove-empty-vendor-row/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQlBG0hEzw1Rq6VDujnEl6mJ35W7OZLJRYmocC8WtEAKk84PaqSI2ykIqEGn8z8mWBSeN772PMNL9JEGgGSbWSN6UjRzOiwFKBWdv_E
+drive_revision 1 2026-09-02T21:57:41.800Z
+captured -> tables/v01/runs/20260902-remove-empty-vendor-row/after (screenshots: gdt-shot)

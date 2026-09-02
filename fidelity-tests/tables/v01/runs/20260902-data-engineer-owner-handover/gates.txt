@@ -6,3 +6,6 @@ docs_revision ANLCKQlfc0T7hP27F6Z9y2-W6-AydVHT6duTsosJtlaXUNFWKGWv6kU8fBYO8qZSvS
 drive_revision 1 2026-09-02T22:00:36.476Z
 captured -> tables/v01/runs/20260902-data-engineer-owner-handover/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision AIroW34yYix2SSoFEuUl9ausUy7ylVe-gbENHDdKkxA5CVS2c3RvFLyZ3LnsIzYzjGmp-Rp3ArNsrIcYUZqJjDenyn0m2GATm3RnilXhCwE
+drive_revision 2 2026-09-02T22:23:00.697Z
+captured -> tables/v01/runs/20260902-data-engineer-owner-handover/after (screenshots: gdt-shot)

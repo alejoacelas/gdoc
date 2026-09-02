@@ -6,3 +6,6 @@ docs_revision ANLCKQmUix4R_PYfXYNEdKR-d5qpWORogi5ukCJ1eWGnzscy8PJsxYdMLm1YrDiaBx
 drive_revision 1 2026-09-02T21:57:52.224Z
 captured -> tables/v01/runs/20260902-ops-coordinator-start-date/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQnU1i8SQCwahf5dPCbpklmvDsPANpHuDbZEP-dnRZazKyIK8I4Z2mbJ_OTHkYkV9SShq1h5u94Jk_bhXM7vDBHLDtVdCrnjYUg5mxI
+drive_revision 2 2026-09-02T22:23:24.938Z
+captured -> tables/v01/runs/20260902-ops-coordinator-start-date/after (screenshots: gdt-shot)

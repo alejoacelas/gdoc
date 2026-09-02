@@ -1,0 +1,77 @@
+{
+ "task": "paused-until-q1",
+ "items": [
+  {
+   "path": "tab[Tab 1]/table[2]/cell[3,2]/para[0:Paused until Q4, see budget⏎].paragraphStyle.avoidWidowAndOrphan",
+   "before": false,
+   "after": "∅",
+   "kind": "para",
+   "note": "pagination hint (avoidWidowAndOrphan/keepLinesTogether/keepWithNext); allowed by default, see CORRECTIONS.md",
+   "class": "allowed",
+   "visible": false,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/table[2]/cell[3,2]/para[0:Paused until Q4, see budget⏎].style@\"Paused\"",
+   "before": {
+    "textStyle": {
+     "fontSize": {
+      "magnitude": 9,
+      "unit": "PT"
+     },
+     "weightedFontFamily": {
+      "fontFamily": "Courier New",
+      "weight": 400
+     }
+    }
+   },
+   "after": {
+    "textStyle": {}
+   },
+   "kind": "style",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/table[2]/cell[3,2]/para[0:Paused until Q4, see budget⏎].text",
+   "kind": "text",
+   "before": "4",
+   "after": "1",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/table[2]/cell[3,2]/para[0:Paused until Q4, see budget⏎].style@\"see budget⏎\"",
+   "before": {
+    "textStyle": {
+     "fontSize": {
+      "magnitude": 14,
+      "unit": "PT"
+     },
+     "weightedFontFamily": {
+      "fontFamily": "Georgia",
+      "weight": 400
+     }
+    }
+   },
+   "after": {
+    "textStyle": {}
+   },
+   "kind": "style",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -31,3 +31,3 @@\n | Ops coordinator (Madrid) | Offer out ⏳ | References Right-to-work | Tomás; start 2 Sept 2026 (tbc) |\n-| Recruiter (contract) | Sourcing | Paused until Q4, see budget | Budget hold |\n+| Recruiter (contract) | Sourcing | Paused until Q1, see budget | Budget hold |\n | Head of People |  | owner\tstage\tETA | TBC after the Q3 board |",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 1,
+  "allowed": 1,
+  "unexpected": 2,
+  "visible_unexpected": 2,
+  "invisible_unexpected": 0
+ }
+}

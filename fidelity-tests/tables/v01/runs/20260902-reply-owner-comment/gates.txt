@@ -1,0 +1,13 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+#AAACGePZQas [open] Alejandro Acelas 2026-09-02
+  "Who actually owns this line? Finance says it is Ops, Ops says it went back to Finance in July."
+  on "shared between Ops and Finance"
+{'suggestedInsertionIds': 1, 'dateElement': 2, 'footnoteReference': 0, 'strikethrough': 1}
+docs_revision ANLCKQkq5UwLDFl6wmjd-UKLNr-GbEFwSkLxyFKgB2xVXnpMnsk_bgMuMjFYLDCeG154NInY3kq2xWvJq9ckfF8MRZIZFGOdAvGAlyDESpY
+drive_revision 1 2026-09-02T22:06:03.190Z
+captured -> tables/v01/runs/20260902-reply-owner-comment/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0
+docs_revision AIroW35FjM9McZJZL8igfyjh2B-bgkCxMmpfdlxEXcr-BO2s9_UOHJzS6juaxvDuEEri3zwb-whuD4Oybjriaal21mPbC8vvIYAXRATyhNw
+drive_revision 1 2026-09-02T22:06:03.190Z
+captured -> tables/v01/runs/20260902-reply-owner-comment/after (screenshots: gdt-shot)

@@ -1,0 +1,42 @@
+{
+ "task": "merged-owner-cell-interim",
+ "items": [
+  {
+   "path": "tab[Tab 1]/table[0]/cell[3,2]/para[0:Owner TBD — shared between Ops].paragraphStyle.avoidWidowAndOrphan",
+   "before": false,
+   "after": "∅",
+   "kind": "para",
+   "note": "pagination hint (avoidWidowAndOrphan/keepLinesTogether/keepWithNext); allowed by default, see CORRECTIONS.md",
+   "class": "allowed",
+   "visible": false,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/table[0]/cell[3,2]/para[0:Owner TBD — shared between Ops].text",
+   "kind": "text",
+   "before": "",
+   "after": ":",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/table[0]/cell[3,2]/para[0:Owner TBD — shared between Ops].text",
+   "kind": "text",
+   "before": "TBD",
+   "after": "Ops (interim)",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -15,3 +15,3 @@\n | Datawise Ltd | 12,95012,750  | Renew NDA (Tomás) | Pendiente: *pending legal review* |\n-| Northwind | n/a | Owner TBD — shared between Ops and Finance until the Contoso decision lands | Revisión legal |\n+| Northwind | n/a | Owner: Ops (interim) — shared between Ops and Finance until the Contoso decision lands | Revisión legal |\n | Contoso Ltd | \\=SUM(B2:B4) |  | Отклонено ❌ |",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 2,
+  "allowed": 1,
+  "unexpected": 0,
+  "visible_unexpected": 0,
+  "invisible_unexpected": 0
+ }
+}

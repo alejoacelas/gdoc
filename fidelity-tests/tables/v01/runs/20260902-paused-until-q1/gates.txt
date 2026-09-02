@@ -6,3 +6,6 @@ docs_revision ANLCKQkp7DaFh1EY83AO1b5laWhE5-CAcatPmyfzR1dxCz9teLMesTufFltt3QDzAc
 drive_revision 1 2026-09-02T21:58:02.015Z
 captured -> tables/v01/runs/20260902-paused-until-q1/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQm4TXSsk93LgAQ7Upqn5hfd8c7zG1gF_8_oZsGoa90G1dht6FXmnibMA7eOJ0RuYJLJovfEG6m0DS9L7RrlIHIXDJ3kXAeQ2njeSwM
+drive_revision 2 2026-09-02T22:22:19.785Z
+captured -> tables/v01/runs/20260902-paused-until-q1/after (screenshots: gdt-shot)

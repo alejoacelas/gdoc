@@ -6,3 +6,9 @@ docs_revision ANLCKQkxcuoUJhtvVLVu_RGbSbb3SqoMPaO9f7tekTcQitVLvFNBa6Xa-KrHOGHtTB
 drive_revision 1 2026-09-02T21:57:30.929Z
 captured -> tables/v01/runs/20260902-northwind-quote/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQkFJlim1n1Uexj2M0ignHVXORXXaMdCWO1kIzU92z2djLBKW5dljrVKUwEK-ADIzHNRoI0y20PjvkrJ416G_15OtUXd-9sElgK4K-s
+drive_revision 2 2026-09-02T22:22:02.474Z
+captured -> tables/v01/runs/20260902-northwind-quote/after (screenshots: gdt-shot)
+docs_revision ANLCKQkFJlim1n1Uexj2M0ignHVXORXXaMdCWO1kIzU92z2djLBKW5dljrVKUwEK-ADIzHNRoI0y20PjvkrJ416G_15OtUXd-9sElgK4K-s
+drive_revision 2 2026-09-02T22:22:02.474Z
+captured -> tables/v01/runs/20260902-northwind-quote/after (screenshots: gdt-shot)

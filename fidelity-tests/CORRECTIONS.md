@@ -107,3 +107,9 @@ entries once you agree; disagreements go back into the skill.
   key-rotation-owner-to-priya: the highlight no longer covers `Marco to`). Both are recorded
   COLLATERAL with `human: requested`. Fix options: expose the Drive `anchor` field in `gdoc
   comments --json`, or have `gdt capture` call the Drive API directly for anchors.
+- **`gdt-diff` crashed on a dropdown chip.** The Docs API returns a dropdown chip as a
+  paragraph element with only `startIndex`/`endIndex` (no type key), which became an empty
+  dict after normalisation. It is now a `⟨typelessElement⟩` pseudo-character.
+- **Parallel task agents shared one scratch directory** and clobbered each other's
+  `structure.json`; one agent noticed and re-verified from a uniquely named dump. Give each
+  task agent its own empty directory (`scratchpad/empty/<slug>`).

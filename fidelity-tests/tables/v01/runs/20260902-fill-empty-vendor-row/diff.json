@@ -1,0 +1,134 @@
+{
+ "task": "fill-empty-vendor-row",
+ "items": [
+  {
+   "path": "tab[Tab 1]/table[0]/cell[5,0]/para[new@0:Globex⏎].text",
+   "before": "∅",
+   "after": "Globex⏎",
+   "kind": "text",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/table[0]/cell[5,0]/para[new@0:Globex⏎].paragraphStyle",
+   "before": "∅",
+   "after": {
+    "namedStyleType": "NORMAL_TEXT",
+    "lineSpacing": 100
+   },
+   "kind": "para",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/table[0]/cell[5,0]/para[del@0:⏎].text",
+   "before": "⏎",
+   "after": "∅",
+   "kind": "text",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/table[0]/cell[5,1]/para[new@0:3,200⏎].text",
+   "before": "∅",
+   "after": "3,200⏎",
+   "kind": "text",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/table[0]/cell[5,1]/para[new@0:3,200⏎].paragraphStyle",
+   "before": "∅",
+   "after": {
+    "namedStyleType": "NORMAL_TEXT",
+    "lineSpacing": 100
+   },
+   "kind": "para",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/table[0]/cell[5,1]/para[del@0:⏎].text",
+   "before": "⏎",
+   "after": "∅",
+   "kind": "text",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/table[0]/cell[5,2]/para[new@0:Sign SOW (Priya)⏎].text",
+   "before": "∅",
+   "after": "Sign SOW (Priya)⏎",
+   "kind": "text",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/table[0]/cell[5,2]/para[new@0:Sign SOW (Priya)⏎].paragraphStyle",
+   "before": "∅",
+   "after": {
+    "namedStyleType": "NORMAL_TEXT",
+    "lineSpacing": 100
+   },
+   "kind": "para",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/table[0]/cell[5,2]/para[del@0:⏎].text",
+   "before": "⏎",
+   "after": "∅",
+   "kind": "text",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/table[0]/cell[5,3]/para[new@0:Aprobado ✅⏎].text",
+   "before": "∅",
+   "after": "Aprobado ✅⏎",
+   "kind": "text",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/table[0]/cell[5,3]/para[new@0:Aprobado ✅⏎].paragraphStyle",
+   "before": "∅",
+   "after": {
+    "namedStyleType": "NORMAL_TEXT",
+    "lineSpacing": 100
+   },
+   "kind": "para",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/table[0]/cell[5,3]/para[del@0:⏎].text",
+   "before": "⏎",
+   "after": "∅",
+   "kind": "text",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -17,3 +17,3 @@\n | Contoso Ltd | \\=SUM(B2:B4) |  | Отклонено ❌ |\n-|  |  |  |  |\n+| Globex | 3,200 | Sign SOW (Priya) | Aprobado ✅ |\n ",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 12,
+  "allowed": 0,
+  "unexpected": 0,
+  "visible_unexpected": 0,
+  "invisible_unexpected": 0
+ }
+}

@@ -81,7 +81,7 @@ def para_text(p):
         if "textRun" in e:
             out.append(e["textRun"].get("content", ""))
         else:
-            kind = next((k for k in e if k not in ("startIndex", "endIndex")), "elem")
+            kind = next((k for k in e if k not in ("startIndex", "endIndex")), "typelessElement")
             out.append(f"⟨{kind}⟩")
     return "".join(out)
 
@@ -102,8 +102,8 @@ def spans(p):
             for ch in tr.get("content", ""):
                 out.append((ch, st))
         else:
-            kind = next((k for k in e if k not in ("startIndex", "endIndex")), "elem")
-            out.append((f"⟨{kind}⟩", json.dumps(e[kind], sort_keys=True, default=str)))
+            kind = next((k for k in e if k not in ("startIndex", "endIndex")), "typelessElement")
+            out.append((f"⟨{kind}⟩", json.dumps(e.get(kind, {}), sort_keys=True, default=str)))
     return out
 
 

@@ -1,0 +1,9 @@
+{
+ "views": 4,
+ "scroll_step_px": 650,
+ "window": "1440x1200 (viewport ~1456x828)",
+ "zoom": "100%",
+ "layout": "print, outline collapsed, comments in margin, suggestions inline",
+ "captured": "2026-09-02T21:57:35",
+ "note": "view-04 scrollTop clamped to 1670 (scrollHeight 2377)"
+}

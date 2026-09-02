@@ -3171,7 +3171,8 @@ def cmd_suggestion_info(args) -> int:
         print(f"status\t{summary['status']}")
         print(f"author\t{summary['author']}")
         print(f"created\t{summary['created']}")
-        print(f"summary\t{summary['summary']}")
+        summary_text = summary["summary"].replace("\t", " ").replace("\n", " ")
+        print(f"summary\t{summary_text}")
         for loc in locations:
             print(f"location\t{_plain_suggestion_location(loc)}")
         print(f"replies\t{summary['replies']}")

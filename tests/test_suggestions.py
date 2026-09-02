@@ -1139,6 +1139,20 @@ class TestCmdSuggestionInfo:
 
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
+    @patch("gdoc.api.docs.get_document_threads")
+    def test_plain_sanitizes_summary_row(self, mock_get, _pf, _u, capsys):
+        thread = {
+            **find_suggestion_thread(_DOC, "suggest.a"),
+            "summaryText": "first\tpart\nsecond line",
+        }
+        mock_get.return_value = {**_DOC, "suggestions": [thread]}
+        cmd_suggestion_info(
+            _args("suggestion-info", suggestion_id="suggest.a", plain=True)
+        )
+        assert "summary\tfirst part second line\n" in capsys.readouterr().out
+
+    @patch("gdoc.state.update_state_after_command")
+    @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.docs.get_document_threads", return_value=_DOC)
     def test_json(self, _get, _pf, _u, capsys):
         cmd_suggestion_info(

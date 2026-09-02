@@ -10,3 +10,6 @@ docs_revision ANLCKQmD7mz005GhuaKkGvOdby6CcSAJb0PCSczEh5LxWuaR4YRhniIkzguyrNg49G
 drive_revision 1 2026-09-02T23:52:22.267Z
 captured -> collab/v01/runs/20260903-next-review-september/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQmD7mz005GhuaKkGvOdby6CcSAJb0PCSczEh5LxWuaR4YRhniIkzguyrNg49GuAVX2CEn2_6RZHzo-R3IItIrkZXEzm9m8omL_VT80
+drive_revision 1 2026-09-02T23:52:22.267Z
+captured -> collab/v01/runs/20260903-next-review-september/after (screenshots: gdt-shot)

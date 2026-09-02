@@ -10,3 +10,6 @@ docs_revision ANLCKQmg2UmXsFtCeNU9RBV_AHaVcSL7zxHSE3tSDsrHpWXILG1NpMyLNCWQGGc9AD
 drive_revision 1 2026-09-02T23:40:54.342Z
 captured -> collab/v01/runs/20260903-reply-broadband-thread/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQlFsOszYLVIZuGC-KdIlhZtJCYpJUNrtBl1g9kDSRtFWIZuR7cQnPpv0KdvMDkZ7ewYah6zFKJ-oLJXSx-1zl9_YWYKwX6ri8d2v2o
+drive_revision 1 2026-09-02T23:40:54.342Z
+captured -> collab/v01/runs/20260903-reply-broadband-thread/after (screenshots: gdt-shot)

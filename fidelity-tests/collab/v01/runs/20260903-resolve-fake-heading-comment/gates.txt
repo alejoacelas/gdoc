@@ -10,3 +10,6 @@ docs_revision ANLCKQk30I_Di0rQWr7sz9IRL8-rarO9GMDqbJsNJoTUmQfoCWY6vXc2_Hha7zoj4a
 drive_revision 1 2026-09-02T23:43:49.995Z
 captured -> collab/v01/runs/20260903-resolve-fake-heading-comment/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQk3wRzeE7tRYDV-0HOlUsEBfzm6INI5_tMo_kVOpPJqzXPE-2OD_QgI6PkXcJyEN2uhmHPl85U_7jVsnrI_CfzxIqF95VpruZ5pOcc
+drive_revision 1 2026-09-02T23:43:49.995Z
+captured -> collab/v01/runs/20260903-resolve-fake-heading-comment/after (screenshots: gdt-shot)

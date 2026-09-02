@@ -10,3 +10,6 @@ docs_revision ANLCKQka59u7m3RWLzeK702dQXQyOfFmw4_0KdTvfFfOpliWoDOMSiM1YL6L-FjREm
 drive_revision 1 2026-09-02T23:48:02.911Z
 captured -> collab/v01/runs/20260903-handbook-link-notion/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQkIa3k9JZo0h86gfREghnvoqw1kKjD1u3gzz7y4Shw_dfyj2ngPqw1J5iOmSnTtYuuzWM1GFFXRvvocHD6vYItHmGmpzb3HQww0VBI
+drive_revision 2 2026-09-02T23:57:03.852Z
+captured -> collab/v01/runs/20260903-handbook-link-notion/after (screenshots: gdt-shot)

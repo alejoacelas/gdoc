@@ -10,3 +10,6 @@ docs_revision ANLCKQnGq6POqSfjGVk3WnhsPAq0W2wBg-k24ZnngPz6IK-2nQg0aKxvgAftM27f49
 drive_revision 1 2026-09-02T23:50:12.423Z
 captured -> collab/v01/runs/20260903-suggest-contractors-sentence/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQnGq6POqSfjGVk3WnhsPAq0W2wBg-k24ZnngPz6IK-2nQg0aKxvgAftM27f493-o4q6bE-Jgb34-0v3NDjCXSGsu8oGeWDJ8qLUu6g
+drive_revision 1 2026-09-02T23:50:12.423Z
+captured -> collab/v01/runs/20260903-suggest-contractors-sentence/after (screenshots: gdt-shot)

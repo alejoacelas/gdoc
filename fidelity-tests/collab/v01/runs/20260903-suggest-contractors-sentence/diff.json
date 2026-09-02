@@ -1,0 +1,13 @@
+{
+ "task": "suggest-contractors-sentence",
+ "items": [],
+ "cat_diff": "",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 0,
+  "allowed": 0,
+  "unexpected": 0,
+  "visible_unexpected": 0,
+  "invisible_unexpected": 0
+ }
+}

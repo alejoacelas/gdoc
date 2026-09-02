@@ -89,8 +89,9 @@ PY
     echo "run_dir: $run"; echo "copy_url: https://docs.google.com/document/d/$copy/edit";;
   run-end)
     run=${1:?run dir}; run=${run%/}; A=$(acct); copy=$(cat "$run/copy_id.txt")
-    slug=$(basename "$run" | sed -E 's/^[0-9]{8}-//; s/-[0-9]+$//')
     fx=$(dirname "$(dirname "$run")")
+    slug=$(basename "$run" | sed -E 's/^[0-9]{8}-//'); base=$(echo "$slug" | sed -E 's/-[0-9]+$//')
+    grep -q "^## $slug\s*$" "$fx/tasks.md" || slug=$base
     "$0" capture "$copy" "$run/after" | tee -a "$run/gates.txt"
     python3 - "$run" <<'PY2'
 import json,sys

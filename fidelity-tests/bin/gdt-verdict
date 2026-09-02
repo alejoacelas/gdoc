@@ -19,7 +19,9 @@ ap.add_argument("--track", default="agent"); ap.add_argument("--date", default=N
 a = ap.parse_args()
 run = Path(a.run); fx = run.parent.parent
 fixture = f"{fx.parent.name}/{fx.name}"
-slug = re.sub(r"^\d{8}-", "", run.name); slug = re.sub(r"-\d+$", "", slug)
+slug = re.sub(r"^\d{8}-", "", run.name)
+_tasks = set(re.findall(r"^## (\S+)", (fx / "tasks.md").read_text(), re.M)) if (fx / "tasks.md").exists() else set()
+if slug not in _tasks and re.sub(r"-\d+$", "", slug) in _tasks: slug = re.sub(r"-\d+$", "", slug)
 copy_id = (run / "copy_id.txt").read_text().strip()
 gates_txt = (run / "gates.txt").read_text() if (run / "gates.txt").exists() else ""
 gdoc_version = (re.search(r"gdoc_version: gdoc (\S+)", gates_txt) or re.search(r"gdoc_version: (\S+)", gates_txt) or [None, "?"])[1]

@@ -1,6 +1,6 @@
 ---
 fixture: tables/v01
-task: acme-cost
+task: acme-cost-49000
 track: agent
 date: 2026-09-02
 gdoc_version: 0.21.0

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # gdt-transcript RUN_DIR < report   — files a task agent's report as transcript.md, then runs run-end
 set -euo pipefail
-run=${1%/}; slug=$(basename "$run" | sed -E 's/^[0-9]{8}-//; s/-[0-9]+$//')
+run=${1%/}; fx=$(dirname "$(dirname "$run")"); slug=$(basename "$run" | sed -E 's/^[0-9]{8}-//'); grep -q "^## $slug\s*$" "$fx/tasks.md" || slug=$(echo "$slug" | sed -E 's/-[0-9]+$//')
 { echo "# transcript — $slug (agent track)"; echo
   echo "Agent: Claude Fable 5.1 via the Agent tool (general-purpose), gdoc $(gdoc --version | awk '{print $2}'). Given only the"
   echo "request, the copy URL, the account to pass, \"no browser\", and told to cd into an empty scratch"

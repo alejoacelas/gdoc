@@ -79,11 +79,9 @@ Name the version in the browser (File > Version history > Name current version,
 `frozen`). Google prunes unnamed revisions within hours. Then:
 
 ```
-bin/gdt-shot DOC baseline/                                   # see capture.md
-gdoc structure --account $A DOC > baseline/structure.json
-gdoc cat --account $A DOC > baseline/cat.md
-gdoc comments --all --account $A DOC --json > baseline/comments.json
-gdoc revisions --account $A DOC --json > baseline/revisions.json
+fidelity-tests/bin/gdt capture DOC fidelity-tests/<area>/v<NN>/baseline   # structure, cat, comments, revisions
+# screenshots: capture.md, then bin/gdt-shot baseline/ <saved paths>
+fidelity-tests/bin/gdt validate-fixture fidelity-tests/<area>/v<NN>
 ```
 
 Then re-run `gdoc structure` once more and confirm it is byte-identical to the first

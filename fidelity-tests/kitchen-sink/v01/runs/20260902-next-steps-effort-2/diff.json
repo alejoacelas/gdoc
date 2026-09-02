@@ -1,0 +1,60 @@
+{
+ "task": "next-steps-effort",
+ "items": [
+  {
+   "path": "tab[Tab 1]/para[23:Ship the v2 migration script v].style@\"v2 migration script\"",
+   "before": {
+    "textStyle": {
+     "strikethrough": true
+    }
+   },
+   "after": {
+    "textStyle": {}
+   },
+   "kind": "style",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[23:Ship the v2 migration script v].style@\"Estimated effort\"",
+   "before": {
+    "textStyle": {
+     "backgroundColor": {
+      "color": {
+       "rgbColor": {
+        "green": 1,
+        "red": 1
+       }
+      }
+     }
+    }
+   },
+   "after": {
+    "textStyle": {}
+   },
+   "kind": "style",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[23:Ship the v2 migration script v].text",
+   "kind": "text",
+   "before": "3",
+   "after": "4",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -40,3 +40,3 @@\n \n-Ship the ~~v2 migration script~~ v3 script by Friday\\[1\\]. Estimated effort: 3 dev-days\t(was 5\\)  \n+Ship the v2 migration script v3 script by Friday\\[1\\]. Estimated effort: 4 dev-days\t(was 5\\)  \n Status:\t🟢 green\t(as of 09-02)  Ana says amber 🟠, not green  ",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 1,
+  "allowed": 0,
+  "unexpected": 2,
+  "visible_unexpected": 2,
+  "invisible_unexpected": 0
+ }
+}

@@ -22,10 +22,11 @@ intersection of the two, never a model's reading of the request after the fact.
 
 ## Status
 
-Protocol is defined; harness is not built. `bin/` scripts named below do not exist yet
-and there is no completed fixture or run. Do the steps by hand and keep the file layout,
-so the scripts can be written against real artifacts. Check `fidelity-tests/INDEX.md`
-for current state before assuming otherwise.
+One fixture (`kitchen-sink/v01`) is frozen and baselined, with runs. `fidelity-tests/bin/`
+holds `gdt` (doctor, validate-fixture, capture, gates, index), `gdt-diff`, `gdt-index`
+and `gdt-shot`. Screenshots still go through the driving agent's browser tool; there is
+no `gdt run` yet, so the run steps below are done by hand in that order. Check
+`fidelity-tests/INDEX.md` and `fidelity-tests/CORRECTIONS.md` before assuming anything.
 
 ## Configuration
 
@@ -45,9 +46,8 @@ Commit only when the calling project's instructions say to, on the branch they n
   the agent-free regression suite), `config.yaml`.
 - `<area>/v<NN>/` — `fixture.md` (URLs, frozen revision, created date), `prompt.md`
   (builder brief only), `built.md`, `tasks.md`, `baseline/`, `runs/<YYYYMMDD>-<slug>/`.
-- Every capture set (`baseline/`, a run's `before/` and `after/`) holds `page-NN.png`,
-  `structure.json`, `cat.md`, `comments.json`, `shot.json` (baseline adds
-  `revisions.json`). A run adds
+- Every capture set (`baseline/`, a run's `before/` and `after/`) holds `view-NN.jpg`,
+  `structure.json`, `cat.md`, `comments.json`, `revisions.json`, `shot.json`. A run adds
   `transcript.md`, `diff.md`, `verdict.md`.
 
 Fixture doc `gdt-<area>-v<NN>`; run copy `gdt-<area>-v<NN> run <YYYYMMDD> <slug>`. Area
@@ -92,7 +92,8 @@ Two tracks, reported separately, so an agent's mistake never reads as a CLI regr
 - **Command track** — you run one named gdoc command on the copy and check that it
   makes only the declared mutation. This is what `repros.md` reruns.
 - **Agent track** — a fresh agent gets only the request and the copy's URL and picks
-  its own commands. It must report what it did and whether it believes it succeeded;
+  its own commands. Spawn it with an empty working directory: it must not be able to
+  read `built.md`, `tasks.md` or this skill. It must report what it did and whether it believes it succeeded;
   save its report and every command as `transcript.md`.
 
 The steps, in order, with the gate each one must pass:
@@ -100,8 +101,11 @@ The steps, in order, with the gate each one must pass:
 1. **Source check.** `gdoc structure` of the fixture matches `baseline/structure.json`
    after normalisation, and the frozen revision is still listed by `gdoc revisions`.
    Otherwise stop: the fixture has drifted; build a new version.
-2. **Copy.** `gdoc cp` into the fixture's `runs/` folder with the run name. Record the
-   copy's id.
+2. **Copy.** If the task's preconditions mention comments or suggestions, copy in the
+   Docs UI: File > Make a copy, tick "Copy comments and suggestions", untick "Share it
+   with the same people", then `gdoc mv` the copy into the fixture's `runs/` folder.
+   `gdoc cp` (Drive `files.copy`) silently drops both, so use it only when neither is
+   needed. Record the copy's id.
 3. **Precondition check.** Every feature the task's preconditions name is present in
    the copy (`gdoc comments --all`, `gdoc structure`, a screenshot for suggestions).
 4. **Before capture** of the copy, every capture file. Record the copy's latest revision

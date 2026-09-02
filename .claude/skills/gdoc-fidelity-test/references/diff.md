@@ -11,7 +11,8 @@ Drop only what changes on every save and carries no meaning:
 - `revisionId`, `documentId`, `suggestionsViewMode`
 - `startIndex` / `endIndex` — but keep paragraph **order** and each paragraph's
   **length**; a length change is a real change
-- comment `modifiedTime` on threads the task did not touch, and `htmlContent`
+- comment `htmlContent`; comment `modifiedTime` is kept but classified `allowed` when
+  the task's Allowed field says so (it differs even between a fixture and a fresh copy)
 
 Keep everything else, in particular things that look invisible but are damage:
 
@@ -22,7 +23,8 @@ Keep everything else, in particular things that look invisible but are damage:
 - `namedStyleType` behind identical direct formatting
 - link `url`, header/footer ids, tab ids
 
-Normalisation has its own tests: a fixture pair where only an id changed must produce
+`bin/gdt-diff` implements this; it also has a tiny locator language for Target (`table N,
+cell [r,c]`, ``paragraph beginning `X` ``, `comment`). Normalisation has its own tests: a fixture pair where only an id changed must produce
 an item, and a pair where only indices shifted after an earlier insertion must not.
 
 ## Paths

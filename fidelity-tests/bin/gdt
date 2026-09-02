@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# gdt — fidelity-test harness entry point. Subcommands:
+#   doctor                      config, account, gdoc, browser
+#   validate-fixture DIR        five task fields, baseline files, frozen revision present
+#   capture DOC OUTDIR          structure/cat/comments/revisions (screenshots: see gdt-shot)
+#   gates FIXTURE_DIR COPY_DOC  source-matches-baseline + precondition hints for a run copy
+#   index                       regenerate INDEX.md
+set -euo pipefail
+here=$(cd "$(dirname "$0")" && pwd); root=$(dirname "$here")
+cfg="$root/config.yaml"
+acct() { grep -E '^account:' "$cfg" | sed 's/^account:[[:space:]]*//' | sed 's/[[:space:]]*#.*//'; }
+die() { echo "gdt: $*" >&2; exit 1; }
+cmd=${1:-help}; shift || true
+case "$cmd" in
+  doctor)
+    [ -f "$cfg" ] || die "missing $cfg (copy config.example.yaml)"
+    A=$(acct); [ -n "$A" ] || die "config.yaml has no account"
+    echo "account: $A"; echo "gdoc: $(gdoc --version)"
+    gdoc ls --account "$A" "$(grep -E '^drive_root:' "$cfg" | sed 's/^drive_root:[[:space:]]*//;s/[[:space:]]*#.*//')" >/dev/null && echo "drive_root: reachable"
+    python3 -c "import json" && echo "python3: ok"
+    echo "browser: screenshots need a Chrome session with the claude-in-chrome extension (see references/capture.md)";;
+  validate-fixture)
+    d=${1:?fixture dir}; ok=1
+    for f in fixture.md prompt.md built.md tasks.md baseline/structure.json baseline/cat.md baseline/comments.json baseline/revisions.json baseline/shot.json; do
+      [ -e "$d/$f" ] || { echo "missing $d/$f"; ok=0; }; done
+    ls "$d"/baseline/view-* >/dev/null 2>&1 || { echo "missing $d/baseline/view-NN"; ok=0; }
+    grep -qE '^frozen_revision_id: [0-9]+' "$d/fixture.md" || { echo "fixture.md: frozen_revision_id not set"; ok=0; }
+    python3 - "$d/tasks.md" <<'PY' || ok=0
+import re,sys
+t=open(sys.argv[1]).read(); bad=0
+for m in re.finditer(r"^## (\S+)\s*$(.*?)(?=^## |\Z)", t, re.M|re.S):
+    missing=[f for f in ("Request","Expected","Target","Allowed","Preconditions") if f"**{f}:**" not in m.group(2)]
+    if missing: print(f"task {m.group(1)}: missing {missing}"); bad=1
+sys.exit(bad)
+PY
+    [ $ok = 1 ] && echo "fixture ok: $d" || exit 3;;
+  capture)
+    doc=${1:?doc}; out=${2:?outdir}; A=$(acct); mkdir -p "$out"
+    gdoc structure --account "$A" "$doc" 2>/dev/null > "$out/structure.json"
+    gdoc cat --quiet --account "$A" "$doc" > "$out/cat.md" 2>/dev/null
+    gdoc comments --all --quiet --account "$A" "$doc" --json > "$out/comments.json" 2>/dev/null
+    gdoc revisions --quiet --account "$A" "$doc" --json > "$out/revisions.json" 2>/dev/null
+    python3 -c "import json,sys;d=json.load(open('$out/structure.json'));r=json.load(open('$out/revisions.json'))['revisions'];print('docs_revision',d['revisionId']);print('drive_revision',r[-1]['id'],r[-1]['modifiedTime'])"
+    echo "captured -> $out (screenshots: gdt-shot)";;
+  gates)
+    fx=${1:?fixture dir}; copy=${2:?copy doc}; A=$(acct)
+    src=$(grep -E '^doc:' "$fx/fixture.md" | sed 's/^doc:[[:space:]]*//')
+    tmp=$(mktemp -d)
+    gdoc structure --account "$A" "$src" 2>/dev/null > "$tmp/structure.json"
+    python3 - "$fx/baseline/structure.json" "$tmp/structure.json" <<'PY'
+import json,sys
+sys.path.insert(0, __import__('os').path.dirname(__import__('os').path.realpath(sys.argv[0])) if False else '')
+def norm(n):
+    D={"revisionId","documentId","suggestionsViewMode","commentsViewMode"}
+    if isinstance(n,dict): return {k:norm(v) for k,v in n.items() if k not in D}
+    if isinstance(n,list): return [norm(v) for v in n]
+    return n
+a,b=[norm(json.load(open(p))) for p in sys.argv[1:3]]
+print("gate source_matches_baseline:", "pass" if a==b else "FAIL (fixture drifted)")
+PY
+    echo "gate preconditions: check tasks.md preconditions against:"; gdoc comments --all --quiet --account "$A" "$copy" | head -5
+    gdoc structure --account "$A" "$copy" 2>/dev/null | python3 -c "import sys,json;s=sys.stdin.read();print({k:s.count(k) for k in ('suggestedInsertionIds','dateElement','footnoteReference','strikethrough')})";;
+  index) exec python3 "$here/gdt-index";;
+  *) sed -n '2,8p' "$0";;
+esac

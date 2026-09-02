@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# gdt-shot OUTDIR [--step PX] [--views N] PNG...
+# Screenshots are taken by the driving agent through the claude-in-chrome `computer`
+# tool with save_to_disk=true, at scrollTop = 0, STEP, 2*STEP ... on
+# `.kix-appview-editor` (set via javascript_tool), window resized to 1440x1200, 100%
+# zoom, outline panel collapsed. This script files the saved images as view-01.<ext> … and
+# writes shot.json. Pass the saved paths in scroll order.
+set -euo pipefail
+out=${1:?outdir}; shift; step=650
+while [ $# -gt 0 ]; do case "$1" in --step) step=$2; shift 2;; *) break;; esac; done
+mkdir -p "$out"; n=0
+for f in "$@"; do n=$((n+1)); ext=${f##*.}; cp "$f" "$out/view-$(printf %02d $n).$ext"; done
+python3 - "$out" "$step" "$n" <<'PY'
+import json,sys,datetime
+out,step,n=sys.argv[1],int(sys.argv[2]),int(sys.argv[3])
+json.dump({"views":n,"scroll_step_px":step,"window":"1440x1200 (viewport ~1456x828)","zoom":"100%",
+           "layout":"print, outline collapsed, comments closed","captured":datetime.datetime.now().isoformat(timespec="seconds")},
+          open(f"{out}/shot.json","w"),indent=1)
+PY
+echo "filed $n views -> $out"

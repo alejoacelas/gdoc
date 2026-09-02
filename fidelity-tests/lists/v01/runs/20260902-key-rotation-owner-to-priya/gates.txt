@@ -1,0 +1,11 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+#AAACGeAxyJI [open] Alejandro Acelas 2026-09-02
+  "Dmitry is out until 15 Sep, so this and the key rotation both slip. Who picks them up?"
+  on "спросить Дмитрия
+Marco to"
+{'suggestedInsertionIds': 1, 'dateElement': 0, 'footnoteReference': 0, 'strikethrough': 1}
+docs_revision ANLCKQmKLOLzr6E9RtF1m_X7yt4uIkQ9rW5tTquzzWPA6bwNjcnZGwjQSVM8v2COeNMXQ2WDwkw-yVD8vEOrfL2H1cSVC0lH7-8s3u7RRR0
+drive_revision 1 2026-09-02T21:15:23.457Z
+captured -> lists/v01/runs/20260902-key-rotation-owner-to-priya/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0

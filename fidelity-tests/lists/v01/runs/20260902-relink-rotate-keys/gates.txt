@@ -1,0 +1,11 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+#AAACGeAxyJI [open] Alejandro Acelas 2026-09-02
+  "Dmitry is out until 15 Sep, so this and the key rotation both slip. Who picks them up?"
+  on "спросить Дмитрия
+Marco to"
+{'suggestedInsertionIds': 1, 'dateElement': 0, 'footnoteReference': 0, 'strikethrough': 1}
+docs_revision ANLCKQmWYA1FSVUxeDq1CYfG_Q1_nF3Uyu0VXrsAtHC_aYYMLtwWq0JdjflFN-OjyzHjvhT4yIAkGguVYXqQfRIVktqm8tA9_E8Ddb4l3cQ
+drive_revision 1 2026-09-02T21:11:55.509Z
+captured -> lists/v01/runs/20260902-relink-rotate-keys/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0

@@ -3239,7 +3239,16 @@ def _decide_suggestion(args, decision: str) -> int:
     # A 200 is not proof: read back and require the thread to be in the
     # requested state. Observed live: accepted/rejected threads stay
     # listed with that status; a deleted thread disappears.
-    after_doc = get_document_threads(doc_id)
+    try:
+        after_doc = get_document_threads(doc_id)
+    except Exception as e:  # noqa: BLE001 — the decision is already saved
+        raise GdocError(
+            f"suggestion {suggestion_id} was reported saved after "
+            f"{decision}, but verification failed "
+            f"({str(e) or type(e).__name__}). The decision may already "
+            "have been applied — inspect `gdoc suggestions --all` before "
+            "retrying."
+        )
     after = find_suggestion_thread(after_doc, suggestion_id)
     after_status = (
         summarize_suggestion_thread(after)["status"] if after else "gone"
@@ -3253,8 +3262,17 @@ def _decide_suggestion(args, decision: str) -> int:
             "check `gdoc suggestions --all`"
         )
 
+    # The decision is saved and verified at this point. Awareness
+    # bookkeeping must not turn that success into an ordinary failure that
+    # encourages an unsafe retry.
     from gdoc.api.drive import get_file_version
-    command_version = get_file_version(doc_id).get("version")
+
+    version_error = None
+    command_version = None
+    try:
+        command_version = get_file_version(doc_id).get("version")
+    except Exception as e:  # noqa: BLE001 — post-mutation bookkeeping
+        version_error = e
 
     from gdoc.format import format_json, get_output_mode
     mode = get_output_mode(args)
@@ -3272,11 +3290,27 @@ def _decide_suggestion(args, decision: str) -> int:
     else:
         print(f"OK {final_status} suggestion #{suggestion_id}")
 
+    if version_error is not None:
+        print(
+            f"WARN: suggestion #{suggestion_id} is {final_status}, but the "
+            f"document version could not be refreshed: {version_error}; "
+            "awareness state not updated",
+            file=sys.stderr,
+        )
+        return 0
+
     from gdoc.state import update_state_after_command
-    update_state_after_command(
-        doc_id, change_info, command=command, quiet=quiet,
-        command_version=command_version,
-    )
+    try:
+        update_state_after_command(
+            doc_id, change_info, command=command, quiet=quiet,
+            command_version=command_version,
+        )
+    except Exception as e:  # noqa: BLE001 — post-mutation local state
+        print(
+            f"WARN: suggestion #{suggestion_id} is {final_status}, but "
+            f"awareness state was not persisted: {e}",
+            file=sys.stderr,
+        )
     return 0
 
 

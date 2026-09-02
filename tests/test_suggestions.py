@@ -828,6 +828,20 @@ class TestDecideSuggestion:
             decide_suggestion("doc1", "suggest.a", "accept", "rev1")
 
     @patch("gdoc.api.docs.get_docs_service")
+    def test_transport_failure_is_indeterminate(self, mock_svc):
+        mock_svc.return_value = _mock_docs_service(
+            batch_error=TimeoutError("timed out")
+        )
+        with pytest.raises(
+            GdocError,
+            match=(
+                "accept request for suggestion suggest.a failed in transit.*"
+                "outcome is unknown.*Inspect `gdoc suggestions --all`"
+            ),
+        ):
+            decide_suggestion("doc1", "suggest.a", "accept", "rev1")
+
+    @patch("gdoc.api.docs.get_docs_service")
     def test_partial_save_failure_is_an_error(self, mock_svc):
         mock_svc.return_value = _mock_docs_service(
             {
@@ -1314,6 +1328,55 @@ class TestCmdDecisions:
                 )
         assert capsys.readouterr().out == ""
         mock_update.assert_not_called()
+
+    def test_failed_read_back_reports_saved_but_unverified(self, capsys):
+        p = _decision_patches("ACCEPTED")
+        with p[0] as mock_update, p[1], p[2], p[3], p[4] as mock_get:
+            mock_get.side_effect = [_DOC, TimeoutError("timed out")]
+            with pytest.raises(
+                GdocError,
+                match=(
+                    "suggestion suggest.a was reported saved after accept.*"
+                    "verification failed.*may already have been applied"
+                ),
+            ):
+                cmd_accept_suggestion(
+                    _args("accept-suggestion", suggestion_id="suggest.a")
+                )
+        assert capsys.readouterr().out == ""
+        mock_update.assert_not_called()
+
+    def test_version_failure_warns_after_verified_success(self, capsys):
+        p = _decision_patches("ACCEPTED")
+        with p[0] as mock_update, p[1], p[2] as mock_version, p[3], p[4]:
+            mock_version.side_effect = TimeoutError("timed out")
+            rc = cmd_accept_suggestion(
+                _args("accept-suggestion", suggestion_id="suggest.a")
+            )
+        captured = capsys.readouterr()
+        assert rc == 0
+        assert captured.out == "OK accepted suggestion #suggest.a\n"
+        assert (
+            "WARN: suggestion #suggest.a is accepted, but the document "
+            "version could not be refreshed: timed out; awareness state "
+            "not updated"
+        ) in captured.err
+        mock_update.assert_not_called()
+
+    def test_state_failure_warns_after_verified_success(self, capsys):
+        p = _decision_patches("ACCEPTED")
+        with p[0] as mock_update, p[1], p[2], p[3], p[4]:
+            mock_update.side_effect = OSError("disk full")
+            rc = cmd_accept_suggestion(
+                _args("accept-suggestion", suggestion_id="suggest.a")
+            )
+        captured = capsys.readouterr()
+        assert rc == 0
+        assert captured.out == "OK accepted suggestion #suggest.a\n"
+        assert (
+            "WARN: suggestion #suggest.a is accepted, but awareness state "
+            "was not persisted: disk full"
+        ) in captured.err
 
     def test_read_back_wrong_state_is_not_success(self):
         # A reject that reads back as accepted (or a delete that leaves the

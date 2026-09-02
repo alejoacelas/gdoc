@@ -2568,8 +2568,8 @@ def decide_suggestion(
     # commenter and may not receive a revisionId. Neither request depends
     # on document coordinates, so they are sent unpinned in that case —
     # never with an empty requiredRevisionId.
+    service = get_docs_service()
     try:
-        service = get_docs_service()
         result = (
             service.documents()
             .batchUpdate(documentId=doc_id, body=body)
@@ -2600,6 +2600,16 @@ def decide_suggestion(
                 f"{message or e.reason}"
             )
         _translate_http_error(e, doc_id)
+    except Exception as e:  # noqa: BLE001 — .execute() is the network call
+        # A timeout/reset can arrive after Google applied the decision. Do
+        # not let an automated caller mistake this for a safe-to-retry
+        # pre-write failure, especially for destructive delete requests.
+        raise GdocError(
+            f"the {decision} request for suggestion {suggestion_id} failed "
+            f"in transit ({str(e) or type(e).__name__}). The outcome is "
+            "unknown — the decision may or may not have been applied. "
+            "Inspect `gdoc suggestions --all` before retrying."
+        )
 
     # A batch that must save a suggestion thread requires ALL_SAVED, and
     # the 1:1 suggestionResponses entry must name this ID (observed live:

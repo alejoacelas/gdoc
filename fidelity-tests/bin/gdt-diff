@@ -69,7 +69,7 @@ def flatten(structure):
     """Return {semantic_path: value}. Paragraph runs are NOT compared by index (run
     boundaries shift on every edit); compare_paragraphs() handles text and style."""
     leaves = {}
-    paras = {}
+    paras = {}   # container prefix -> ordered list of dicts(label, spans, style, bullet)
 
     def leaf(path, v):
         if isinstance(v, dict):
@@ -91,11 +91,9 @@ def flatten(structure):
         for c in content:
             if "paragraph" in c:
                 p = c["paragraph"]
-                base = f"{prefix}/para[{pn}:{label(para_text(p))}]"
-                pn += 1
-                leaf(f"{base}.paragraphStyle", p.get("paragraphStyle", {}))
-                leaf(f"{base}.bullet", p.get("bullet", None))
-                paras[base] = spans(p)
+                paras.setdefault(prefix, []).append({
+                    "label": label(para_text(p)), "spans": spans(p),
+                    "paragraphStyle": p.get("paragraphStyle", {}), "bullet": p.get("bullet", None)})
             elif "table" in c:
                 t = c["table"]
                 base = f"{prefix}/table[{tn}]"
@@ -127,48 +125,104 @@ def flatten(structure):
     return leaves, paras
 
 
+def _leaf_items(path, b, a):
+    """Flatten two dict/scalar values under `path` and return changed leaves."""
+    def fl(v, pre, out):
+        if isinstance(v, dict):
+            if not v:
+                out[pre] = {}
+            for k, vv in v.items():
+                fl(vv, f"{pre}.{k}", out)
+        elif isinstance(v, list):
+            if not v:
+                out[pre] = []
+            for i, vv in enumerate(v):
+                fl(vv, f"{pre}[{i}]", out)
+        else:
+            out[pre] = v
+    lb, la = {}, {}
+    fl(b, path, lb); fl(a, path, la)
+    return [{"path": k, "before": lb.get(k, "∅"), "after": la.get(k, "∅")}
+            for k in sorted(set(lb) | set(la)) if lb.get(k, "∅") != la.get(k, "∅")]
+
+
 def compare_paragraphs(pb, pa):
-    """Align paragraphs by position+label, then align characters with difflib. Text
-    edits become `.text` items (class decided by target). Style differences on text that
-    did NOT change become `.style@"snippet"` items and are always suspicious."""
+    """Align the paragraph sequences of each container with difflib (so an inserted or
+    deleted paragraph does not shift everything after it), then for each aligned pair
+    align characters. Text edits become `.text` items; style differences on text that
+    did NOT change become `.style@"snippet"` items and are always suspicious; inserted
+    and deleted paragraphs become `para[new:…]` / `para[del:…]` items carrying their
+    bullet and paragraphStyle so the judge can see list membership."""
     items = []
-    # paragraphs are keyed by path incl. label; a text edit changes the label, so match
-    # by ordinal (the part before the colon) within the same container
-    def ordinal(path):
-        return re.sub(r"para\[(\d+):[^\]]*\]", r"para[\1]", path)
-    ob = {ordinal(k): (k, v) for k, v in pb.items()}
-    oa = {ordinal(k): (k, v) for k, v in pa.items()}
-    for o in sorted(set(ob) | set(oa)):
-        if o not in ob:
-            items.append({"path": oa[o][0] + ".text", "before": "∅", "after": "".join(c for c, _ in oa[o][1]), "kind": "text"})
-            continue
-        if o not in oa:
-            items.append({"path": ob[o][0] + ".text", "before": "".join(c for c, _ in ob[o][1]), "after": "∅", "kind": "text"})
-            continue
-        path, sb = ob[o]
-        _, sa = oa[o]
-        tb = [c for c, _ in sb]; ta = [c for c, _ in sa]
+    for prefix in sorted(set(pb) | set(pa)):
+        lb, la = pb.get(prefix, []), pa.get(prefix, [])
+        tb = ["".join(c for c, _ in p["spans"]) for p in lb]
+        ta = ["".join(c for c, _ in p["spans"]) for p in la]
         sm = difflib.SequenceMatcher(a=tb, b=ta, autojunk=False)
+        pairs, inserted, deleted = [], [], []
         for tag, i1, i2, j1, j2 in sm.get_opcodes():
             if tag == "equal":
-                # same text: any style change here is a style item
-                k = i1
-                while k < i2:
-                    if sb[k][1] != sa[j1 + (k - i1)][1]:
-                        start = k
-                        while k < i2 and sb[k][1] != sa[j1 + (k - i1)][1] and \
-                              sb[k][1] == sb[start][1] and sa[j1 + (k - i1)][1] == sa[j1 + (start - i1)][1]:
+                pairs += [(i, j1 + (i - i1)) for i in range(i1, i2)]
+            elif tag == "replace":
+                n = min(i2 - i1, j2 - j1)
+                # pair the most similar texts first, positionally as a tiebreak
+                cand = sorted(((difflib.SequenceMatcher(a=tb[i], b=ta[j], autojunk=False).ratio(), -abs((i - i1) - (j - j1)), i, j)
+                               for i in range(i1, i2) for j in range(j1, j2)), reverse=True)
+                ui, uj = set(), set()
+                for r, _, i, j in cand:
+                    if i in ui or j in uj or len(ui) >= n:
+                        continue
+                    if r < 0.3 and n < (i2 - i1) + (j2 - j1):
+                        break
+                    ui.add(i); uj.add(j); pairs.append((i, j))
+                deleted += [i for i in range(i1, i2) if i not in ui]
+                inserted += [j for j in range(j1, j2) if j not in uj]
+            elif tag == "delete":
+                deleted += list(range(i1, i2))
+            elif tag == "insert":
+                inserted += list(range(j1, j2))
+        for j in inserted:
+            p = la[j]
+            base = f"{prefix}/para[new@{j}:{p['label']}]"
+            items.append({"path": base + ".text", "before": "∅", "after": ta[j].replace("\n", "⏎"), "kind": "text"})
+            if p["bullet"]:
+                items.append({"path": base + ".bullet", "before": "∅", "after": p["bullet"], "kind": "para"})
+            items.append({"path": base + ".paragraphStyle", "before": "∅", "after": p["paragraphStyle"], "kind": "para"})
+        for i in deleted:
+            p = lb[i]
+            base = f"{prefix}/para[del@{i}:{p['label']}]"
+            items.append({"path": base + ".text", "before": tb[i].replace("\n", "⏎"), "after": "∅", "kind": "text"})
+            if p["bullet"]:
+                items.append({"path": base + ".bullet", "before": p["bullet"], "after": "∅", "kind": "para"})
+        for i, j in sorted(pairs):
+            b, a = lb[i], la[j]
+            path = f"{prefix}/para[{i}:{b['label']}]"
+            for it in _leaf_items(path + ".paragraphStyle", b["paragraphStyle"], a["paragraphStyle"]):
+                it["kind"] = "para"; items.append(it)
+            for it in _leaf_items(path + ".bullet", b["bullet"], a["bullet"]):
+                it["kind"] = "para"; items.append(it)
+            sb, sa = b["spans"], a["spans"]
+            cb = [c for c, _ in sb]; ca = [c for c, _ in sa]
+            csm = difflib.SequenceMatcher(a=cb, b=ca, autojunk=False)
+            for tag, i1, i2, j1, j2 in csm.get_opcodes():
+                if tag == "equal":
+                    k = i1
+                    while k < i2:
+                        if sb[k][1] != sa[j1 + (k - i1)][1]:
+                            start = k
+                            while k < i2 and sb[k][1] != sa[j1 + (k - i1)][1] and \
+                                  sb[k][1] == sb[start][1] and sa[j1 + (k - i1)][1] == sa[j1 + (start - i1)][1]:
+                                k += 1
+                            snippet = "".join(cb[start:k]).replace("\n", "⏎")[:40]
+                            items.append({"path": f'{path}.style@"{snippet}"',
+                                          "before": json.loads(sb[start][1]), "after": json.loads(sa[j1 + (start - i1)][1]),
+                                          "kind": "style"})
+                        else:
                             k += 1
-                        snippet = "".join(tb[start:k]).replace("\n", "⏎")[:40]
-                        items.append({"path": f'{path}.style@"{snippet}"',
-                                      "before": json.loads(sb[start][1]), "after": json.loads(sa[j1 + (start - i1)][1]),
-                                      "kind": "style"})
-                    else:
-                        k += 1
-            else:
-                items.append({"path": f"{path}.text", "kind": "text",
-                              "before": "".join(tb[i1:i2]).replace("\n", "⏎"),
-                              "after": "".join(ta[j1:j2]).replace("\n", "⏎")})
+                else:
+                    items.append({"path": f"{path}.text", "kind": "text",
+                                  "before": "".join(cb[i1:i2]).replace("\n", "⏎"),
+                                  "after": "".join(ca[j1:j2]).replace("\n", "⏎")})
     return items
 
 
@@ -202,21 +256,31 @@ def parse_task(spec):
 
 
 def target_matcher(task):
-    """Very small locator language: `table N, cell [r,c]`, `paragraph beginning X`,
-    `comments`. Returns predicate(path)->bool."""
+    """Small locator language, any number of locators per Target:
+    `table N, cell [r,c]` (several cells: `cells [r,c] [r,c]`), ``paragraph beginning `X` ``
+    (also ``heading `X` ``, ``new paragraph `X` ``), `footnote`, `header`, `footer`,
+    `comment`. Returns predicate(path)->bool."""
     if not task:
         return lambda p: False
     t = task["target"]
     preds = []
-    m = re.search(r"table (\d+)", t)
-    c = re.search(r"cell \[(\d+),(\d+)\]", t)
-    if m and c:
-        tn, r, cc = int(m.group(1)) - 1, c.group(1), c.group(2)
-        preds.append(lambda p: f"/table[{tn}]/cell[{r},{cc}]" in p)
-    pb = re.search(r"paragraph beginning `([^`]+)`", t)
-    if pb:
-        prefix = pb.group(1)
-        preds.append(lambda p: f":{prefix}" in p and "/para[" in p)
+    for tm in re.finditer(r"table (\d+)((?:[^.;`]|`[^`]*`)*?)(?=table \d+|$)", t):
+        tn = int(tm.group(1)) - 1
+        cells = re.findall(r"\[(\d+),(\d+)\]", tm.group(2))
+        if cells:
+            for r, cc in cells:
+                preds.append(lambda p, tn=tn, r=r, cc=cc: f"/table[{tn}]/cell[{r},{cc}]" in p)
+        else:
+            preds.append(lambda p, tn=tn: f"/table[{tn}]" in p)
+    for pm in re.finditer(r"(?:paragraph beginning|heading|new paragraph|paragraph) `([^`]+)`", t):
+        prefix = pm.group(1)
+        preds.append(lambda p, prefix=prefix: f":{prefix}" in p and "/para[" in p)
+    if "footnote" in t.lower():
+        preds.append(lambda p: "/footnotes[" in p)
+    if re.search(r"\bheader\b", t.lower()):
+        preds.append(lambda p: "/headers[" in p)
+    if re.search(r"\bfooter\b", t.lower()):
+        preds.append(lambda p: "/footers[" in p)
     if "comment" in t.lower():
         preds.append(lambda p: p.startswith("comments"))
     return lambda p: any(f(p) for f in preds)
@@ -234,7 +298,7 @@ def classify(item, in_target, task):
         return "allowed"
     if in_target(p):
         return "expected"
-    if "renumber" in allowed and p.endswith(".bullet"):
+    if "renumber" in allowed and (".bullet" in p or "/lists" in p):
         return "allowed"
     return "unexpected"
 

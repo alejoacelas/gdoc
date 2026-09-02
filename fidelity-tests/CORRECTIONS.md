@@ -46,3 +46,17 @@ entries once you agree; disagreements go back into the skill.
   `modifiedTime` is dropped globally.
 - **Where the `gdt INDEX` Google Doc lives** and whether it should be a pushed copy of
   `INDEX.md` (`gdoc push`) or hand-maintained.
+
+## Fixed (overnight run, 2026-09-02)
+
+- **`gdt-diff` aligned paragraphs by ordinal**, so one inserted or deleted paragraph
+  made every later paragraph look changed. It now aligns each container's paragraph
+  sequence with `difflib` (most-similar pairing inside replace blocks), reports inserted
+  and deleted paragraphs as `para[new@N:…]` / `para[del@N:…]` items carrying their
+  bullet and paragraphStyle, and compares paragraphStyle/bullet only on aligned pairs.
+  Synthetic check: inserting one list item into the kitchen-sink baseline yields three
+  items, all on the new paragraph. The existing run still reads 1 expected / 2 unexpected.
+- **`gdt-diff` honoured only the first `paragraph beginning` locator.** Target now
+  accepts any number of locators, plus `new paragraph \`X\``, `heading \`X\``,
+  `footnote`, `header`, `footer`, several `cells [r,c]` per table. "renumber" in
+  Allowed also covers `/lists` leaves.

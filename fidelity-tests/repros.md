@@ -46,3 +46,24 @@ paragraph's existing indent (108pt → level 2), leading spaces are ignored, and
 flattens to level 0 with literal tab characters left in the text. `gdoc edit` on the `-⇥Staging…` line alone made a
 new list (● at 36pt) instead of joining `kix.73yxf78mr7x1`.
 Runs: lists/v01/runs/20260902-staging-line-to-bullet, lists/v01/runs/20260902-environments-nest-stray-lines-under-production.
+
+## text-v01-edit-resets-paragraph-style   (text/v01, 2026-09-02, COLLATERAL, no issue)
+gdoc edit --account $A <copy> "Marta, 2 Sept 2026" "Marta, 3 Sept 2026"
+Expect: the right-aligned signature keeps `alignment: END`.
+Observed: paragraph alignment dropped to default (left). Same shape: `gdoc edit "O and x" " and x"` in the
+1.5-spacing paragraph drops `lineSpacing: 150`; `gdoc edit --all "  " " "` drops the 36pt indent on the
+`Open question` paragraph. Paragraph-level style is lost along with run styles.
+Runs: text/v01/runs/20260902-signature-date, 20260902-co2-formula, 20260903-tidy-double-spaces.
+
+## text-v01-edit-all-demotes-heading   (text/v01, 2026-09-02, COLLATERAL, no issue)
+gdoc edit --account $A --all --case-sensitive <copy> "launch window" "release window"
+Expect: five replacements keeping HEADING_1 on the title, bold, italic, and the link on `launch window FAQ`.
+Observed: the H1 became NORMAL_TEXT, bold/italic gone, the link shrank to ` FAQ`, and bold on `checklist`
+(same paragraph, outside the match) gone. Re-promoting with `# …` gives the heading a new `headingId`, so
+any link to the old heading breaks. Run: text/v01/runs/20260902-launch-to-release-window.
+
+## text-v01-edit-drops-font-size   (text/v01, 2026-09-02, COLLATERAL, no issue)
+gdoc edit --account $A --case-sensitive <copy> "Key dates" "Key dates and labels"
+Expect: the bold 14pt Normal paragraph keeps bold and 14pt.
+Observed: both dropped; `**…**` markdown restores bold only — gdoc has no way to set a font size.
+Run: text/v01/runs/20260902-rename-key-dates-fake-heading.

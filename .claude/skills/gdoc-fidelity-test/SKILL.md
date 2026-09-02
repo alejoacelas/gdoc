@@ -1,196 +1,184 @@
 ---
 name: gdoc-fidelity-test
-description: Test whether an agent holding the gdoc CLI can carry out realistic edit requests on messy Google Docs without collateral damage. Fixtures are built by hand in the browser; each test is a plain-language edit task run on a Drive copy; the verdict comes from before/after screenshots plus a structural diff. Use when the user wants to stress-test gdoc (or any Docs API tool), add a fixture or task, re-run tasks after a CLI change, or review results — e.g. "add a fidelity fixture for footnotes", "rerun the gdoc edit tests", "does gdoc survive editing next to a chip".
+description: Test whether an agent holding the gdoc CLI can carry out realistic edit requests on messy Google Docs without collateral damage. Fixtures are built by hand in the browser; each test is a plain-language edit task run on a Drive copy; the verdict comes from a structural diff plus before/after screenshots. Use when the user wants to stress-test gdoc (or any Docs API tool), add a fixture or task, re-run tasks after a CLI change, or review results — e.g. "add a fidelity fixture for footnotes", "rerun the gdoc edit tests", "does gdoc survive editing next to a chip".
 ---
 
 # gdoc-fidelity-test — can gdoc edit a messy document without breaking it?
 
-The aim is not whether gdoc can read or recreate a document. It is whether an agent
-using gdoc can do what a colleague asks — change a figure, rename a heading, fix a
-footnote, reply to a comment — on the kind of document people actually have, and leave
-everything else untouched.
+The question is not whether gdoc can read or recreate a document. It is whether an
+agent using gdoc can do what a colleague asks — change a figure, rename a heading, fix
+a footnote, reply to a comment — on the kind of document people actually have, and
+leave everything else untouched.
 
-So the unit of test is an **edit task**, not a document. Documents are **fixtures**,
-built by hand in the browser so they contain what the API cannot create. A run copies
-the fixture, hands one task to a fresh agent, and compares before with after. The
-document is the oracle; there is no spec.
+The unit of test is an **edit task**, not a document. Documents are **fixtures**, built
+by hand in the browser so they contain what the API cannot create. A run copies the
+fixture, hands one task to a fresh agent, and compares before with after.
 
-Everything lives in two places that mirror each other:
+**Two oracles.** The baseline copy is the oracle for what must *not* change: anything
+outside the task's declared boundary that differs is collateral. The task itself is
+the oracle for what *must* change: every task declares its expected outcome, target
+and allowed side effects before anyone runs it (see [Tasks](#tasks)). Judging is the
+intersection of the two, never a model's reading of the request after the fact.
 
-- Drive: folder `gdoc-fidelity-tests/` (work account), one sub-folder per fixture,
-  with the fixture doc and a `runs/` sub-folder of copies.
-- Local: `fidelity-tests/` at the root of this repo, same tree, holding prompts,
-  accounts, tasks, screenshots, structure dumps, transcripts and verdicts. Scripts live
-  in `fidelity-tests/bin/`.
+## Status
 
-## Naming
+Protocol is defined; harness is not built. `bin/` scripts named below do not exist yet
+and there is no completed fixture or run. Do the steps by hand and keep the file layout,
+so the scripts can be written against real artifacts. Check `fidelity-tests/INDEX.md`
+for current state before assuming otherwise.
 
-- **Fixture doc** — `gdt-<area>-v<NN>`, e.g. `gdt-tables-v01`. Area is one lowercase
-  word (`text`, `structure`, `lists`, `tables`, `objects`, `layout`, `chips`, `collab`,
-  `kitchen-sink`). A new version is a new doc; old runs stay reproducible.
-- **Run copy** — `gdt-<area>-v<NN> run <YYYYMMDD> <task-slug>`, made with `gdoc cp`
-  into the fixture's `runs/` folder. Never edit the fixture itself.
-- **Local fixture folder** — `fidelity-tests/<area>/v<NN>/` with `prompt.md`,
-  `built.md`, `tasks.md`, `baseline/` (`page-01.png …`, `structure.json`, `cat.md`,
-  `comments.json`) and `runs/<YYYYMMDD>-<task-slug>/` (`after/` with the same files,
-  `transcript.md`, `diff.md`, `verdict.md`).
-- **Index** — `fidelity-tests/INDEX.md`: one row per fixture with its tasks and their
-  latest verdicts, plus doc links. Regenerate with `bin/gdt-index` and push to the
-  Google Doc `gdt INDEX` in the Drive root so the suite is reviewable from one link.
+## Configuration
+
+The skill names no account, Drive folder, model or repository. Those live in
+`fidelity-tests/config.yaml` (git-ignored; copy `config.example.yaml`): `account`
+(always passed as `--account`; the default account may not see the fixtures),
+`drive_root`, `issue_tracker`, and how to spawn the builder and task agents (default:
+the current model via the Agent tool, with browser or gdoc access respectively).
+Commit only when the calling project's instructions say to, on the branch they name.
+
+## Layout
+
+`fidelity-tests/` at the repo root mirrors the Drive tree under `drive_root`:
+
+- `INDEX.md` (one row per fixture; `bin/gdt-index` regenerates it), `IDEAS.md`
+  (untested mess and task angles), `repros.md` (one gdoc command per known failure —
+  the agent-free regression suite), `config.yaml`.
+- `<area>/v<NN>/` — `fixture.md` (URLs, frozen revision, created date), `prompt.md`
+  (builder brief only), `built.md`, `tasks.md`, `baseline/`, `runs/<YYYYMMDD>-<slug>/`.
+- Every capture set (`baseline/`, a run's `before/` and `after/`) holds `page-NN.png`,
+  `structure.json`, `cat.md`, `comments.json`, `shot.json` (baseline adds
+  `revisions.json`). A run adds
+  `transcript.md`, `diff.md`, `verdict.md`.
+
+Fixture doc `gdt-<area>-v<NN>`; run copy `gdt-<area>-v<NN> run <YYYYMMDD> <slug>`. Area
+is one lowercase word (`text`, `lists`, `tables`, `objects`, `layout`, `chips`,
+`collab`, `kitchen-sink`). A new version is a new doc; never edit a fixture.
 
 ## Fixtures
 
-### Ask for mess, not features
-Isolated feature demos are too clean. Real documents are pasted together over months
-by several people, and that is where tools break. Every fixture, whatever its area,
-must carry a baseline of mess, and the prompt should say so. Ask the builder for
-things like:
-
-- emoji and non-Latin text in headings, list items and table cells, not just in prose
-- a numbered list that turns into a checklist halfway, nested bullets inside a table
-  cell, a list interrupted by a paragraph and continued
-- text pasted from Word, Slack or Notion with its fonts and sizes still attached, so
-  one paragraph has three fonts
-- direct formatting that imitates a heading (bold 14pt Normal text) next to a real one
-- a phrase that appears three times with different formatting, once inside a link
-- empty paragraphs that carry formatting, trailing spaces, tabs used for alignment,
-  manual "1)" numbering typed next to a real list
-- a chip or a link inside a table cell, a comment anchored across a formatting boundary,
-  a suggestion left pending
-- whatever the builder finds hard to do; it should aim for "hard to reproduce through
-  the API", and combine at least two such features per paragraph
-
-`prompt.md` is one or two sentences plus that list. Today's ask worked: "I'm testing
-a CLI against this doc, so build a document that uses a bunch of the formatting and
-functionality available in Google Docs for <area>. Use browser control and pick things
-you think will be hard to replicate for a tool connected through the Docs API."
-
-### Build rules: one doc, one agent
-Every incident so far came from agents sharing a document: keystrokes in another
-agent's tab, a stray select-all wiping a shared tab, an undo removing someone else's
-work, a click landing on the wrong paragraph after a concurrent edit reflowed the page.
-
-- One builder agent (Fable) per fixture, in its own browser tab. It never opens
-  another test doc.
-- Before typing: screenshot, confirm the tab and caret. Menus, popups and `cmd+f`
-  steal focus; use the menu-search box instead of shortcuts like `cmd+Return`.
-- Never select-all in a document with anything worth keeping. Never undo past your
-  own last action.
-- Anything written into a shared document goes through the CLI, not the browser.
-
-When done, the builder writes `built.md`: the exact text, what formatting sits where,
-what it tried and could not do, every autocorrection Docs made (capitalisation, curly
-quotes, `--` to a dash, `1.` to a list), and a **trap list**: the places it thinks an
-API edit is most likely to damage. `built.md` is a reading aid for the judge, not a
-contract.
-
-### Freeze and baseline
-Name the version in the browser (File > Version history > Name current version,
-`frozen`). Google prunes unnamed revisions within hours. Then capture the baseline:
-
-```
-bin/gdt-shot DOC baseline/          # browser screenshots, see Judging
-gdoc structure --account A DOC > baseline/structure.json
-gdoc cat --account A DOC > baseline/cat.md
-gdoc comments --all --account A DOC --json > baseline/comments.json
-```
+Ask for mess, not features; one builder agent per document, in its own browser tab;
+freeze with a named version; capture the baseline. The full recipe, the prompt
+template, the browser safety rules and the capture commands are in
+[references/fixtures.md](references/fixtures.md). Read it before building or
+baselining anything.
 
 ## Tasks
 
 `tasks.md` holds five to ten requests per fixture, written the way a colleague would
-ask, each with the effect it should have. Two authors:
+ask. Two authors: the builder, aiming at its trap list, and a second agent that reads
+the document cold. Do not filter by what the API can do; whether a failure is an API
+limit or a CLI defect is decided at verdict time.
 
-- the builder contributes tasks aimed at its trap list;
-- a second agent reads the document cold, without `built.md`, and writes the requests
-  a person would actually make of it.
+Every task has five fields, and a run cannot start until all five are present:
 
-Do not filter tasks by what the API can do. Ask for whatever a colleague would ask,
-including things the API probably cannot express, such as adding a suggestion or
-resizing a drawing. Whether a failure was an API limit or a CLI defect is decided at
-verdict time, not when writing the task. Include at least one task that needs a
-correct read to do at all ("tick the third checklist item", "change the dropdown's
-value"), one that rewrites a whole section, one adjacent to an object the API cannot
-create, one whose target phrase also appears elsewhere, and one you expect to be
-impossible.
+- **Request** — the natural-language ask, verbatim. This is all the task agent sees.
+- **Expected** — what the document should contain afterwards, precisely enough that
+  a judge can check it without interpreting the request. Hidden from the task agent.
+- **Target** — a structural locator for what should change: tab, paragraph text or
+  heading, table cell, comment id. Everything outside it is protected.
+- **Allowed** — secondary changes that are not collateral: automatic list renumbering,
+  repagination, a `modifiedTime` bump, the revision list growing. Default is none.
+- **Preconditions** — features the copy must still have for the task to mean anything
+  (the pending suggestion, the comment, the chip). Lost in copying → the run is INVALID.
+
+Include at least one task that needs a correct read to do at all, one that rewrites a
+whole section, one adjacent to an object the API cannot create, one whose target
+phrase also appears elsewhere, and one you expect to be impossible.
 
 ## Running a task
 
-1. `gdoc cp` the fixture into `runs/`, named as above. Check the copy kept comments
-   and suggestions (`gdoc comments --all`; screenshot); note in `verdict.md` if not.
-2. Capture `after/`-style baseline of the copy (screenshots, structure, cat, comments).
-   Before and after come from the same copy so pagination starts identical.
-3. Spawn a fresh agent (Fable) with only the request and the copy's URL. It may use
-   any gdoc command. It must report what it did and whether it believes it succeeded.
-   Save its report and the commands it ran as `transcript.md`.
-4. Capture `after/`.
+Two tracks, reported separately, so an agent's mistake never reads as a CLI regression:
+
+- **Command track** — you run one named gdoc command on the copy and check that it
+  makes only the declared mutation. This is what `repros.md` reruns.
+- **Agent track** — a fresh agent gets only the request and the copy's URL and picks
+  its own commands. It must report what it did and whether it believes it succeeded;
+  save its report and every command as `transcript.md`.
+
+The steps, in order, with the gate each one must pass:
+
+1. **Source check.** `gdoc structure` of the fixture matches `baseline/structure.json`
+   after normalisation, and the frozen revision is still listed by `gdoc revisions`.
+   Otherwise stop: the fixture has drifted; build a new version.
+2. **Copy.** `gdoc cp` into the fixture's `runs/` folder with the run name. Record the
+   copy's id.
+3. **Precondition check.** Every feature the task's preconditions name is present in
+   the copy (`gdoc comments --all`, `gdoc structure`, a screenshot for suggestions).
+4. **Before capture** of the copy, every capture file. Record the copy's latest revision
+   id, the `gdoc --version`, and the account.
+5. **Edit** on the chosen track.
+6. **After capture**, every capture file. Its revision must be later than the before
+   revision on the same copy id.
+
+A failed gate produces `verdict.md` with outcome INVALID and the gate that failed. It
+never produces a partial verdict, and it does not count in any rate.
 
 ## Judging
 
-Two judges, and they must agree.
+Two judges, and they must agree; disagreement goes to a human.
 
-**Structural diff** — `bin/gdt-diff before/structure.json after/structure.json`
-normalises both (drops indices, revision and object IDs) and lists every paragraph
-whose text, named style, run styles, bullets, table layout, inline objects, links or
-bookmarks changed. It also diffs `cat.md` and `comments.json`. Each item is tagged
-**visible** or **invisible**: invisible covers link targets, bookmarks, comment
-anchors, named style behind identical-looking formatting, list identity behind
-identical-looking numbering. The diff is a judge in its own right — anything it lists
-that the task did not ask for is collateral — and it is the locator for the visual
-judge.
+**Structural diff** — `bin/gdt-diff before/ after/ --task tasks.md#<slug>` normalises
+both structure dumps, lists every changed property with a stable path, classifies each
+against the task as **expected**, **allowed** or **unexpected**, tags it **visible** or
+**invisible**, and says whether visual review is needed and why. It also diffs `cat.md`
+and `comments.json`. The normalisation policy and output schema are in
+[references/diff.md](references/diff.md). The diff does most of the judging; its
+unexpected items are collateral by definition.
 
-**Visual** — always Google Docs screenshots, never PDF export, so comments,
-suggestion colours and chips appear as a reader sees them. `bin/gdt-shot` documents
-the procedure: same window size, 100% zoom, print layout on, scroll page by page. For
-each diff item, crop the matching region from before and after at full resolution;
-hand a model the request, the crop pairs one at a time, then the full pages as
-thumbnails, and ask: is the requested change present, and does anything else differ?
-A line-break shift moves everything below it; the model reasons from the crops, not
-from pixel positions.
+**Visual** — Google Docs screenshots, never PDF export, so comments, suggestion colours
+and chips appear as a reader sees them. Used only where the diff says structure cannot
+settle it (a chip's rendered value, a suggestion's colour, a repaginated page), plus a
+thumbnail sweep of the whole document. Procedure and the judge prompt are in
+[references/capture.md](references/capture.md). Model judgements record model,
+prompt and response verbatim.
 
-If the structural diff lists a change the visual judge did not see, or the other way
-round, the run goes to a human.
+## Outcomes
 
-`verdict.md` records one of:
-- **PASS** — the requested change and nothing else.
-- **COLLATERAL** — the change plus damage. Say whether the damage was visible or
-  invisible, and whether the agent's own read afterwards would have revealed it. The
-  silent case is the one that matters most; today every corruption came with
-  "OK replaced 1 occurrence".
-- **NOT DONE** — nothing changed, or the wrong thing did.
-- **DECLINED** — the agent said it could not do it. This beats COLLATERAL; score it so.
+One outcome per run, recorded in `verdict.md` with the fields in
+[references/verdict.md](references/verdict.md):
 
-Every verdict other than PASS also carries a **cause**: `api` when the Docs API has no
-way to express the request (check the API reference, not the CLI's help), `cli` when
-the API can but gdoc did not, or `agent` when gdoc could but the agent did not find the
-way. DECLINED with cause `api` is the correct outcome and counts as a pass in the
-index. DECLINED with cause `cli` or `agent` is a gap to fix.
+| Outcome | Meaning | Completion rate | Safety rate |
+|---|---|---|---|
+| **DONE** | Expected change present, no unexpected diff items | counts | counts |
+| **DECLINED-API** | Agent refused; the Docs API cannot express the request (check the API reference, not gdoc's help) | no | counts |
+| **GAP-CLI** | Agent refused or could not; the API can, gdoc cannot | no | counts |
+| **FAIL-AGENT** | gdoc could; the agent did the wrong thing or nothing, without damage | no | counts |
+| **COLLATERAL** | Unexpected diff items, whether or not the request was met | no | no |
+| **INVALID** | A gate failed: fixture drift, lost preconditions, capture or revision error | excluded | excluded |
+
+Two headline numbers, never one: **completion** = DONE over valid runs; **safety** =
+everything but COLLATERAL over valid runs. A refusal is a good safety result and a bad
+completion result, and the index shows both.
+
+COLLATERAL also records whether the damage was visible or invisible, and whether the
+agent's own read afterwards would have revealed it. The silent case matters most: so
+far every corruption came with "OK replaced 1 occurrence".
 
 ## Reduce and file
 
-Isolation comes after failure, never before. Start with the loaded fixtures; when a
-task fails, reduce it:
+Isolation comes after failure, never before.
 
-1. Find the single gdoc command that reproduces the damage on the fixture, and append
-   it to `fidelity-tests/repros.md`. That file is the regression suite: it runs
-   without an agent and without judging.
-2. If the cause is unclear, build a small isolation fixture (`gdt-iso-<slug>-v01`)
-   containing only the construct involved, and rerun the command there. Isolation
-   fixtures are cheap and can be created by the CLI when the construct allows it.
-3. If the cause is the CLI rather than an API limit, open an issue on `LucaDeLeo/gdoc`
-   (check for duplicates) and link it from the verdict and the repro.
+1. Find the single gdoc command that reproduces the damage on the fixture; append it
+   to `repros.md` with the fixture, the outcome and the date.
+2. If the cause is unclear, build a small isolation fixture (`gdt-iso-<slug>-v01`) with
+   only the construct involved and rerun the command there. The CLI can often create
+   these.
+3. If the cause is the CLI, open an issue on the configured tracker (check duplicates)
+   and link it from the verdict, the repro and
+   [references/known-cli-behaviours.md](references/known-cli-behaviours.md). Every
+   entry there points at a repro line or an issue; entries with neither get deleted.
 
-## Record
+## Self-test
 
-Update `INDEX.md`, push it to `gdt INDEX`, commit on the `fidelity-tests` branch of this
-fork. Keep old runs.
+The harness contract, so the scripts get written to it and the skill can be checked
+in one go once they exist:
 
-## Known CLI behaviours
-- `gdoc edit` parses the replacement as markdown: a leading `1. ` or `# ` restyles the
-  whole paragraph (issue #57); `_word_` becomes italic. Use `--old-file/--new-file`.
-- `gdoc edit` rewrites the whole paragraph's runs, so bold or italic elsewhere in the
-  paragraph can be lost.
-- `gdoc write` from markdown misplaces paragraph styles after emoji and other non-BMP
-  characters; looks like Python length versus UTF-16 index arithmetic.
-- `gdoc cat` refuses `--tab` with `--comments`; use `gdoc comments --all`.
-- The default account may not see work docs; always pass `--account`.
-- Revision export ignores `--tab`.
+```
+bin/gdt doctor                                  # config, account, gdoc version, browser
+bin/gdt validate-fixture fidelity-tests/<area>/v<NN>   # five task fields, baseline complete, frozen revision present
+bin/gdt run <area>/v<NN> <task-slug> [--track command|agent]
+bin/gdt index
+```
+
+Until then, validate the skill itself with the skill-creator validator and check
+`INDEX.md` by hand after each run.

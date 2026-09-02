@@ -1,0 +1,4 @@
+interface:
+  display_name: "gdoc fidelity tests"
+  short_description: "Task-based edit tests for gdoc on messy Google Docs"
+  default_prompt: "Use $gdoc-fidelity-test to add a task to the kitchen-sink fixture and run it."

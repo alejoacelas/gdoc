@@ -9,3 +9,6 @@ build/
 
 # swarm-loop-review run artifacts (not committed)
 .swarm-loop-review/
+
+# gdoc-fidelity-test local config (account, Drive root)
+fidelity-tests/config.yaml

@@ -1,0 +1,6 @@
+# Copy to config.yaml (git-ignored) and fill in. Read by the gdoc-fidelity-test skill.
+account: you@example.com                 # gdoc account that owns the fixtures; passed as --account
+drive_root: https://drive.google.com/drive/folders/<id>   # holds one sub-folder per fixture
+issue_tracker: https://github.com/<owner>/<repo>/issues   # where CLI defects are filed
+builder_agent: agent-tool                # how to spawn a fresh agent with browser access
+task_agent: agent-tool                   # how to spawn a fresh agent with gdoc access

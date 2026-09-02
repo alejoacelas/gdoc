@@ -1,9 +1,5 @@
 # gdt-kitchen-sink-v01 — prompt
 
-Doc: https://docs.google.com/document/d/1uqR5yBhTMYu-3qfJ9JibyJn9NJD7RZEiCMLnQngTB9g/edit
-Drive folder: https://drive.google.com/drive/folders/13RvM20DSKPo0tqKV_mmhuA4ccQlsYj-D
-Account: alejandro.acelas-contractor@80000hours.org
-
 I'm testing a CLI against this doc, so build a document that uses a bunch of the
 formatting and functionality available in Google Docs, the way a real internal doc looks
 after several people have pasted into it for months. Use browser control and pick things

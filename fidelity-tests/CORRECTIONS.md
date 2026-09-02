@@ -101,3 +101,9 @@ entries once you agree; disagreements go back into the skill.
   copies with `gdoc cp` to try an edit safely, then could not delete them (gdoc has no trash
   command). Both were renamed `… SCRATCH (agent trial, safe to delete)` and moved into the
   runs folder. The task-agent prompt should say whether trial copies are allowed and where.
+- **The structural judge is blind to comment anchors.** `gdoc comments --json` returns
+  `quotedFileContent` (the text at creation) but no `anchor`, so an anchor that shrinks or
+  moves produces no diff item. The visual judge caught two such cases (lists relink-rotate-keys,
+  key-rotation-owner-to-priya: the highlight no longer covers `Marco to`). Both are recorded
+  COLLATERAL with `human: requested`. Fix options: expose the Drive `anchor` field in `gdoc
+  comments --json`, or have `gdt capture` call the Drive API directly for anchors.

@@ -6,3 +6,6 @@ docs_revision ANLCKQkg6kPTp35jZxAZpMrZ8ELimh1gca8KLlVh7UpHB5cWNOQVW1PWByularZ4mc
 drive_revision 1 2026-09-02T20:40:26.164Z
 captured -> kitchen-sink/v01/runs/20260902-fix-double-numbering/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQkgGtYlCbkO7zlvFWl6WEd4TmMWwESPtdE6szdOazq0LsgxwM7z0skNcud5Ob54UuUhY6I5hvF6Mz-_-hXd5Way2B7D9biSxObZqds
+drive_revision 3 2026-09-02T21:01:03.654Z
+captured -> kitchen-sink/v01/runs/20260902-fix-double-numbering/after (screenshots: gdt-shot)

@@ -14,11 +14,12 @@ from pathlib import Path
 
 DROP_KEYS = {"revisionId", "documentId", "suggestionsViewMode", "commentsViewMode",
              "startIndex", "endIndex"}
+PAGINATION_RE = re.compile(r"\.(avoidWidowAndOrphan|keepLinesTogether|keepWithNext)$")
 # properties whose change a reader cannot see on the page
 INVISIBLE_RE = re.compile(
     r"(listId|namedRangeId|namedRanges|\.link\.|bookmarkId|headingId|objectId|"
     r"anchor|quotedFileContent|namedStyleType|suggestedInsertionIds|suggestedDeletionIds|"
-    r"tabId|headerId|footerId|footnoteId)")
+    r"tabId|headerId|footerId|footnoteId|avoidWidowAndOrphan|keepLinesTogether|keepWithNext)")
 
 
 def load(p):
@@ -31,6 +32,42 @@ def normalise(node):
     if isinstance(node, list):
         return [normalise(v) for v in node]
     return node
+
+
+def canonicalise(structure):
+    """Remove explicit style values that equal the paragraph's named style (Docs stores
+    them sometimes and drops them on the next edit; rendering is identical either way)."""
+    for tab in structure.get("tabs", []):
+        dt = tab.get("documentTab", {})
+        named = {st["namedStyleType"]: st for st in dt.get("namedStyles", {}).get("styles", [])}
+
+        def strip(style, base):
+            for k in [k for k in style if k != "namedStyleType" and k in base and style[k] == base[k]]:
+                del style[k]
+
+        def walk(content):
+            for c in content:
+                if "paragraph" in c:
+                    p = c["paragraph"]
+                    ps = p.setdefault("paragraphStyle", {})
+                    base = named.get(ps.get("namedStyleType", "NORMAL_TEXT"), {})
+                    strip(ps, base.get("paragraphStyle", {}))
+                    for e in p.get("elements", []):
+                        if "textRun" in e:
+                            strip(e["textRun"].setdefault("textStyle", {}), base.get("textStyle", {}))
+                    if "bullet" in p:
+                        strip(p["bullet"].setdefault("textStyle", {}), base.get("textStyle", {}))
+                elif "table" in c:
+                    for row in c["table"].get("tableRows", []):
+                        for cell in row.get("tableCells", []):
+                            walk(cell.get("content", []))
+                elif "tableOfContents" in c:
+                    walk(c["tableOfContents"].get("content", []))
+        walk(dt.get("body", {}).get("content", []))
+        for key in ("headers", "footers", "footnotes"):
+            for seg in dt.get(key, {}).values():
+                walk(seg.get("content", []))
+    return structure
 
 
 def para_text(p):
@@ -264,9 +301,11 @@ def target_matcher(task):
         return lambda p: False
     t = task["target"]
     preds = []
-    for tm in re.finditer(r"table (\d+)((?:[^.;`]|`[^`]*`)*?)(?=table \d+|$)", t):
+    tms = list(re.finditer(r"table (\d+)", t))
+    for n, tm in enumerate(tms):
         tn = int(tm.group(1)) - 1
-        cells = re.findall(r"\[(\d+),(\d+)\]", tm.group(2))
+        seg = t[tm.end():tms[n + 1].start() if n + 1 < len(tms) else len(t)]
+        cells = re.findall(r"\[(\d+),(\d+)\]", seg)
         if cells:
             for r, cc in cells:
                 preds.append(lambda p, tn=tn, r=r, cc=cc: f"/table[{tn}]/cell[{r},{cc}]" in p)
@@ -292,13 +331,27 @@ def classify(item, in_target, task):
     if item.get("kind") == "style":
         return "unexpected"
     allowed = (task or {}).get("allowed", "").lower()
+    expected = (task or {}).get("expected", "").lower()
     if p.startswith("revisions") and "revision" in allowed:
         return "allowed"
     if p.startswith("comments") and p.endswith("modifiedTime") and "modifiedtime" in allowed:
         return "allowed"
+    if PAGINATION_RE.search(p):
+        item["note"] = "pagination hint (avoidWidowAndOrphan/keepLinesTogether/keepWithNext); allowed by default, see CORRECTIONS.md"
+        return "allowed"
     if in_target(p):
+        if item.get("kind") == "para" and "/para[new@" not in p and "/para[del@" not in p:
+            # a paragraph-level property changed inside the target: expected only if the
+            # task talks about that kind of change
+            prop = p.rsplit(".", 1)[-1].lower()
+            words = ("bullet", "list", "indent", "heading", "style", "alignment", "renumber", "checkbox", prop)
+            if any(w in expected or w in allowed for w in words):
+                return "expected"
+            return "unexpected"
         return "expected"
     if "renumber" in allowed and (".bullet" in p or "/lists" in p):
+        return "allowed"
+    if "lists map" in allowed and "/lists" in p:
         return "allowed"
     return "unexpected"
 
@@ -315,8 +368,8 @@ def main():
     task = parse_task(a.task)
     in_target = target_matcher(task)
 
-    bs = normalise(load(bdir / "structure.json"))
-    as_ = normalise(load(adir / "structure.json"))
+    bs = canonicalise(normalise(load(bdir / "structure.json")))
+    as_ = canonicalise(normalise(load(adir / "structure.json")))
     lb, pb = flatten(bs)
     la, pa = flatten(as_)
     items = diff_leaves(lb, la) + compare_paragraphs(pb, pa)

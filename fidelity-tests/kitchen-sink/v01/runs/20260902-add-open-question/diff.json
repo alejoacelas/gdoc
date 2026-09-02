@@ -1,0 +1,54 @@
+{
+ "task": "add-open-question",
+ "items": [
+  {
+   "path": "tab[Tab 1]/para[new@18:Do we need a rollback drill be].text",
+   "before": "∅",
+   "after": "Do we need a rollback drill before the 15th?⏎",
+   "kind": "text",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[new@18:Do we need a rollback drill be].bullet",
+   "before": "∅",
+   "after": {
+    "listId": "kix.5hgdvulx3csg",
+    "textStyle": {}
+   },
+   "kind": "para",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[new@18:Do we need a rollback drill be].paragraphStyle",
+   "before": "∅",
+   "after": {
+    "namedStyleType": "NORMAL_TEXT",
+    "indentFirstLine": {
+     "magnitude": 18,
+     "unit": "PT"
+    },
+    "indentStart": {
+     "magnitude": 36,
+     "unit": "PT"
+    }
+   },
+   "kind": "para",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -26,3 +26,4 @@\n 2) 2\\) do we keep the legacy read replica?     \n-3) 3\\) ¿quién habla con Finance? © 2026\n+3) 3\\) ¿quién habla con Finance? © 2026  \n+4) Do we need a rollback drill before the 15th?\n ",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 3,
+  "allowed": 0,
+  "unexpected": 0,
+  "visible_unexpected": 0,
+  "invisible_unexpected": 0
+ }
+}

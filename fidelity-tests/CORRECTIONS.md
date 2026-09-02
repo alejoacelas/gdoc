@@ -60,3 +60,32 @@ entries once you agree; disagreements go back into the skill.
   accepts any number of locators, plus `new paragraph \`X\``, `heading \`X\``,
   `footnote`, `header`, `footer`, several `cells [r,c]` per table. "renumber" in
   Allowed also covers `/lists` leaves.
+- **Explicit-default styles produced 33 false "unexpected" items.** After `gdoc edit` on a
+  one-paragraph table cell, Docs dropped the paragraph's explicit `alignment: START`,
+  zero-width borders and similar values that equal the named style; rendering is identical.
+  `gdt-diff` now canonicalises every paragraphStyle, textStyle and bullet textStyle against
+  the document's `namedStyles` before diffing (an explicit value equal to the inherited one is
+  treated as absent). One genuine change survives in that run: `avoidWidowAndOrphan`
+  false → inherited true. **Needs a decision:** pagination hints (`avoidWidowAndOrphan`,
+  `keepLinesTogether`, `keepWithNext`) are classified `allowed` and invisible by default;
+  say in `references/diff.md` whether that stands.
+- **Target with a trailing full stop matched nothing** (`table 1, cell [1,2] (row "…").`),
+  so the budget run's one real change was classified unexpected. Regex rewritten.
+- **Paragraph-level items inside the Target** (`.bullet.*`, `.paragraphStyle.*`) are now
+  `expected` only when the task's Expected or Allowed text mentions that kind of change
+  (bullet, list, indent, heading, style, alignment, renumber, checkbox or the property
+  name); otherwise `unexpected`. A text edit should not silently excuse a list change.
+- **A run where the agent made no edit** failed `after_revision_later`. `gdt run-end` now
+  reports `n/a (no edit made; structure identical)` in that case; the outcome is decided by
+  the refusal rules, not INVALID.
+- **`bin/gdt-verdict`** added: fills the verdict front matter from the run directory
+  (copy id, revisions, gates, structural summary) so only outcome, judges and prose are
+  typed by hand. It refuses to write a non-INVALID verdict without `after/shot.json`.
+- **Task agents cannot be given an empty working directory** by the Agent tool: a `cd`
+  outside the project is reset by the harness. Isolation is by instruction (cd into an empty
+  scratch dir, read nothing outside it, report `pwd`); every agent tonight reported the
+  empty dir and none cited fixture files.
+- **Screenshots go through a subagent.** Each `computer screenshot` puts the image in the
+  driver's context; 15 views per batch is unsustainable. A "shooter" agent takes the views
+  and runs `gdt-shot`, returning paths only. Same for the visual judge, which reads the
+  JPEGs itself and returns verbatim answers.

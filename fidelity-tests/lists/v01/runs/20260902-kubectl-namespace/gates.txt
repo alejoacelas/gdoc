@@ -1,0 +1,8 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+No comments.
+{'suggestedInsertionIds': 0, 'dateElement': 0, 'footnoteReference': 0, 'strikethrough': 1}
+docs_revision ANLCKQnnjvfOmetI0iFqi3G4_zMgLFYOB8GAApuZZmfCUJ4zGCQ-QzrZu6os09lFxVaJAn9FfFeMo8IZU-TuHwM0foyrhuXG__KPaDjGEnU
+drive_revision 1 2026-09-02T21:07:21.393Z
+captured -> lists/v01/runs/20260902-kubectl-namespace/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0

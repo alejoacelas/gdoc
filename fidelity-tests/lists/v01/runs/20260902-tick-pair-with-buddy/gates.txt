@@ -1,0 +1,8 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+No comments.
+{'suggestedInsertionIds': 0, 'dateElement': 0, 'footnoteReference': 0, 'strikethrough': 1}
+docs_revision ANLCKQmSgIlyzeJmaX5ZmqJXSNiXaWESoOYvzQUXJIaX81i-mohndx82-AaesfE9c3Gaz13UC3bM_qUoRVOFzPEhaHy9Cy8omBTVw0nZBf0
+drive_revision 1 2026-09-02T21:06:47.854Z
+captured -> lists/v01/runs/20260902-tick-pair-with-buddy/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0

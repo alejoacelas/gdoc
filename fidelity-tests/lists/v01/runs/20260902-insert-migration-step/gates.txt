@@ -1,0 +1,8 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+No comments.
+{'suggestedInsertionIds': 0, 'dateElement': 0, 'footnoteReference': 0, 'strikethrough': 1}
+docs_revision ANLCKQn1axiTgDXm0tcep3bAA7NufkJtp6aa_eAkT6dxT6JM4hKy1ccmaUQhng_eqoCymbg4ULX7cJMFDIc-pxKJkJkq-VnJdC5kC4TjQxE
+drive_revision 1 2026-09-02T21:06:36.828Z
+captured -> lists/v01/runs/20260902-insert-migration-step/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0

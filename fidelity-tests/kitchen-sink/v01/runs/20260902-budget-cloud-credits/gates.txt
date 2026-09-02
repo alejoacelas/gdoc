@@ -6,3 +6,6 @@ docs_revision ANLCKQkK4oIvbczAWcg_HPreUQGCl0Bh6qmTC_JmWpCVt_AXbbdzvsDbd6JVo13Hts
 drive_revision 1 2026-09-02T20:39:51.251Z
 captured -> kitchen-sink/v01/runs/20260902-budget-cloud-credits/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQlvziwNPFgDBJ97S2vY6aRUUEl0uKExuZUZqc--naP8topJZBCdnnJSdrNbyHqe1L9UnxJiA6Wh9aE8xPdatzKqCIPkbK64HI0X20E
+drive_revision 2 2026-09-02T21:00:27.245Z
+captured -> kitchen-sink/v01/runs/20260902-budget-cloud-credits/after (screenshots: gdt-shot)

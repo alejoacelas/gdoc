@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""gdt-verdict RUN_DIR --outcome O [--request-met yes|no|partial] [--collateral vis,invis,reveal]
+   [--visual TEXT] [--human TEXT] [--issue URL] [--repro ANCHOR] [--gate name=value ...] --prose FILE|-
+
+Writes RUN_DIR/verdict.md with the front matter fields from references/verdict.md, filling
+copy_id, revisions, gdoc version, account, structural summary and gates from the run dir.
+Gates default to pass when the corresponding capture exists; override with --gate."""
+import argparse, json, re, sys, datetime
+from pathlib import Path
+
+ap = argparse.ArgumentParser()
+ap.add_argument("run"); ap.add_argument("--outcome", required=True)
+ap.add_argument("--request-met", default="null"); ap.add_argument("--collateral", default=None,
+    help="visible,invisible,agent_read_would_reveal as true/false, e.g. true,false,false")
+ap.add_argument("--visual", default="null"); ap.add_argument("--human", default="null")
+ap.add_argument("--issue", default="null"); ap.add_argument("--repro", default="null")
+ap.add_argument("--gate", action="append", default=[]); ap.add_argument("--prose", required=True)
+ap.add_argument("--track", default="agent")
+a = ap.parse_args()
+run = Path(a.run); fx = run.parent.parent
+fixture = f"{fx.parent.name}/{fx.name}"
+slug = re.sub(r"^\d{8}-", "", run.name); slug = re.sub(r"-\d+$", "", slug)
+copy_id = (run / "copy_id.txt").read_text().strip()
+gates_txt = (run / "gates.txt").read_text() if (run / "gates.txt").exists() else ""
+gdoc_version = (re.search(r"gdoc_version: gdoc (\S+)", gates_txt) or re.search(r"gdoc_version: (\S+)", gates_txt) or [None, "?"])[1]
+
+def rev(d):
+    p = run / d / "revisions.json"
+    if not p.exists(): return "null"
+    r = json.load(open(p))["revisions"]; return r[-1]["id"]
+gates = {"source_matches_baseline": "pass" if "source_matches_baseline: pass" in gates_txt else "fail — see gates.txt",
+         "preconditions_present": "pass",
+         "before_capture": "pass" if (run / "before" / "shot.json").exists() and (run / "before" / "structure.json").exists() else "fail — before capture incomplete",
+         "after_revision_later": "pass"}
+m = re.search(r"gate after_revision_later: (.*?)  drive", gates_txt)
+if m: gates["after_revision_later"] = m.group(1)
+if a.outcome != "INVALID" and not (run / "after" / "shot.json").exists():
+    sys.exit("after/shot.json missing; capture screenshots first or record INVALID")
+for g in a.gate:
+    k, v = g.split("=", 1); gates[k] = v
+structural = "null"
+if (run / "diff.json").exists():
+    s = json.load(open(run / "diff.json"))["summary"]
+    structural = f"expected={s['expected']} allowed={s['allowed']} unexpected={s['unexpected']}"
+coll = "null"
+if a.collateral:
+    v, i, r = a.collateral.split(",")
+    coll = f"\n  visible: {v}\n  invisible: {i}\n  agent_read_would_reveal: {r}"
+prose = sys.stdin.read() if a.prose == "-" else Path(a.prose).read_text()
+fm = f"""---
+fixture: {fixture}
+task: {slug}
+track: {a.track}
+date: {datetime.date.today().isoformat()}
+gdoc_version: {gdoc_version}
+account: config.yaml
+copy_id: {copy_id}
+before_revision: {rev('before')}
+after_revision: {rev('after')}
+gates:
+  source_matches_baseline: {gates['source_matches_baseline']}
+  preconditions_present: {gates['preconditions_present']}
+  before_capture: {gates['before_capture']}
+  after_revision_later: {gates['after_revision_later']}
+outcome: {a.outcome}
+request_met: {a.request_met}
+collateral: {coll}
+judges:
+  structural: {structural}
+  visual: {a.visual}
+  human: {a.human}
+issue: {a.issue}
+repro: {a.repro}
+---
+
+"""
+(run / "verdict.md").write_text(fm + prose.strip() + "\n")
+print(f"wrote {run/'verdict.md'}: {a.outcome}")

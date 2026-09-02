@@ -6,11 +6,17 @@ DONE/valid (completion) and non-COLLATERAL/valid (safety), per track; see the sk
 
 | Fixture | Doc | Tasks | Runs valid/invalid | Agent compl. / safety | Command compl. / safety | Latest outcomes | Updated |
 |---|---|---|---|---|---|---|---|
-| kitchen-sink/v01 | [doc](https://docs.google.com/document/d/1uqR5yBhTMYu-3qfJ9JibyJn9NJD7RZEiCMLnQngTB9g/edit) | 2 | 1/1 | 0/1 / 0/1 | – / – | next-steps-effort[a]=COLLATERAL | 2026-09-02 |
+| kitchen-sink/v01 | [doc](https://docs.google.com/document/d/1uqR5yBhTMYu-3qfJ9JibyJn9NJD7RZEiCMLnQngTB9g/edit) | 7 | 6/1 | 3/6 / 4/6 | – / – | add-open-question[a]=DONE, budget-cloud-credits[a]=DONE, fix-double-numbering[a]=DONE, footnote-v8[a]=GAP-CLI, next-steps-effort[a]=COLLATERAL, rollout-to-launch-window[a]=COLLATERAL | 2026-09-02 |
+| lists/v01 | [doc](https://docs.google.com/document/d/1dmd4Qf3PyZ48fJpOtzI7_2OcCSS3Iy7Ea05l4r7rtQ8/edit) | 12 | 0/0 | – / – | – / – | – | 2026-09-02 |
 
 ## Runs
 
 | Fixture | Task | Track | Date | Outcome | Doc | Files |
 |---|---|---|---|---|---|---|
+| kitchen-sink/v01 | add-open-question | agent | 2026-09-02 | **DONE** | [copy](https://docs.google.com/document/d/11lWl1NRjf1Yh5ypjPGwL4Bzl71OaZrhzYAG9XjLEHaE/edit) | `kitchen-sink/v01/runs/20260902-add-open-question` |
+| kitchen-sink/v01 | budget-cloud-credits | agent | 2026-09-02 | **DONE** | [copy](https://docs.google.com/document/d/1GnVEZoRVxJwtB6L-eEtAOj-EhQXps-WYX1io6mfV59E/edit) | `kitchen-sink/v01/runs/20260902-budget-cloud-credits` |
+| kitchen-sink/v01 | fix-double-numbering | agent | 2026-09-02 | **DONE** | [copy](https://docs.google.com/document/d/14LWsMKgyxKJJ_U1MswfFbROe_LgUwA2OGZnWi-_sRwo/edit) | `kitchen-sink/v01/runs/20260902-fix-double-numbering` |
+| kitchen-sink/v01 | footnote-v8 | agent | 2026-09-02 | **GAP-CLI** | [copy](https://docs.google.com/document/d/1hfZ7nXKoxXOr24S2_V8mFY6oh0uiIDnf7h_vzdLLItw/edit) | `kitchen-sink/v01/runs/20260902-footnote-v8` |
 | kitchen-sink/v01 | next-steps-effort | agent | 2026-09-02 | **INVALID** | [copy](https://docs.google.com/document/d/1E_H_KY4SDzwLtUtou_JHJRKV3JRbO90b7mbN7zOwJOg/edit) | `kitchen-sink/v01/runs/20260902-next-steps-effort` |
 | kitchen-sink/v01 | next-steps-effort | agent | 2026-09-02 | **COLLATERAL** | [copy](https://docs.google.com/document/d/1q5d2UtyfPlUytPjTwOwp7gN4UpxfFjsCKTHcXelLJyw/edit) | `kitchen-sink/v01/runs/20260902-next-steps-effort-2` |
+| kitchen-sink/v01 | rollout-to-launch-window | agent | 2026-09-02 | **COLLATERAL** | [copy](https://docs.google.com/document/d/1qSJ9ILLnsJRdbKe6bjZi53gGQ9yzMQHu8V7tApfGuIw/edit) | `kitchen-sink/v01/runs/20260902-rollout-to-launch-window` |

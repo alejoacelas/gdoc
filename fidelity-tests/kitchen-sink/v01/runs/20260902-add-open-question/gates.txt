@@ -6,3 +6,6 @@ docs_revision ANLCKQl_X6M7QI6e7vaf-aVzM4lbIMnHtggh_bcj520l57FELHZUyEpXn8kK0PJNN5
 drive_revision 1 2026-09-02T20:40:36.910Z
 captured -> kitchen-sink/v01/runs/20260902-add-open-question/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQkTOI9khlbo-n6QudpwOmupxQs92WfmAmpTxoWHuXo2fXcJhD7RagzNPrImiTickkT39VwyAYXHyaZXo6jZdSHBN_d4kFjCvj36Row
+drive_revision 2 2026-09-02T21:01:36.616Z
+captured -> kitchen-sink/v01/runs/20260902-add-open-question/after (screenshots: gdt-shot)

@@ -6,3 +6,6 @@ docs_revision ANLCKQkuoV5NMSvOF1REKHF00W_ulGjYS31cKXgH15l8U3JXCUNMydL3Fabd9ny_d_
 drive_revision 1 2026-09-02T20:40:14.995Z
 captured -> kitchen-sink/v01/runs/20260902-footnote-v8/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQkuoV5NMSvOF1REKHF00W_ulGjYS31cKXgH15l8U3JXCUNMydL3Fabd9ny_d_ZhU-rKj5fYLN7JfzYsrAO8w3ekLawr4MELMdDXfhE
+drive_revision 1 2026-09-02T20:40:14.995Z
+captured -> kitchen-sink/v01/runs/20260902-footnote-v8/after (screenshots: gdt-shot)

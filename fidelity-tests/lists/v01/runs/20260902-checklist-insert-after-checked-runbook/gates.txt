@@ -1,0 +1,8 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+No comments.
+{'suggestedInsertionIds': 0, 'dateElement': 0, 'footnoteReference': 0, 'strikethrough': 1}
+docs_revision ANLCKQnnuJoA_ql8d5HYUfWy-d9F7swm4EsoJSBi_LwILpGGSRIM0xEz-Y_ZhlZHpli2OrCQwIFy1xJjZsxE--Q0PfZUomMsQtGD8UrzZwI
+drive_revision 1 2026-09-02T21:07:33.039Z
+captured -> lists/v01/runs/20260902-checklist-insert-after-checked-runbook/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0

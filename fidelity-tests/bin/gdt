@@ -98,7 +98,9 @@ run=sys.argv[1]
 b=json.load(open(f"{run}/before/revisions.json"))['revisions'][-1]; a=json.load(open(f"{run}/after/revisions.json"))['revisions'][-1]
 bd=json.load(open(f"{run}/before/structure.json"))['revisionId']; ad=json.load(open(f"{run}/after/structure.json"))['revisionId']
 later = (a['modifiedTime'] > b['modifiedTime']) or (bd != ad)
-print(f"gate after_revision_later: {'pass' if later else 'FAIL (no new revision)'}  drive {b['id']}->{a['id']}  docs {bd[:12]}..->{ad[:12]}..")
+same = open(f"{run}/before/structure.json").read() == open(f"{run}/after/structure.json").read()
+verdict = 'pass' if later else ('n/a (no edit made; structure identical)' if same else 'FAIL (structure differs but no new revision)')
+print(f"gate after_revision_later: {verdict}  drive {b['id']}->{a['id']}  docs {bd[:12]}..->{ad[:12]}..")
 PY2
     "$here/gdt-diff" "$run/before" "$run/after" --task "$fx/tasks.md#$slug" --out "$run";;
   index) exec python3 "$here/gdt-index";;

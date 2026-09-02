@@ -1,0 +1,10 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+#AAACGebRK78 [open] Alejandro Acelas 2026-09-02
+  "Anchor deliberately spans the bold/plain boundary. Still unresolved as of 2 Sept - Tomás to decide by Friday."
+  on "question for Tom&#225;s"
+{'suggestedInsertionIds': 1, 'dateElement': 0, 'footnoteReference': 1, 'strikethrough': 6}
+docs_revision ANLCKQmpVArYWOHt2x6IYkwU5ose4lY1_aGlhqWzrGQqFSHQih-C0KeEEVDQDpqOm-Z2yn5QXX4yiDwbpW0N2fnhoZWo0FlVzL2RFHBkdm8
+drive_revision 1 2026-09-02T23:06:49.531Z
+captured -> text/v01/runs/20260903-tidy-double-spaces/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0

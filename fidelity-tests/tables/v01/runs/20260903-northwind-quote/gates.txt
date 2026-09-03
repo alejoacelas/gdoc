@@ -1,0 +1,10 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+#AAACGePZQas [open] Alejandro Acelas 2026-09-02
+  "Who actually owns this line? Finance says it is Ops, Ops says it went back to Finance in July."
+  on "shared between Ops and Finance"
+{'suggestedInsertionIds': 1, 'dateElement': 2, 'footnoteReference': 0, 'strikethrough': 1}
+gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQnN8IPVln49FcObBirCZDnqP1pi_nT9tB3kpkTYtv1qOTcco1Xhtrjk2S7En4try7dgq8zu4VapoCQQ_BwBpHOr4oqKU3l4dszqOBU
+drive_revision 4 2026-09-03T15:45:18.827Z
+captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/tables/v01/runs/20260903-northwind-quote/after (screenshots: gdt-shot)

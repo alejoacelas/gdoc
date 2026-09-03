@@ -1,0 +1,36 @@
+{
+ "task": "fix-double-numbering",
+ "items": [
+  {
+   "path": "tab[Tab 1]/para[16:2) do we keep the legacy read ].text",
+   "kind": "text",
+   "before": "2) ",
+   "after": "",
+   "after_context": "do we keep t",
+   "after_para_text": "do we keep the legacy read replica?   ",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[17:3) ¿quién habla con Finance? ©].text",
+   "kind": "text",
+   "before": "3) ",
+   "after": "",
+   "after_context": "¿quién habla",
+   "after_para_text": "¿quién habla con Finance? © 2026",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -25,4 +25,4 @@\n 1) Who owns the on-call rota during the rollout?  \n-2) 2\\) do we keep the legacy read replica?     \n-3) 3\\) ¿quién habla con Finance? © 2026\n+2) do we keep the legacy read replica?     \n+3) ¿quién habla con Finance? © 2026\n ",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 2,
+  "allowed": 0,
+  "unexpected": 0,
+  "visible_unexpected": 0,
+  "invisible_unexpected": 0
+ }
+}

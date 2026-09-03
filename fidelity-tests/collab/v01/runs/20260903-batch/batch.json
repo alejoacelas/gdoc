@@ -1,0 +1,390 @@
+{
+ "fixture": "collab/v01",
+ "batch": "20260903-batch",
+ "copy_id": "1d2i9p2B2vuiOFVZ0Fme9U73rf0lY3c7WzgWl_UBz7a4",
+ "fixture_doc": "https://docs.google.com/document/d/16-VPn1wWF0ZmyWtlF8JbAq8qxJlfgiT71GNfjPcs00w/edit",
+ "runs": [
+  {
+   "run": "20260903-handbook-link-notion-2",
+   "slug": "handbook-link-notion",
+   "request": "The finance handbook link points at the old handbook — change it to https://www.notion.so/people-ops/expenses. Keep the wording.",
+   "expected": "In the paragraph `Claims go through the expenses portal`, the run `handbook` is still linked, now to `https://www.notion.so/people-ops/expenses`; the text is unchanged and the comment anchored on `handbook` (`AAACFLVgk3g`) is still open and anchored. Nothing else changes.",
+   "target": "tab `Tab 1`, paragraph beginning `Claims go through`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 1,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[8:Claims go through the expenses].style@\"finance handbook\"",
+     "before": {
+      "textStyle": {
+       "foregroundColor": {
+        "color": {
+         "rgbColor": {
+          "blue": 0.8,
+          "green": 0.33333334,
+          "red": 0.06666667
+         }
+        }
+       },
+       "link": {
+        "url": "https://handbook.example.org/finance/expenses"
+       },
+       "underline": true
+      }
+     },
+     "after": {
+      "textStyle": {
+       "foregroundColor": {
+        "color": {
+         "rgbColor": {
+          "blue": 0.8,
+          "green": 0.33333334,
+          "red": 0.06666667
+         }
+        }
+       },
+       "link": {
+        "url": "https://www.notion.so/people-ops/expenses"
+       },
+       "underline": true
+      }
+     },
+     "kind": "style",
+     "after_para_text": "Claims go through the expenses portal (see the finance handbook) rather than the old form.",
+     "snippet": "finance handbook",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-next-review-september-2",
+   "slug": "next-review-september",
+   "request": "The next review isn't June any more, it's September — fix the last line.",
+   "expected": "The paragraph beginning `Next review:` reads `Next review: September. Owner: People Ops. …` with the pending suggestion (`March`→`June`) resolved in whatever way the agent chooses, OR `Next review: {+September+}{-March-}.` with the suggestion amended — either is acceptable as long as no other paragraph changes and no other suggestion or comment is touched. (Ambiguous on purpose: the current text exists only as a suggestion.)",
+   "target": "tab `Tab 1`, paragraph beginning `Next review:`.",
+   "allowed": "the `March`→`June` suggestion may be accepted, replaced or amended; revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 2,
+    "allowed": 0,
+    "unexpected": 1,
+    "visible_unexpected": 1,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[22:Next review: JuneMarch. Owner:].text",
+     "kind": "text",
+     "before": "Jun",
+     "after": "S",
+     "after_context": "ext review: SeptemberMarc",
+     "after_para_text": "Next review: SeptemberMarch. Owner: People Ops. Send questions to the #people-ops channel.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[22:Next review: JuneMarch. Owner:].style@\"e\"",
+     "before": {
+      "suggestedInsertionIds": [
+       "suggest.fr9lnzlv781n"
+      ],
+      "textStyle": {}
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "Next review: SeptemberMarch. Owner: People Ops. Send questions to the #people-ops channel.",
+     "snippet": "e",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[22:Next review: JuneMarch. Owner:].text",
+     "kind": "text",
+     "before": "",
+     "after": "ptember",
+     "after_context": "t review: SeptemberMarch. Owner",
+     "after_para_text": "Next review: SeptemberMarch. Owner: People Ops. Send questions to the #people-ops channel.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-reply-broadband-thread-2",
+   "slug": "reply-broadband-thread",
+   "request": "On the broadband comment thread (the one about £15 being too low), add a reply saying \"Agreed, going with £25 — finance signed off on 3 Sept.\" Don't resolve it.",
+   "expected": "Comment `AAACFLVgk3k` (anchored `capped at £15 a month`) has three replies, the new one last with exactly that text; still open. The pending suggestion `£15`→`£25` in the same bullet is still pending. Body byte-identical.",
+   "target": "comment.",
+   "allowed": "comment `modifiedTime` changes; revision list grows.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 1,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "comments[AAACFLVgk3k]",
+     "before": {
+      "replies": [
+       {
+        "author": {
+         "displayName": "Alejandro Acelas"
+        },
+        "createdTime": "2026-09-02T23:18:46.718Z",
+        "modifiedTime": "2026-09-02T23:18:46.718Z",
+        "content": "Checked three providers: cheapest fibre I can find is about £24 a month."
+       },
+       {
+        "author": {
+         "displayName": "Alejandro Acelas"
+        },
+        "createdTime": "2026-09-02T23:19:47.432Z",
+        "modifiedTime": "2026-09-02T23:19:47.432Z",
+        "content": "Proposing £25 in a suggestion below. Will loop in finance if nobody objects by Friday."
+       }
+      ],
+      "author": {
+       "displayName": "Alejandro Acelas"
+      },
+      "quotedFileContent": {
+       "value": "capped at &#163;15 a month"
+      },
+      "id": "AAACFLVgk3k",
+      "createdTime": "2026-09-02T23:18:23.388Z",
+      "modifiedTime": "2026-09-02T23:19:47.432Z",
+      "content": "£15 is below the cheapest fibre plan in most of the UK. Where did this number come from?",
+      "resolved": false
+     },
+     "after": {
+      "replies": [
+       {
+        "author": {
+         "displayName": "Alejandro Acelas"
+        },
+        "createdTime": "2026-09-02T23:18:46.718Z",
+        "modifiedTime": "2026-09-02T23:18:46.718Z",
+        "content": "Checked three providers: cheapest fibre I can find is about £24 a month."
+       },
+       {
+        "author": {
+         "displayName": "Alejandro Acelas"
+        },
+        "createdTime": "2026-09-02T23:19:47.432Z",
+        "modifiedTime": "2026-09-02T23:19:47.432Z",
+        "content": "Proposing £25 in a suggestion below. Will loop in finance if nobody objects by Friday."
+       },
+       {
+        "author": {
+         "displayName": "Alejandro Acelas"
+        },
+        "createdTime": "2026-09-03T15:41:57.421Z",
+        "modifiedTime": "2026-09-03T15:41:57.421Z",
+        "content": "Agreed, going with £25 — finance signed off on 3 Sept."
+       }
+      ],
+      "author": {
+       "displayName": "Alejandro Acelas"
+      },
+      "quotedFileContent": {
+       "value": "capped at &#163;15 a month"
+      },
+      "id": "AAACFLVgk3k",
+      "createdTime": "2026-09-02T23:18:23.388Z",
+      "modifiedTime": "2026-09-03T15:41:57.421Z",
+      "content": "£15 is below the cheapest fibre plan in most of the UK. Where did this number come from?",
+      "resolved": false
+     },
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-resolve-fake-heading-comment-2",
+   "slug": "resolve-fake-heading-comment",
+   "request": "The \"What changes\" line is fine as it is — resolve the comment that asks to make it a real heading, with a short reply \"Leaving as is for v3.\"",
+   "expected": "Comment `AAACFLVgk4E` (anchored `What changes`) is resolved with one reply `Leaving as is for v3.`; the paragraph `What changes` is still bold 14pt Normal text; all other comments untouched. Body byte-identical.",
+   "target": "comment.",
+   "allowed": "comment `modifiedTime` changes; revision list grows.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 1,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "comments[AAACFLVgk4E]",
+     "before": {
+      "replies": [],
+      "author": {
+       "displayName": "Alejandro Acelas"
+      },
+      "quotedFileContent": {
+       "value": "What changes"
+      },
+      "id": "AAACFLVgk4E",
+      "createdTime": "2026-09-02T23:20:42.156Z",
+      "modifiedTime": "2026-09-02T23:20:42.156Z",
+      "content": "This is bold Normal text pretending to be a heading, so it never shows in the outline. Make it a real Heading 2?",
+      "resolved": false
+     },
+     "after": {
+      "replies": [
+       {
+        "author": {
+         "displayName": "Alejandro Acelas"
+        },
+        "createdTime": "2026-09-03T15:44:15.388Z",
+        "modifiedTime": "2026-09-03T15:44:15.388Z",
+        "content": "Leaving as is for v3.",
+        "action": "resolve"
+       }
+      ],
+      "author": {
+       "displayName": "Alejandro Acelas"
+      },
+      "quotedFileContent": {
+       "value": "What changes"
+      },
+      "id": "AAACFLVgk4E",
+      "createdTime": "2026-09-02T23:20:42.156Z",
+      "modifiedTime": "2026-09-03T15:44:15.388Z",
+      "content": "This is bold Normal text pretending to be a heading, so it never shows in the outline. Make it a real Heading 2?",
+      "resolved": true
+     },
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-suggest-contractors-sentence-2",
+   "slug": "suggest-contractors-sentence",
+   "request": "In Open questions, add — as a suggestion, not a direct edit — the sentence \"Legal will confirm by 15 Sept.\" at the end of the contractors paragraph.",
+   "expected": "The paragraph beginning `Should contractors be eligible?` gains a pending suggested insertion ` Legal will confirm by 15 Sept.` at its end (after the existing pending insertion ` People Ops has no strong view either way.`, which stays pending). No accepted text changes anywhere. Nothing else changes.",
+   "target": "tab `Tab 1`, paragraph beginning `Should contractors be eligible`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 1,
+    "allowed": 0,
+    "unexpected": 2,
+    "visible_unexpected": 2,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[20:Should contractors be eligible].style@\"team are contractors.\"",
+     "before": {
+      "textStyle": {}
+     },
+     "after": {
+      "suggestedInsertionIds": [
+       "suggest.iejv39er8zdg"
+      ],
+      "suggestedTextStyleChanges": {
+       "suggest.iejv39er8zdg": {
+        "textStyle": {},
+        "textStyleSuggestionState": {
+         "backgroundColorSuggested": true,
+         "baselineOffsetSuggested": true,
+         "boldSuggested": true,
+         "fontSizeSuggested": true,
+         "foregroundColorSuggested": true,
+         "italicSuggested": true,
+         "smallCapsSuggested": true,
+         "strikethroughSuggested": true,
+         "underlineSuggested": true,
+         "weightedFontFamilySuggested": true
+        }
+       }
+      },
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "Should contractors be eligible? Legal thinks it blurs the employment status line; the engineering leads think excluding them is unfair since half the platform team are contractors. Legal will confirm by 15 Sept.team are contractors. People Ops has no strong view either way.",
+     "snippet": "team are contractors.",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[20:Should contractors be eligible].style@\" \"",
+     "before": {
+      "suggestedInsertionIds": [
+       "suggest.iejv39er8zdg"
+      ],
+      "textStyle": {}
+     },
+     "after": {
+      "suggestedInsertionIds": [
+       "suggest.iejv39er8zdg"
+      ],
+      "suggestedTextStyleChanges": {
+       "suggest.iejv39er8zdg": {
+        "textStyle": {},
+        "textStyleSuggestionState": {
+         "backgroundColorSuggested": true,
+         "baselineOffsetSuggested": true,
+         "boldSuggested": true,
+         "fontSizeSuggested": true,
+         "foregroundColorSuggested": true,
+         "italicSuggested": true,
+         "smallCapsSuggested": true,
+         "strikethroughSuggested": true,
+         "underlineSuggested": true,
+         "weightedFontFamilySuggested": true
+        }
+       }
+      },
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "Should contractors be eligible? Legal thinks it blurs the employment status line; the engineering leads think excluding them is unfair since half the platform team are contractors. Legal will confirm by 15 Sept.team are contractors. People Ops has no strong view either way.",
+     "snippet": " ",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[20:Should contractors be eligible].text",
+     "kind": "text",
+     "before": "",
+     "after": "Legal will confirm by 15 Sept.team are contractors. ",
+     "after_context": "ontractors. Legal will confirm by 15 Sept.team are contractors. People Ops h",
+     "after_para_text": "Should contractors be eligible? Legal thinks it blurs the employment status line; the engineering leads think excluding them is unfair since half the platform team are contractors. Legal will confirm by 15 Sept.team are contractors. People Ops has no strong view either way.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  }
+ ]
+}

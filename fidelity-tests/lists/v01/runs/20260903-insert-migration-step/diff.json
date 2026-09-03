@@ -1,0 +1,55 @@
+{
+ "task": "insert-migration-step",
+ "items": [
+  {
+   "path": "tab[Tab 1]/para[new@8:Run the DB migrations on stagi].text",
+   "before": "∅",
+   "after": "Run the DB migrations on staging (Priya)⏎",
+   "kind": "text",
+   "after_para_text": "Run the DB migrations on staging (Priya)",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[new@8:Run the DB migrations on stagi].bullet",
+   "before": "∅",
+   "after": {
+    "listId": "kix.ehmbnlna9fov",
+    "textStyle": {}
+   },
+   "kind": "para",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[new@8:Run the DB migrations on stagi].paragraphStyle",
+   "before": "∅",
+   "after": {
+    "namedStyleType": "NORMAL_TEXT",
+    "indentFirstLine": {
+     "magnitude": 18,
+     "unit": "PT"
+    },
+    "indentStart": {
+     "magnitude": 36,
+     "unit": "PT"
+    }
+   },
+   "kind": "para",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -13,4 +13,5 @@\n 4. Deploy to staging\t(infra, not us)  \n-5. Smoke test the payment flow (card \\+ SEPA \\+ Apple Pay)  \n-6. Ship to 5% of users  \n+5. Run the DB migrations on staging (Priya)  \n+6. Smoke test the payment flow (card \\+ SEPA \\+ Apple Pay)  \n+7. Ship to 5% of users  \n ",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 3,
+  "allowed": 0,
+  "unexpected": 0,
+  "visible_unexpected": 0,
+  "invisible_unexpected": 0
+ }
+}

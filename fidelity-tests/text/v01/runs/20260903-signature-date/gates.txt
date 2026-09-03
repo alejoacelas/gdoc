@@ -8,3 +8,6 @@ docs_revision ANLCKQltqwZYN-hEcm8zaYNfC5_waogDxlAes8VcmNcISngH9_8j25r1bpoKJfWkKA
 drive_revision 1 2026-09-03T15:30:30.021Z
 captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/text/v01/runs/20260903-signature-date/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQlbTS3vMw8QYpVjgjyqrmcvA-6mgYNK0t0ltTCiOBvC6-ovH1Ckvt0daH2qYV1_wf6D1pveVAlTH--6B4pbmIaWnrYeFuG62wzgbu4
+drive_revision 2 2026-09-03T15:42:11.411Z
+captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/text/v01/runs/20260903-signature-date/after (screenshots: gdt-shot)

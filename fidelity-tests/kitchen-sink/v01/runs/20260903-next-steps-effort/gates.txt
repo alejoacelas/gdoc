@@ -1,0 +1,8 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+#AAACGeHZ4dE [resolved] Alejandro Acelas 2026-09-02
+  "Is v3 actually the final name? Tomás called it v2.1 in the standup."
+  on "script v3"
+  -> Alejandro Acelas: "Yes, v3 is final — Tomás confirmed on 1 Sept."
+{'suggestedInsertionIds': 2, 'dateElement': 2, 'footnoteReference': 1, 'strikethrough': 3}
+gdoc_version: gdoc 0.21.0

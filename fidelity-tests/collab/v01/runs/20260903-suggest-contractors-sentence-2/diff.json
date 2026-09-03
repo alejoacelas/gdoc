@@ -1,0 +1,98 @@
+{
+ "task": "suggest-contractors-sentence",
+ "items": [
+  {
+   "path": "tab[Tab 1]/para[20:Should contractors be eligible].style@\"team are contractors.\"",
+   "before": {
+    "textStyle": {}
+   },
+   "after": {
+    "suggestedInsertionIds": [
+     "suggest.iejv39er8zdg"
+    ],
+    "suggestedTextStyleChanges": {
+     "suggest.iejv39er8zdg": {
+      "textStyle": {},
+      "textStyleSuggestionState": {
+       "backgroundColorSuggested": true,
+       "baselineOffsetSuggested": true,
+       "boldSuggested": true,
+       "fontSizeSuggested": true,
+       "foregroundColorSuggested": true,
+       "italicSuggested": true,
+       "smallCapsSuggested": true,
+       "strikethroughSuggested": true,
+       "underlineSuggested": true,
+       "weightedFontFamilySuggested": true
+      }
+     }
+    },
+    "textStyle": {}
+   },
+   "kind": "style",
+   "after_para_text": "Should contractors be eligible? Legal thinks it blurs the employment status line; the engineering leads think excluding them is unfair since half the platform team are contractors. Legal will confirm by 15 Sept.team are contractors. People Ops has no strong view either way.",
+   "snippet": "team are contractors.",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[20:Should contractors be eligible].style@\" \"",
+   "before": {
+    "suggestedInsertionIds": [
+     "suggest.iejv39er8zdg"
+    ],
+    "textStyle": {}
+   },
+   "after": {
+    "suggestedInsertionIds": [
+     "suggest.iejv39er8zdg"
+    ],
+    "suggestedTextStyleChanges": {
+     "suggest.iejv39er8zdg": {
+      "textStyle": {},
+      "textStyleSuggestionState": {
+       "backgroundColorSuggested": true,
+       "baselineOffsetSuggested": true,
+       "boldSuggested": true,
+       "fontSizeSuggested": true,
+       "foregroundColorSuggested": true,
+       "italicSuggested": true,
+       "smallCapsSuggested": true,
+       "strikethroughSuggested": true,
+       "underlineSuggested": true,
+       "weightedFontFamilySuggested": true
+      }
+     }
+    },
+    "textStyle": {}
+   },
+   "kind": "style",
+   "after_para_text": "Should contractors be eligible? Legal thinks it blurs the employment status line; the engineering leads think excluding them is unfair since half the platform team are contractors. Legal will confirm by 15 Sept.team are contractors. People Ops has no strong view either way.",
+   "snippet": " ",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[20:Should contractors be eligible].text",
+   "kind": "text",
+   "before": "",
+   "after": "Legal will confirm by 15 Sept.team are contractors. ",
+   "after_context": "ontractors. Legal will confirm by 15 Sept.team are contractors. People Ops h",
+   "after_para_text": "Should contractors be eligible? Legal thinks it blurs the employment status line; the engineering leads think excluding them is unfair since half the platform team are contractors. Legal will confirm by 15 Sept.team are contractors. People Ops has no strong view either way.",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -36,3 +36,3 @@\n \n-Should contractors be eligible? Legal thinks it blurs the employment status line; the engineering leads think excluding them is unfair since half the platform team are contractors. People Ops has no strong view either way.  \n+Should contractors be eligible? Legal thinks it blurs the employment status line; the engineering leads think excluding them is unfair since half the platform team are contractors. Legal will confirm by 15 Sept.team are contractors. People Ops has no strong view either way.  \n We also need to decide whether the scheme should stay ***simple to administer*** or track receipts per category.  ",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 1,
+  "allowed": 0,
+  "unexpected": 2,
+  "visible_unexpected": 2,
+  "invisible_unexpected": 0
+ }
+}

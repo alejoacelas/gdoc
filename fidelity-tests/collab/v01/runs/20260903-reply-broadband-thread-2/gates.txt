@@ -10,3 +10,6 @@ docs_revision ANLCKQncTA7lGC4K6JDw3gGz5wAawGOE2eJBnxh0RIBxK8BtnVOHcC7bsXZjzjGfSD
 drive_revision 1 2026-09-03T15:35:27.164Z
 captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/collab/v01/runs/20260903-reply-broadband-thread-2/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQmlqr57lkpsYa86xhm9-agpqRMLaBhPX3qxn-5OAof2KyeXHjEsdRNG25CQAi98nZoEVAp6rrTgiZuLN9UQexa5l8YMGdkIF-MzDR4
+drive_revision 1 2026-09-03T15:35:27.164Z
+captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/collab/v01/runs/20260903-reply-broadband-thread-2/after (screenshots: gdt-shot)

@@ -1,0 +1,25 @@
+{
+ "task": "marta-quote-tuesday-afternoon",
+ "items": [
+  {
+   "path": "tab[Tab 1]/para[9:Northstar 2.2 is the biggest r].text",
+   "kind": "text",
+   "before": "",
+   "after": " afternoon",
+   "after_context": "ne’s Tuesday afternoon” and the la",
+   "after_para_text": "Northstar 2.2 is the biggest release since 1.0: release-notes-2.1.md (more soon...) as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday afternoon” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -14,3 +14,3 @@\n \n-Northstar 2.2 is the biggest release since 1.0: [release-notes-2.1.md](http://release-notes-2.1.md) (more soon...) as Marta put it in \\#launch, “we finally fixed the sync bug that ate everyone’s Tuesday” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)  \n+Northstar 2.2 is the biggest release since 1.0: [release-notes-2.1.md](http://release-notes-2.1.md) (more soon...) as Marta put it in \\#launch, “we finally fixed the sync bug that ate everyone’s Tuesday afternoon” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)  \n The formula card still reads CO2 and x2, the old deck typed its footnote marker as \\[1\\] instead of using a real footnote[^1], and the style rule is Northstar 2.2 (non-breaking space) in headlines but Northstar 2.2 (plain space) in body copy.  ",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 0,
+  "allowed": 0,
+  "unexpected": 1,
+  "visible_unexpected": 1,
+  "invisible_unexpected": 0
+ }
+}

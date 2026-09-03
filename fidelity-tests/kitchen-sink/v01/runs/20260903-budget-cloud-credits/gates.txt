@@ -8,3 +8,6 @@ docs_revision ANLCKQksWa0kMF4Ooofc1uJXNzZ5PjNolSpE5gWU3hEbYLJ3nwCQSd38IJgEK_-djC
 drive_revision 1 2026-09-03T15:16:20.015Z
 captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/kitchen-sink/v01/runs/20260903-budget-cloud-credits/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQm7jgxrVwfDER9_1tlDufDrH0z908hJ_-lgIB67GOauJqy2h8JrHSpceuS3ZF6azLPx4fyf1UhMKAX7N9sj5aU7Vy4Mhmh-2kxogHs
+drive_revision 2 2026-09-03T15:41:20.708Z
+captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/kitchen-sink/v01/runs/20260903-budget-cloud-credits/after (screenshots: gdt-shot)

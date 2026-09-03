@@ -1,0 +1,54 @@
+{
+ "task": "next-review-september",
+ "items": [
+  {
+   "path": "tab[Tab 1]/para[22:Next review: JuneMarch. Owner:].text",
+   "kind": "text",
+   "before": "Jun",
+   "after": "S",
+   "after_context": "ext review: SeptemberMarc",
+   "after_para_text": "Next review: SeptemberMarch. Owner: People Ops. Send questions to the #people-ops channel.",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[22:Next review: JuneMarch. Owner:].style@\"e\"",
+   "before": {
+    "suggestedInsertionIds": [
+     "suggest.fr9lnzlv781n"
+    ],
+    "textStyle": {}
+   },
+   "after": {
+    "textStyle": {}
+   },
+   "kind": "style",
+   "after_para_text": "Next review: SeptemberMarch. Owner: People Ops. Send questions to the #people-ops channel.",
+   "snippet": "e",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[22:Next review: JuneMarch. Owner:].text",
+   "kind": "text",
+   "before": "",
+   "after": "ptember",
+   "after_context": "t review: SeptemberMarch. Owner",
+   "after_para_text": "Next review: SeptemberMarch. Owner: People Ops. Send questions to the #people-ops channel.",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -38,2 +38,2 @@\n We also need to decide whether the scheme should stay ***simple to administer*** or track receipts per category.  \n-Next review: JuneMarch. Owner: People Ops. Send questions to the \\#people-ops channel.\n+Next review: SeptemberMarch. Owner: People Ops. Send questions to the \\#people-ops channel.",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 2,
+  "allowed": 0,
+  "unexpected": 1,
+  "visible_unexpected": 1,
+  "invisible_unexpected": 0
+ }
+}

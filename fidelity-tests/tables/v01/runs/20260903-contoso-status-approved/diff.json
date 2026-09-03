@@ -1,0 +1,45 @@
+{
+ "task": "contoso-status-approved",
+ "items": [
+  {
+   "path": "tab[Tab 1]/table[0]/cell[4,3]/para[new@0:Aprobado ✅⏎].text",
+   "before": "∅",
+   "after": "Aprobado ✅⏎",
+   "kind": "text",
+   "after_para_text": "Aprobado ✅",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/table[0]/cell[4,3]/para[new@0:Aprobado ✅⏎].paragraphStyle",
+   "before": "∅",
+   "after": {
+    "namedStyleType": "NORMAL_TEXT",
+    "lineSpacing": 100
+   },
+   "kind": "para",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/table[0]/cell[4,3]/para[del@0:Отклонено ❌⏎].text",
+   "before": "Отклонено ❌⏎",
+   "after": "∅",
+   "kind": "text",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -16,3 +16,3 @@\n | Northwind | 9,800 | Owner TBD — shared between Ops and Finance until the Contoso decision lands | Revisión legal |\n-| Contoso Ltd | \\=SUM(B2:B4) |  | Отклонено ❌ |\n+| Contoso Ltd | \\=SUM(B2:B4) |  | Aprobado ✅ |\n |  |  |  |  |",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 3,
+  "allowed": 0,
+  "unexpected": 0,
+  "visible_unexpected": 0,
+  "invisible_unexpected": 0
+ }
+}

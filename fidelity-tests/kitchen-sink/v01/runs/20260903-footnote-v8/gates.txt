@@ -1,0 +1,10 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+#AAACGeHZ4dE [open] Alejandro Acelas 2026-09-02
+  "Is v3 actually the final name? Tomás called it v2.1 in the standup."
+  on "script v3"
+{'suggestedInsertionIds': 2, 'dateElement': 2, 'footnoteReference': 1, 'strikethrough': 3}
+gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQmeortaDy5nd0MQZGsGCzxZ2zErqXSBpDjNAGQF1MN4RXYRvMlFZ7OqaLetx_nSkf0hxSfJgD9hAEF-ncgrWzc3GChXE8E6EjBkX58
+drive_revision 5 2026-09-03T15:47:45.199Z
+captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/kitchen-sink/v01/runs/20260903-footnote-v8/after (screenshots: gdt-shot)

@@ -115,6 +115,7 @@ verdict = 'pass' if later else ('n/a (no edit made; structure identical)' if sam
 print(f"gate after_revision_later: {verdict}  drive {b['id']}->{a['id']}  docs {bd[:12]}..->{ad[:12]}..")
 PY2
     "$here/gdt-diff" "$run/before" "$run/after" --task "$fx/tasks.md#$slug" --out "$run";;
+  batch-end) exec python3 "$here/gdt-batch-end" "$@";;
   index) exec python3 "$here/gdt-index";;
   *) sed -n '2,8p' "$0";;
 esac

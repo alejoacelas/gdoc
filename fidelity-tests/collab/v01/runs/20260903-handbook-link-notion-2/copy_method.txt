@@ -1,0 +1,1 @@
+copy_method: batch (continued from 20260903-resolve-fake-heading-comment-2)

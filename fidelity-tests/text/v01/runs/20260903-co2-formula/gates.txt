@@ -1,0 +1,10 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+#AAACGebRK78 [open] Alejandro Acelas 2026-09-02
+  "Anchor deliberately spans the bold/plain boundary. Still unresolved as of 2 Sept - Tomás to decide by Friday."
+  on "question for Tom&#225;s"
+{'suggestedInsertionIds': 1, 'dateElement': 0, 'footnoteReference': 1, 'strikethrough': 6}
+gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQmoAokkMaEn9xcOzmkFZOyGnE-K2D6YUwXa121q75jEPAy9L1LecWphFUodOW7d7VqWH4-c-NbtHgGpeC5z3mCDdg4qGU98z4oGsjQ
+drive_revision 4 2026-09-03T15:45:52.892Z
+captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/text/v01/runs/20260903-co2-formula/after (screenshots: gdt-shot)

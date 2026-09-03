@@ -9,3 +9,6 @@ docs_revision ANLCKQlieBt1kMxqd6Jnv_EAqejQBUbbXQ5uwqejRiqFz6vSD4tePa2XUHfdI2Ae8A
 drive_revision 1 2026-09-03T15:21:08.019Z
 captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/lists/v01/runs/20260903-smoke-test-apple-pay/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQnoJGS9aaAwoQYyMsfalBWJAYl0u2acJRhBR3H3JfTWWi4w4ZGYORQ69hzvtc_eKdw48T5Euhl_EuQAPNKeuH1VGiTBe4SZ9O83Vvw
+drive_revision 2 2026-09-03T15:41:47.979Z
+captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/lists/v01/runs/20260903-smoke-test-apple-pay/after (screenshots: gdt-shot)

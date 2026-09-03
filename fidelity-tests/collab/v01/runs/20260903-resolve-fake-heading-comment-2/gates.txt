@@ -1,0 +1,12 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+#AAACFLVgk4c [open] Alejandro Acelas 2026-09-02
+  "Do they? Last I heard finance wanted fewer receipts, not more. Who said this?"
+  on "Finance prefers receipts."
+#AAACFLVgk4U [open] Alejandro Acelas 2026-09-02
+  "Is tracking receipts realistic? One person handles all expenses and she is already behind."
+{'suggestedInsertionIds': 9, 'dateElement': 0, 'footnoteReference': 0, 'strikethrough': 2}
+gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQkFfWYfU5SE5H0PHq922Uuyvb-DFc5zZ7or-O8vLyzc9jzAxUi0a0REs3wWcJLvCpKEBA5zrUjatHS9gTz0aPl2s5u4IXI4yDEwnbk
+drive_revision 1 2026-09-03T15:35:27.164Z
+captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/collab/v01/runs/20260903-resolve-fake-heading-comment-2/after (screenshots: gdt-shot)

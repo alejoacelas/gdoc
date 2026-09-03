@@ -8,3 +8,6 @@ docs_revision ANLCKQlGbqKRj-Oxl8Mmsj9Cxkc1JRlkDBtEDoCGqC_jgV83IQmBK3F15aDBketvfG
 drive_revision 1 2026-09-03T15:25:48.361Z
 captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/tables/v01/runs/20260903-acme-cost-49000/before (screenshots: gdt-shot)
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQmu0pasr6lO0E-yqp2-figw6YpmVKbg8dW15UizvY4Z6YPJo0hPIqST-CAcA0s8XdUTPa3SM1jbwV6SXC4HQLcL5oPaRhh1MWgElIA
+drive_revision 3 2026-09-03T15:43:03.640Z
+captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/tables/v01/runs/20260903-acme-cost-49000/after (screenshots: gdt-shot)

@@ -1,0 +1,11 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+#AAACGeAxyJI [open] Alejandro Acelas 2026-09-02
+  "Dmitry is out until 15 Sep, so this and the key rotation both slip. Who picks them up?"
+  on "спросить Дмитрия
+Marco to"
+{'suggestedInsertionIds': 1, 'dateElement': 0, 'footnoteReference': 0, 'strikethrough': 1}
+gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQkH0LJnLeYhz1DIDuK1HP-1AeaXyzlnu9FVUd2vTHNfVGmLXmFt3ges82VjwKtb31nqmkfKWmTCLXvqRXC4d61ZKsHGHca2aUQhzQc
+drive_revision 4 2026-09-03T15:50:32.369Z
+captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/lists/v01/runs/20260903-checklist-insert-after-checked-runbook/after (screenshots: gdt-shot)

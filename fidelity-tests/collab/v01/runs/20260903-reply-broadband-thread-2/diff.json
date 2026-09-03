@@ -1,0 +1,90 @@
+{
+ "task": "reply-broadband-thread",
+ "items": [
+  {
+   "path": "comments[AAACFLVgk3k]",
+   "before": {
+    "replies": [
+     {
+      "author": {
+       "displayName": "Alejandro Acelas"
+      },
+      "createdTime": "2026-09-02T23:18:46.718Z",
+      "modifiedTime": "2026-09-02T23:18:46.718Z",
+      "content": "Checked three providers: cheapest fibre I can find is about £24 a month."
+     },
+     {
+      "author": {
+       "displayName": "Alejandro Acelas"
+      },
+      "createdTime": "2026-09-02T23:19:47.432Z",
+      "modifiedTime": "2026-09-02T23:19:47.432Z",
+      "content": "Proposing £25 in a suggestion below. Will loop in finance if nobody objects by Friday."
+     }
+    ],
+    "author": {
+     "displayName": "Alejandro Acelas"
+    },
+    "quotedFileContent": {
+     "value": "capped at &#163;15 a month"
+    },
+    "id": "AAACFLVgk3k",
+    "createdTime": "2026-09-02T23:18:23.388Z",
+    "modifiedTime": "2026-09-02T23:19:47.432Z",
+    "content": "£15 is below the cheapest fibre plan in most of the UK. Where did this number come from?",
+    "resolved": false
+   },
+   "after": {
+    "replies": [
+     {
+      "author": {
+       "displayName": "Alejandro Acelas"
+      },
+      "createdTime": "2026-09-02T23:18:46.718Z",
+      "modifiedTime": "2026-09-02T23:18:46.718Z",
+      "content": "Checked three providers: cheapest fibre I can find is about £24 a month."
+     },
+     {
+      "author": {
+       "displayName": "Alejandro Acelas"
+      },
+      "createdTime": "2026-09-02T23:19:47.432Z",
+      "modifiedTime": "2026-09-02T23:19:47.432Z",
+      "content": "Proposing £25 in a suggestion below. Will loop in finance if nobody objects by Friday."
+     },
+     {
+      "author": {
+       "displayName": "Alejandro Acelas"
+      },
+      "createdTime": "2026-09-03T15:41:57.421Z",
+      "modifiedTime": "2026-09-03T15:41:57.421Z",
+      "content": "Agreed, going with £25 — finance signed off on 3 Sept."
+     }
+    ],
+    "author": {
+     "displayName": "Alejandro Acelas"
+    },
+    "quotedFileContent": {
+     "value": "capped at &#163;15 a month"
+    },
+    "id": "AAACFLVgk3k",
+    "createdTime": "2026-09-02T23:18:23.388Z",
+    "modifiedTime": "2026-09-03T15:41:57.421Z",
+    "content": "£15 is below the cheapest fibre plan in most of the UK. Where did this number come from?",
+    "resolved": false
+   },
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 1,
+  "allowed": 0,
+  "unexpected": 0,
+  "visible_unexpected": 0,
+  "invisible_unexpected": 0
+ }
+}

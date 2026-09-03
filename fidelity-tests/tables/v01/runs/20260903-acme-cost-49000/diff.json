@@ -1,0 +1,47 @@
+{
+ "task": "acme-cost-49000",
+ "items": [
+  {
+   "path": "tab[Tab 1]/table[0]/cell[1,1]/para[0:48,500⏎].paragraphStyle.avoidWidowAndOrphan",
+   "before": false,
+   "after": "∅",
+   "kind": "para",
+   "after_para_text": "49,000",
+   "note": "pagination hint (avoidWidowAndOrphan/keepLinesTogether/keepWithNext); allowed by default, see CORRECTIONS.md",
+   "class": "allowed",
+   "visible": false,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/table[0]/cell[1,1]/para[0:48,500⏎].text",
+   "kind": "text",
+   "before": "8",
+   "after": "9",
+   "after_context": "49,000",
+   "after_para_text": "49,000",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/table[0]/cell[1,1]/para[0:48,500⏎].text",
+   "kind": "text",
+   "before": "5",
+   "after": "0",
+   "after_context": "49,000",
+   "after_para_text": "49,000",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -13,3 +13,3 @@\n | :---- | :---- | :---- | :---- |\n-| Acme Cloud ☁️ | **48,500** | Sign MSA (Priya) | Aprobado ✅ |\n+| Acme Cloud ☁️ | **49,000** | Sign MSA (Priya) | Aprobado ✅ |\n | Datawise Ltd | 12,95012,750  | Renew NDA (Tomás) | Pendiente: *pending legal review* |",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 2,
+  "allowed": 1,
+  "unexpected": 0,
+  "visible_unexpected": 0,
+  "invisible_unexpected": 0
+ }
+}

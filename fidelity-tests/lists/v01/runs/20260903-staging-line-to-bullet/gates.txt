@@ -6,6 +6,6 @@ gate preconditions: check tasks.md preconditions against:
 Marco to"
 {'suggestedInsertionIds': 1, 'dateElement': 0, 'footnoteReference': 0, 'strikethrough': 1}
 gdoc_version: gdoc 0.21.0
-docs_revision ANLCKQlSkWLtz2GoZ-MAQPrSFmJe9FIDaZrylo3yn3nW5bR3qWikcBlNDtHxCA7LkGf6VUWRt-1mIzmOJHaQ4nfF0FlpS0ofncYBlRQJREw
-drive_revision 10 2026-09-03T16:05:06.808Z
-captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/lists/v01/runs/20260903-legal-approval-date-georgia-run/after (screenshots: gdt-shot)
+docs_revision ANLCKQnjVqzkA_BZLyBPbzEaQjvcvFbaGxK4GHXNC2Pju2pANSEk7iJUwRpIOu88ISIFDdAsqOECQ_W2baCh08zU1y8UQ9xoMhNv949phPU
+drive_revision 13 2026-09-03T16:09:37.335Z
+captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/lists/v01/runs/20260903-staging-line-to-bullet/after (screenshots: gdt-shot)

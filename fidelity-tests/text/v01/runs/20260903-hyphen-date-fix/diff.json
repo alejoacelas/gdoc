@@ -1,0 +1,25 @@
+{
+ "task": "hyphen-date-fix",
+ "items": [
+  {
+   "path": "tab[Tab 1]/para[5:The launch window opens 14–18 ].text",
+   "kind": "text",
+   "before": "-",
+   "after": "–",
+   "after_context": "2026, not 14–18 Sept as t",
+   "after_para_text": "The launch window opens 14–18 Sept 2026, not 14–18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"preview\"  badge hidden in the same release.",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -8,3 +8,3 @@\n **Key dates and labels**  \n-The launch window opens 14–18 Sept 2026, not 14-18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"preview\"  badge hidden in the same release.  \n+The launch window opens 14–18 Sept 2026, not 14–18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"preview\"  badge hidden in the same release.  \n Ana’s note: the *launch window* is not the same thing as the Launch Window banner in the app; the banner string lives in the [release **checklist**](https://example.com/northstar/checklist) and is owned by design.  See also the [launch window FAQ](https://example.com/northstar/faq) before replying to customers.  ",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 1,
+  "allowed": 0,
+  "unexpected": 0,
+  "visible_unexpected": 0,
+  "invisible_unexpected": 0
+ }
+}

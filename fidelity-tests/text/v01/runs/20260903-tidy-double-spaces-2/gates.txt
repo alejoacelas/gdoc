@@ -5,6 +5,3 @@ gate preconditions: check tasks.md preconditions against:
   on "question for Tom&#225;s"
 {'suggestedInsertionIds': 1, 'dateElement': 0, 'footnoteReference': 1, 'strikethrough': 4}
 gdoc_version: gdoc 0.21.0
-docs_revision ANLCKQm2IJNFgfuL_KjY9bwROHw3NY649CDjO16nPEof2mBwpGXuJ6WgUvf3Y5ZEOjA5z1Nrx713-kvXg2PW9WH3CulbUkG0_lN9RfygVxs
-drive_revision 14 2026-09-03T16:04:59.135Z
-captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/text/v01/runs/20260903-hyphen-date-fix/after (screenshots: gdt-shot)

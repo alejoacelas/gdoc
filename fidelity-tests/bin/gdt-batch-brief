@@ -1,0 +1,12 @@
+#!/usr/bin/env python3
+"""gdt-batch-brief FIXTURE_DIR BATCH OUT.md — visual-judge brief for a batch (all tasks at once)."""
+import json, sys, pathlib
+fx, batch, out = pathlib.Path(sys.argv[1]), sys.argv[2], sys.argv[3]
+b = json.load(open(fx / "runs" / batch / "batch.json")); n = json.load(open(fx / "runs" / batch / "after" / "shot.json"))["views"]
+L = [f"# Visual judge brief — {b['fixture']} {batch} ({len(b['runs'])} tasks applied in sequence to ONE copy)\n",
+     f"Before = the copy before any task (before/view-01..0{n}); After = the copy after all tasks (after/view-01..0{n}), same scroll offsets. Judge each task from the same pair of image sets. Comment cards, anchor highlights and green/struck suggestion mark-up are part of the document state; cursor, Gemini widget, page badge and squiggles are not.\n",
+     f"Images: {fx.resolve()}/runs/{batch}/before/view-01..0{n}.jpg vs …/runs/{batch}/after/view-01..0{n}.jpg\n"]
+for i, r in enumerate(b["runs"], 1):
+    L.append(f"\n## T{i} {r['slug']}\n\nRequest: {r['request']}\n\nExpected: {r['expected']}\n\nAllowed: {r['allowed']}\n\nStructural diff (orientation only): expected={r['summary'].get('expected')} unexpected={r['summary'].get('unexpected')}\n")
+L.append("\n## Whole document\n\nAfter answering per task, list anything else that differs between before and after that no task above accounts for.\n")
+pathlib.Path(out).write_text("\n".join(L)); print("brief", out)

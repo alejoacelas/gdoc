@@ -1,0 +1,646 @@
+{
+ "fixture": "tables/v01",
+ "batch": "20260903-batch",
+ "copy_id": "1qTULReZ9fMsbm0dzsc-epg7kxTae2hQFvexKNabmPN8",
+ "fixture_doc": "https://docs.google.com/document/d/1qkVHvm__en97IXhioB83XK4lBKV6bvq67Aq6PcWbSYM/edit",
+ "review_copy_id": null,
+ "runs": [
+  {
+   "run": "20260903-acme-cost-49000",
+   "slug": "acme-cost-49000",
+   "request": "Acme Cloud's Q3 cost went up to 49,000 — can you update the vendor table?",
+   "expected": "Table 1 cell [1,1] reads `49,000`, still bold. The `48,500` in the intro paragraph and in the callout (table 2) are unchanged. Nothing else changes.",
+   "target": "tab `Tab 1`, table 1, cell [1,1].",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 2,
+    "allowed": 1,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/table[0]/cell[1,1]/para[0:48,500⏎].paragraphStyle.avoidWidowAndOrphan",
+     "before": false,
+     "after": "∅",
+     "kind": "para",
+     "after_para_text": "49,000",
+     "note": "pagination hint (avoidWidowAndOrphan/keepLinesTogether/keepWithNext); allowed by default, see CORRECTIONS.md",
+     "class": "allowed",
+     "visible": false,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[0]/cell[1,1]/para[0:48,500⏎].text",
+     "kind": "text",
+     "before": "8",
+     "after": "9",
+     "after_context": "49,000",
+     "after_para_text": "49,000",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[0]/cell[1,1]/para[0:48,500⏎].text",
+     "kind": "text",
+     "before": "5",
+     "after": "0",
+     "after_context": "49,000",
+     "after_para_text": "49,000",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-contoso-status-approved",
+   "slug": "contoso-status-approved",
+   "request": "Contoso got approved after all. In the vendor table set its status to \"Aprobado ✅\", same as Acme.",
+   "expected": "Table 1 cell [4,3] reads `Aprobado ✅`. The vertically merged owner cell [3,2] (rowSpan 2, text `Owner TBD — shared between Ops and Finance until the Contoso decision lands`) is unchanged and the comment anchored on `shared between Ops and Finance` is still open with the same quoted text. Cell [1,3] unchanged. Nothing else changes.",
+   "target": "tab `Tab 1`, table 1, cell [4,3].",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 3,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/table[0]/cell[4,3]/para[new@0:Aprobado ✅⏎].text",
+     "before": "∅",
+     "after": "Aprobado ✅⏎",
+     "kind": "text",
+     "after_para_text": "Aprobado ✅",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[0]/cell[4,3]/para[new@0:Aprobado ✅⏎].paragraphStyle",
+     "before": "∅",
+     "after": {
+      "namedStyleType": "NORMAL_TEXT",
+      "lineSpacing": 100
+     },
+     "kind": "para",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[0]/cell[4,3]/para[del@0:Отклонено ❌⏎].text",
+     "before": "Отклонено ❌⏎",
+     "after": "∅",
+     "kind": "text",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-data-engineer-owner-handover",
+   "slug": "data-engineer-owner-handover",
+   "request": "Priya's off the data engineer search, Tomás is running it now — can you update the doc?",
+   "expected": "Table 3 cell [1,3] reads `Tomás. JD on Notion`, where `JD on Notion` is still a hyperlink to `https://www.notion.so/ops/jd-senior-data-engineer` with its underline and link colour intact; only `Priya` became `Tomás`. Table 3 cell [1,1] still holds the smart-chip/dropdown that renders as `In progress`; [1,2] still has the nested bullets `Schedule panel` › `Book room 4B`, `Send take-home`. Table 1 cell [1,2] still reads `Sign MSA (Priya)` — that Priya is the vendor MSA owner, not the search. Table 4 (`Prepared by` / `Reviewed by`) is unchanged. Nothing else changes.",
+   "target": "tab `Tab 1`, table 3, cell [1,3].",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 1,
+    "allowed": 1,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/table[2]/cell[1,3]/para[0:Priya. JD on Notion⏎].paragraphStyle.avoidWidowAndOrphan",
+     "before": false,
+     "after": "∅",
+     "kind": "para",
+     "after_para_text": "Tomás. JD on Notion",
+     "note": "pagination hint (avoidWidowAndOrphan/keepLinesTogether/keepWithNext); allowed by default, see CORRECTIONS.md",
+     "class": "allowed",
+     "visible": false,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[2]/cell[1,3]/para[0:Priya. JD on Notion⏎].text",
+     "kind": "text",
+     "before": "Priya",
+     "after": "Tomás",
+     "after_context": "Tomás. JD on Noti",
+     "after_para_text": "Tomás. JD on Notion",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-datawise-status-approved",
+   "slug": "datawise-status-approved",
+   "request": "Datawise cleared legal on Friday. Update its status in the vendor table to Aprobado ✅ (same as Acme).",
+   "expected": "Table 1 cell [2,3] reads exactly `Aprobado ✅` (the italic `pending legal review` run is gone; no italics remain in the cell). The phrase `pending legal review` still appears twice elsewhere, unchanged: in the intro paragraph (`two contracts are still pending legal review`) and in bold inside the yellow callout (table 2, `every Contoso number in this doc is **pending legal review** until Sarah signs off.`). In the same row, [2,1] still carries the pending suggestion (`12,950` as suggested insertion, `12,750` as suggested deletion — neither accepted nor rejected) and [2,2] is still the numbered-list item `Renew NDA (Tomás)`. Nothing else changes.",
+   "target": "tab `Tab 1`, table 1, cell [2,3].",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 3,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/table[0]/cell[2,3]/para[new@0:Aprobado ✅⏎].text",
+     "before": "∅",
+     "after": "Aprobado ✅⏎",
+     "kind": "text",
+     "after_para_text": "Aprobado ✅",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[0]/cell[2,3]/para[new@0:Aprobado ✅⏎].paragraphStyle",
+     "before": "∅",
+     "after": {
+      "namedStyleType": "NORMAL_TEXT",
+      "lineSpacing": 100
+     },
+     "kind": "para",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[0]/cell[2,3]/para[del@0:Pendiente: pending legal revie].text",
+     "before": "Pendiente: pending legal review⏎",
+     "after": "∅",
+     "kind": "text",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-fill-empty-vendor-row",
+   "slug": "fill-empty-vendor-row",
+   "request": "Add Globex to the vendor table — 3,200 a quarter, Priya to sign the SOW, status approved (Aprobado ✅, same as Acme). There's an empty row at the bottom you can use.",
+   "expected": "Table 1 still has exactly 6 rows and 4 columns. Row 5 reads: [5,0] `Globex`, [5,1] `3,200`, [5,2] `Sign SOW (Priya)`, [5,3] `Aprobado ✅`. Bold on [5,1] is optional (the empty cell carried a bold run); [5,2] may be plain text or a third item of the numbered list shared by [1,2] and [2,2] — either is fine. Header cell [0,1] `Cost (GBP) & owner` still spans 2 columns; [3,2] still spans 2 rows; the pending suggestion in [2,1] (`12,950` inserted, `12,750` deleted) is still pending; the comment on `shared between Ops and Finance` is still open. The intro sentence still says `across three suppliers`. Nothing else changes.",
+   "target": "tab `Tab 1`, table 1, cells [5,0], [5,1], [5,2], [5,3].",
+   "allowed": "revision list grows; `modifiedTime` changes; the numbered list used by [1,2] and [2,2] may gain a third item.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 12,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/table[0]/cell[5,0]/para[new@0:Globex⏎].text",
+     "before": "∅",
+     "after": "Globex⏎",
+     "kind": "text",
+     "after_para_text": "Globex",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[0]/cell[5,0]/para[new@0:Globex⏎].paragraphStyle",
+     "before": "∅",
+     "after": {
+      "namedStyleType": "NORMAL_TEXT",
+      "lineSpacing": 100
+     },
+     "kind": "para",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[0]/cell[5,0]/para[del@0:⏎].text",
+     "before": "⏎",
+     "after": "∅",
+     "kind": "text",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[0]/cell[5,1]/para[new@0:3,200⏎].text",
+     "before": "∅",
+     "after": "3,200⏎",
+     "kind": "text",
+     "after_para_text": "3,200",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[0]/cell[5,1]/para[new@0:3,200⏎].paragraphStyle",
+     "before": "∅",
+     "after": {
+      "namedStyleType": "NORMAL_TEXT",
+      "lineSpacing": 100
+     },
+     "kind": "para",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[0]/cell[5,1]/para[del@0:⏎].text",
+     "before": "⏎",
+     "after": "∅",
+     "kind": "text",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[0]/cell[5,2]/para[new@0:Sign SOW (Priya)⏎].text",
+     "before": "∅",
+     "after": "Sign SOW (Priya)⏎",
+     "kind": "text",
+     "after_para_text": "Sign SOW (Priya)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[0]/cell[5,2]/para[new@0:Sign SOW (Priya)⏎].paragraphStyle",
+     "before": "∅",
+     "after": {
+      "namedStyleType": "NORMAL_TEXT",
+      "lineSpacing": 100
+     },
+     "kind": "para",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[0]/cell[5,2]/para[del@0:⏎].text",
+     "before": "⏎",
+     "after": "∅",
+     "kind": "text",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[0]/cell[5,3]/para[new@0:Aprobado ✅⏎].text",
+     "before": "∅",
+     "after": "Aprobado ✅⏎",
+     "kind": "text",
+     "after_para_text": "Aprobado ✅",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[0]/cell[5,3]/para[new@0:Aprobado ✅⏎].paragraphStyle",
+     "before": "∅",
+     "after": {
+      "namedStyleType": "NORMAL_TEXT",
+      "lineSpacing": 100
+     },
+     "kind": "para",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[0]/cell[5,3]/para[del@0:⏎].text",
+     "before": "⏎",
+     "after": "∅",
+     "kind": "text",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-merged-owner-cell-interim",
+   "slug": "merged-owner-cell-interim",
+   "request": "In the vendor table, the owner cell that straddles Northwind and Contoso: swap \"Owner TBD\" for \"Owner: Ops (interim)\" and keep the rest of the sentence as is.",
+   "expected": "Table 1 cell [3,2] reads exactly `Owner: Ops (interim) — shared between Ops and Finance until the Contoso decision lands` (em dash preserved). The cell still has `rowSpan: 2` covering rows 3 and 4; the table is still 6×4 and [4,2] is still the covered/empty position. Comment `#AAACGePZQas` (\"Who actually owns this line? …\") is still open and its anchor text `shared between Ops and Finance` is still present in that cell. The pending suggestion in [2,1] is still pending. Nothing else changes.",
+   "target": "tab `Tab 1`, table 1, cell [3,2].",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 2,
+    "allowed": 1,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/table[0]/cell[3,2]/para[0:Owner TBD — shared between Ops].paragraphStyle.avoidWidowAndOrphan",
+     "before": false,
+     "after": "∅",
+     "kind": "para",
+     "after_para_text": "Owner: Ops (interim) — shared between Ops and Finance until the Contoso decision lands",
+     "note": "pagination hint (avoidWidowAndOrphan/keepLinesTogether/keepWithNext); allowed by default, see CORRECTIONS.md",
+     "class": "allowed",
+     "visible": false,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[0]/cell[3,2]/para[0:Owner TBD — shared between Ops].text",
+     "kind": "text",
+     "before": "",
+     "after": ":",
+     "after_context": "Owner: Ops (interi",
+     "after_para_text": "Owner: Ops (interim) — shared between Ops and Finance until the Contoso decision lands",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[0]/cell[3,2]/para[0:Owner TBD — shared between Ops].text",
+     "kind": "text",
+     "before": "TBD",
+     "after": "Ops (interim)",
+     "after_context": "Owner: Ops (interim) — shared be",
+     "after_para_text": "Owner: Ops (interim) — shared between Ops and Finance until the Contoso decision lands",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-northwind-quote",
+   "slug": "northwind-quote",
+   "request": "Northwind finally sent the revised quote: 9,800. Put that in the vendor table where it says n/a.",
+   "expected": "Table 1 cell [3,1] reads `9,800` in default style. The intro sentence `one figure below is n/a until Northwind sends the revised quote` is unchanged. The merged owner cell [3,2] and the comment anchored inside it are unchanged. Nothing else changes.",
+   "target": "tab `Tab 1`, table 1, cell [3,1].",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 3,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/table[0]/cell[3,1]/para[new@0:9,800⏎].text",
+     "before": "∅",
+     "after": "9,800⏎",
+     "kind": "text",
+     "after_para_text": "9,800",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[0]/cell[3,1]/para[new@0:9,800⏎].paragraphStyle",
+     "before": "∅",
+     "after": {
+      "namedStyleType": "NORMAL_TEXT",
+      "lineSpacing": 100
+     },
+     "kind": "para",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[0]/cell[3,1]/para[del@0:n/a⏎].text",
+     "before": "n/a⏎",
+     "after": "∅",
+     "kind": "text",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-ops-coordinator-start-date",
+   "slug": "ops-coordinator-start-date",
+   "request": "The Ops coordinator start date in the hiring pipeline is confirmed now — drop the \"(tbc)\" after it.",
+   "expected": "Table 3 cell [2,3] reads `Tomás; start ` followed by the date chip `2 Sept 2026` and nothing after it (no trailing space is fine either way). The date chip (`dateElement`) is intact. Nothing else changes.",
+   "target": "tab `Tab 1`, table 3, cell [2,3].",
+   "allowed": "a trailing space before the paragraph end may remain or go; revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 1,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/table[2]/cell[2,3]/para[0:Tomás; start ⟨dateElement⟩ (tb].text",
+     "kind": "text",
+     "before": " (tbc)",
+     "after": "",
+     "after_context": "más; start ⟨dateElement⟩",
+     "after_para_text": "Tomás; start ⟨dateElement⟩",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": true
+    }
+   ]
+  },
+  {
+   "run": "20260903-paused-until-q1",
+   "slug": "paused-until-q1",
+   "request": "Recruiter row in the hiring pipeline: it's paused until Q1 now, not Q4.",
+   "expected": "Table 3 cell [3,2] reads `Paused until Q1, see budget` with its three runs intact: `Paused` Courier New 9pt, ` until Q1, ` Arial 11, `see budget` Georgia 14pt. Nothing else changes.",
+   "target": "tab `Tab 1`, table 3, cell [3,2].",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 1,
+    "allowed": 1,
+    "unexpected": 2,
+    "visible_unexpected": 2,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/table[2]/cell[3,2]/para[0:Paused until Q4, see budget⏎].paragraphStyle.avoidWidowAndOrphan",
+     "before": false,
+     "after": "∅",
+     "kind": "para",
+     "after_para_text": "Paused until Q1, see budget",
+     "note": "pagination hint (avoidWidowAndOrphan/keepLinesTogether/keepWithNext); allowed by default, see CORRECTIONS.md",
+     "class": "allowed",
+     "visible": false,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[2]/cell[3,2]/para[0:Paused until Q4, see budget⏎].style@\"Paused\"",
+     "before": {
+      "textStyle": {
+       "fontSize": {
+        "magnitude": 9,
+        "unit": "PT"
+       },
+       "weightedFontFamily": {
+        "fontFamily": "Courier New",
+        "weight": 400
+       }
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "Paused until Q1, see budget",
+     "snippet": "Paused",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[2]/cell[3,2]/para[0:Paused until Q4, see budget⏎].text",
+     "kind": "text",
+     "before": "4",
+     "after": "1",
+     "after_context": "used until Q1, see budget",
+     "after_para_text": "Paused until Q1, see budget",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[2]/cell[3,2]/para[0:Paused until Q4, see budget⏎].style@\"see budget⏎\"",
+     "before": {
+      "textStyle": {
+       "fontSize": {
+        "magnitude": 14,
+        "unit": "PT"
+       },
+       "weightedFontFamily": {
+        "fontFamily": "Georgia",
+        "weight": 400
+       }
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "Paused until Q1, see budget",
+     "snippet": "see budget",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-remove-empty-vendor-row",
+   "slug": "remove-empty-vendor-row",
+   "request": "There's an empty row at the bottom of the vendor comparison table — please delete it.",
+   "expected": "Table 1 has 5 rows (row 5 removed); rows 0–4 unchanged including both merges and the pinned header; the paragraph after the table (`Datawise is the only vendor…`) unchanged. Nothing else changes.",
+   "target": "tab `Tab 1`, table 1.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 0,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": []
+  },
+  {
+   "run": "20260903-reply-owner-comment",
+   "slug": "reply-owner-comment",
+   "request": "Someone asked in a comment who owns the Northwind line. Reply \"Finance confirmed on 2 Sept — it's Ops.\" but leave the comment open.",
+   "expected": "The comment anchored on `shared between Ops and Finance` has one reply with exactly that text and is not resolved. The document body is byte-identical (structure diff empty; the pending suggestion in cell [2,1] still pending).",
+   "target": "comment.",
+   "allowed": "comment `modifiedTime` changes; revision list grows.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 1,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "comments[AAACGePZQas]",
+     "before": {
+      "replies": [],
+      "author": {
+       "displayName": "Alejandro Acelas"
+      },
+      "quotedFileContent": {
+       "value": "shared between Ops and Finance"
+      },
+      "id": "AAACGePZQas",
+      "createdTime": "2026-09-02T21:48:42.761Z",
+      "modifiedTime": "2026-09-02T21:48:42.761Z",
+      "content": "Who actually owns this line? Finance says it is Ops, Ops says it went back to Finance in July.",
+      "resolved": false
+     },
+     "after": {
+      "replies": [
+       {
+        "author": {
+         "displayName": "Alejandro Acelas"
+        },
+        "createdTime": "2026-09-03T16:06:34.679Z",
+        "modifiedTime": "2026-09-03T16:06:34.679Z",
+        "content": "Finance confirmed on 2 Sept — it's Ops."
+       }
+      ],
+      "author": {
+       "displayName": "Alejandro Acelas"
+      },
+      "quotedFileContent": {
+       "value": "shared between Ops and Finance"
+      },
+      "id": "AAACGePZQas",
+      "createdTime": "2026-09-02T21:48:42.761Z",
+      "modifiedTime": "2026-09-03T16:06:34.679Z",
+      "content": "Who actually owns this line? Finance says it is Ops, Ops says it went back to Finance in July.",
+      "resolved": false
+     },
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  }
+ ]
+}

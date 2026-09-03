@@ -35,6 +35,11 @@ for fx in sorted(ROOT.glob("*/v*/fixture.md")):
     meta = dict(re.findall(r"^(\w+): (.*)$", fx.read_text(), re.M))
     tk = tasks(fdir / "tasks.md") if (fdir / "tasks.md").exists() else {}
     lines += [f"## {name}", "", f"Fixture (before): {meta.get('doc', '')}", ""]
+    for bj in sorted(fdir.glob("runs/*/batch.json")):
+        b = __import__("json").load(open(bj)); rc = b.get("review_copy_id")
+        lines.append(f"Batch `{b['batch']}` ({len(b['runs'])} edits in sequence on one copy): run copy https://docs.google.com/document/d/{b['copy_id']}/edit"
+                     + (f" · **painted review copy** https://docs.google.com/document/d/{rc}/edit" if rc else ""))
+        lines.append("")
     runs = sorted(fdir.glob("runs/*/verdict.md"))
     if not runs:
         lines += ["- no runs yet", ""]; continue
@@ -42,6 +47,8 @@ for fx in sorted(ROOT.glob("*/v*/fixture.md")):
         f = front(v); slug = f.get("task", "?"); track = f.get("track", "agent")
         cid = f.get("copy_id", ""); url = f"https://docs.google.com/document/d/{cid}/edit" if len(cid) > 20 else "(no copy)"
         tag = "" if track == "agent" else f" [{track} track]"
+        bt = v.parent / "batch.txt"
+        if bt.exists(): tag += f" [batch {bt.read_text().strip().replace('batch: ', '')}]"
         lines.append(f"- **{slug}**{tag} — {tk.get(slug, '(request not found)')}")
         lines.append(f"  - Outcome: **{f.get('outcome', '?')}** · edited copy: {url}")
     lines.append("")

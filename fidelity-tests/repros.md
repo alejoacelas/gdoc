@@ -74,3 +74,9 @@ Expect: only `link.url` changes; the comment anchored on `handbook` stays anchor
 Observed: url changed, text and styling identical, but the comment lost its anchor (card gone from the
 margin; `gdoc comments` still lists it as open with the old quotedFileContent). Same mechanism as
 lists relink-rotate-keys (anchor shrank). Run: collab/v01/runs/20260903-handbook-link-notion.
+
+## gdoc-insert-start-demotes-first-heading   (harness, 2026-09-03, COLLATERAL, no issue)
+gdoc insert --account $A --tab "Tab 1" --position start <copy> header.md
+Expect: the markdown is inserted before the existing content; the document's first paragraph keeps HEADING_1.
+Observed: the original first paragraph (`🚀 Q3 platform migration …`) becomes NORMAL_TEXT. Found while
+building the review-copy header; the painter now inserts through the Docs API instead.

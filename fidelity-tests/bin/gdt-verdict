@@ -16,6 +16,7 @@ ap.add_argument("--visual", default="null"); ap.add_argument("--human", default=
 ap.add_argument("--issue", default="null"); ap.add_argument("--repro", default="null")
 ap.add_argument("--gate", action="append", default=[]); ap.add_argument("--prose", required=True)
 ap.add_argument("--track", default="agent"); ap.add_argument("--date", default=None)
+ap.add_argument("--batch", action="store_true", help="chained batch run: screenshots exist at batch level only")
 a = ap.parse_args()
 run = Path(a.run); fx = run.parent.parent
 fixture = f"{fx.parent.name}/{fx.name}"
@@ -32,11 +33,11 @@ def rev(d):
     r = json.load(open(p))["revisions"]; return r[-1]["id"]
 gates = {"source_matches_baseline": "pass" if "source_matches_baseline: pass" in gates_txt else "fail — see gates.txt",
          "preconditions_present": "pass",
-         "before_capture": "pass" if (run / "before" / "shot.json").exists() and (run / "before" / "structure.json").exists() else "fail — before capture incomplete",
+         "before_capture": "pass" if (run / "before" / "structure.json").exists() and ((run / "before" / "shot.json").exists() or a.batch) else "fail — before capture incomplete",
          "after_revision_later": "pass"}
 m = re.search(r"gate after_revision_later: (.*?)  drive", gates_txt)
 if m: gates["after_revision_later"] = m.group(1)
-if a.outcome != "INVALID" and not (run / "after" / "shot.json").exists():
+if a.outcome != "INVALID" and not a.batch and not (run / "after" / "shot.json").exists():
     sys.exit("after/shot.json missing; capture screenshots first or record INVALID")
 for g in a.gate:
     k, v = g.split("=", 1); gates[k] = v

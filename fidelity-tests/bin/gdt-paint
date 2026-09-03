@@ -1,0 +1,175 @@
+#!/Users/alejo/.local/share/uv/tools/gdoc/bin/python
+"""gdt-paint REVIEW_DOC batch.json --account A [--no-header] [--no-comments]
+
+Paints a *review copy* of a batch from the per-task diffs: background colour on every diff
+item (green = expected change present, red = unexpected/collateral, amber = allowed), a red
+left border on paragraphs whose paragraph-level style changed, one anchored comment per task
+(request, expected, outcome), and a header block at the top with links and a task table.
+Never run it on a run copy; those stay pristine as evidence. Uses gdoc's stored credentials."""
+import argparse, difflib, json, re, subprocess, sys, tempfile
+from gdoc.util import account_context
+from gdoc.auth import get_credentials
+from googleapiclient.discovery import build
+
+GREEN = {"red": 0.72, "green": 0.93, "blue": 0.72}
+RED = {"red": 1.0, "green": 0.70, "blue": 0.70}
+AMBER = {"red": 1.0, "green": 0.90, "blue": 0.60}
+COLOUR = {"expected": GREEN, "unexpected": RED, "allowed": AMBER}
+
+
+def u16(s):
+    return len(s.encode("utf-16-le")) // 2
+
+
+def paragraphs(doc):
+    """Flatten every paragraph (body, tables, nested) to (startIndex, endIndex, text, tabId)."""
+    out = []
+    def walk(content, tab_id):
+        for c in content:
+            if "paragraph" in c:
+                p = c["paragraph"]
+                text = "".join(e.get("textRun", {}).get("content", "") if "textRun" in e else "￼" for e in p["elements"])
+                out.append({"start": c["startIndex"], "end": c["endIndex"], "text": text.rstrip("\n"), "tab": tab_id, "elements": p["elements"]})
+            elif "table" in c:
+                for row in c["table"]["tableRows"]:
+                    for cell in row["tableCells"]:
+                        walk(cell["content"], tab_id)
+    for tab in doc.get("tabs", []):
+        walk(tab["documentTab"]["body"]["content"], tab["tabProperties"]["tabId"])
+    return out
+
+
+def offset_to_index(para, char_pos):
+    """UTF-16 index of char position `char_pos` inside the paragraph (chips count as one)."""
+    return para["start"] + u16(para["text"][:char_pos])
+
+
+def find_para(paras, text, used):
+    cands = [p for p in paras if p["text"] == text]
+    if cands:
+        return cands[0]
+    best, score = None, 0.0
+    for p in paras:
+        r = difflib.SequenceMatcher(a=p["text"], b=text, autojunk=False).ratio()
+        if r > score:
+            best, score = p, r
+    return best if score >= 0.6 else None
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("doc"); ap.add_argument("batch"); ap.add_argument("--account", required=True)
+    ap.add_argument("--no-header", action="store_true"); ap.add_argument("--no-comments", action="store_true")
+    a = ap.parse_args()
+    doc_id = re.search(r"/d/([^/]+)", a.doc).group(1) if "/" in a.doc else a.doc
+    b = json.load(open(a.batch))
+    with account_context(a.account):
+        creds = get_credentials()
+    docs = build("docs", "v1", credentials=creds)
+    doc = docs.documents().get(documentId=doc_id, includeTabsContent=True).execute()
+    paras = paragraphs(doc)
+    reqs, painted, missed, borders = [], 0, [], set()
+    anchors = {}   # slug -> anchor text for the task comment
+    for n, run in enumerate(b["runs"], 1):
+        for it in run["items"]:
+            path = it["path"]
+            if path.startswith("comments") or "/footnotes[" in path:
+                continue
+            colour = COLOUR.get(it["class"], RED)
+            apt = it.get("after_para_text")
+            if apt is None:
+                continue
+            para = find_para(paras, apt, None)
+            if para is None:
+                missed.append(f"T{n} {path[:60]}"); continue
+            text = para["text"]
+            if "/para[new@" in path:
+                s, e = 0, len(text)
+            elif "/para[del@" in path:
+                continue
+            elif it.get("kind") == "style" and it.get("snippet"):
+                pos = text.find(it["snippet"]); s, e = (pos, pos + len(it["snippet"])) if pos >= 0 else (-1, -1)
+            elif it.get("kind") == "text":
+                ctx = it.get("after_context") or ""
+                aft = (it.get("after") or "").replace("⏎", "")
+                cpos = text.find(ctx) if ctx else -1
+                if aft and cpos >= 0 and aft in text[cpos:cpos + len(ctx)]:
+                    pos = cpos + text[cpos:cpos + len(ctx)].find(aft); s, e = pos, pos + len(aft)
+                elif aft and text.find(aft) >= 0:
+                    pos = text.find(aft); s, e = pos, pos + len(aft)
+                elif cpos >= 0:
+                    s, e = cpos, cpos + len(ctx)       # deletion: paint the surrounding context
+                else:
+                    s, e = -1, -1
+            else:   # paragraph-level property: border
+                key = (para["tab"], para["start"])
+                if key not in borders:
+                    borders.add(key)
+                    reqs.append({"updateParagraphStyle": {"range": {"startIndex": para["start"], "endIndex": para["end"], "tabId": para["tab"]},
+                                 "paragraphStyle": {"borderLeft": {"color": {"color": {"rgbColor": colour}}, "width": {"magnitude": 3, "unit": "PT"},
+                                                                   "padding": {"magnitude": 6, "unit": "PT"}, "dashStyle": "SOLID"}},
+                                 "fields": "borderLeft"}})
+                    painted += 1
+                anchors.setdefault(run["slug"], text[:40])
+                continue
+            if s < 0 or e <= s:
+                missed.append(f"T{n} {path[:60]}"); continue
+            si, ei = offset_to_index(para, s), offset_to_index(para, e)
+            if ei <= si:
+                ei = si + 1
+            reqs.append({"updateTextStyle": {"range": {"startIndex": si, "endIndex": ei, "tabId": para["tab"]},
+                         "textStyle": {"backgroundColor": {"color": {"rgbColor": colour}}}, "fields": "backgroundColor"}})
+            painted += 1
+            if run["slug"] not in anchors or it["class"] == "expected":
+                anchors[run["slug"]] = text[s:e] if e - s >= 4 else text[max(0, s - 10):min(len(text), e + 10)]
+        if run["slug"] not in anchors:   # nothing painted (declined / no change): anchor on the Target's first words
+            m = re.search(r"`([^`]+)`", run.get("target", "").replace("tab `Tab 1`,", ""))
+            if m:
+                anchors[run["slug"]] = m.group(1).replace("⇥", "\t")
+    if reqs:
+        docs.documents().batchUpdate(documentId=doc_id, body={"requests": reqs}).execute()
+    print(f"painted {painted} ranges; unlocated: {len(missed)}" + (": " + "; ".join(missed) if missed else ""))
+    if not a.no_comments:
+        for n, run in enumerate(b["runs"], 1):
+            text = (f"T{n} · {run['slug']} — {run.get('outcome') or '?'}\n\nRequest: {run.get('request','')}\n\n"
+                    f"Expected: {run.get('expected','')[:600]}\n\nJudged: {run.get('outcome') or '?'}; "
+                    f"diff expected={run['summary'].get('expected',0)} unexpected={run['summary'].get('unexpected',0)}.")
+            q = anchors.get(run["slug"])
+            cmd = ["gdoc", "comment", "--quiet", "--account", a.account] + (["--quote", q] if q else []) + [doc_id, text]
+            r = subprocess.run(cmd, capture_output=True, text=True)
+            print(f"comment T{n} {run['slug']}: {(r.stdout or r.stderr).strip()[:80]}")
+    if not a.no_header:
+        # Header through the Docs API (gdoc insert --position start demotes the first heading).
+        lines = [f"REVIEW COPY — {b['fixture']} · {b['batch']}",
+                 f"Fixture (before): {b['fixture_doc']}",
+                 f"Batch run copy (after, unpainted): https://docs.google.com/document/d/{b['copy_id']}/edit",
+                 "Legend: GREEN = change the task asked for, present. RED = collateral (changed but not asked). "
+                 "AMBER = allowed side effect. Red left border = paragraph-level style changed (alignment, spacing, "
+                 "indent, heading). Each task has a numbered comment T1… anchored where it edited. Fixtures never use these colours."]
+        for n, r in enumerate(b["runs"], 1):
+            lines.append(f"T{n} · {r['slug']} · {r.get('outcome') or '?'} — {r.get('request','')}")
+        lines.append("— end of review header —")
+        text = "\n".join(lines) + "\n"
+        first_tab = doc["tabs"][0]["tabProperties"]["tabId"]
+        n16 = u16(text)
+        reqs = [{"insertText": {"location": {"index": 1, "tabId": first_tab}, "text": text}},
+                {"updateParagraphStyle": {"range": {"startIndex": 1, "endIndex": 1 + n16, "tabId": first_tab},
+                                          "paragraphStyle": {"namedStyleType": "NORMAL_TEXT", "alignment": "START"}, "fields": "namedStyleType,alignment"}},
+                {"updateTextStyle": {"range": {"startIndex": 1, "endIndex": 1 + n16, "tabId": first_tab},
+                                     "textStyle": {"bold": False, "italic": False, "underline": False, "strikethrough": False, "smallCaps": False,
+                                                   "backgroundColor": {}, "foregroundColor": {"color": {"rgbColor": {}}}, "fontSize": {"magnitude": 10, "unit": "PT"},
+                                                   "weightedFontFamily": {"fontFamily": "Arial"}, "link": None},
+                                     "fields": "bold,italic,underline,strikethrough,smallCaps,backgroundColor,foregroundColor,fontSize,weightedFontFamily,link"}},
+                {"updateParagraphStyle": {"range": {"startIndex": 1, "endIndex": 1 + u16(lines[0]) + 1, "tabId": first_tab},
+                                          "paragraphStyle": {"namedStyleType": "HEADING_1"}, "fields": "namedStyleType"}}]
+        # colour the legend words themselves
+        off = 1 + sum(u16(l) + 1 for l in lines[:3])
+        for word, col in (("GREEN", GREEN), ("RED", RED), ("AMBER", AMBER)):
+            pos = lines[3].find(word)
+            reqs.append({"updateTextStyle": {"range": {"startIndex": off + u16(lines[3][:pos]), "endIndex": off + u16(lines[3][:pos + len(word)]), "tabId": first_tab},
+                                             "textStyle": {"backgroundColor": {"color": {"rgbColor": col}}}, "fields": "backgroundColor"}})
+        docs.documents().batchUpdate(documentId=doc_id, body={"requests": reqs}).execute()
+        print(f"header: {len(lines)} lines inserted at the top")
+
+if __name__ == "__main__":
+    main()

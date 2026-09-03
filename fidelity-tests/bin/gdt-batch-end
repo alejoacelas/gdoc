@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+"""gdt-batch-end FIXTURE_DIR BATCH_NAME — collect every run whose batch.txt names BATCH_NAME
+(in run order = directory order), merge their diff.json items with the task fields and the
+verdict outcome (if any) into runs/<BATCH_NAME>/batch.json, used by gdt-paint and gdt-review."""
+import json, re, sys
+from pathlib import Path
+
+fx = Path(sys.argv[1]); batch = sys.argv[2]
+tasks = {}
+for m in re.finditer(r"^## (\S+)\s*$(.*?)(?=^## |\Z)", (fx / "tasks.md").read_text(), re.M | re.S):
+    body = m.group(2)
+    def field(n):
+        mm = re.search(rf"\*\*{n}:\*\*\s*(.*?)(?=\n- \*\*|\Z)", body, re.S); return " ".join(mm.group(1).split()) if mm else ""
+    tasks[m.group(1)] = {"request": field("Request"), "expected": field("Expected"), "target": field("Target"), "allowed": field("Allowed")}
+
+runs = []
+for rd in sorted(fx.glob("runs/*")):
+    bt = rd / "batch.txt"
+    if not bt.exists() or bt.read_text().strip() != f"batch: {batch}": continue
+    slug = re.sub(r"^\d{8}-", "", rd.name)
+    if slug not in tasks: slug = re.sub(r"-\d+$", "", slug)
+    d = json.load(open(rd / "diff.json")) if (rd / "diff.json").exists() else {"items": [], "summary": {}}
+    v = {}
+    if (rd / "verdict.md").exists():
+        m = re.match(r"^---\n(.*?)\n---", (rd / "verdict.md").read_text(), re.S)
+        for line in (m.group(1).splitlines() if m else []):
+            if ":" in line and not line.startswith(" "):
+                k, vv = line.split(":", 1); v[k.strip()] = vv.split("#")[0].strip()
+    runs.append({"run": rd.name, "slug": slug, **tasks.get(slug, {}), "outcome": v.get("outcome"),
+                 "request_met": v.get("request_met"), "summary": d.get("summary", {}), "items": d.get("items", [])})
+bdir = fx / "runs" / batch; bdir.mkdir(parents=True, exist_ok=True)
+copy_id = (bdir / "copy_id.txt").read_text().strip() if (bdir / "copy_id.txt").exists() else (runs[0]["run"] and (fx / "runs" / runs[0]["run"] / "copy_id.txt").read_text().strip() if runs else "")
+out = {"fixture": f"{fx.parent.name}/{fx.name}", "batch": batch, "copy_id": copy_id,
+       "fixture_doc": re.search(r"^doc: (.*)$", (fx / "fixture.md").read_text(), re.M).group(1), "runs": runs}
+(bdir / "batch.json").write_text(json.dumps(out, indent=1, ensure_ascii=False))
+print(f"{batch}: {len(runs)} runs -> {bdir/'batch.json'}")

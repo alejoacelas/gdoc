@@ -226,7 +226,7 @@ def compare_paragraphs(pb, pa):
         for j in inserted:
             p = la[j]
             base = f"{prefix}/para[new@{j}:{p['label']}]"
-            items.append({"path": base + ".text", "before": "∅", "after": ta[j].replace("\n", "⏎"), "kind": "text"})
+            items.append({"path": base + ".text", "before": "∅", "after": ta[j].replace("\n", "⏎"), "kind": "text", "after_para_text": ta[j].replace("\n", "")})
             if p["bullet"]:
                 items.append({"path": base + ".bullet", "before": "∅", "after": p["bullet"], "kind": "para"})
             items.append({"path": base + ".paragraphStyle", "before": "∅", "after": p["paragraphStyle"], "kind": "para"})
@@ -239,6 +239,7 @@ def compare_paragraphs(pb, pa):
         for i, j in sorted(pairs):
             b, a = lb[i], la[j]
             path = f"{prefix}/para[{i}:{b['label']}]"
+            start_n = len(items)
             for it in _leaf_items(path + ".paragraphStyle", b["paragraphStyle"], a["paragraphStyle"]):
                 it["kind"] = "para"; items.append(it)
             for it in _leaf_items(path + ".bullet", b["bullet"], a["bullet"]):
@@ -264,7 +265,12 @@ def compare_paragraphs(pb, pa):
                 else:
                     items.append({"path": f"{path}.text", "kind": "text",
                                   "before": "".join(cb[i1:i2]).replace("\n", "⏎"),
-                                  "after": "".join(ca[j1:j2]).replace("\n", "⏎")})
+                                  "after": "".join(ca[j1:j2]).replace("\n", "⏎"),
+                                  "after_context": "".join(ca[max(0, j1 - 12):min(len(ca), j2 + 12)]).replace("\n", "")})
+            for it in items[start_n:]:
+                it["after_para_text"] = ta[j].replace("\n", "")
+                m = re.search(r'\.style@"(.*)"$', it["path"])
+                if m: it["snippet"] = m.group(1).replace("⏎", "")
     return items
 
 

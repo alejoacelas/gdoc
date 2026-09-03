@@ -1,0 +1,27 @@
+{
+ "task": "ops-coordinator-start-date",
+ "items": [
+  {
+   "path": "tab[Tab 1]/table[2]/cell[2,3]/para[0:Tomás; start ⟨dateElement⟩ (tb].text",
+   "kind": "text",
+   "before": " (tbc)",
+   "after": "",
+   "after_context": "más; start ⟨dateElement⟩",
+   "after_para_text": "Tomás; start ⟨dateElement⟩",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": true
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -30,3 +30,3 @@\n | Senior data engineer | In progress | Schedule panel Book room 4B Send take-home | Priya. [JD on Notion](https://www.notion.so/ops/jd-senior-data-engineer) |\n-| Ops coordinator (Madrid) | Offer out ⏳ | References Right-to-work | Tomás; start 2 Sept 2026 (tbc) |\n+| Ops coordinator (Madrid) | Offer out ⏳ | References Right-to-work | Tomás; start 2 Sept 2026 |\n | Recruiter (contract) | Sourcing | Paused until Q4, see budget | Budget hold |",
+ "needs_visual_review_reasons": [
+  "tab[Tab 1]/table[2]/cell[2,3]/para[0:Tomás; start ⟨dateElement⟩ (tb].text"
+ ],
+ "summary": {
+  "expected": 1,
+  "allowed": 0,
+  "unexpected": 0,
+  "visible_unexpected": 0,
+  "invisible_unexpected": 0
+ }
+}

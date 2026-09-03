@@ -31,6 +31,7 @@ for rd in sorted(fx.glob("runs/*")):
 bdir = fx / "runs" / batch; bdir.mkdir(parents=True, exist_ok=True)
 copy_id = (bdir / "copy_id.txt").read_text().strip() if (bdir / "copy_id.txt").exists() else (runs[0]["run"] and (fx / "runs" / runs[0]["run"] / "copy_id.txt").read_text().strip() if runs else "")
 out = {"fixture": f"{fx.parent.name}/{fx.name}", "batch": batch, "copy_id": copy_id,
-       "fixture_doc": re.search(r"^doc: (.*)$", (fx / "fixture.md").read_text(), re.M).group(1), "runs": runs}
+       "fixture_doc": re.search(r"^doc: (.*)$", (fx / "fixture.md").read_text(), re.M).group(1),
+       "review_copy_id": (bdir / "review_copy_id.txt").read_text().strip() if (bdir / "review_copy_id.txt").exists() else None, "runs": runs}
 (bdir / "batch.json").write_text(json.dumps(out, indent=1, ensure_ascii=False))
 print(f"{batch}: {len(runs)} runs -> {bdir/'batch.json'}")

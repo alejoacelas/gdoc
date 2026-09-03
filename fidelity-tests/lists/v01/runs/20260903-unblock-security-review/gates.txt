@@ -6,6 +6,6 @@ gate preconditions: check tasks.md preconditions against:
 Marco to"
 {'suggestedInsertionIds': 1, 'dateElement': 0, 'footnoteReference': 0, 'strikethrough': 1}
 gdoc_version: gdoc 0.21.0
-docs_revision ANLCKQkO4e8VhPQCVfU_ZYZteBwrwk6WPQsj4rF-96ixvdA7gNP7UW6hXHSXtiUzNaaoSXJYfvLfHhslW_hhK0D4uVzV9lap9TwZMUVuTBM
-drive_revision 6 2026-09-03T15:56:13.884Z
-captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/lists/v01/runs/20260903-russian-readme/after (screenshots: gdt-shot)
+docs_revision ANLCKQlaR20Fea3EIje4rsJXRNLsiGtn2HkHI14ZhuTTxWVgXq6-7caLzgqAunFYcbRbk0h6Sujvw9a2c6BUtBjCBvAEYBKXQMM3q6TX97A
+drive_revision 8 2026-09-03T15:59:54.963Z
+captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/lists/v01/runs/20260903-unblock-security-review/after (screenshots: gdt-shot)

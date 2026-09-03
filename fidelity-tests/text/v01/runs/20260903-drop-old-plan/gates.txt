@@ -5,6 +5,6 @@ gate preconditions: check tasks.md preconditions against:
   on "question for Tom&#225;s"
 {'suggestedInsertionIds': 1, 'dateElement': 0, 'footnoteReference': 1, 'strikethrough': 6}
 gdoc_version: gdoc 0.21.0
-docs_revision ANLCKQlwCiFS7bGeYSMUOwqXJhh_6laVjFCuKAhX2f0h701PO6zo2oHIBv3NWJWZH2JJRNHLMA2Jk0rcE03F-H9kB16TSjZE2RZpDawrNbI
-drive_revision 10 2026-09-03T15:56:06.653Z
-captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/text/v01/runs/20260903-rename-key-dates-fake-heading/after (screenshots: gdt-shot)
+docs_revision ANLCKQnyrd6XCDsWRniLdzn0Tup4MJPcbKCll64kbp3b4r7e8RW-ep00tXphlW8EZqAynhcf51I7tayDgtLgtbqPQQ8gr4tQIR_BAIhBOrA
+drive_revision 12 2026-09-03T15:59:34.383Z
+captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/text/v01/runs/20260903-drop-old-plan/after (screenshots: gdt-shot)

@@ -5,6 +5,6 @@ gate preconditions: check tasks.md preconditions against:
   on "shared between Ops and Finance"
 {'suggestedInsertionIds': 1, 'dateElement': 2, 'footnoteReference': 0, 'strikethrough': 1}
 gdoc_version: gdoc 0.21.0
-docs_revision ANLCKQldfgevacnmopFfVn-rULDHWJnQazxn9Y6ydNsGulrBmHUTDUTKChmUxypZTjGOrGO4b7DIEGyPEzH3rp9bAnxdNDfAuXaNU7vTNoI
-drive_revision 12 2026-09-03T15:59:41.316Z
-captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/tables/v01/runs/20260903-ops-coordinator-start-date/after (screenshots: gdt-shot)
+docs_revision ANLCKQkhEhxJ_1pFjKjDmgfPNPK0BUcemsSmgYcmrhHKXgwM66FDnDWvFE3I0h0VXNzeGapZb0G52-rqAAkwai6vAq1G9ja4DgqTUPnUZn4
+drive_revision 13 2026-09-03T16:01:44.101Z
+captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/tables/v01/runs/20260903-paused-until-q1/after (screenshots: gdt-shot)

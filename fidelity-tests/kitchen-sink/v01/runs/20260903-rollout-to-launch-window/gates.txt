@@ -6,6 +6,3 @@ gate preconditions: check tasks.md preconditions against:
   -> Alejandro Acelas: "Yes, v3 is final — Tomás confirmed on 1 Sept."
 {'suggestedInsertionIds': 2, 'dateElement': 2, 'footnoteReference': 1, 'strikethrough': 3}
 gdoc_version: gdoc 0.21.0
-docs_revision ANLCKQkAcL_OOEJ7-Q5ZoDVKbzBHviOMwxmLMUgYbRcfc3DL-6ensjN8pMbGS7vHJ5wo9weUsq0L72dEKR99gcyQ95kuGxsBpuT7HSOKqdc
-drive_revision 9 2026-09-03T15:56:55.288Z
-captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/kitchen-sink/v01/runs/20260903-next-steps-effort/after (screenshots: gdt-shot)

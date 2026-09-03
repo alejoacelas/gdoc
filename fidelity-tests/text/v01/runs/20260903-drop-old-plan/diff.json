@@ -1,0 +1,147 @@
+{
+ "task": "drop-old-plan",
+ "items": [
+  {
+   "path": "tab[Tab 1]/para[11:The old plan was to ship in Au].style@\"T\"",
+   "before": {
+    "textStyle": {
+     "bold": true,
+     "strikethrough": true
+    }
+   },
+   "after": {
+    "textStyle": {}
+   },
+   "kind": "style",
+   "after_para_text": "The new plan is 14–18 Sept.  This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
+   "snippet": "T",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[11:The old plan was to ship in Au].text",
+   "kind": "text",
+   "before": "he old plan was to ship in August; t",
+   "after": "",
+   "after_context": "The new plan ",
+   "after_para_text": "The new plan is 14–18 Sept.  This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[11:The old plan was to ship in Au].style@\"new plan is 14–18 Sept\"",
+   "before": {
+    "textStyle": {
+     "backgroundColor": {
+      "color": {
+       "rgbColor": {
+        "green": 1,
+        "red": 1
+       }
+      }
+     }
+    }
+   },
+   "after": {
+    "textStyle": {}
+   },
+   "kind": "style",
+   "after_para_text": "The new plan is 14–18 Sept.  This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
+   "snippet": "new plan is 14–18 Sept",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[11:The old plan was to ship in Au].style@\"internal only\"",
+   "before": {
+    "textStyle": {
+     "smallCaps": true
+    }
+   },
+   "after": {
+    "textStyle": {}
+   },
+   "kind": "style",
+   "after_para_text": "The new plan is 14–18 Sept.  This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
+   "snippet": "internal only",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[11:The old plan was to ship in Au].style@\"do not forward\"",
+   "before": {
+    "textStyle": {
+     "foregroundColor": {
+      "color": {
+       "rgbColor": {
+        "red": 1
+       }
+      }
+     }
+    }
+   },
+   "after": {
+    "textStyle": {}
+   },
+   "kind": "style",
+   "after_para_text": "The new plan is 14–18 Sept.  This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
+   "snippet": "do not forward",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[11:The old plan was to ship in Au].style@\"read this first \"",
+   "before": {
+    "textStyle": {
+     "underline": true
+    }
+   },
+   "after": {
+    "textStyle": {}
+   },
+   "kind": "style",
+   "after_para_text": "The new plan is 14–18 Sept.  This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
+   "snippet": "read this first ",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[11:The old plan was to ship in Au].style@\"agreed with Legal\"",
+   "before": {
+    "textStyle": {
+     "backgroundColor": {
+      "color": {
+       "rgbColor": {
+        "green": 1
+       }
+      }
+     }
+    }
+   },
+   "after": {
+    "textStyle": {}
+   },
+   "kind": "style",
+   "after_para_text": "The new plan is 14–18 Sept.  This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
+   "snippet": "agreed with Legal",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -16,3 +16,3 @@\n The formula card still reads CO2 and x2, the old deck typed its footnote marker as \\[1\\] instead of using a real footnote[^1], and the style rule is Northstar 2.2 (non-breaking space) in headlines but Northstar 2.2 (plain space) in body copy.  \n-**~~The old plan~~** ~~was to ship in August~~; the new plan is 14–18 Sept.  This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.  \n+The new plan is 14–18 Sept.  This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.  \n Ship🚀ping starts Monday; the café team in 東京 and the Москва office get the build first, and the Arabic landing page (مرحباً بنورث ستار) ships a week later.  ",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 1,
+  "allowed": 0,
+  "unexpected": 6,
+  "visible_unexpected": 6,
+  "invisible_unexpected": 0
+ }
+}

@@ -88,3 +88,20 @@ Docs API has no checkbox state, and the agent proved it by diffing checked and u
 - Scratch copies made by two task agents were renamed `… SCRATCH … safe to delete` and moved
   into the runs folder; two unused `gdoc cp` copies are titled `SCRATCH unused …` in the Drive
   root. gdoc has no trash command; delete them by hand.
+
+## Addendum — batched runs and painted review copies (2026-09-03)
+
+Every fixture's tasks were re-run as **one chained batch on one copy** (46 runs: kitchen-sink 7,
+lists 12, tables 11, text 11, collab 5), each task by a fresh agent, each judged against the
+state the previous task left. A **painted review copy** per batch (`bin/gdt-paint`) colours every
+diff item and anchors a numbered comment per task; the `gdt REVIEW` doc opens with the five
+links. Batch outcomes: kitchen-sink 4 DONE / 1 GAP-CLI / 2 COLLATERAL; lists 5 DONE / 5
+COLLATERAL / 1 FAIL-AGENT / 1 DECLINED-API; tables 9 DONE / 1 GAP-CLI / 1 COLLATERAL; text 4
+DONE / 7 COLLATERAL; collab 2 DONE / 3 COLLATERAL. The same `gdoc edit` behaviour explains
+every COLLATERAL again. Two batch-specific effects: a task on an already-flattened paragraph
+scores clean (its own before is already flat), and agents given a live copy sometimes probe on
+it (lists environments-nest changed the read-replica list glyphs while "changing nothing").
+Harness notes: `run-start --continue`, `batch-end`, `gdt-batch-verdicts`, `gdt-batch-brief`,
+`gdt-paint`; `gdoc insert --position start` demotes the first heading (repro added), so the
+painter writes its header through the Docs API. Screenshots and the visual judge are batch-level
+(before all tasks / after all tasks), noted in each verdict.

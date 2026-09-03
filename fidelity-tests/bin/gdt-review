@@ -29,7 +29,20 @@ lines = ["# gdoc fidelity tests — manual review", "",
          "One section per fixture. The fixture link is the frozen original (the \"before\" of every run); "
          "each bullet is one run: the edit as the agent was asked for it, the recorded outcome, and the "
          "edited copy to open beside the original. Details per run live in the repo under "
-         "`fidelity-tests/<fixture>/runs/<run>/` (transcript, diff, verdict, screenshots).", ""]
+         "`fidelity-tests/<fixture>/runs/<run>/` (transcript, diff, verdict, screenshots).", "",
+         "## Start here: painted review copies", "",
+         "One document per fixture with all of that fixture's edits applied in sequence, then painted: "
+         "green = the change a task asked for, red = collateral, amber = allowed side effect, red left border = "
+         "paragraph style changed; a numbered comment T1… per task sits where it edited; a header at the top lists "
+         "the tasks and outcomes and links the unpainted copy.", ""]
+for bj in sorted(ROOT.glob("*/v*/runs/*/batch.json")):
+    b = __import__("json").load(open(bj))
+    if b.get("review_copy_id"):
+        from collections import Counter
+        c = Counter(r.get("outcome") or "?" for r in b["runs"])
+        lines.append(f"- **{b['fixture']}** — https://docs.google.com/document/d/{b['review_copy_id']}/edit — {len(b['runs'])} edits: "
+                     + ", ".join(f"{v} {k}" for k, v in sorted(c.items())))
+lines.append("")
 for fx in sorted(ROOT.glob("*/v*/fixture.md")):
     fdir = fx.parent; name = f"{fdir.parent.name}/{fdir.name}"
     meta = dict(re.findall(r"^(\w+): (.*)$", fx.read_text(), re.M))

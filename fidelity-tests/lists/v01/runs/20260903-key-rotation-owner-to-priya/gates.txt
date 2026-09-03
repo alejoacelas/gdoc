@@ -6,6 +6,3 @@ gate preconditions: check tasks.md preconditions against:
 Marco to"
 {'suggestedInsertionIds': 1, 'dateElement': 0, 'footnoteReference': 0, 'strikethrough': 1}
 gdoc_version: gdoc 0.21.0
-docs_revision ANLCKQmiDe-FWa49iUF9GOidD39d9mgzgjBc0URqM8tXQGMb0nsIjVHW14wlVSrAmrM_BdmNanIv4K41SAtzvfaDT-L2a526igNVW4xb948
-drive_revision 15 2026-09-03T16:14:35.717Z
-captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/lists/v01/runs/20260903-environments-nest-stray-lines-under-production/after (screenshots: gdt-shot)

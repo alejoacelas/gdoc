@@ -5,6 +5,3 @@ gate preconditions: check tasks.md preconditions against:
   on "question for Tom&#225;s"
 {'suggestedInsertionIds': 1, 'dateElement': 0, 'footnoteReference': 1, 'strikethrough': 4}
 gdoc_version: gdoc 0.21.0
-docs_revision ANLCKQk-EfeFHteAAloL0ubaLNQQnlik5FqIkZGb8e9dbldLx9FmUFE0pwWUZzxviz5-wRkCoSdzDpVpiO4u0-IeqXvbb0klce27y1_RzSw
-drive_revision 16 2026-09-03T16:12:17.886Z
-captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/text/v01/runs/20260903-tidy-double-spaces-2/after (screenshots: gdt-shot)

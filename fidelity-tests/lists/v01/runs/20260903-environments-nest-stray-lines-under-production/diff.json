@@ -1,0 +1,86 @@
+{
+ "task": "environments-nest-stray-lines-under-production",
+ "items": [
+  {
+   "path": "tab[Tab 1]/lists.kix.73yxf78mr7x1.listProperties.nestingLevels[0].glyphSymbol",
+   "before": "-",
+   "after": "●",
+   "class": "allowed",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/lists.kix.73yxf78mr7x1.listProperties.nestingLevels[1].glyphSymbol",
+   "before": "-",
+   "after": "○",
+   "class": "allowed",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/lists.kix.73yxf78mr7x1.listProperties.nestingLevels[2].glyphSymbol",
+   "before": "-",
+   "after": "■",
+   "class": "allowed",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/lists.kix.73yxf78mr7x1.listProperties.nestingLevels[3].glyphSymbol",
+   "before": "-",
+   "after": "●",
+   "class": "allowed",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/lists.kix.73yxf78mr7x1.listProperties.nestingLevels[4].glyphSymbol",
+   "before": "-",
+   "after": "○",
+   "class": "allowed",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/lists.kix.73yxf78mr7x1.listProperties.nestingLevels[5].glyphSymbol",
+   "before": "-",
+   "after": "■",
+   "class": "allowed",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/lists.kix.73yxf78mr7x1.listProperties.nestingLevels[6].glyphSymbol",
+   "before": "-",
+   "after": "●",
+   "class": "allowed",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/lists.kix.73yxf78mr7x1.listProperties.nestingLevels[7].glyphSymbol",
+   "before": "-",
+   "after": "○",
+   "class": "allowed",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/lists.kix.73yxf78mr7x1.listProperties.nestingLevels[8].glyphSymbol",
+   "before": "-",
+   "after": "■",
+   "class": "allowed",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -41,3 +41,3 @@\n     * Secrets live in Vault under secret/platform/prod, rotate the API keys there  \n-- Also a read replica in eu-west3, ask Priya before touching it  \n+* Also a read replica in eu-west3, ask Priya before touching it  \n * Staging shares the prod cluster, namespace staging (yes, really)",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 0,
+  "allowed": 9,
+  "unexpected": 0,
+  "visible_unexpected": 0,
+  "invisible_unexpected": 0
+ }
+}

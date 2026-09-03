@@ -6,6 +6,7 @@
    "before": "∅",
    "after": "Do we need a rollback drill before the 15th?⏎",
    "kind": "text",
+   "after_para_text": "Do we need a rollback drill before the 15th?",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false

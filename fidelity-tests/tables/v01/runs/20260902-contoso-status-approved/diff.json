@@ -6,6 +6,7 @@
    "before": "∅",
    "after": "Aprobado ✅⏎",
    "kind": "text",
+   "after_para_text": "Aprobado ✅",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false

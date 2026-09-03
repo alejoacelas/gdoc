@@ -38,6 +38,8 @@
     }
    },
    "kind": "style",
+   "after_para_text": "Marco to rotate the API keys before Friday",
+   "snippet": "rotate the API keys",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false

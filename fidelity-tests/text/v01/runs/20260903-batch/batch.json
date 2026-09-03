@@ -1,0 +1,1229 @@
+{
+ "fixture": "text/v01",
+ "batch": "20260903-batch",
+ "copy_id": "1dzI_lcHqKgetVer2YVs0kS0t_2ALWmv0Vh3YHlA8X-4",
+ "fixture_doc": "https://docs.google.com/document/d/1zU7pmkVdMCQEfJYSZ5-fTvoXUMWGtTuAcFyXNRqFZfU/edit",
+ "review_copy_id": null,
+ "runs": [
+  {
+   "run": "20260903-beta-badge-straight-quotes",
+   "slug": "beta-badge-straight-quotes",
+   "request": "In the Key dates paragraph, the \"beta\" badge — the one written with straight quotes — is called the \"preview\" badge now. Marta's “beta” label stays as it is.",
+   "expected": "The paragraph beginning `The launch window opens` contains `\"preview\" badge` (U+0022 quotes, the two spaces after the closing quote kept) and still contains `“beta” label` (U+201C/U+201D). Every dash twin in the paragraph is unchanged. Nothing else changes.",
+   "target": "tab `Tab 1`, paragraph beginning `The launch window opens`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 2,
+    "allowed": 0,
+    "unexpected": 1,
+    "visible_unexpected": 1,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[5:The launch window opens 14–18 ].style@\"launch window\"",
+     "before": {
+      "textStyle": {
+       "bold": true
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "The launch window opens 14–18 Sept 2026, not 14-18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"preview\"  badge hidden in the same release.",
+     "snippet": "launch window",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[5:The launch window opens 14–18 ].text",
+     "kind": "text",
+     "before": "b",
+     "after": "pr",
+     "after_context": "ne and the \"preview\"  badg",
+     "after_para_text": "The launch window opens 14–18 Sept 2026, not 14-18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"preview\"  badge hidden in the same release.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[5:The launch window opens 14–18 ].text",
+     "kind": "text",
+     "before": "ta",
+     "after": "view",
+     "after_context": "and the \"preview\"  badge hid",
+     "after_para_text": "The launch window opens 14–18 Sept 2026, not 14-18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"preview\"  badge hidden in the same release.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-co2-formula",
+   "slug": "co2-formula",
+   "request": "Formula card sentence: it should say CO₂, not H₂O.",
+   "expected": "The paragraph beginning `The formula card` reads `… still reads CO₂ and x², …` with the `2` in CO₂ still subscript (baselineOffset SUBSCRIPT) and the `2` in x² still superscript; the typed `[1]`, the footnote reference, and `Northstar⍽2.1` (U+00A0) are unchanged. Nothing else changes.",
+   "target": "tab `Tab 1`, paragraph beginning `The formula card`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 2,
+    "allowed": 0,
+    "unexpected": 1,
+    "visible_unexpected": 1,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[10:The formula card still reads H].paragraphStyle.lineSpacing",
+     "before": 150,
+     "after": "∅",
+     "kind": "para",
+     "after_para_text": "The formula card still reads CO2 and x2, the old deck typed its footnote marker as [1] instead of using a real footnote⟨footnoteReference⟩, and the style rule is Northstar 2.1 (non-breaking space) in headlines but Northstar 2.1 (plain space) in body copy.",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[10:The formula card still reads H].text",
+     "kind": "text",
+     "before": "H",
+     "after": "CO",
+     "after_context": "still reads CO2 and x2, th",
+     "after_para_text": "The formula card still reads CO2 and x2, the old deck typed its footnote marker as [1] instead of using a real footnote⟨footnoteReference⟩, and the style rule is Northstar 2.1 (non-breaking space) in headlines but Northstar 2.1 (plain space) in body copy.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[10:The formula card still reads H].text",
+     "kind": "text",
+     "before": "O",
+     "after": "",
+     "after_context": "ll reads CO2 and x2, the",
+     "after_para_text": "The formula card still reads CO2 and x2, the old deck typed its footnote marker as [1] instead of using a real footnote⟨footnoteReference⟩, and the style rule is Northstar 2.1 (non-breaking space) in headlines but Northstar 2.1 (plain space) in body copy.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-drop-old-plan",
+   "slug": "drop-old-plan",
+   "request": "The struck-through \"The old plan was to ship in August\" bit has served its purpose — delete it, so the paragraph starts with the new plan.",
+   "expected": "The paragraph reads `The new plan is 14–18 Sept. This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.` (capital T; two spaces after `Sept.` kept). Formatting intact: yellow highlight on `14–18 Sept`, small caps on `internal only`, underline on `read this first ` including the trailing space, em dashes U+2014, line spacing 1.15. Nothing else changes.",
+   "target": "tab `Tab 1`, paragraph beginning `The old plan`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 1,
+    "allowed": 0,
+    "unexpected": 6,
+    "visible_unexpected": 6,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[11:The old plan was to ship in Au].style@\"T\"",
+     "before": {
+      "textStyle": {
+       "bold": true,
+       "strikethrough": true
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "The new plan is 14–18 Sept.  This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
+     "snippet": "T",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[11:The old plan was to ship in Au].text",
+     "kind": "text",
+     "before": "he old plan was to ship in August; t",
+     "after": "",
+     "after_context": "The new plan ",
+     "after_para_text": "The new plan is 14–18 Sept.  This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[11:The old plan was to ship in Au].style@\"new plan is 14–18 Sept\"",
+     "before": {
+      "textStyle": {
+       "backgroundColor": {
+        "color": {
+         "rgbColor": {
+          "green": 1,
+          "red": 1
+         }
+        }
+       }
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "The new plan is 14–18 Sept.  This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
+     "snippet": "new plan is 14–18 Sept",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[11:The old plan was to ship in Au].style@\"internal only\"",
+     "before": {
+      "textStyle": {
+       "smallCaps": true
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "The new plan is 14–18 Sept.  This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
+     "snippet": "internal only",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[11:The old plan was to ship in Au].style@\"do not forward\"",
+     "before": {
+      "textStyle": {
+       "foregroundColor": {
+        "color": {
+         "rgbColor": {
+          "red": 1
+         }
+        }
+       }
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "The new plan is 14–18 Sept.  This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
+     "snippet": "do not forward",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[11:The old plan was to ship in Au].style@\"read this first \"",
+     "before": {
+      "textStyle": {
+       "underline": true
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "The new plan is 14–18 Sept.  This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
+     "snippet": "read this first ",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[11:The old plan was to ship in Au].style@\"agreed with Legal\"",
+     "before": {
+      "textStyle": {
+       "backgroundColor": {
+        "color": {
+         "rgbColor": {
+          "green": 1
+         }
+        }
+       }
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "The new plan is 14–18 Sept.  This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
+     "snippet": "agreed with Legal",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-hyphen-date-fix",
+   "slug": "hyphen-date-fix",
+   "request": "In the Key dates paragraph, the v2 draft's date range uses a plain hyphen (14-18 Sept). Make it an en dash like the first one.",
+   "expected": "The paragraph reads `… not 14–18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.` — the second range now U+2013, the first (`14–18 Sept 2026`) still U+2013, the CMS one still U+2014. The yellow-highlighted `14–18 Sept` in the later paragraph is unchanged. Nothing else changes.",
+   "target": "tab `Tab 1`, paragraph beginning `The launch window opens`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 1,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[5:The launch window opens 14–18 ].text",
+     "kind": "text",
+     "before": "-",
+     "after": "–",
+     "after_context": "2026, not 14–18 Sept as t",
+     "after_para_text": "The launch window opens 14–18 Sept 2026, not 14–18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"preview\"  badge hidden in the same release.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-key-dates-en-dash-slip",
+   "slug": "key-dates-en-dash-slip",
+   "request": "Key dates: the launch window has slipped a day — it now opens 15–19 Sept 2026. Please change just that first sentence; leave the \"v2 draft\" and \"CMS\" examples as they are, and don't touch the old-plan paragraph further down, I'm still confirming that with Legal.",
+   "expected": "The paragraph beginning `The launch window opens` now reads `The launch window opens 15–19 Sept 2026, not 14-18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it. Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"beta\" badge hidden in the same release.` The new range is `15–19` with U+2013 EN DASH. Later in the same sentence `14-18` (U+002D HYPHEN-MINUS) and `14—18` (U+2014 EM DASH) are unchanged. `launch window` at the start of the paragraph is still bold; the rest of the paragraph is plain. Elsewhere, the paragraph beginning `The old plan` still contains `new plan is 14–18 Sept` (U+2013) with its yellow background highlight — that string is not updated. Nothing else changes.",
+   "target": "tab `Tab 1`, paragraph beginning `The launch window opens`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 2,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[5:The launch window opens 14–18 ].text",
+     "kind": "text",
+     "before": "4",
+     "after": "5",
+     "after_context": "ndow opens 15–19 Sept 202",
+     "after_para_text": "The launch window opens 15–19 Sept 2026, not 14–18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"preview\"  badge hidden in the same release.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[5:The launch window opens 14–18 ].text",
+     "kind": "text",
+     "before": "8",
+     "after": "9",
+     "after_context": "w opens 15–19 Sept 2026, ",
+     "after_para_text": "The launch window opens 15–19 Sept 2026, not 14–18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"preview\"  badge hidden in the same release.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-launch-to-release-window",
+   "slug": "launch-to-release-window",
+   "request": "We're calling it the \"release window\" now, not the \"launch window\" — rename it everywhere in the doc, title included. \"Launch Window banner\" is a product name, leave that.",
+   "expected": "`release window` appears five times with the original formatting in each place: in the H1 (`Northstar 2.1 release window — announcement draft (v3)`), bold, italic, as the link text `release window FAQ` (URL `https://example.com/northstar/faq` unchanged), and plain. `Launch Window banner` is unchanged. No other run styles change. Nothing else changes.",
+   "target": "tab `Tab 1`, heading `Northstar 2.1`, paragraph beginning `The launch window opens`, paragraph beginning `Ana’s note`, paragraph beginning `If anything slips`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 15,
+    "allowed": 0,
+    "unexpected": 1,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 1
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[0:Northstar 2.1 launch window — ].paragraphStyle.headingId",
+     "before": "h.fhr9e3eq4raj",
+     "after": "h.h8p2iegzr8wc",
+     "kind": "para",
+     "after_para_text": "Northstar 2.1 release window — announcement draft (v3)",
+     "class": "unexpected",
+     "visible": false,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[0:Northstar 2.1 launch window — ].text",
+     "kind": "text",
+     "before": "",
+     "after": "re",
+     "after_context": "rthstar 2.1 release window",
+     "after_para_text": "Northstar 2.1 release window — announcement draft (v3)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[0:Northstar 2.1 launch window — ].text",
+     "kind": "text",
+     "before": "",
+     "after": "e",
+     "after_context": "star 2.1 release window —",
+     "after_para_text": "Northstar 2.1 release window — announcement draft (v3)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[0:Northstar 2.1 launch window — ].text",
+     "kind": "text",
+     "before": "unch",
+     "after": "se",
+     "after_context": "ar 2.1 release window — an",
+     "after_para_text": "Northstar 2.1 release window — announcement draft (v3)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[5:The launch window opens 15–19 ].text",
+     "kind": "text",
+     "before": "",
+     "after": "re",
+     "after_context": "The release window",
+     "after_para_text": "The release window opens 15–19 Sept 2026, not 14–18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it. Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"preview\" badge hidden in the same release.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[5:The launch window opens 15–19 ].text",
+     "kind": "text",
+     "before": "",
+     "after": "e",
+     "after_context": "The release window o",
+     "after_para_text": "The release window opens 15–19 Sept 2026, not 14–18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it. Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"preview\" badge hidden in the same release.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[5:The launch window opens 15–19 ].text",
+     "kind": "text",
+     "before": "unch",
+     "after": "se",
+     "after_context": "The release window open",
+     "after_para_text": "The release window opens 15–19 Sept 2026, not 14–18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it. Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"preview\" badge hidden in the same release.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[6:Ana’s note: the launch window ].text",
+     "kind": "text",
+     "before": "",
+     "after": "re",
+     "after_context": "s note: the release window",
+     "after_para_text": "Ana’s note: the release window is not the same thing as the Launch Window banner in the app; the banner string lives in the release checklist and is owned by design. See also the release window FAQ before replying to customers.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[6:Ana’s note: the launch window ].text",
+     "kind": "text",
+     "before": "",
+     "after": "e",
+     "after_context": "ote: the release window i",
+     "after_para_text": "Ana’s note: the release window is not the same thing as the Launch Window banner in the app; the banner string lives in the release checklist and is owned by design. See also the release window FAQ before replying to customers.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[6:Ana’s note: the launch window ].text",
+     "kind": "text",
+     "before": "unch",
+     "after": "se",
+     "after_context": "e: the release window is n",
+     "after_para_text": "Ana’s note: the release window is not the same thing as the Launch Window banner in the app; the banner string lives in the release checklist and is owned by design. See also the release window FAQ before replying to customers.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[6:Ana’s note: the launch window ].text",
+     "kind": "text",
+     "before": "",
+     "after": "re",
+     "after_context": "ee also the release window",
+     "after_para_text": "Ana’s note: the release window is not the same thing as the Launch Window banner in the app; the banner string lives in the release checklist and is owned by design. See also the release window FAQ before replying to customers.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[6:Ana’s note: the launch window ].text",
+     "kind": "text",
+     "before": "",
+     "after": "e",
+     "after_context": "also the release window F",
+     "after_para_text": "Ana’s note: the release window is not the same thing as the Launch Window banner in the app; the banner string lives in the release checklist and is owned by design. See also the release window FAQ before replying to customers.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[6:Ana’s note: the launch window ].text",
+     "kind": "text",
+     "before": "unch",
+     "after": "se",
+     "after_context": "so the release window FAQ ",
+     "after_para_text": "Ana’s note: the release window is not the same thing as the Launch Window banner in the app; the banner string lives in the release checklist and is owned by design. See also the release window FAQ before replying to customers.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[7:If anything slips, the launch ].text",
+     "kind": "text",
+     "before": "",
+     "after": "re",
+     "after_context": " slips, the release window",
+     "after_para_text": "If anything slips, the release window moves as a whole; we do not ship half the features. Live status: https://status.example.com/northstar (updated hourly).",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[7:If anything slips, the launch ].text",
+     "kind": "text",
+     "before": "",
+     "after": "e",
+     "after_context": "ips, the release window m",
+     "after_para_text": "If anything slips, the release window moves as a whole; we do not ship half the features. Live status: https://status.example.com/northstar (updated hourly).",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[7:If anything slips, the launch ].text",
+     "kind": "text",
+     "before": "unch",
+     "after": "se",
+     "after_context": "s, the release window move",
+     "after_para_text": "If anything slips, the release window moves as a whole; we do not ship half the features. Live status: https://status.example.com/northstar (updated hourly).",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-marta-quote-tuesday-afternoon",
+   "slug": "marta-quote-tuesday-afternoon",
+   "request": "In the announcement copy paragraph, Marta's Slack quote is truncated — what she actually wrote in #launch was \"we finally fixed the sync bug that ate everyone's Tuesday afternoon\". Can you fix the quote?",
+   "expected": "In the paragraph beginning `Northstar 2.1 is the biggest release`, the quoted run now reads `as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday afternoon” ` — the opening quote is U+201C, the closing quote U+201D, the apostrophe in `everyone’s` U+2019, and the whole run including the new word `afternoon` is Georgia 13 pt. The runs around it are unchanged: `release-notes-2.1.md` is Courier New 9 pt, underlined, blue, hyperlinked to `http://release-notes-2.1.md`; ` (more soon...) ` is Courier New 9 pt with three U+002E FULL STOP characters; `and the landing-page draft says Faster sync. Fewer surprises. More soon… ` is Times New Roman with U+2026 HORIZONTAL ELLIPSIS; the opening `Northstar 2.1 is the biggest release since 1.0: ` and the closing `(Tomás pasted that last bit from the web page, hence the fonts.)` are in the default font. The paragraph keeps JUSTIFIED alignment. `Legal signed off on Tuesday` in the Key dates paragraph is unchanged. Nothing else changes.",
+   "target": "tab `Tab 1`, paragraph beginning `Northstar 2.1 is the biggest release`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 0,
+    "allowed": 0,
+    "unexpected": 1,
+    "visible_unexpected": 1,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[9:Northstar 2.2 is the biggest r].text",
+     "kind": "text",
+     "before": "",
+     "after": " afternoon",
+     "after_context": "ne’s Tuesday afternoon” and the la",
+     "after_para_text": "Northstar 2.2 is the biggest release since 1.0: release-notes-2.1.md (more soon...) as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday afternoon” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-northstar-2-2",
+   "slug": "northstar-2-2",
+   "request": "The release is now Northstar 2.2, not 2.1. Update the body copy; the title gets its own review so leave that.",
+   "expected": "The justified paragraph begins `Northstar 2.2 is the biggest release`; the 1.5-spacing paragraph reads `… is Northstar⍽2.2 (non-breaking space) in headlines but Northstar 2.2 (plain space) in body copy.` with the U+00A0 preserved in the first; `H₂O`, `x²`, the typed `[1]` and the footnote reference are unchanged; the four fonts of the justified paragraph are unchanged. The H1 still says `2.1`. Nothing else changes.",
+   "target": "tab `Tab 1`, paragraph beginning `Northstar 2.1 is the biggest`, paragraph beginning `The formula card`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 3,
+    "allowed": 0,
+    "unexpected": 5,
+    "visible_unexpected": 5,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[9:Northstar 2.1 is the biggest r].paragraphStyle.alignment",
+     "before": "JUSTIFIED",
+     "after": "∅",
+     "kind": "para",
+     "after_para_text": "Northstar 2.2 is the biggest release since 1.0: release-notes-2.1.md (more soon...) as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[9:Northstar 2.1 is the biggest r].text",
+     "kind": "text",
+     "before": "1",
+     "after": "2",
+     "after_context": "Northstar 2.2 is the bigg",
+     "after_para_text": "Northstar 2.2 is the biggest release since 1.0: release-notes-2.1.md (more soon...) as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[9:Northstar 2.1 is the biggest r].style@\"release-notes-2.1.md\"",
+     "before": {
+      "textStyle": {
+       "fontSize": {
+        "magnitude": 9,
+        "unit": "PT"
+       },
+       "foregroundColor": {
+        "color": {
+         "rgbColor": {
+          "blue": 0.8,
+          "green": 0.33333334,
+          "red": 0.06666667
+         }
+        }
+       },
+       "link": {
+        "url": "http://release-notes-2.1.md"
+       },
+       "underline": true,
+       "weightedFontFamily": {
+        "fontFamily": "Courier New",
+        "weight": 400
+       }
+      }
+     },
+     "after": {
+      "textStyle": {
+       "foregroundColor": {
+        "color": {
+         "rgbColor": {
+          "blue": 0.8,
+          "green": 0.33333334,
+          "red": 0.06666667
+         }
+        }
+       },
+       "link": {
+        "url": "http://release-notes-2.1.md"
+       },
+       "underline": true
+      }
+     },
+     "kind": "style",
+     "after_para_text": "Northstar 2.2 is the biggest release since 1.0: release-notes-2.1.md (more soon...) as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)",
+     "snippet": "release-notes-2.1.md",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[9:Northstar 2.1 is the biggest r].style@\" (more soon...) \"",
+     "before": {
+      "textStyle": {
+       "fontSize": {
+        "magnitude": 9,
+        "unit": "PT"
+       },
+       "weightedFontFamily": {
+        "fontFamily": "Courier New",
+        "weight": 400
+       }
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "Northstar 2.2 is the biggest release since 1.0: release-notes-2.1.md (more soon...) as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)",
+     "snippet": " (more soon...) ",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[9:Northstar 2.1 is the biggest r].style@\"as Marta put it in #launch, “we finally \"",
+     "before": {
+      "textStyle": {
+       "fontSize": {
+        "magnitude": 13,
+        "unit": "PT"
+       },
+       "weightedFontFamily": {
+        "fontFamily": "Georgia",
+        "weight": 400
+       }
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "Northstar 2.2 is the biggest release since 1.0: release-notes-2.1.md (more soon...) as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)",
+     "snippet": "as Marta put it in #launch, “we finally ",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[9:Northstar 2.1 is the biggest r].style@\"and the landing-page draft says Faster s\"",
+     "before": {
+      "textStyle": {
+       "weightedFontFamily": {
+        "fontFamily": "Times New Roman",
+        "weight": 400
+       }
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "Northstar 2.2 is the biggest release since 1.0: release-notes-2.1.md (more soon...) as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)",
+     "snippet": "and the landing-page draft says Faster s",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[10:The formula card still reads C].text",
+     "kind": "text",
+     "before": "1",
+     "after": "2",
+     "after_context": "Northstar 2.2 (non-breaki",
+     "after_para_text": "The formula card still reads CO2 and x2, the old deck typed its footnote marker as [1] instead of using a real footnote⟨footnoteReference⟩, and the style rule is Northstar 2.2 (non-breaking space) in headlines but Northstar 2.2 (plain space) in body copy.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[10:The formula card still reads C].text",
+     "kind": "text",
+     "before": "1",
+     "after": "2",
+     "after_context": "Northstar 2.2 (plain spac",
+     "after_para_text": "The formula card still reads CO2 and x2, the old deck typed its footnote marker as [1] instead of using a real footnote⟨footnoteReference⟩, and the style rule is Northstar 2.2 (non-breaking space) in headlines but Northstar 2.2 (plain space) in body copy.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-rename-key-dates-fake-heading",
+   "slug": "rename-key-dates-fake-heading",
+   "request": "Rename the \"Key dates\" subheading to \"Key dates and labels\" — that section now covers the beta label as well.",
+   "expected": "The paragraph that read `Key dates` now reads exactly `Key dates and labels`. It is still a NORMAL_TEXT paragraph (not a Docs heading — no HEADING_n named style, no headingId), and the entire text is bold and 14 pt, matching how `Key dates` was formatted. The real heading directly above, `What we are shipping`, is still HEADING_2 with headingId `h.1x7abc6lswku` and its direct bold + underline formatting. The `Summary` paragraph above that is still NORMAL_TEXT, bold, 14 pt. The following paragraph `The launch window opens …` is unchanged, including the bold `launch window` run. Nothing else changes.",
+   "target": "tab `Tab 1`, paragraph beginning `Key dates`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 1,
+    "allowed": 0,
+    "unexpected": 2,
+    "visible_unexpected": 2,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[4:Key dates⏎].style@\"Key dates\"",
+     "before": {
+      "textStyle": {
+       "bold": true,
+       "fontSize": {
+        "magnitude": 14,
+        "unit": "PT"
+       }
+      }
+     },
+     "after": {
+      "textStyle": {
+       "bold": true
+      }
+     },
+     "kind": "style",
+     "after_para_text": "Key dates and labels",
+     "snippet": "Key dates",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[4:Key dates⏎].text",
+     "kind": "text",
+     "before": "",
+     "after": " and labels",
+     "after_context": "Key dates and labels",
+     "after_para_text": "Key dates and labels",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[4:Key dates⏎].style@\"⏎\"",
+     "before": {
+      "textStyle": {
+       "bold": true,
+       "fontSize": {
+        "magnitude": 14,
+        "unit": "PT"
+       }
+      }
+     },
+     "after": {
+      "textStyle": {
+       "bold": true
+      }
+     },
+     "kind": "style",
+     "after_para_text": "Key dates and labels",
+     "snippet": "",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-signature-date",
+   "slug": "signature-date",
+   "request": "Bump the date in Marta's signature line to 3 Sept 2026.",
+   "expected": "The right-aligned paragraph reads `— Marta, 3 Sept 2026` (U+2014, alignment END unchanged). The tab-only paragraph, empty H3 and empty bold paragraph after it are unchanged. Nothing else changes.",
+   "target": "tab `Tab 1`, paragraph beginning `— Marta`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 1,
+    "allowed": 0,
+    "unexpected": 1,
+    "visible_unexpected": 1,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[13:— Marta, 2 Sept 2026⏎].paragraphStyle.alignment",
+     "before": "END",
+     "after": "∅",
+     "kind": "para",
+     "after_para_text": "— Marta, 3 Sept 2026",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[13:— Marta, 2 Sept 2026⏎].text",
+     "kind": "text",
+     "before": "2",
+     "after": "3",
+     "after_context": "— Marta, 3 Sept 2026",
+     "after_para_text": "— Marta, 3 Sept 2026",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-tidy-double-spaces-2",
+   "slug": "tidy-double-spaces",
+   "request": "There are a bunch of stray double spaces in this draft — can you tidy them up?",
+   "expected": "These five in-sentence double spaces (two U+0020) become a single U+0020, with the text on either side unchanged: `rendered it. Legal` → `rendered it. Legal` and `\"beta\" badge` → `\"beta\" badge` (paragraph `The launch window opens`); `by design. See also` → `by design. See also` (paragraph `Ana’s note`); `14–18 Sept. This draft` → `14–18 Sept. This draft` (paragraph `The old plan`); `existing users? Ana says` → `existing users? Ana says` (paragraph `Open question`). The trailing `DRAFT ` in the `Owner:` line may be left as is or trimmed to `DRAFT`; the tabs in that line stay. Everything else is byte-identical: the U+00A0 NO-BREAK SPACE in `Northstar 2.1 (non-breaking space)` is not converted to a space; en dash / hyphen / em dash, curly and straight quotes, `...` vs `…` all survive; the `Open question` paragraph still holds the pending suggestion (inserted `maybe`, deleted `yes`, bold-italic style suggestion) with `Ana says` immediately before it and `, Marta says no.` after it, and the comment anchored on `question for Tomás` still resolves to that text across the bold/plain boundary. In `The old plan`, the strikethrough on `The old plan was to ship in August` (bold on the first three words), the yellow highlight on `new plan is 14–18 Sept`, the red `do not forward`, the underlined `read this first ` and the green highlight on `agreed with Legal` all survive. The multi-font paragraph `Northstar 2.1 is the biggest release` is untouched (it has no double spaces). Nothing else changes.",
+   "target": "tab `Tab 1`, paragraph beginning `The launch window opens`, paragraph beginning `Ana’s note`, paragraph beginning `The old plan`, paragraph beginning `Open question`; optionally paragraph beginning `Owner:`.",
+   "allowed": "revision list grows; `modifiedTime` changes; the trailing two spaces after `DRAFT` may be removed.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 5,
+    "allowed": 0,
+    "unexpected": 10,
+    "visible_unexpected": 10,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[1:Owner:⇥Marta Kowalczyk⇥Status:].text",
+     "kind": "text",
+     "before": " ",
+     "after": "",
+     "after_context": "atus:\tDRAFT ",
+     "after_para_text": "Owner:\tMarta Kowalczyk\tStatus:\tDRAFT ",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[5:The launch window opens 15–19 ].text",
+     "kind": "text",
+     "before": " ",
+     "after": "",
+     "after_context": "endered it. Legal signed",
+     "after_para_text": "The launch window opens 15–19 Sept 2026, not 14–18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it. Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"preview\" badge hidden in the same release.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[5:The launch window opens 15–19 ].text",
+     "kind": "text",
+     "before": " ",
+     "after": "",
+     "after_context": "e \"preview\" badge hidden",
+     "after_para_text": "The launch window opens 15–19 Sept 2026, not 14–18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it. Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"preview\" badge hidden in the same release.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[6:Ana’s note: the launch window ].style@\"launch window\"",
+     "before": {
+      "textStyle": {
+       "italic": true
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "Ana’s note: the launch window is not the same thing as the Launch Window banner in the app; the banner string lives in the release checklist and is owned by design. See also the launch window FAQ before replying to customers.",
+     "snippet": "launch window",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[6:Ana’s note: the launch window ].style@\"checklist\"",
+     "before": {
+      "textStyle": {
+       "bold": true,
+       "foregroundColor": {
+        "color": {
+         "rgbColor": {
+          "blue": 0.8,
+          "green": 0.33333334,
+          "red": 0.06666667
+         }
+        }
+       },
+       "link": {
+        "url": "https://example.com/northstar/checklist"
+       },
+       "underline": true
+      }
+     },
+     "after": {
+      "textStyle": {
+       "foregroundColor": {
+        "color": {
+         "rgbColor": {
+          "blue": 0.8,
+          "green": 0.33333334,
+          "red": 0.06666667
+         }
+        }
+       },
+       "link": {
+        "url": "https://example.com/northstar/checklist"
+       },
+       "underline": true
+      }
+     },
+     "kind": "style",
+     "after_para_text": "Ana’s note: the launch window is not the same thing as the Launch Window banner in the app; the banner string lives in the release checklist and is owned by design. See also the launch window FAQ before replying to customers.",
+     "snippet": "checklist",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[6:Ana’s note: the launch window ].text",
+     "kind": "text",
+     "before": " ",
+     "after": "",
+     "after_context": " by design. See also the",
+     "after_para_text": "Ana’s note: the launch window is not the same thing as the Launch Window banner in the app; the banner string lives in the release checklist and is owned by design. See also the launch window FAQ before replying to customers.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[11:The new plan is 14–18 Sept.  T].text",
+     "kind": "text",
+     "before": " ",
+     "after": "",
+     "after_context": " 14–18 Sept. This draft ",
+     "after_para_text": "The new plan is 14–18 Sept. This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[21:Open question for Tomás: do we].paragraphStyle.indentFirstLine.magnitude",
+     "before": 36,
+     "after": "∅",
+     "kind": "para",
+     "after_para_text": "Open question for Tomás: do we keep the beta badge for existing users? Ana says maybeyes, Marta says no.",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[21:Open question for Tomás: do we].paragraphStyle.indentFirstLine.unit",
+     "before": "PT",
+     "after": "∅",
+     "kind": "para",
+     "after_para_text": "Open question for Tomás: do we keep the beta badge for existing users? Ana says maybeyes, Marta says no.",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[21:Open question for Tomás: do we].paragraphStyle.indentStart.magnitude",
+     "before": 36,
+     "after": "∅",
+     "kind": "para",
+     "after_para_text": "Open question for Tomás: do we keep the beta badge for existing users? Ana says maybeyes, Marta says no.",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[21:Open question for Tomás: do we].paragraphStyle.indentStart.unit",
+     "before": "PT",
+     "after": "∅",
+     "kind": "para",
+     "after_para_text": "Open question for Tomás: do we keep the beta badge for existing users? Ana says maybeyes, Marta says no.",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[21:Open question for Tomás: do we].style@\"Open question\"",
+     "before": {
+      "textStyle": {
+       "bold": true
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "Open question for Tomás: do we keep the beta badge for existing users? Ana says maybeyes, Marta says no.",
+     "snippet": "Open question",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[21:Open question for Tomás: do we].text",
+     "kind": "text",
+     "before": " ",
+     "after": "",
+     "after_context": "ting users? Ana says may",
+     "after_para_text": "Open question for Tomás: do we keep the beta badge for existing users? Ana says maybeyes, Marta says no.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[21:Open question for Tomás: do we].style@\"maybe\"",
+     "before": {
+      "suggestedInsertionIds": [
+       "suggest.p6habqssdsab"
+      ],
+      "suggestedTextStyleChanges": {
+       "suggest.p6habqssdsab": {
+        "textStyle": {
+         "bold": true,
+         "italic": true
+        },
+        "textStyleSuggestionState": {
+         "backgroundColorSuggested": true,
+         "baselineOffsetSuggested": true,
+         "boldSuggested": true,
+         "fontSizeSuggested": true,
+         "foregroundColorSuggested": true,
+         "italicSuggested": true,
+         "smallCapsSuggested": true,
+         "strikethroughSuggested": true,
+         "underlineSuggested": true,
+         "weightedFontFamilySuggested": true
+        }
+       }
+      },
+      "textStyle": {}
+     },
+     "after": {
+      "suggestedInsertionIds": [
+       "suggest.p6habqssdsab"
+      ],
+      "suggestedTextStyleChanges": {
+       "suggest.p6habqssdsab": {
+        "textStyle": {},
+        "textStyleSuggestionState": {
+         "backgroundColorSuggested": true,
+         "baselineOffsetSuggested": true,
+         "boldSuggested": true,
+         "fontSizeSuggested": true,
+         "foregroundColorSuggested": true,
+         "italicSuggested": true,
+         "smallCapsSuggested": true,
+         "strikethroughSuggested": true,
+         "underlineSuggested": true,
+         "weightedFontFamilySuggested": true
+        }
+       }
+      },
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "Open question for Tomás: do we keep the beta badge for existing users? Ana says maybeyes, Marta says no.",
+     "snippet": "maybe",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[21:Open question for Tomás: do we].style@\"yes\"",
+     "before": {
+      "suggestedDeletionIds": [
+       "suggest.p6habqssdsab"
+      ],
+      "suggestedTextStyleChanges": {
+       "suggest.p6habqssdsab": {
+        "textStyle": {
+         "bold": true,
+         "italic": true
+        },
+        "textStyleSuggestionState": {
+         "backgroundColorSuggested": true,
+         "baselineOffsetSuggested": true,
+         "boldSuggested": true,
+         "fontSizeSuggested": true,
+         "foregroundColorSuggested": true,
+         "italicSuggested": true,
+         "smallCapsSuggested": true,
+         "strikethroughSuggested": true,
+         "underlineSuggested": true,
+         "weightedFontFamilySuggested": true
+        }
+       },
+       "suggest.u3q9mxhek3a0": {
+        "textStyle": {
+         "backgroundColor": {},
+         "baselineOffset": "NONE",
+         "bold": true,
+         "fontSize": {
+          "magnitude": 11,
+          "unit": "PT"
+         },
+         "foregroundColor": {
+          "color": {
+           "rgbColor": {}
+          }
+         },
+         "italic": true,
+         "smallCaps": false,
+         "strikethrough": false,
+         "underline": false
+        },
+        "textStyleSuggestionState": {
+         "boldSuggested": true,
+         "italicSuggested": true,
+         "weightedFontFamilySuggested": true
+        }
+       }
+      },
+      "textStyle": {}
+     },
+     "after": {
+      "suggestedDeletionIds": [
+       "suggest.p6habqssdsab"
+      ],
+      "suggestedTextStyleChanges": {
+       "suggest.p6habqssdsab": {
+        "textStyle": {},
+        "textStyleSuggestionState": {
+         "backgroundColorSuggested": true,
+         "baselineOffsetSuggested": true,
+         "boldSuggested": true,
+         "fontSizeSuggested": true,
+         "foregroundColorSuggested": true,
+         "italicSuggested": true,
+         "smallCapsSuggested": true,
+         "strikethroughSuggested": true,
+         "underlineSuggested": true,
+         "weightedFontFamilySuggested": true
+        }
+       },
+       "suggest.u3q9mxhek3a0": {
+        "textStyle": {
+         "backgroundColor": {},
+         "baselineOffset": "NONE",
+         "fontSize": {
+          "magnitude": 11,
+          "unit": "PT"
+         },
+         "foregroundColor": {
+          "color": {
+           "rgbColor": {}
+          }
+         },
+         "smallCaps": false,
+         "strikethrough": false,
+         "underline": false
+        },
+        "textStyleSuggestionState": {
+         "boldSuggested": true,
+         "italicSuggested": true,
+         "weightedFontFamilySuggested": true
+        }
+       }
+      },
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "Open question for Tomás: do we keep the beta badge for existing users? Ana says maybeyes, Marta says no.",
+     "snippet": "yes",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  }
+ ]
+}

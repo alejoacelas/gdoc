@@ -1,248 +1,248 @@
 # diff — staging-line-to-bullet
 
-expected 6 · allowed 0 · unexpected 81 (visible 81, invisible 0)
+expected 87 · allowed 0 · unexpected 0 (visible 0, invisible 0)
 
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].bulletAlignment`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].bulletAlignment`
   - before: `"∅"`
   - after:  `"START"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].glyphFormat`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].glyphFormat`
   - before: `"∅"`
   - after:  `"%0"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].glyphSymbol`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].glyphSymbol`
   - before: `"∅"`
   - after:  `"●"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].indentFirstLine.magnitude`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].indentFirstLine.magnitude`
   - before: `"∅"`
   - after:  `18`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].indentFirstLine.unit`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].indentFirstLine.unit`
   - before: `"∅"`
   - after:  `"PT"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].indentStart.magnitude`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].indentStart.magnitude`
   - before: `"∅"`
   - after:  `36`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].indentStart.unit`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].indentStart.unit`
   - before: `"∅"`
   - after:  `"PT"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].startNumber`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].startNumber`
   - before: `"∅"`
   - after:  `1`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].textStyle.underline`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].textStyle.underline`
   - before: `"∅"`
   - after:  `false`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].bulletAlignment`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].bulletAlignment`
   - before: `"∅"`
   - after:  `"START"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].glyphFormat`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].glyphFormat`
   - before: `"∅"`
   - after:  `"%1"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].glyphSymbol`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].glyphSymbol`
   - before: `"∅"`
   - after:  `"○"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].indentFirstLine.magnitude`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].indentFirstLine.magnitude`
   - before: `"∅"`
   - after:  `54`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].indentFirstLine.unit`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].indentFirstLine.unit`
   - before: `"∅"`
   - after:  `"PT"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].indentStart.magnitude`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].indentStart.magnitude`
   - before: `"∅"`
   - after:  `72`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].indentStart.unit`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].indentStart.unit`
   - before: `"∅"`
   - after:  `"PT"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].startNumber`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].startNumber`
   - before: `"∅"`
   - after:  `1`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].textStyle.underline`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].textStyle.underline`
   - before: `"∅"`
   - after:  `false`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].bulletAlignment`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].bulletAlignment`
   - before: `"∅"`
   - after:  `"START"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].glyphFormat`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].glyphFormat`
   - before: `"∅"`
   - after:  `"%2"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].glyphSymbol`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].glyphSymbol`
   - before: `"∅"`
   - after:  `"■"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].indentFirstLine.magnitude`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].indentFirstLine.magnitude`
   - before: `"∅"`
   - after:  `90`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].indentFirstLine.unit`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].indentFirstLine.unit`
   - before: `"∅"`
   - after:  `"PT"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].indentStart.magnitude`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].indentStart.magnitude`
   - before: `"∅"`
   - after:  `108`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].indentStart.unit`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].indentStart.unit`
   - before: `"∅"`
   - after:  `"PT"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].startNumber`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].startNumber`
   - before: `"∅"`
   - after:  `1`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].textStyle.underline`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].textStyle.underline`
   - before: `"∅"`
   - after:  `false`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].bulletAlignment`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].bulletAlignment`
   - before: `"∅"`
   - after:  `"START"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].glyphFormat`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].glyphFormat`
   - before: `"∅"`
   - after:  `"%3"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].glyphSymbol`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].glyphSymbol`
   - before: `"∅"`
   - after:  `"●"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].indentFirstLine.magnitude`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].indentFirstLine.magnitude`
   - before: `"∅"`
   - after:  `126`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].indentFirstLine.unit`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].indentFirstLine.unit`
   - before: `"∅"`
   - after:  `"PT"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].indentStart.magnitude`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].indentStart.magnitude`
   - before: `"∅"`
   - after:  `144`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].indentStart.unit`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].indentStart.unit`
   - before: `"∅"`
   - after:  `"PT"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].startNumber`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].startNumber`
   - before: `"∅"`
   - after:  `1`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].textStyle.underline`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].textStyle.underline`
   - before: `"∅"`
   - after:  `false`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].bulletAlignment`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].bulletAlignment`
   - before: `"∅"`
   - after:  `"START"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].glyphFormat`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].glyphFormat`
   - before: `"∅"`
   - after:  `"%4"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].glyphSymbol`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].glyphSymbol`
   - before: `"∅"`
   - after:  `"○"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].indentFirstLine.magnitude`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].indentFirstLine.magnitude`
   - before: `"∅"`
   - after:  `162`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].indentFirstLine.unit`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].indentFirstLine.unit`
   - before: `"∅"`
   - after:  `"PT"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].indentStart.magnitude`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].indentStart.magnitude`
   - before: `"∅"`
   - after:  `180`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].indentStart.unit`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].indentStart.unit`
   - before: `"∅"`
   - after:  `"PT"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].startNumber`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].startNumber`
   - before: `"∅"`
   - after:  `1`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].textStyle.underline`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].textStyle.underline`
   - before: `"∅"`
   - after:  `false`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].bulletAlignment`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].bulletAlignment`
   - before: `"∅"`
   - after:  `"START"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].glyphFormat`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].glyphFormat`
   - before: `"∅"`
   - after:  `"%5"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].glyphSymbol`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].glyphSymbol`
   - before: `"∅"`
   - after:  `"■"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].indentFirstLine.magnitude`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].indentFirstLine.magnitude`
   - before: `"∅"`
   - after:  `198`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].indentFirstLine.unit`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].indentFirstLine.unit`
   - before: `"∅"`
   - after:  `"PT"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].indentStart.magnitude`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].indentStart.magnitude`
   - before: `"∅"`
   - after:  `216`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].indentStart.unit`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].indentStart.unit`
   - before: `"∅"`
   - after:  `"PT"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].startNumber`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].startNumber`
   - before: `"∅"`
   - after:  `1`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].textStyle.underline`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].textStyle.underline`
   - before: `"∅"`
   - after:  `false`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].bulletAlignment`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].bulletAlignment`
   - before: `"∅"`
   - after:  `"START"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].glyphFormat`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].glyphFormat`
   - before: `"∅"`
   - after:  `"%6"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].glyphSymbol`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].glyphSymbol`
   - before: `"∅"`
   - after:  `"●"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].indentFirstLine.magnitude`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].indentFirstLine.magnitude`
   - before: `"∅"`
   - after:  `234`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].indentFirstLine.unit`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].indentFirstLine.unit`
   - before: `"∅"`
   - after:  `"PT"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].indentStart.magnitude`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].indentStart.magnitude`
   - before: `"∅"`
   - after:  `252`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].indentStart.unit`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].indentStart.unit`
   - before: `"∅"`
   - after:  `"PT"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].startNumber`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].startNumber`
   - before: `"∅"`
   - after:  `1`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].textStyle.underline`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].textStyle.underline`
   - before: `"∅"`
   - after:  `false`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].bulletAlignment`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].bulletAlignment`
   - before: `"∅"`
   - after:  `"START"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].glyphFormat`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].glyphFormat`
   - before: `"∅"`
   - after:  `"%7"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].glyphSymbol`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].glyphSymbol`
   - before: `"∅"`
   - after:  `"○"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].indentFirstLine.magnitude`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].indentFirstLine.magnitude`
   - before: `"∅"`
   - after:  `270`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].indentFirstLine.unit`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].indentFirstLine.unit`
   - before: `"∅"`
   - after:  `"PT"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].indentStart.magnitude`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].indentStart.magnitude`
   - before: `"∅"`
   - after:  `288`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].indentStart.unit`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].indentStart.unit`
   - before: `"∅"`
   - after:  `"PT"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].startNumber`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].startNumber`
   - before: `"∅"`
   - after:  `1`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].textStyle.underline`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].textStyle.underline`
   - before: `"∅"`
   - after:  `false`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].bulletAlignment`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].bulletAlignment`
   - before: `"∅"`
   - after:  `"START"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].glyphFormat`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].glyphFormat`
   - before: `"∅"`
   - after:  `"%8"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].glyphSymbol`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].glyphSymbol`
   - before: `"∅"`
   - after:  `"■"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].indentFirstLine.magnitude`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].indentFirstLine.magnitude`
   - before: `"∅"`
   - after:  `306`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].indentFirstLine.unit`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].indentFirstLine.unit`
   - before: `"∅"`
   - after:  `"PT"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].indentStart.magnitude`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].indentStart.magnitude`
   - before: `"∅"`
   - after:  `324`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].indentStart.unit`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].indentStart.unit`
   - before: `"∅"`
   - after:  `"PT"`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].startNumber`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].startNumber`
   - before: `"∅"`
   - after:  `1`
-- **unexpected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].textStyle.underline`
+- **expected** `tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].textStyle.underline`
   - before: `"∅"`
   - after:  `false`
 - **expected** `tab[Tab 1]/para[30:-⇥Staging shares the prod clus].paragraphStyle.indentFirstLine.magnitude`

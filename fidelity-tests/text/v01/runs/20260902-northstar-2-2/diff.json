@@ -6,6 +6,7 @@
    "before": "JUSTIFIED",
    "after": "∅",
    "kind": "para",
+   "after_para_text": "Northstar 2.2 is the biggest release since 1.0: release-notes-2.1.md (more soon...) as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -15,6 +16,8 @@
    "kind": "text",
    "before": "1",
    "after": "2",
+   "after_context": "Northstar 2.2 is the bigg",
+   "after_para_text": "Northstar 2.2 is the biggest release since 1.0: release-notes-2.1.md (more soon...) as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -64,6 +67,8 @@
     }
    },
    "kind": "style",
+   "after_para_text": "Northstar 2.2 is the biggest release since 1.0: release-notes-2.1.md (more soon...) as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)",
+   "snippet": "release-notes-2.1.md",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -86,6 +91,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "Northstar 2.2 is the biggest release since 1.0: release-notes-2.1.md (more soon...) as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)",
+   "snippet": " (more soon...) ",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -108,6 +115,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "Northstar 2.2 is the biggest release since 1.0: release-notes-2.1.md (more soon...) as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)",
+   "snippet": "as Marta put it in #launch, “we finally ",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -126,6 +135,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "Northstar 2.2 is the biggest release since 1.0: release-notes-2.1.md (more soon...) as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)",
+   "snippet": "and the landing-page draft says Faster s",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -135,6 +146,7 @@
    "before": 150,
    "after": "∅",
    "kind": "para",
+   "after_para_text": "The formula card still reads H2O and x2, the old deck typed its footnote marker as [1] instead of using a real footnote⟨footnoteReference⟩, and the style rule is Northstar 2.2 (non-breaking space) in headlines but Northstar 2.2 (plain space) in body copy.",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -144,6 +156,8 @@
    "kind": "text",
    "before": "1",
    "after": "2",
+   "after_context": "Northstar 2.2 (non-breaki",
+   "after_para_text": "The formula card still reads H2O and x2, the old deck typed its footnote marker as [1] instead of using a real footnote⟨footnoteReference⟩, and the style rule is Northstar 2.2 (non-breaking space) in headlines but Northstar 2.2 (plain space) in body copy.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -153,6 +167,8 @@
    "kind": "text",
    "before": "1",
    "after": "2",
+   "after_context": "Northstar 2.2 (plain spac",
+   "after_para_text": "The formula card still reads H2O and x2, the old deck typed its footnote marker as [1] instead of using a real footnote⟨footnoteReference⟩, and the style rule is Northstar 2.2 (non-breaking space) in headlines but Northstar 2.2 (plain space) in body copy.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false

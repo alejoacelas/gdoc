@@ -5,7 +5,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].bulletAlignment",
    "before": "∅",
    "after": "START",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -13,7 +14,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].glyphFormat",
    "before": "∅",
    "after": "%0",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -21,7 +23,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].glyphSymbol",
    "before": "∅",
    "after": "●",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -29,7 +32,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].indentFirstLine.magnitude",
    "before": "∅",
    "after": 18,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -37,7 +41,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].indentFirstLine.unit",
    "before": "∅",
    "after": "PT",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -45,7 +50,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].indentStart.magnitude",
    "before": "∅",
    "after": 36,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -53,7 +59,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].indentStart.unit",
    "before": "∅",
    "after": "PT",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -61,7 +68,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].startNumber",
    "before": "∅",
    "after": 1,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -69,7 +77,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].textStyle.underline",
    "before": "∅",
    "after": false,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -77,7 +86,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].bulletAlignment",
    "before": "∅",
    "after": "START",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -85,7 +95,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].glyphFormat",
    "before": "∅",
    "after": "%1",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -93,7 +104,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].glyphSymbol",
    "before": "∅",
    "after": "○",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -101,7 +113,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].indentFirstLine.magnitude",
    "before": "∅",
    "after": 54,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -109,7 +122,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].indentFirstLine.unit",
    "before": "∅",
    "after": "PT",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -117,7 +131,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].indentStart.magnitude",
    "before": "∅",
    "after": 72,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -125,7 +140,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].indentStart.unit",
    "before": "∅",
    "after": "PT",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -133,7 +149,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].startNumber",
    "before": "∅",
    "after": 1,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -141,7 +158,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].textStyle.underline",
    "before": "∅",
    "after": false,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -149,7 +167,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].bulletAlignment",
    "before": "∅",
    "after": "START",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -157,7 +176,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].glyphFormat",
    "before": "∅",
    "after": "%2",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -165,7 +185,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].glyphSymbol",
    "before": "∅",
    "after": "■",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -173,7 +194,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].indentFirstLine.magnitude",
    "before": "∅",
    "after": 90,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -181,7 +203,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].indentFirstLine.unit",
    "before": "∅",
    "after": "PT",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -189,7 +212,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].indentStart.magnitude",
    "before": "∅",
    "after": 108,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -197,7 +221,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].indentStart.unit",
    "before": "∅",
    "after": "PT",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -205,7 +230,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].startNumber",
    "before": "∅",
    "after": 1,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -213,7 +239,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].textStyle.underline",
    "before": "∅",
    "after": false,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -221,7 +248,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].bulletAlignment",
    "before": "∅",
    "after": "START",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -229,7 +257,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].glyphFormat",
    "before": "∅",
    "after": "%3",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -237,7 +266,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].glyphSymbol",
    "before": "∅",
    "after": "●",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -245,7 +275,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].indentFirstLine.magnitude",
    "before": "∅",
    "after": 126,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -253,7 +284,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].indentFirstLine.unit",
    "before": "∅",
    "after": "PT",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -261,7 +293,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].indentStart.magnitude",
    "before": "∅",
    "after": 144,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -269,7 +302,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].indentStart.unit",
    "before": "∅",
    "after": "PT",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -277,7 +311,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].startNumber",
    "before": "∅",
    "after": 1,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -285,7 +320,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].textStyle.underline",
    "before": "∅",
    "after": false,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -293,7 +329,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].bulletAlignment",
    "before": "∅",
    "after": "START",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -301,7 +338,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].glyphFormat",
    "before": "∅",
    "after": "%4",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -309,7 +347,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].glyphSymbol",
    "before": "∅",
    "after": "○",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -317,7 +356,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].indentFirstLine.magnitude",
    "before": "∅",
    "after": 162,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -325,7 +365,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].indentFirstLine.unit",
    "before": "∅",
    "after": "PT",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -333,7 +374,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].indentStart.magnitude",
    "before": "∅",
    "after": 180,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -341,7 +383,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].indentStart.unit",
    "before": "∅",
    "after": "PT",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -349,7 +392,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].startNumber",
    "before": "∅",
    "after": 1,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -357,7 +401,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].textStyle.underline",
    "before": "∅",
    "after": false,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -365,7 +410,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].bulletAlignment",
    "before": "∅",
    "after": "START",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -373,7 +419,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].glyphFormat",
    "before": "∅",
    "after": "%5",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -381,7 +428,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].glyphSymbol",
    "before": "∅",
    "after": "■",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -389,7 +437,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].indentFirstLine.magnitude",
    "before": "∅",
    "after": 198,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -397,7 +446,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].indentFirstLine.unit",
    "before": "∅",
    "after": "PT",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -405,7 +455,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].indentStart.magnitude",
    "before": "∅",
    "after": 216,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -413,7 +464,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].indentStart.unit",
    "before": "∅",
    "after": "PT",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -421,7 +473,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].startNumber",
    "before": "∅",
    "after": 1,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -429,7 +482,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].textStyle.underline",
    "before": "∅",
    "after": false,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -437,7 +491,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].bulletAlignment",
    "before": "∅",
    "after": "START",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -445,7 +500,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].glyphFormat",
    "before": "∅",
    "after": "%6",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -453,7 +509,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].glyphSymbol",
    "before": "∅",
    "after": "●",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -461,7 +518,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].indentFirstLine.magnitude",
    "before": "∅",
    "after": 234,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -469,7 +527,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].indentFirstLine.unit",
    "before": "∅",
    "after": "PT",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -477,7 +536,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].indentStart.magnitude",
    "before": "∅",
    "after": 252,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -485,7 +545,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].indentStart.unit",
    "before": "∅",
    "after": "PT",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -493,7 +554,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].startNumber",
    "before": "∅",
    "after": 1,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -501,7 +563,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].textStyle.underline",
    "before": "∅",
    "after": false,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -509,7 +572,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].bulletAlignment",
    "before": "∅",
    "after": "START",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -517,7 +581,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].glyphFormat",
    "before": "∅",
    "after": "%7",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -525,7 +590,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].glyphSymbol",
    "before": "∅",
    "after": "○",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -533,7 +599,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].indentFirstLine.magnitude",
    "before": "∅",
    "after": 270,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -541,7 +608,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].indentFirstLine.unit",
    "before": "∅",
    "after": "PT",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -549,7 +617,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].indentStart.magnitude",
    "before": "∅",
    "after": 288,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -557,7 +626,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].indentStart.unit",
    "before": "∅",
    "after": "PT",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -565,7 +635,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].startNumber",
    "before": "∅",
    "after": 1,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -573,7 +644,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].textStyle.underline",
    "before": "∅",
    "after": false,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -581,7 +653,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].bulletAlignment",
    "before": "∅",
    "after": "START",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -589,7 +662,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].glyphFormat",
    "before": "∅",
    "after": "%8",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -597,7 +671,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].glyphSymbol",
    "before": "∅",
    "after": "■",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -605,7 +680,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].indentFirstLine.magnitude",
    "before": "∅",
    "after": 306,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -613,7 +689,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].indentFirstLine.unit",
    "before": "∅",
    "after": "PT",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -621,7 +698,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].indentStart.magnitude",
    "before": "∅",
    "after": 324,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -629,7 +707,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].indentStart.unit",
    "before": "∅",
    "after": "PT",
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -637,7 +716,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].startNumber",
    "before": "∅",
    "after": 1,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -645,7 +725,8 @@
    "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].textStyle.underline",
    "before": "∅",
    "after": false,
-   "class": "unexpected",
+   "class": "expected",
+   "note": "list object of the target's new bullet",
    "visible": true,
    "needs_visual_review": false
   },
@@ -714,10 +795,10 @@
  "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -41,5 +41,4 @@\n     * Secrets live in Vault under secret/platform/prod, rotate the API keys there  \n-- Also a read replica in eu-west3, ask Priya before touching it\n-\n-  \\-\tStaging shares the prod cluster, namespace staging (yes, really)\n+- Also a read replica in eu-west3, ask Priya before touching it  \n+* Staging shares the prod cluster, namespace staging (yes, really)\n ",
  "needs_visual_review_reasons": [],
  "summary": {
-  "expected": 6,
+  "expected": 87,
   "allowed": 0,
-  "unexpected": 81,
-  "visible_unexpected": 81,
+  "unexpected": 0,
+  "visible_unexpected": 0,
   "invisible_unexpected": 0
  }
 }

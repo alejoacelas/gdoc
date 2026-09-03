@@ -6,6 +6,8 @@
    "kind": "text",
    "before": "ro",
    "after": "",
+   "after_context": "ack for the launch windo",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -15,6 +17,8 @@
    "kind": "text",
    "before": "lo",
    "after": "a",
+   "after_context": "ck for the launch window ",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -24,6 +28,8 @@
    "kind": "text",
    "before": "t",
    "after": "nch",
+   "after_context": " for the launch window of 1",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -33,6 +39,8 @@
    "kind": "text",
    "before": "ro",
    "after": "",
+   "after_context": "t touch the launch windo",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -57,6 +65,8 @@
     }
    },
    "kind": "style",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+   "snippet": "l",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -66,6 +76,8 @@
    "kind": "text",
    "before": "lo",
    "after": "a",
+   "after_context": " touch the launch window ",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -90,6 +102,8 @@
     }
    },
    "kind": "style",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+   "snippet": "u",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -99,6 +113,8 @@
    "kind": "text",
    "before": "t",
    "after": "nch",
+   "after_context": "ouch the launch window with",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -123,6 +139,8 @@
     }
    },
    "kind": "style",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+   "snippet": " window",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -132,6 +150,8 @@
    "kind": "text",
    "before": "ro",
    "after": "",
+   "after_context": "st”, so the launch windo",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -141,6 +161,8 @@
    "kind": "text",
    "before": "lo",
    "after": "a",
+   "after_context": "t”, so the launch window ",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -150,6 +172,8 @@
    "kind": "text",
    "before": "t",
    "after": "nch",
+   "after_context": ", so the launch window is f",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false

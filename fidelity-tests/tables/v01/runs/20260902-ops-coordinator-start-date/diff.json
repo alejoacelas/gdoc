@@ -6,6 +6,8 @@
    "kind": "text",
    "before": " (tbc)",
    "after": "",
+   "after_context": "más; start ⟨dateElement⟩",
+   "after_para_text": "Tomás; start ⟨dateElement⟩",
    "class": "expected",
    "visible": true,
    "needs_visual_review": true

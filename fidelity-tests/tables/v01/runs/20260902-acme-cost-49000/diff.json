@@ -6,6 +6,7 @@
    "before": false,
    "after": "∅",
    "kind": "para",
+   "after_para_text": "49,000",
    "note": "pagination hint (avoidWidowAndOrphan/keepLinesTogether/keepWithNext); allowed by default, see CORRECTIONS.md",
    "class": "allowed",
    "visible": false,
@@ -16,6 +17,8 @@
    "kind": "text",
    "before": "8",
    "after": "9",
+   "after_context": "49,000",
+   "after_para_text": "49,000",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -25,6 +28,8 @@
    "kind": "text",
    "before": "5",
    "after": "0",
+   "after_context": "49,000",
+   "after_para_text": "49,000",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false

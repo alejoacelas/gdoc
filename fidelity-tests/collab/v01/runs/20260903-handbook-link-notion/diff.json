@@ -38,6 +38,8 @@
     }
    },
    "kind": "style",
+   "after_para_text": "Claims go through the expenses portal (see the finance handbook) rather than the old form.",
+   "snippet": "finance handbook",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false

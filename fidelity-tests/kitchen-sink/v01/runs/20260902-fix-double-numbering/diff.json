@@ -6,6 +6,8 @@
    "kind": "text",
    "before": "2) ",
    "after": "",
+   "after_context": "do we keep t",
+   "after_para_text": "do we keep the legacy read replica?   ",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -15,6 +17,8 @@
    "kind": "text",
    "before": "3) ",
    "after": "",
+   "after_context": "¿quién habla",
+   "after_para_text": "¿quién habla con Finance? © 2026",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false

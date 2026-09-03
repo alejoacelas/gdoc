@@ -6,6 +6,7 @@
    "before": "JUSTIFIED",
    "after": "∅",
    "kind": "para",
+   "after_para_text": "Northstar 2.1 is the biggest release since 1.0: release-notes-2.1.md (more soon...) as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday afternoon” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -55,6 +56,8 @@
     }
    },
    "kind": "style",
+   "after_para_text": "Northstar 2.1 is the biggest release since 1.0: release-notes-2.1.md (more soon...) as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday afternoon” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)",
+   "snippet": "release-notes-2.1.md",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -77,6 +80,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "Northstar 2.1 is the biggest release since 1.0: release-notes-2.1.md (more soon...) as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday afternoon” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)",
+   "snippet": " (more soon...) ",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -99,6 +104,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "Northstar 2.1 is the biggest release since 1.0: release-notes-2.1.md (more soon...) as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday afternoon” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)",
+   "snippet": "as Marta put it in #launch, “we finally ",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -108,6 +115,8 @@
    "kind": "text",
    "before": "",
    "after": " afternoon",
+   "after_context": "ne’s Tuesday afternoon” and the la",
+   "after_para_text": "Northstar 2.1 is the biggest release since 1.0: release-notes-2.1.md (more soon...) as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday afternoon” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -130,6 +139,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "Northstar 2.1 is the biggest release since 1.0: release-notes-2.1.md (more soon...) as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday afternoon” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)",
+   "snippet": "” ",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -148,6 +159,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "Northstar 2.1 is the biggest release since 1.0: release-notes-2.1.md (more soon...) as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday afternoon” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)",
+   "snippet": "and the landing-page draft says Faster s",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false

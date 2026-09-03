@@ -6,6 +6,7 @@
    "before": "∅",
    "after": "Get added to the on-call rota (ask Marco)⏎",
    "kind": "text",
+   "after_para_text": "Get added to the on-call rota (ask Marco)",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false

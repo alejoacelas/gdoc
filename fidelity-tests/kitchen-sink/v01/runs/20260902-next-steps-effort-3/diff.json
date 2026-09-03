@@ -12,6 +12,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "Ship the v2 migration script v3 script by Friday[1]. Estimated effort: 4 dev-days\t(was 5)",
+   "snippet": "v2 migration script",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -34,6 +36,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "Ship the v2 migration script v3 script by Friday[1]. Estimated effort: 4 dev-days\t(was 5)",
+   "snippet": "Estimated effort",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -43,6 +47,8 @@
    "kind": "text",
    "before": "3",
    "after": "4",
+   "after_context": "ted effort: 4 dev-days\t(w",
+   "after_para_text": "Ship the v2 migration script v3 script by Friday[1]. Estimated effort: 4 dev-days\t(was 5)",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false

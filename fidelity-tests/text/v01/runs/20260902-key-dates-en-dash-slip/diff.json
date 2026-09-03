@@ -6,6 +6,8 @@
    "kind": "text",
    "before": "4",
    "after": "5",
+   "after_context": "ndow opens 15–19 Sept 202",
+   "after_para_text": "The launch window opens 15–19 Sept 2026, not 14-18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"beta\"  badge hidden in the same release.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -15,6 +17,8 @@
    "kind": "text",
    "before": "8",
    "after": "9",
+   "after_context": "w opens 15–19 Sept 2026, ",
+   "after_para_text": "The launch window opens 15–19 Sept 2026, not 14-18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"beta\"  badge hidden in the same release.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false

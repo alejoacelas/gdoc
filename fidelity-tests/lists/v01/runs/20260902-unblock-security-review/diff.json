@@ -6,6 +6,7 @@
    "before": "∅",
    "after": {},
    "kind": "para",
+   "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -15,6 +16,7 @@
    "before": 1,
    "after": "∅",
    "kind": "para",
+   "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -24,6 +26,7 @@
    "before": 1,
    "after": "∅",
    "kind": "para",
+   "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -33,6 +36,8 @@
    "kind": "text",
    "before": "BL",
    "after": "D",
+   "after_context": "DONE: securit",
+   "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -62,6 +67,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
+   "snippet": "O",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -71,6 +78,8 @@
    "kind": "text",
    "before": "CK",
    "after": "N",
+   "after_context": "DONE: security ",
+   "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -100,6 +109,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
+   "snippet": "E",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -109,6 +120,8 @@
    "kind": "text",
    "before": "D",
    "after": "",
+   "after_context": "DONE: security r",
+   "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -138,6 +151,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
+   "snippet": ":",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -147,6 +162,8 @@
    "kind": "text",
    "before": " waiting on the",
    "after": "",
+   "after_context": "DONE: security re",
+   "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -169,6 +186,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
+   "snippet": " security review ",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -178,6 +197,8 @@
    "kind": "text",
    "before": "",
    "after": "signed off ",
+   "after_context": "rity review signed off (Sam, 2 Sep)",
+   "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -200,6 +221,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
+   "snippet": "(Sam, ",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -209,6 +232,8 @@
    "kind": "text",
    "before": "again",
    "after": "2 Sep",
+   "after_context": "d off (Sam, 2 Sep)",
+   "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -231,6 +256,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
+   "snippet": ")",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false

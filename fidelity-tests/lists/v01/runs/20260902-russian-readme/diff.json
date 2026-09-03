@@ -6,6 +6,8 @@
    "kind": "text",
    "before": "Cyr",
    "after": "Russ",
+   "after_context": "even if the Russian README i",
+   "after_para_text": "We ship v2.14 on 1912 Sep even if the Russian README is not done",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -15,6 +17,8 @@
    "kind": "text",
    "before": "llic",
    "after": "an",
+   "after_context": "if the Russian README is n",
+   "after_para_text": "We ship v2.14 on 1912 Sep even if the Russian README is not done",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false

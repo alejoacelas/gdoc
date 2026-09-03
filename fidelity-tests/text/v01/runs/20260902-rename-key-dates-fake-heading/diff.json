@@ -18,6 +18,8 @@
     }
    },
    "kind": "style",
+   "after_para_text": "Key dates and labels",
+   "snippet": "Key dates",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -27,6 +29,8 @@
    "kind": "text",
    "before": "",
    "after": " and labels",
+   "after_context": "Key dates and labels",
+   "after_para_text": "Key dates and labels",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -48,6 +52,8 @@
     }
    },
    "kind": "style",
+   "after_para_text": "Key dates and labels",
+   "snippet": "",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false

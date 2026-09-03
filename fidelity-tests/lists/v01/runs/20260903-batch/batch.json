@@ -1,0 +1,1563 @@
+{
+ "fixture": "lists/v01",
+ "batch": "20260903-batch",
+ "copy_id": "1WKNjCfOeRg68xRNROUU0YCKane3-gCfsppCcnqhNI3E",
+ "fixture_doc": "https://docs.google.com/document/d/1dmd4Qf3PyZ48fJpOtzI7_2OcCSS3Iy7Ea05l4r7rtQ8/edit",
+ "review_copy_id": null,
+ "runs": [
+  {
+   "run": "20260903-checklist-insert-after-checked-runbook",
+   "slug": "checklist-insert-after-checked-runbook",
+   "request": "In the onboarding checklist, add \"Get added to the on-call rota (ask Marco)\" as a new checkbox right after the runbook one.",
+   "expected": "The checklist (listId `kix.i11mp0ghmsa2`, all items nesting level 0) has five items in this order: `Read the runbook 📘 (the one in Notion, not the wiki)` (still checked), `Get added to the on-call rota (ask Marco)` (new, unchecked), `Pair with your buddy for a week` (unchecked), an empty item (unchecked, still present), `Ship a one-line fix to production` (still checked). The new paragraph is NORMAL_TEXT with default text style (no strikethrough, no bold). Because the Docs API does not expose checkbox state, the judge checks it via `gdoc cat`: the export must read `- [x] ~~Read the runbook 📘 (the one in Notion, not the wiki)~~`, `- [ ] Get added to the on-call rota (ask Marco)`, `- [ ] Pair with your buddy for a week`, `- [ ]` (empty), `- [x] ~~Ship a one-line fix to production~~`. The numbered list above it (`kix.b32yuebasfdg`, items 1–3) and the plain paragraph `a. Ask Sam for the VPN config…` below it are untouched. Nothing else changes.",
+   "target": "Tab `Tab 1`; new paragraph `Get added to the on-call rota`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 3,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[new@19:Get added to the on-call rota ].text",
+     "before": "∅",
+     "after": "Get added to the on-call rota (ask Marco)⏎",
+     "kind": "text",
+     "after_para_text": "Get added to the on-call rota (ask Marco)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[new@19:Get added to the on-call rota ].bullet",
+     "before": "∅",
+     "after": {
+      "listId": "kix.i11mp0ghmsa2",
+      "textStyle": {}
+     },
+     "kind": "para",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[new@19:Get added to the on-call rota ].paragraphStyle",
+     "before": "∅",
+     "after": {
+      "namedStyleType": "NORMAL_TEXT",
+      "indentFirstLine": {
+       "magnitude": 18,
+       "unit": "PT"
+      },
+      "indentStart": {
+       "magnitude": 36,
+       "unit": "PT"
+      }
+     },
+     "kind": "para",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-environments-nest-stray-lines-under-production",
+   "slug": "environments-nest-stray-lines-under-production",
+   "request": "Priya's Environments section is a mess — the read replica line and the staging line are meant to be sub-bullets under Production, same level as the GKE cluster one. Can you tidy that up?",
+   "expected": "All six paragraphs under `Environments (Priya, pasted from Slack)` belong to list `kix.hh1ksamx4njp`, in this order and at these nesting levels: `Production` (0, ●), `GKE cluster prod-eu-west1 (the old one, not prod-eu-west1-b)` (1, ○), `Node pool n2-standard-4, autoscaling 3 to 12` (2, ■), `Secrets live in Vault under secret/platform/prod, rotate the API keys there` (2, ■), `Also a read replica in eu-west3, ask Priya before touching it` (1, ○), `Staging shares the prod cluster, namespace staging (yes, really)` (1, ○). The leading `-` and tab are removed from the staging paragraph; its remaining text is unchanged. Level-1 items have indentStart 72pt. No paragraph in the document uses list `kix.73yxf78mr7x1` any more. Text and style of the first four items are unchanged; the heading `Action items from the 28 Aug sync` and everything after it are unchanged. Nothing else changes.",
+   "target": "Tab `Tab 1`; paragraph beginning `Also a read replica in eu-west3`; paragraph beginning `-⇥Staging shares`.",
+   "allowed": "list `kix.73yxf78mr7x1` may disappear from the lists map; automatic list renumbering; revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 0,
+    "allowed": 9,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/lists.kix.73yxf78mr7x1.listProperties.nestingLevels[0].glyphSymbol",
+     "before": "-",
+     "after": "●",
+     "class": "allowed",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.73yxf78mr7x1.listProperties.nestingLevels[1].glyphSymbol",
+     "before": "-",
+     "after": "○",
+     "class": "allowed",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.73yxf78mr7x1.listProperties.nestingLevels[2].glyphSymbol",
+     "before": "-",
+     "after": "■",
+     "class": "allowed",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.73yxf78mr7x1.listProperties.nestingLevels[3].glyphSymbol",
+     "before": "-",
+     "after": "●",
+     "class": "allowed",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.73yxf78mr7x1.listProperties.nestingLevels[4].glyphSymbol",
+     "before": "-",
+     "after": "○",
+     "class": "allowed",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.73yxf78mr7x1.listProperties.nestingLevels[5].glyphSymbol",
+     "before": "-",
+     "after": "■",
+     "class": "allowed",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.73yxf78mr7x1.listProperties.nestingLevels[6].glyphSymbol",
+     "before": "-",
+     "after": "●",
+     "class": "allowed",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.73yxf78mr7x1.listProperties.nestingLevels[7].glyphSymbol",
+     "before": "-",
+     "after": "○",
+     "class": "allowed",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.73yxf78mr7x1.listProperties.nestingLevels[8].glyphSymbol",
+     "before": "-",
+     "after": "■",
+     "class": "allowed",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-insert-migration-step",
+   "slug": "insert-migration-step",
+   "request": "Add a step to the release plan between \"Deploy to staging\" and \"Smoke test the payment flow\": \"Run the DB migrations on staging (Priya)\". It should become step 5 and the ones after it shift down.",
+   "expected": "A new item `Run the DB migrations on staging (Priya)` in list `kix.ehmbnlna9fov`, nesting 0, default text style, directly after `Deploy to staging⇥(infra, not us)`; the following items render 6. and 7. `Deploy to staging` keeps its tab; `Ship to 5% of users` keeps its two trailing spaces; list C still restarts at 1. Nothing else changes.",
+   "target": "tab `Tab 1`, new paragraph `Run the DB migrations`.",
+   "allowed": "automatic list renumbering; revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 3,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[new@8:Run the DB migrations on stagi].text",
+     "before": "∅",
+     "after": "Run the DB migrations on staging (Priya)⏎",
+     "kind": "text",
+     "after_para_text": "Run the DB migrations on staging (Priya)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[new@8:Run the DB migrations on stagi].bullet",
+     "before": "∅",
+     "after": {
+      "listId": "kix.ehmbnlna9fov",
+      "textStyle": {}
+     },
+     "kind": "para",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[new@8:Run the DB migrations on stagi].paragraphStyle",
+     "before": "∅",
+     "after": {
+      "namedStyleType": "NORMAL_TEXT",
+      "indentFirstLine": {
+       "magnitude": 18,
+       "unit": "PT"
+      },
+      "indentStart": {
+       "magnitude": 36,
+       "unit": "PT"
+      }
+     },
+     "kind": "para",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-key-rotation-owner-to-priya",
+   "slug": "key-rotation-owner-to-priya",
+   "request": "Marco's off the key rotation, Priya's picking it up — can you update the action items?",
+   "expected": "In the Action items list (`kix.w0jv2pkvzvcv`, nesting level 0) the paragraph `Marco to rotate the API keys before Friday` now reads `Priya to rotate the API keys before Friday`. The run `rotate the API keys` keeps its hyperlink to `https://example.com/rotate-keys`, underline and link colour; `Priya to ` and ` before Friday` are default style. Comment `#AAACGeAxyJI` (`Dmitry is out until 15 Sep…`) is still open, unresolved and anchored to the document (anchor text now spans `спросить Дмитрия` through `Priya to`); it is not orphaned or deleted. Every other occurrence of `Marco` is unchanged: `Marco started it in May` (intro), `ping @marco` (Priya's note), `Marco pasted this bit` (Post-launch line), `Owner:\\tMarco ` (action item, with its tab and two trailing spaces). Every other occurrence of `rotate the API keys` is unchanged: intro, bold run in release step 3, `Secrets live in Vault…` item, glossary entry. The pending suggestion `suggest.j4mbynnaesii` (`19`/`12` in `We ship v2.14 on…`) remains pending. Nothing else changes.",
+   "target": "Tab `Tab 1`; paragraph beginning `Marco to rotate the API keys`; comment.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 2,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[38:Marco to rotate the API keys b].text",
+     "kind": "text",
+     "before": "M",
+     "after": "Priy",
+     "after_context": "Priya to rotate ",
+     "after_para_text": "Priya to rotate the API keys before Friday",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[38:Marco to rotate the API keys b].text",
+     "kind": "text",
+     "before": "rco",
+     "after": "",
+     "after_context": "Priya to rotate t",
+     "after_para_text": "Priya to rotate the API keys before Friday",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-kubectl-namespace",
+   "slug": "kubectl-namespace",
+   "request": "The kubectl line in the action items should target the staging-eu namespace, not staging.",
+   "expected": "The item reads `Kubectl rollout restart deploy/api -n staging-eu`; the Courier New 10pt run on `Kubectl rollout restart deploy/api` is intact and ` -n staging-eu` is default Arial 11. Every other `staging` in the document (`Deploy to staging`, `if staging is red`, `namespace staging`) is unchanged. Nothing else changes.",
+   "target": "tab `Tab 1`, paragraph beginning `Kubectl rollout`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 1,
+    "allowed": 0,
+    "unexpected": 1,
+    "visible_unexpected": 1,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[41:Kubectl rollout restart deploy].style@\"Kubectl rollout restart deploy/api\"",
+     "before": {
+      "textStyle": {
+       "fontSize": {
+        "magnitude": 10,
+        "unit": "PT"
+       },
+       "weightedFontFamily": {
+        "fontFamily": "Courier New",
+        "weight": 400
+       }
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "Kubectl rollout restart deploy/api -n staging-eu",
+     "snippet": "Kubectl rollout restart deploy/api",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[41:Kubectl rollout restart deploy].text",
+     "kind": "text",
+     "before": "",
+     "after": "-eu",
+     "after_context": "i -n staging-eu",
+     "after_para_text": "Kubectl rollout restart deploy/api -n staging-eu",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-legal-approval-date-georgia-run",
+   "slug": "legal-approval-date-georgia-run",
+   "request": "Legal actually approved on 21 Aug, not 14 — fix the action items.",
+   "expected": "The paragraph `Approved by Legal on 14 Aug, see the thread` reads `Approved by Legal on 21 Aug, see the thread`. Its two runs keep their styles: `Approved by Legal on ` in default style (Arial 11pt), `21 Aug, see the thread` in Georgia 13pt. It stays in list `kix.w0jv2pkvzvcv` at nesting level 0, between `Kubectl rollout restart deploy/api -n staging` and `Owner:\\tMarco `. The neighbours are unchanged: the Courier New 10pt run `Kubectl rollout restart deploy/api` with a default-style ` -n staging` tail; the Georgia 13pt run `Owne` followed by default-style `r:\\tMarco ` (tab and two trailing spaces preserved). The non-list paragraph `Actually the retro room is booked…` (indentStart 36pt, no bullet) stays where it is inside the list. The mid-item line break (`\\x0b`) in `Contact for infra questions:` survives. `28 Aug` in the intro and in the heading is unchanged. The pending suggestion `suggest.j4mbynnaesii` remains pending and comment `#AAACGeAxyJI` remains anchored. Nothing else changes.",
+   "target": "Tab `Tab 1`; paragraph beginning `Approved by Legal on`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 2,
+    "allowed": 0,
+    "unexpected": 2,
+    "visible_unexpected": 2,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[42:Approved by Legal on 14 Aug, s].text",
+     "kind": "text",
+     "before": "",
+     "after": "2",
+     "after_context": "by Legal on 21 Aug, see t",
+     "after_para_text": "Approved by Legal on 21 Aug, see the thread",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[42:Approved by Legal on 14 Aug, s].style@\"1\"",
+     "before": {
+      "textStyle": {
+       "fontSize": {
+        "magnitude": 13,
+        "unit": "PT"
+       },
+       "weightedFontFamily": {
+        "fontFamily": "Georgia",
+        "weight": 400
+       }
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "Approved by Legal on 21 Aug, see the thread",
+     "snippet": "1",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[42:Approved by Legal on 14 Aug, s].text",
+     "kind": "text",
+     "before": "4",
+     "after": "",
+     "after_context": " Legal on 21 Aug, see th",
+     "after_para_text": "Approved by Legal on 21 Aug, see the thread",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[42:Approved by Legal on 14 Aug, s].style@\" Aug, see the thread⏎\"",
+     "before": {
+      "textStyle": {
+       "fontSize": {
+        "magnitude": 13,
+        "unit": "PT"
+       },
+       "weightedFontFamily": {
+        "fontFamily": "Georgia",
+        "weight": 400
+       }
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "Approved by Legal on 21 Aug, see the thread",
+     "snippet": " Aug, see the thread",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-relink-rotate-keys",
+   "slug": "relink-rotate-keys",
+   "request": "Marco's action item links to the old rotate-keys page. Point it at https://example.com/runbooks/rotate-keys instead.",
+   "expected": "In `Marco to rotate the API keys before Friday` the link on `rotate the API keys` has url `https://example.com/runbooks/rotate-keys`; the text is unchanged. The four other occurrences of `rotate the API keys` / `Rotate the API keys` are unchanged (plain, bold, plain, plain). The open comment anchored on `спросить Дмитрия` + `Marco to` is still there with the same quoted text. Nothing else changes.",
+   "target": "tab `Tab 1`, paragraph beginning `Marco to rotate`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 1,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[38:Marco to rotate the API keys b].style@\"rotate the API keys\"",
+     "before": {
+      "textStyle": {
+       "foregroundColor": {
+        "color": {
+         "rgbColor": {
+          "blue": 0.8,
+          "green": 0.33333334,
+          "red": 0.06666667
+         }
+        }
+       },
+       "link": {
+        "url": "https://example.com/rotate-keys"
+       },
+       "underline": true
+      }
+     },
+     "after": {
+      "textStyle": {
+       "foregroundColor": {
+        "color": {
+         "rgbColor": {
+          "blue": 0.8,
+          "green": 0.33333334,
+          "red": 0.06666667
+         }
+        }
+       },
+       "link": {
+        "url": "https://example.com/runbooks/rotate-keys"
+       },
+       "underline": true
+      }
+     },
+     "kind": "style",
+     "after_para_text": "Marco to rotate the API keys before Friday",
+     "snippet": "rotate the API keys",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-russian-readme",
+   "slug": "russian-readme",
+   "request": "In the action items, the ship-date line says \"Cyrillic README\" — it should say \"Russian README\".",
+   "expected": "The item reads `We ship v2.14 on 12 Sep even if the Russian README is not done` with the pending suggestion replacing `12` with `19` still pending (not accepted, not rejected; `suggestedInsertionIds`/`suggestedDeletionIds` still present). Item still in `kix.w0jv2pkvzvcv`. Nothing else changes.",
+   "target": "tab `Tab 1`, paragraph beginning `We ship v2.14`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 2,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[33:We ship v2.14 on 1912 Sep even].text",
+     "kind": "text",
+     "before": "Cyr",
+     "after": "Russ",
+     "after_context": "even if the Russian README i",
+     "after_para_text": "We ship v2.14 on 1912 Sep even if the Russian README is not done",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[33:We ship v2.14 on 1912 Sep even].text",
+     "kind": "text",
+     "before": "llic",
+     "after": "an",
+     "after_context": "if the Russian README is n",
+     "after_para_text": "We ship v2.14 on 1912 Sep even if the Russian README is not done",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-smoke-test-apple-pay",
+   "slug": "smoke-test-apple-pay",
+   "request": "In the release plan, step 5 should also mention Apple Pay: \"Smoke test the payment flow (card + SEPA + Apple Pay)\".",
+   "expected": "The item reads `Smoke test the payment flow (card + SEPA + Apple Pay)`, still in list `kix.ehmbnlna9fov` at nesting 0, so it still renders as `5.`. Step 4 keeps its tab character, step 6 its two trailing spaces, the `Note from Priya` paragraph stays a plain paragraph. Nothing else changes.",
+   "target": "tab `Tab 1`, paragraph beginning `Smoke test the payment flow`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 1,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[8:Smoke test the payment flow (c].text",
+     "kind": "text",
+     "before": "",
+     "after": " + Apple Pay",
+     "after_context": "(card + SEPA + Apple Pay)",
+     "after_para_text": "Smoke test the payment flow (card + SEPA + Apple Pay)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-staging-line-to-bullet",
+   "slug": "staging-line-to-bullet",
+   "request": "Under Environments, the \"Staging shares the prod cluster\" line was typed with a dash instead of being a real bullet. Make it a proper bullet at the same level as \"Also a read replica\", and drop the typed dash.",
+   "expected": "The paragraph reads `Staging shares the prod cluster, namespace staging (yes, really)` with no leading `-` or tab, and is a bullet in list `kix.73yxf78mr7x1` (the same list as `Also a read replica…`) at nesting 0. The ● ○ ■ items above are unchanged. Nothing else changes.",
+   "target": "tab `Tab 1`, paragraph beginning `-⇥Staging shares`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 6,
+    "allowed": 0,
+    "unexpected": 81,
+    "visible_unexpected": 81,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].bulletAlignment",
+     "before": "∅",
+     "after": "START",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].glyphFormat",
+     "before": "∅",
+     "after": "%0",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].glyphSymbol",
+     "before": "∅",
+     "after": "●",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].indentFirstLine.magnitude",
+     "before": "∅",
+     "after": 18,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].indentFirstLine.unit",
+     "before": "∅",
+     "after": "PT",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].indentStart.magnitude",
+     "before": "∅",
+     "after": 36,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].indentStart.unit",
+     "before": "∅",
+     "after": "PT",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].startNumber",
+     "before": "∅",
+     "after": 1,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[0].textStyle.underline",
+     "before": "∅",
+     "after": false,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].bulletAlignment",
+     "before": "∅",
+     "after": "START",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].glyphFormat",
+     "before": "∅",
+     "after": "%1",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].glyphSymbol",
+     "before": "∅",
+     "after": "○",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].indentFirstLine.magnitude",
+     "before": "∅",
+     "after": 54,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].indentFirstLine.unit",
+     "before": "∅",
+     "after": "PT",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].indentStart.magnitude",
+     "before": "∅",
+     "after": 72,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].indentStart.unit",
+     "before": "∅",
+     "after": "PT",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].startNumber",
+     "before": "∅",
+     "after": 1,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[1].textStyle.underline",
+     "before": "∅",
+     "after": false,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].bulletAlignment",
+     "before": "∅",
+     "after": "START",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].glyphFormat",
+     "before": "∅",
+     "after": "%2",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].glyphSymbol",
+     "before": "∅",
+     "after": "■",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].indentFirstLine.magnitude",
+     "before": "∅",
+     "after": 90,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].indentFirstLine.unit",
+     "before": "∅",
+     "after": "PT",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].indentStart.magnitude",
+     "before": "∅",
+     "after": 108,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].indentStart.unit",
+     "before": "∅",
+     "after": "PT",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].startNumber",
+     "before": "∅",
+     "after": 1,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[2].textStyle.underline",
+     "before": "∅",
+     "after": false,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].bulletAlignment",
+     "before": "∅",
+     "after": "START",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].glyphFormat",
+     "before": "∅",
+     "after": "%3",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].glyphSymbol",
+     "before": "∅",
+     "after": "●",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].indentFirstLine.magnitude",
+     "before": "∅",
+     "after": 126,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].indentFirstLine.unit",
+     "before": "∅",
+     "after": "PT",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].indentStart.magnitude",
+     "before": "∅",
+     "after": 144,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].indentStart.unit",
+     "before": "∅",
+     "after": "PT",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].startNumber",
+     "before": "∅",
+     "after": 1,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[3].textStyle.underline",
+     "before": "∅",
+     "after": false,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].bulletAlignment",
+     "before": "∅",
+     "after": "START",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].glyphFormat",
+     "before": "∅",
+     "after": "%4",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].glyphSymbol",
+     "before": "∅",
+     "after": "○",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].indentFirstLine.magnitude",
+     "before": "∅",
+     "after": 162,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].indentFirstLine.unit",
+     "before": "∅",
+     "after": "PT",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].indentStart.magnitude",
+     "before": "∅",
+     "after": 180,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].indentStart.unit",
+     "before": "∅",
+     "after": "PT",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].startNumber",
+     "before": "∅",
+     "after": 1,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[4].textStyle.underline",
+     "before": "∅",
+     "after": false,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].bulletAlignment",
+     "before": "∅",
+     "after": "START",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].glyphFormat",
+     "before": "∅",
+     "after": "%5",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].glyphSymbol",
+     "before": "∅",
+     "after": "■",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].indentFirstLine.magnitude",
+     "before": "∅",
+     "after": 198,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].indentFirstLine.unit",
+     "before": "∅",
+     "after": "PT",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].indentStart.magnitude",
+     "before": "∅",
+     "after": 216,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].indentStart.unit",
+     "before": "∅",
+     "after": "PT",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].startNumber",
+     "before": "∅",
+     "after": 1,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[5].textStyle.underline",
+     "before": "∅",
+     "after": false,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].bulletAlignment",
+     "before": "∅",
+     "after": "START",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].glyphFormat",
+     "before": "∅",
+     "after": "%6",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].glyphSymbol",
+     "before": "∅",
+     "after": "●",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].indentFirstLine.magnitude",
+     "before": "∅",
+     "after": 234,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].indentFirstLine.unit",
+     "before": "∅",
+     "after": "PT",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].indentStart.magnitude",
+     "before": "∅",
+     "after": 252,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].indentStart.unit",
+     "before": "∅",
+     "after": "PT",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].startNumber",
+     "before": "∅",
+     "after": 1,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[6].textStyle.underline",
+     "before": "∅",
+     "after": false,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].bulletAlignment",
+     "before": "∅",
+     "after": "START",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].glyphFormat",
+     "before": "∅",
+     "after": "%7",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].glyphSymbol",
+     "before": "∅",
+     "after": "○",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].indentFirstLine.magnitude",
+     "before": "∅",
+     "after": 270,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].indentFirstLine.unit",
+     "before": "∅",
+     "after": "PT",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].indentStart.magnitude",
+     "before": "∅",
+     "after": 288,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].indentStart.unit",
+     "before": "∅",
+     "after": "PT",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].startNumber",
+     "before": "∅",
+     "after": 1,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[7].textStyle.underline",
+     "before": "∅",
+     "after": false,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].bulletAlignment",
+     "before": "∅",
+     "after": "START",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].glyphFormat",
+     "before": "∅",
+     "after": "%8",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].glyphSymbol",
+     "before": "∅",
+     "after": "■",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].indentFirstLine.magnitude",
+     "before": "∅",
+     "after": 306,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].indentFirstLine.unit",
+     "before": "∅",
+     "after": "PT",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].indentStart.magnitude",
+     "before": "∅",
+     "after": 324,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].indentStart.unit",
+     "before": "∅",
+     "after": "PT",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].startNumber",
+     "before": "∅",
+     "after": 1,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/lists.kix.x5cnyvkh6ljb.listProperties.nestingLevels[8].textStyle.underline",
+     "before": "∅",
+     "after": false,
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[30:-⇥Staging shares the prod clus].paragraphStyle.indentFirstLine.magnitude",
+     "before": 108,
+     "after": 18,
+     "kind": "para",
+     "after_para_text": "Staging shares the prod cluster, namespace staging (yes, really)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[30:-⇥Staging shares the prod clus].paragraphStyle.indentStart.magnitude",
+     "before": 108,
+     "after": 36,
+     "kind": "para",
+     "after_para_text": "Staging shares the prod cluster, namespace staging (yes, really)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[30:-⇥Staging shares the prod clus].bullet",
+     "before": null,
+     "after": "∅",
+     "kind": "para",
+     "after_para_text": "Staging shares the prod cluster, namespace staging (yes, really)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[30:-⇥Staging shares the prod clus].bullet.listId",
+     "before": "∅",
+     "after": "kix.x5cnyvkh6ljb",
+     "kind": "para",
+     "after_para_text": "Staging shares the prod cluster, namespace staging (yes, really)",
+     "class": "expected",
+     "visible": false,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[30:-⇥Staging shares the prod clus].bullet.textStyle",
+     "before": "∅",
+     "after": {},
+     "kind": "para",
+     "after_para_text": "Staging shares the prod cluster, namespace staging (yes, really)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[30:-⇥Staging shares the prod clus].text",
+     "kind": "text",
+     "before": "-\t",
+     "after": "",
+     "after_context": "Staging shar",
+     "after_para_text": "Staging shares the prod cluster, namespace staging (yes, really)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-tick-pair-with-buddy",
+   "slug": "tick-pair-with-buddy",
+   "request": "In the onboarding checklist, tick off \"Pair with your buddy for a week\" — that's done now.",
+   "expected": "The checkbox of `Pair with your buddy for a week` is ticked (screenshot), and the item carries the same struck-through grey style Docs gives the other ticked items. Text unchanged. The empty checklist item below it survives. Nothing else changes. (Expected to be impossible: the Docs API exposes no checkbox state.)",
+   "target": "tab `Tab 1`, paragraph beginning `Pair with your buddy`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 0,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": []
+  },
+  {
+   "run": "20260903-unblock-security-review",
+   "slug": "unblock-security-review",
+   "request": "Sam finished the security review. Change the BLOCKED item to \"DONE: security review signed off (Sam, 2 Sep)\" and remove the yellow highlight from it.",
+   "expected": "The item reads `DONE: security review signed off (Sam, 2 Sep)` with no background colour on any run; still a bullet in `kix.w0jv2pkvzvcv`. The empty bullet after it and the bold 14pt `Appendix` paragraph below are unchanged. Nothing else changes.",
+   "target": "tab `Tab 1`, paragraph beginning `BLOCKED: waiting`.",
+   "allowed": "`DONE:` may be red or default colour; revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 15,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[44:BLOCKED: waiting on the securi].bullet.textStyle",
+     "before": "∅",
+     "after": {},
+     "kind": "para",
+     "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[44:BLOCKED: waiting on the securi].bullet.textStyle.backgroundColor.color.rgbColor.green",
+     "before": 1,
+     "after": "∅",
+     "kind": "para",
+     "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[44:BLOCKED: waiting on the securi].bullet.textStyle.backgroundColor.color.rgbColor.red",
+     "before": 1,
+     "after": "∅",
+     "kind": "para",
+     "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[44:BLOCKED: waiting on the securi].text",
+     "kind": "text",
+     "before": "BL",
+     "after": "D",
+     "after_context": "DONE: securit",
+     "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[44:BLOCKED: waiting on the securi].style@\"O\"",
+     "before": {
+      "textStyle": {
+       "backgroundColor": {
+        "color": {
+         "rgbColor": {
+          "green": 1,
+          "red": 1
+         }
+        }
+       },
+       "foregroundColor": {
+        "color": {
+         "rgbColor": {
+          "red": 1
+         }
+        }
+       }
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
+     "snippet": "O",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[44:BLOCKED: waiting on the securi].text",
+     "kind": "text",
+     "before": "CK",
+     "after": "N",
+     "after_context": "DONE: security ",
+     "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[44:BLOCKED: waiting on the securi].style@\"E\"",
+     "before": {
+      "textStyle": {
+       "backgroundColor": {
+        "color": {
+         "rgbColor": {
+          "green": 1,
+          "red": 1
+         }
+        }
+       },
+       "foregroundColor": {
+        "color": {
+         "rgbColor": {
+          "red": 1
+         }
+        }
+       }
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
+     "snippet": "E",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[44:BLOCKED: waiting on the securi].text",
+     "kind": "text",
+     "before": "D",
+     "after": "",
+     "after_context": "DONE: security r",
+     "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[44:BLOCKED: waiting on the securi].style@\":\"",
+     "before": {
+      "textStyle": {
+       "backgroundColor": {
+        "color": {
+         "rgbColor": {
+          "green": 1,
+          "red": 1
+         }
+        }
+       },
+       "foregroundColor": {
+        "color": {
+         "rgbColor": {
+          "red": 1
+         }
+        }
+       }
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
+     "snippet": ":",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[44:BLOCKED: waiting on the securi].text",
+     "kind": "text",
+     "before": " waiting on the",
+     "after": "",
+     "after_context": "DONE: security re",
+     "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[44:BLOCKED: waiting on the securi].style@\" security review \"",
+     "before": {
+      "textStyle": {
+       "backgroundColor": {
+        "color": {
+         "rgbColor": {
+          "green": 1,
+          "red": 1
+         }
+        }
+       }
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
+     "snippet": " security review ",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[44:BLOCKED: waiting on the securi].text",
+     "kind": "text",
+     "before": "",
+     "after": "signed off ",
+     "after_context": "rity review signed off (Sam, 2 Sep)",
+     "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[44:BLOCKED: waiting on the securi].style@\"(Sam, \"",
+     "before": {
+      "textStyle": {
+       "backgroundColor": {
+        "color": {
+         "rgbColor": {
+          "green": 1,
+          "red": 1
+         }
+        }
+       }
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
+     "snippet": "(Sam, ",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[44:BLOCKED: waiting on the securi].text",
+     "kind": "text",
+     "before": "again",
+     "after": "2 Sep",
+     "after_context": "d off (Sam, 2 Sep)",
+     "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[44:BLOCKED: waiting on the securi].style@\")⏎\"",
+     "before": {
+      "textStyle": {
+       "backgroundColor": {
+        "color": {
+         "rgbColor": {
+          "green": 1,
+          "red": 1
+         }
+        }
+       }
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
+     "snippet": ")",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  }
+ ]
+}

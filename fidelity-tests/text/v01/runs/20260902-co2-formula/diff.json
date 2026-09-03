@@ -6,6 +6,7 @@
    "before": 150,
    "after": "∅",
    "kind": "para",
+   "after_para_text": "The formula card still reads CO2 and x2, the old deck typed its footnote marker as [1] instead of using a real footnote⟨footnoteReference⟩, and the style rule is Northstar 2.1 (non-breaking space) in headlines but Northstar 2.1 (plain space) in body copy.",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -15,6 +16,8 @@
    "kind": "text",
    "before": "H",
    "after": "CO",
+   "after_context": "still reads CO2 and x2, th",
+   "after_para_text": "The formula card still reads CO2 and x2, the old deck typed its footnote marker as [1] instead of using a real footnote⟨footnoteReference⟩, and the style rule is Northstar 2.1 (non-breaking space) in headlines but Northstar 2.1 (plain space) in body copy.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -24,6 +27,8 @@
    "kind": "text",
    "before": "O",
    "after": "",
+   "after_context": "ll reads CO2 and x2, the",
+   "after_para_text": "The formula card still reads CO2 and x2, the old deck typed its footnote marker as [1] instead of using a real footnote⟨footnoteReference⟩, and the style rule is Northstar 2.1 (non-breaking space) in headlines but Northstar 2.1 (plain space) in body copy.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false

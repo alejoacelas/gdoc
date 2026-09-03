@@ -6,6 +6,8 @@
    "kind": "text",
    "before": "",
    "after": "2",
+   "after_context": "by Legal on 21 Aug, see t",
+   "after_para_text": "Approved by Legal on 21 Aug, see the thread",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -28,6 +30,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "Approved by Legal on 21 Aug, see the thread",
+   "snippet": "1",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -37,6 +41,8 @@
    "kind": "text",
    "before": "4",
    "after": "",
+   "after_context": " Legal on 21 Aug, see th",
+   "after_para_text": "Approved by Legal on 21 Aug, see the thread",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -59,6 +65,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "Approved by Legal on 21 Aug, see the thread",
+   "snippet": " Aug, see the thread",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false

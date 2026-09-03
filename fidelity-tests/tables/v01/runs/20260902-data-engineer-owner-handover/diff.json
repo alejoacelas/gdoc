@@ -6,6 +6,7 @@
    "before": false,
    "after": "∅",
    "kind": "para",
+   "after_para_text": "Tomás. JD on Notion",
    "note": "pagination hint (avoidWidowAndOrphan/keepLinesTogether/keepWithNext); allowed by default, see CORRECTIONS.md",
    "class": "allowed",
    "visible": false,
@@ -16,6 +17,8 @@
    "kind": "text",
    "before": "Priya",
    "after": "Tomás",
+   "after_context": "Tomás. JD on Noti",
+   "after_para_text": "Tomás. JD on Notion",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false

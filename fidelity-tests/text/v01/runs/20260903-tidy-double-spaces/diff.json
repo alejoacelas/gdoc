@@ -6,6 +6,8 @@
    "kind": "text",
    "before": "  ",
    "after": "",
+   "after_context": "tatus:\tDRAFT",
+   "after_para_text": "Owner:\tMarta Kowalczyk\tStatus:\tDRAFT",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -21,6 +23,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "The launch window opens 14–18 Sept 2026, not 14-18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it. Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"beta\" badge hidden in the same release.",
+   "snippet": "launch window",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -30,6 +34,8 @@
    "kind": "text",
    "before": " ",
    "after": "",
+   "after_context": "endered it. Legal signed",
+   "after_para_text": "The launch window opens 14–18 Sept 2026, not 14-18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it. Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"beta\" badge hidden in the same release.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -39,6 +45,8 @@
    "kind": "text",
    "before": " ",
    "after": "",
+   "after_context": " the \"beta\" badge hidden",
+   "after_para_text": "The launch window opens 14–18 Sept 2026, not 14-18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it. Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"beta\" badge hidden in the same release.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -54,6 +62,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "Ana’s note: the launch window is not the same thing as the Launch Window banner in the app; the banner string lives in the release checklist and is owned by design. See also the launch window FAQ before replying to customers.",
+   "snippet": "launch window",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -96,6 +106,8 @@
     }
    },
    "kind": "style",
+   "after_para_text": "Ana’s note: the launch window is not the same thing as the Launch Window banner in the app; the banner string lives in the release checklist and is owned by design. See also the launch window FAQ before replying to customers.",
+   "snippet": "checklist",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -105,6 +117,8 @@
    "kind": "text",
    "before": " ",
    "after": "",
+   "after_context": " by design. See also the",
+   "after_para_text": "Ana’s note: the launch window is not the same thing as the Launch Window banner in the app; the banner string lives in the release checklist and is owned by design. See also the launch window FAQ before replying to customers.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -121,6 +135,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "The old plan was to ship in August; the new plan is 14–18 Sept. This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
+   "snippet": "The old plan",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -136,6 +152,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "The old plan was to ship in August; the new plan is 14–18 Sept. This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
+   "snippet": " was to ship in August",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -158,6 +176,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "The old plan was to ship in August; the new plan is 14–18 Sept. This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
+   "snippet": "new plan is 14–18 Sept",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -167,6 +187,8 @@
    "kind": "text",
    "before": " ",
    "after": "",
+   "after_context": " 14–18 Sept. This draft ",
+   "after_para_text": "The old plan was to ship in August; the new plan is 14–18 Sept. This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -182,6 +204,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "The old plan was to ship in August; the new plan is 14–18 Sept. This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
+   "snippet": "internal only",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -203,6 +227,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "The old plan was to ship in August; the new plan is 14–18 Sept. This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
+   "snippet": "do not forward",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -218,6 +244,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "The old plan was to ship in August; the new plan is 14–18 Sept. This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
+   "snippet": "read this first ",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -239,6 +267,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "The old plan was to ship in August; the new plan is 14–18 Sept. This draft is internal only — do not forward — and read this first before editing the copy above; the dates are agreed with Legal.",
+   "snippet": "agreed with Legal",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -248,6 +278,7 @@
    "before": 36,
    "after": "∅",
    "kind": "para",
+   "after_para_text": "Open question for Tomás: do we keep the beta badge for existing users? Ana says maybeyes, Marta says no.",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -257,6 +288,7 @@
    "before": "PT",
    "after": "∅",
    "kind": "para",
+   "after_para_text": "Open question for Tomás: do we keep the beta badge for existing users? Ana says maybeyes, Marta says no.",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -266,6 +298,7 @@
    "before": 36,
    "after": "∅",
    "kind": "para",
+   "after_para_text": "Open question for Tomás: do we keep the beta badge for existing users? Ana says maybeyes, Marta says no.",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -275,6 +308,7 @@
    "before": "PT",
    "after": "∅",
    "kind": "para",
+   "after_para_text": "Open question for Tomás: do we keep the beta badge for existing users? Ana says maybeyes, Marta says no.",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -290,6 +324,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "Open question for Tomás: do we keep the beta badge for existing users? Ana says maybeyes, Marta says no.",
+   "snippet": "Open question",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -299,6 +335,8 @@
    "kind": "text",
    "before": " ",
    "after": "",
+   "after_context": "ting users? Ana says may",
+   "after_para_text": "Open question for Tomás: do we keep the beta badge for existing users? Ana says maybeyes, Marta says no.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -355,6 +393,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "Open question for Tomás: do we keep the beta badge for existing users? Ana says maybeyes, Marta says no.",
+   "snippet": "maybe",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -459,6 +499,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "Open question for Tomás: do we keep the beta badge for existing users? Ana says maybeyes, Marta says no.",
+   "snippet": "yes",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false

@@ -6,6 +6,7 @@
    "before": "∅",
    "after": "Run the DB migrations on staging (Priya)⏎",
    "kind": "text",
+   "after_para_text": "Run the DB migrations on staging (Priya)",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false

@@ -410,6 +410,13 @@ def main():
 
     for it in items:
         it["class"] = classify(it, in_target, task)
+    # a list object that appears/disappears together with a bullet change inside the Target is
+    # part of that change, not collateral (Docs creates a new list per createParagraphBullets)
+    target_lists = {str(it["after"]) for it in items if it["class"] == "expected" and it["path"].endswith(".bullet.listId")}
+    target_lists |= {str(it["after"].get("listId")) for it in items if it["class"] == "expected" and it["path"].endswith(".bullet") and isinstance(it["after"], dict)}
+    for it in items:
+        if it["class"] == "unexpected" and "/lists." in it["path"] and any(f"/lists.{lid}." in it["path"] for lid in target_lists):
+            it["class"] = "expected"; it["note"] = "list object of the target's new bullet"
         it["visible"] = not INVISIBLE_RE.search(it["path"])
         it["needs_visual_review"] = any(s in it["path"] for s in ("dateElement", "richLink", "person", "suggestedInsertionIds", "suggestedDeletionIds", "inlineObject"))
 

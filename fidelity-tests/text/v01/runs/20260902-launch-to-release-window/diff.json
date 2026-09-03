@@ -6,6 +6,7 @@
    "before": "h.fhr9e3eq4raj",
    "after": "h.wvksaq6uclq3",
    "kind": "para",
+   "after_para_text": "Northstar 2.1 release window — announcement draft (v3)",
    "class": "unexpected",
    "visible": false,
    "needs_visual_review": false
@@ -15,6 +16,8 @@
    "kind": "text",
    "before": "",
    "after": "re",
+   "after_context": "rthstar 2.1 release window",
+   "after_para_text": "Northstar 2.1 release window — announcement draft (v3)",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -24,6 +27,8 @@
    "kind": "text",
    "before": "",
    "after": "e",
+   "after_context": "star 2.1 release window —",
+   "after_para_text": "Northstar 2.1 release window — announcement draft (v3)",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -33,6 +38,8 @@
    "kind": "text",
    "before": "unch",
    "after": "se",
+   "after_context": "ar 2.1 release window — an",
+   "after_para_text": "Northstar 2.1 release window — announcement draft (v3)",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -42,6 +49,8 @@
    "kind": "text",
    "before": "",
    "after": "re",
+   "after_context": "The release window",
+   "after_para_text": "The release window opens 14–18 Sept 2026, not 14-18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"beta\"  badge hidden in the same release.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -51,6 +60,8 @@
    "kind": "text",
    "before": "",
    "after": "e",
+   "after_context": "The release window o",
+   "after_para_text": "The release window opens 14–18 Sept 2026, not 14-18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"beta\"  badge hidden in the same release.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -60,6 +71,8 @@
    "kind": "text",
    "before": "unch",
    "after": "se",
+   "after_context": "The release window open",
+   "after_para_text": "The release window opens 14–18 Sept 2026, not 14-18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"beta\"  badge hidden in the same release.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -69,6 +82,8 @@
    "kind": "text",
    "before": "",
    "after": "re",
+   "after_context": "s note: the release window",
+   "after_para_text": "Ana’s note: the release window is not the same thing as the Launch Window banner in the app; the banner string lives in the release checklist and is owned by design.  See also the release window FAQ before replying to customers.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -78,6 +93,8 @@
    "kind": "text",
    "before": "",
    "after": "e",
+   "after_context": "ote: the release window i",
+   "after_para_text": "Ana’s note: the release window is not the same thing as the Launch Window banner in the app; the banner string lives in the release checklist and is owned by design.  See also the release window FAQ before replying to customers.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -87,6 +104,8 @@
    "kind": "text",
    "before": "unch",
    "after": "se",
+   "after_context": "e: the release window is n",
+   "after_para_text": "Ana’s note: the release window is not the same thing as the Launch Window banner in the app; the banner string lives in the release checklist and is owned by design.  See also the release window FAQ before replying to customers.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -96,6 +115,8 @@
    "kind": "text",
    "before": "",
    "after": "re",
+   "after_context": "ee also the release window",
+   "after_para_text": "Ana’s note: the release window is not the same thing as the Launch Window banner in the app; the banner string lives in the release checklist and is owned by design.  See also the release window FAQ before replying to customers.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -105,6 +126,8 @@
    "kind": "text",
    "before": "",
    "after": "e",
+   "after_context": "also the release window F",
+   "after_para_text": "Ana’s note: the release window is not the same thing as the Launch Window banner in the app; the banner string lives in the release checklist and is owned by design.  See also the release window FAQ before replying to customers.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -114,6 +137,8 @@
    "kind": "text",
    "before": "unch",
    "after": "se",
+   "after_context": "so the release window FAQ ",
+   "after_para_text": "Ana’s note: the release window is not the same thing as the Launch Window banner in the app; the banner string lives in the release checklist and is owned by design.  See also the release window FAQ before replying to customers.",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -123,6 +148,8 @@
    "kind": "text",
    "before": "",
    "after": "re",
+   "after_context": " slips, the release window",
+   "after_para_text": "If anything slips, the release window moves as a whole; we do not ship half the features. Live status: https://status.example.com/northstar (updated hourly).",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -132,6 +159,8 @@
    "kind": "text",
    "before": "",
    "after": "e",
+   "after_context": "ips, the release window m",
+   "after_para_text": "If anything slips, the release window moves as a whole; we do not ship half the features. Live status: https://status.example.com/northstar (updated hourly).",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -141,6 +170,8 @@
    "kind": "text",
    "before": "unch",
    "after": "se",
+   "after_context": "s, the release window move",
+   "after_para_text": "If anything slips, the release window moves as a whole; we do not ship half the features. Live status: https://status.example.com/northstar (updated hourly).",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false

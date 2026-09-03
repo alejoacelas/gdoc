@@ -5,3 +5,6 @@ gate preconditions: check tasks.md preconditions against:
   on "question for Tom&#225;s"
 {'suggestedInsertionIds': 1, 'dateElement': 0, 'footnoteReference': 1, 'strikethrough': 4}
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQk4eHnhIFYcr0K2QoV6afC-FcvyT9d2PI0o1YzWWDU6YIUzAkbRERFlooKgGOGOoC3Ki68XQboDD8o-THlUjhgBjARO1NNrJO0dlH8
+drive_revision 19 2026-09-03T16:19:04.890Z
+captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/text/v01/runs/20260903-launch-to-release-window/after (screenshots: gdt-shot)

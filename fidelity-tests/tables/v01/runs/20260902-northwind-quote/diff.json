@@ -6,6 +6,7 @@
    "before": "∅",
    "after": "9,800⏎",
    "kind": "text",
+   "after_para_text": "9,800",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false

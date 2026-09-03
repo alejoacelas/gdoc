@@ -6,3 +6,6 @@ gate preconditions: check tasks.md preconditions against:
 Marco to"
 {'suggestedInsertionIds': 1, 'dateElement': 0, 'footnoteReference': 0, 'strikethrough': 1}
 gdoc_version: gdoc 0.21.0
+docs_revision ANLCKQmHaGXXXC2IymtWoSUc4wpXzI308FEYyAXGNuqzQqF3MeeYguNEe17IEyTtWLoP4HlCme59rajtR9hXcFimFfGnPm_k5DIoFLR8L3s
+drive_revision 16 2026-09-03T16:18:21.692Z
+captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/lists/v01/runs/20260903-key-rotation-owner-to-priya/after (screenshots: gdt-shot)

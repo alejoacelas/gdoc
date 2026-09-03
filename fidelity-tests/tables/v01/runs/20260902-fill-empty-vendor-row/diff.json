@@ -6,6 +6,7 @@
    "before": "∅",
    "after": "Globex⏎",
    "kind": "text",
+   "after_para_text": "Globex",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -36,6 +37,7 @@
    "before": "∅",
    "after": "3,200⏎",
    "kind": "text",
+   "after_para_text": "3,200",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -66,6 +68,7 @@
    "before": "∅",
    "after": "Sign SOW (Priya)⏎",
    "kind": "text",
+   "after_para_text": "Sign SOW (Priya)",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -96,6 +99,7 @@
    "before": "∅",
    "after": "Aprobado ✅⏎",
    "kind": "text",
+   "after_para_text": "Aprobado ✅",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false

@@ -6,6 +6,7 @@
    "before": false,
    "after": "∅",
    "kind": "para",
+   "after_para_text": "Paused until Q1, see budget",
    "note": "pagination hint (avoidWidowAndOrphan/keepLinesTogether/keepWithNext); allowed by default, see CORRECTIONS.md",
    "class": "allowed",
    "visible": false,
@@ -29,6 +30,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "Paused until Q1, see budget",
+   "snippet": "Paused",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false
@@ -38,6 +41,8 @@
    "kind": "text",
    "before": "4",
    "after": "1",
+   "after_context": "used until Q1, see budget",
+   "after_para_text": "Paused until Q1, see budget",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -60,6 +65,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_para_text": "Paused until Q1, see budget",
+   "snippet": "see budget",
    "class": "unexpected",
    "visible": true,
    "needs_visual_review": false

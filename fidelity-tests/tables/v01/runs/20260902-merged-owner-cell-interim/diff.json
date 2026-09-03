@@ -6,6 +6,7 @@
    "before": false,
    "after": "∅",
    "kind": "para",
+   "after_para_text": "Owner: Ops (interim) — shared between Ops and Finance until the Contoso decision lands",
    "note": "pagination hint (avoidWidowAndOrphan/keepLinesTogether/keepWithNext); allowed by default, see CORRECTIONS.md",
    "class": "allowed",
    "visible": false,
@@ -16,6 +17,8 @@
    "kind": "text",
    "before": "",
    "after": ":",
+   "after_context": "Owner: Ops (interi",
+   "after_para_text": "Owner: Ops (interim) — shared between Ops and Finance until the Contoso decision lands",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -25,6 +28,8 @@
    "kind": "text",
    "before": "TBD",
    "after": "Ops (interim)",
+   "after_context": "Owner: Ops (interim) — shared be",
+   "after_para_text": "Owner: Ops (interim) — shared between Ops and Finance until the Contoso decision lands",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false

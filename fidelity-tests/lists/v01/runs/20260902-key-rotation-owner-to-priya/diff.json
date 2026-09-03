@@ -6,6 +6,8 @@
    "kind": "text",
    "before": "M",
    "after": "Priy",
+   "after_context": "Priya to rotate ",
+   "after_para_text": "Priya to rotate the API keys before Friday",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false
@@ -15,6 +17,8 @@
    "kind": "text",
    "before": "rco",
    "after": "",
+   "after_context": "Priya to rotate t",
+   "after_para_text": "Priya to rotate the API keys before Friday",
    "class": "expected",
    "visible": true,
    "needs_visual_review": false

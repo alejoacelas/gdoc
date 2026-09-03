@@ -19,11 +19,20 @@ Every fixture: `prompt.md`, `built.md` with trap list, named version `frozen`, C
 
 ## What ran
 
-RESULTS_TABLE
+| Fixture | Tasks | Runs valid/invalid | Agent completion / safety | Command completion / safety | Outcomes (agent track) |
+|---|---|---|---|---|---|
+| collab/v01 | 6 | 5/1 | 2/5 / 4/5 | – / – | COLLATERAL 1, DECLINED-API 1, DONE 2, GAP-CLI 1 (+1 INVALID) |
+| kitchen-sink/v01 | 7 | 9/1 | 4/7 / 5/7 | 0/2 / 0/2 | COLLATERAL 2, DONE 4, GAP-CLI 1 |
+| lists/v01 | 12 | 14/0 | 5/12 / 8/12 | 0/2 / 0/2 | COLLATERAL 4, DECLINED-API 1, DONE 5, GAP-CLI 2 |
+| tables/v01 | 11 | 11/0 | 9/11 / 10/11 | – / – | COLLATERAL 1, DONE 9, GAP-CLI 1 |
+| text/v01 | 11 | 11/0 | 3/11 / 3/11 | – / – | COLLATERAL 8, DONE 3 |
+
+**Overall, agent track: 46 valid runs, completion 23/46, safety 30/46. Command track: 4 runs
+(one gdoc command each, the four isolated collateral cases), completion 0/4, safety 0/4.**
 
 Agent track = fresh agent, request + copy URL only, told to work from an empty scratch
 directory. Command track = the single gdoc command from `repros.md`, run by the runner on a
-fresh copy, to isolate the CLI from the agent. All 30+ runs have `transcript.md`, `diff.md`,
+fresh copy, to isolate the CLI from the agent. All 50 runs have `transcript.md`, `diff.md`,
 `verdict.md`, before/after captures and screenshots; every verdict has both judges recorded.
 
 ## The three most interesting failures
@@ -69,7 +78,8 @@ Docs API has no checkbox state, and the agent proved it by diffing checked and u
 ## What I could not finish
 
 - `objects/v01` was not built (doc and prompt exist).
-- collab/v01 runs: see the table; anything missing there ran out of night.
+- collab/v01 got 6 tasks and 5 valid runs, not the 5–10 tasks the plan asked for; the
+  `reopen-three-forms` run is INVALID because the Docs-UI copy drops resolved comments.
 - No issues were filed on the tracker: the dominant failure overlaps
   [LucaDeLeo/gdoc#57](https://github.com/LucaDeLeo/gdoc/issues/57) and needs a human to decide
   whether it is one issue ("edit rewrites the paragraph") or several; the repro lines are ready.

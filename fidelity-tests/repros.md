@@ -67,3 +67,10 @@ gdoc edit --account $A --case-sensitive <copy> "Key dates" "Key dates and labels
 Expect: the bold 14pt Normal paragraph keeps bold and 14pt.
 Observed: both dropped; `**…**` markdown restores bold only — gdoc has no way to set a font size.
 Run: text/v01/runs/20260902-rename-key-dates-fake-heading.
+
+## collab-v01-link-retarget-orphans-comment   (collab/v01, 2026-09-03, COLLATERAL, no issue)
+gdoc edit --account $A <copy> "finance handbook" "[finance handbook](https://www.notion.so/people-ops/expenses)"
+Expect: only `link.url` changes; the comment anchored on `handbook` stays anchored.
+Observed: url changed, text and styling identical, but the comment lost its anchor (card gone from the
+margin; `gdoc comments` still lists it as open with the old quotedFileContent). Same mechanism as
+lists relink-rotate-keys (anchor shrank). Run: collab/v01/runs/20260903-handbook-link-notion.

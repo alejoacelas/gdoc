@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+"""gdt-review — regenerate fidelity-tests/REVIEW.md: one section per fixture with a link to
+the fixture doc, then one bullet per run with the request as asked, the outcome, and a link to
+the edited copy. Meant for manual before/after review in the browser."""
+import re
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def front(path):
+    m = re.match(r"^---\n(.*?)\n---", path.read_text(), re.S)
+    d = {}
+    for line in (m.group(1).splitlines() if m else []):
+        if ":" in line and not line.startswith(" "):
+            k, v = line.split(":", 1); d[k.strip()] = v.split("#")[0].strip()
+    return d
+
+
+def tasks(path):
+    out = {}
+    for m in re.finditer(r"^## (\S+)\s*$(.*?)(?=^## |\Z)", path.read_text(), re.M | re.S):
+        rq = re.search(r"\*\*Request:\*\*\s*(.*?)(?=\n- \*\*|\Z)", m.group(2), re.S)
+        out[m.group(1)] = " ".join(rq.group(1).split()) if rq else ""
+    return out
+
+
+lines = ["# gdoc fidelity tests — manual review", "",
+         "One section per fixture. The fixture link is the frozen original (the \"before\" of every run); "
+         "each bullet is one run: the edit as the agent was asked for it, the recorded outcome, and the "
+         "edited copy to open beside the original. Details per run live in the repo under "
+         "`fidelity-tests/<fixture>/runs/<run>/` (transcript, diff, verdict, screenshots).", ""]
+for fx in sorted(ROOT.glob("*/v*/fixture.md")):
+    fdir = fx.parent; name = f"{fdir.parent.name}/{fdir.name}"
+    meta = dict(re.findall(r"^(\w+): (.*)$", fx.read_text(), re.M))
+    tk = tasks(fdir / "tasks.md") if (fdir / "tasks.md").exists() else {}
+    lines += [f"## {name}", "", f"Fixture (before): {meta.get('doc', '')}", ""]
+    runs = sorted(fdir.glob("runs/*/verdict.md"))
+    if not runs:
+        lines += ["- no runs yet", ""]; continue
+    for v in runs:
+        f = front(v); slug = f.get("task", "?"); track = f.get("track", "agent")
+        cid = f.get("copy_id", ""); url = f"https://docs.google.com/document/d/{cid}/edit" if len(cid) > 20 else "(no copy)"
+        tag = "" if track == "agent" else f" [{track} track]"
+        lines.append(f"- **{slug}**{tag} — {tk.get(slug, '(request not found)')}")
+        lines.append(f"  - Outcome: **{f.get('outcome', '?')}** · edited copy: {url}")
+    lines.append("")
+(ROOT / "REVIEW.md").write_text("\n".join(lines))
+print(f"wrote REVIEW.md: {sum(1 for l in lines if l.startswith('- **'))} runs")

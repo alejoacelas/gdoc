@@ -1,0 +1,10 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+#AAACGePZQas [open] Alejandro Acelas 2026-09-02
+  "Who actually owns this line? Finance says it is Ops, Ops says it went back to Finance in July."
+  on "shared between Ops and Finance"
+{'suggestedInsertionIds': 1, 'dateElement': 2, 'footnoteReference': 0, 'strikethrough': 1}
+docs_revision ANLCKQlGbqKRj-Oxl8Mmsj9Cxkc1JRlkDBtEDoCGqC_jgV83IQmBK3F15aDBketvfGNVwBhtZJNGpf8hqMlwqJRwFegG_EjA4QaiKHk4f9k
+drive_revision 1 2026-09-03T15:25:48.361Z
+captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/tables/v01/runs/20260903-acme-cost-49000/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0

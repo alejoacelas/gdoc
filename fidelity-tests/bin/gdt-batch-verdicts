@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+"""gdt-batch-verdicts FIXTURE_DIR BATCH [--visual TEXT] [--write]
+
+Proposes an outcome for every run in a batch from its diff summary and the agent's own
+SUCCEEDED line, falling back to the most recent single-run verdict of the same task when the
+agent changed nothing (refusals are stable across runs but the API/CLI split needs the earlier
+reasoning). Prints a table; with --write it calls gdt-verdict --batch for each run, with a
+prose paragraph assembled from the transcript's WHAT I CHANGED / CONCERNS lines. Review the
+table before --write and override with `--set slug=OUTCOME`."""
+import argparse, json, re, subprocess, sys
+from pathlib import Path
+
+ap = argparse.ArgumentParser(); ap.add_argument("fx"); ap.add_argument("batch")
+ap.add_argument("--visual", default="batch-level: model=claude-fable-5-1 judge subagent on the batch's final doc vs fixture, per task")
+ap.add_argument("--write", action="store_true"); ap.add_argument("--set", action="append", default=[]); ap.add_argument("--date", default="2026-09-03")
+a = ap.parse_args(); fx = Path(a.fx); overrides = dict(s.split("=", 1) for s in a.set)
+b = json.load(open(fx / "runs" / a.batch / "batch.json"))
+
+def front(p):
+    m = re.match(r"^---\n(.*?)\n---", p.read_text(), re.S); d = {}
+    for line in (m.group(1).splitlines() if m else []):
+        if ":" in line and not line.startswith(" "): k, v = line.split(":", 1); d[k.strip()] = v.split("#")[0].strip()
+    return d
+
+def prev_verdict(slug, this_run):
+    vs = [p for p in sorted(fx.glob("runs/*/verdict.md")) if p.parent.name != this_run and not (p.parent / "batch.txt").exists()]
+    for p in reversed(vs):
+        f = front(p)
+        if f.get("task") == slug and f.get("track", "agent") == "agent" and f.get("outcome") != "INVALID": return f, p
+    return None, None
+
+rows = []
+for r in b["runs"]:
+    rd = fx / "runs" / r["run"]; s = r["summary"]; t = (rd / "transcript.md").read_text() if (rd / "transcript.md").exists() else ""
+    succ = (re.search(r"SUCCEEDED:\s*(.*)", t) or [None, "?"])[1].strip()
+    changed = (rd / "before" / "structure.json").read_text() != (rd / "after" / "structure.json").read_text()
+    pv, pvp = prev_verdict(r["slug"], r["run"])
+    if r["slug"] in overrides: out, why = overrides[r["slug"]], "override"
+    elif s.get("unexpected", 0) > 0: out, why = "COLLATERAL", f"{s['unexpected']} unexpected"
+    elif not changed:
+        out = pv["outcome"] if pv and pv["outcome"] in ("DECLINED-API", "GAP-CLI", "FAIL-AGENT") else "FAIL-AGENT"
+        why = f"no change; previous run {pvp.parent.name if pvp else '-'} = {pv['outcome'] if pv else '-'}"
+    elif s.get("expected", 0) > 0 and succ.lower().startswith("yes"): out, why = "DONE", "expected only, agent yes"
+    elif s.get("expected", 0) > 0: out, why = "DONE", f"expected only, agent said: {succ[:40]}"
+    else: out, why = "FAIL-AGENT", "changed but no expected item"
+    rows.append((r, out, why, succ, changed, pv))
+for r, out, why, succ, changed, pv in rows:
+    print(f"{r['slug']:45s} {out:13s} exp={r['summary'].get('expected',0):<3} unexp={r['summary'].get('unexpected',0):<3} changed={str(changed):5s} | {why} | agent: {succ[:60]}")
+if a.write:
+    for r, out, why, succ, changed, pv in rows:
+        rd = fx / "runs" / r["run"]; t = (rd / "transcript.md").read_text()
+        what = (re.search(r"WHAT I CHANGED:\s*(.*?)(?=\n\s*\n|\nSUCCEEDED)", t, re.S) or [None, ""])[1].strip()
+        conc = (re.search(r"CONCERNS:\s*(.*)", t, re.S) or [None, ""])[1].strip()
+        unexp = [i for i in r["items"] if i["class"] == "unexpected"]
+        lost = "; ".join(i["path"].split("]", 1)[-1][:70] for i in unexp[:6])
+        prose = (f"Batch run ({a.batch}, T{b['runs'].index(r)+1} of {len(b['runs'])} on one copy; before = previous task's after). "
+                 f"Agent: {what} SUCCEEDED: {succ} ")
+        if unexp: prose += f"Structural diff: {len(unexp)} unexpected item(s): {lost}. "
+        if not changed and pv: prose += f"No change made; outcome follows the earlier single run ({pv.get('outcome')}) with the same reasoning. "
+        if conc: prose += f"Agent's concerns: {conc[:700]}"
+        coll = ["--collateral", f"{'true' if any(i['visible'] for i in unexp) else 'false'},{'true' if any(not i['visible'] for i in unexp) else 'false'},false"] if out == "COLLATERAL" else []
+        met = "true" if out == "DONE" else ("partial" if out == "COLLATERAL" and r["summary"].get("expected", 0) > 0 else "false")
+        gate = [] if changed else ["--gate", "after_revision_later=n/a (no edit made; structure identical)"]
+        cmd = [str(Path(__file__).parent / "gdt-verdict"), str(rd), "--batch", "--date", a.date, "--outcome", out, "--request-met", met, "--visual", a.visual, "--prose", "-"] + coll + gate
+        res = subprocess.run(cmd, input=prose, capture_output=True, text=True); print(res.stdout.strip() or res.stderr.strip())

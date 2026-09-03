@@ -1,0 +1,11 @@
+gate source_matches_baseline: pass
+gate preconditions: check tasks.md preconditions against:
+#AAACGeAxyJI [open] Alejandro Acelas 2026-09-02
+  "Dmitry is out until 15 Sep, so this and the key rotation both slip. Who picks them up?"
+  on "спросить Дмитрия
+Marco to"
+{'suggestedInsertionIds': 1, 'dateElement': 0, 'footnoteReference': 0, 'strikethrough': 1}
+docs_revision ANLCKQlieBt1kMxqd6Jnv_EAqejQBUbbXQ5uwqejRiqFz6vSD4tePa2XUHfdI2Ae8AMP8uAj2zSsf9sYRfteXrI8A0oB8qynCqa26sZITu0
+drive_revision 1 2026-09-03T15:21:08.019Z
+captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/lists/v01/runs/20260903-smoke-test-apple-pay/before (screenshots: gdt-shot)
+gdoc_version: gdoc 0.21.0

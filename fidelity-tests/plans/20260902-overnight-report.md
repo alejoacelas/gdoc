@@ -96,8 +96,8 @@ lists 12, tables 11, text 11, collab 5), each task by a fresh agent, each judged
 state the previous task left. A **painted review copy** per batch (`bin/gdt-paint`) colours every
 diff item and anchors a numbered comment per task; the `gdt REVIEW` doc opens with the five
 links. Batch outcomes: kitchen-sink 4 DONE / 1 GAP-CLI / 2 COLLATERAL; lists 5 DONE / 5
-COLLATERAL / 1 FAIL-AGENT / 1 DECLINED-API; tables 9 DONE / 1 GAP-CLI / 1 COLLATERAL; text 4
-DONE / 7 COLLATERAL; collab 2 DONE / 3 COLLATERAL. The same `gdoc edit` behaviour explains
+COLLATERAL / 1 FAIL-AGENT / 1 DECLINED-API; tables 9 DONE / 1 GAP-CLI / 1 COLLATERAL; text 3
+DONE / 8 COLLATERAL; collab 2 DONE / 3 COLLATERAL. The same `gdoc edit` behaviour explains
 every COLLATERAL again. Two batch-specific effects: a task on an already-flattened paragraph
 scores clean (its own before is already flat), and agents given a live copy sometimes probe on
 it (lists environments-nest changed the read-replica list glyphs while "changing nothing").

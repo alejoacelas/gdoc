@@ -1,0 +1,53 @@
+{
+ "task": "beta-badge-straight-quotes",
+ "items": [
+  {
+   "path": "tab[Tab 1]/para[5:The launch window opens 14–18 ].style@\"launch window\"",
+   "before": {
+    "textStyle": {
+     "bold": true
+    }
+   },
+   "after": {
+    "textStyle": {}
+   },
+   "kind": "style",
+   "after_para_text": "The launch window opens 14–18 Sept 2026, not 14-18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"preview\"  badge hidden in the same release.",
+   "snippet": "launch window",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[5:The launch window opens 14–18 ].text",
+   "kind": "text",
+   "before": "b",
+   "after": "pr",
+   "after_context": "ne and the \"preview\"  badg",
+   "after_para_text": "The launch window opens 14–18 Sept 2026, not 14-18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"preview\"  badge hidden in the same release.",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[5:The launch window opens 14–18 ].text",
+   "kind": "text",
+   "before": "ta",
+   "after": "view",
+   "after_context": "and the \"preview\"  badge hid",
+   "after_para_text": "The launch window opens 14–18 Sept 2026, not 14-18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"preview\"  badge hidden in the same release.",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -8,3 +8,3 @@\n **Key dates and labels**  \n-The **launch window** opens 14–18 Sept 2026, not 14-18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"beta\"  badge hidden in the same release.  \n+The launch window opens 14–18 Sept 2026, not 14-18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"preview\"  badge hidden in the same release.  \n Ana’s note: the *launch window* is not the same thing as the Launch Window banner in the app; the banner string lives in the [release **checklist**](https://example.com/northstar/checklist) and is owned by design.  See also the [launch window FAQ](https://example.com/northstar/faq) before replying to customers.  ",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 2,
+  "allowed": 0,
+  "unexpected": 1,
+  "visible_unexpected": 1,
+  "invisible_unexpected": 0
+ }
+}

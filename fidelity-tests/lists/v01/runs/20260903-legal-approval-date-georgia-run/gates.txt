@@ -6,6 +6,3 @@ gate preconditions: check tasks.md preconditions against:
 Marco to"
 {'suggestedInsertionIds': 1, 'dateElement': 0, 'footnoteReference': 0, 'strikethrough': 1}
 gdoc_version: gdoc 0.21.0
-docs_revision ANLCKQnlknf85HCUUa11mcSbxb4J4lli8awgyMXvTK_uZNxH-KcKcSO5GqZrqPIxKd1HZ8gXuP44S87VqRMHTk44FxzEVEZLKn4dr5mM1KU
-drive_revision 9 2026-09-03T16:03:00.073Z
-captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/lists/v01/runs/20260903-kubectl-namespace/after (screenshots: gdt-shot)

@@ -1,0 +1,482 @@
+{
+ "fixture": "kitchen-sink/v01",
+ "batch": "20260903-batch",
+ "copy_id": "1MJvElMkEM1D_djAardtYrKWISmZm6fNINw87nybxyxA",
+ "fixture_doc": "https://docs.google.com/document/d/1uqR5yBhTMYu-3qfJ9JibyJn9NJD7RZEiCMLnQngTB9g/edit",
+ "review_copy_id": null,
+ "runs": [
+  {
+   "run": "20260903-add-open-question",
+   "slug": "add-open-question",
+   "request": "Add one more open question at the end of Tomás's list: \"Do we need a rollback drill before the 15th?\"",
+   "expected": "A new fourth item in list `kix.5hgdvulx3csg` (glyph `%0)`, nesting 0) directly after `3) ¿quién habla con Finance? © 2026`, reading `Do we need a rollback drill before the 15th?` in default text style. The `Budget 💰 / Presupuesto Q3` heading and the empty paragraph before the table are unchanged. Nothing else changes.",
+   "target": "tab `Tab 1`, new paragraph `Do we need a rollback drill`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 3,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[new@18:Do we need a rollback drill be].text",
+     "before": "∅",
+     "after": "Do we need a rollback drill before the 15th?⏎",
+     "kind": "text",
+     "after_para_text": "Do we need a rollback drill before the 15th?",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[new@18:Do we need a rollback drill be].bullet",
+     "before": "∅",
+     "after": {
+      "listId": "kix.5hgdvulx3csg",
+      "textStyle": {}
+     },
+     "kind": "para",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[new@18:Do we need a rollback drill be].paragraphStyle",
+     "before": "∅",
+     "after": {
+      "namedStyleType": "NORMAL_TEXT",
+      "indentFirstLine": {
+       "magnitude": 18,
+       "unit": "PT"
+      },
+      "indentStart": {
+       "magnitude": 36,
+       "unit": "PT"
+      }
+     },
+     "kind": "para",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-budget-cloud-credits",
+   "slug": "budget-cloud-credits",
+   "request": "In the budget table, the cloud credits line should say $12,900 now, not $12,400. Please update it.",
+   "expected": "Table cell [1,2] reads `$12,900`. The Finance-note paragraph still reads `… 50,400 USD committed / 12,400 spent …` in Courier New 9pt. Nothing else changes.",
+   "target": "tab `Tab 1`, table 1, cell [1,2] (row \"Cloud credits (AWS -> GCP)\").",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 1,
+    "allowed": 1,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/table[0]/cell[1,2]/para[0:$12,400⏎].paragraphStyle.avoidWidowAndOrphan",
+     "before": false,
+     "after": "∅",
+     "kind": "para",
+     "after_para_text": "$12,900",
+     "note": "pagination hint (avoidWidowAndOrphan/keepLinesTogether/keepWithNext); allowed by default, see CORRECTIONS.md",
+     "class": "allowed",
+     "visible": false,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/table[0]/cell[1,2]/para[0:$12,400⏎].text",
+     "kind": "text",
+     "before": "4",
+     "after": "9",
+     "after_context": "$12,900",
+     "after_para_text": "$12,900",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-fix-double-numbering",
+   "slug": "fix-double-numbering",
+   "request": "In Tomás's open-questions list, items 2 and 3 show their number twice (\"2) 2)\", \"3) 3)\"). Remove the typed duplicates so the list just reads 1) 2) 3).",
+   "expected": "The two list items read `do we keep the legacy read replica? ` (three trailing spaces kept) and `¿quién habla con Finance? © 2026`, still bulleted in list `kix.5hgdvulx3csg` with glyph `%0)`, still nesting level 0. Item 1 and every other list in the document are unchanged (the `1.`–`5.` list, the checklist, the table's nested bullets). Nothing else changes.",
+   "target": "tab `Tab 1`, paragraph beginning `2) do we keep` and paragraph beginning `3) ¿quién habla`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 2,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[16:2) do we keep the legacy read ].text",
+     "kind": "text",
+     "before": "2) ",
+     "after": "",
+     "after_context": "do we keep t",
+     "after_para_text": "do we keep the legacy read replica?   ",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[17:3) ¿quién habla con Finance? ©].text",
+     "kind": "text",
+     "before": "3) ",
+     "after": "",
+     "after_context": "¿quién habla",
+     "after_para_text": "¿quién habla con Finance? © 2026",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-footnote-v8",
+   "slug": "footnote-v8",
+   "request": "The footnote at the bottom still says Finance sheet v7 pulled 28 Aug by Tomás. It's v8 now, pulled 2 Sept by Priya. Please fix the footnote.",
+   "expected": "The footnote reads `Finance sheet v8, tab “Q3”, pulled 2 Sept by Priya.` (curly quotes intact). The Appendix paragraph and its footnote reference are unchanged; the `Finance sheet` link in the table and the `Finance sheet` text in the Appendix paragraph are unchanged. Nothing else changes.",
+   "target": "tab `Tab 1`, footnote `kix.sodj60jamoog`, paragraph beginning `Finance sheet v7`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 0,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": []
+  },
+  {
+   "run": "20260903-next-steps-effort",
+   "slug": "next-steps-effort",
+   "request": "Under Next steps, the estimated effort is now 4 dev-days, not 3. Can you change that?",
+   "expected": "The Next-steps paragraph reads `Ship the ~~v2 migration script~~ v3 script by Friday[1]. Estimated effort: 4 dev-days⇥(was 5)` — strikethrough on `v2 migration script` intact, literal `[1]` intact, tab intact. The Status paragraph below it, including its pending suggestion, is unchanged. Nothing else changes.",
+   "target": "tab `Tab 1`, paragraph beginning `Ship the`, the run `: 3 dev-days`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 1,
+    "allowed": 0,
+    "unexpected": 1,
+    "visible_unexpected": 1,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[24:Ship the v2 migration script v].style@\"Estimated effort\"",
+     "before": {
+      "textStyle": {
+       "backgroundColor": {
+        "color": {
+         "rgbColor": {
+          "green": 1,
+          "red": 1
+         }
+        }
+       }
+      }
+     },
+     "after": {
+      "textStyle": {}
+     },
+     "kind": "style",
+     "after_para_text": "Ship the v2 migration script v3 script by Friday[1]. Estimated effort: 4 dev-days\t(was 5)",
+     "snippet": "Estimated effort",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[24:Ship the v2 migration script v].text",
+     "kind": "text",
+     "before": "3",
+     "after": "4",
+     "after_context": "ted effort: 4 dev-days\t(w",
+     "after_para_text": "Ship the v2 migration script v3 script by Friday[1]. Estimated effort: 4 dev-days\t(was 5)",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-reply-and-resolve-v3-comment",
+   "slug": "reply-and-resolve-v3-comment",
+   "request": "Someone left a comment asking whether v3 is the final name. Reply to it with \"Yes, v3 is final — Tomás confirmed on 1 Sept.\" and mark it resolved.",
+   "expected": "The comment anchored on `script v3` has one reply with exactly that text and `resolved: true`. Its anchor and quoted text are unchanged. The document body is byte-identical (`structure` diff empty; the pending suggestion still pending).",
+   "target": "comment (id `AAACGeHZ4dE` in the fixture; a new id in the copy).",
+   "allowed": "comment `modifiedTime` changes; revision list grows.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 1,
+    "allowed": 0,
+    "unexpected": 0,
+    "visible_unexpected": 0,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "comments[AAACGeHZ4dE]",
+     "before": {
+      "replies": [],
+      "author": {
+       "displayName": "Alejandro Acelas"
+      },
+      "quotedFileContent": {
+       "value": "script v3"
+      },
+      "id": "AAACGeHZ4dE",
+      "createdTime": "2026-09-02T20:14:13.751Z",
+      "modifiedTime": "2026-09-02T20:14:13.751Z",
+      "content": "Is v3 actually the final name? Tomás called it v2.1 in the standup.",
+      "resolved": false
+     },
+     "after": {
+      "replies": [
+       {
+        "author": {
+         "displayName": "Alejandro Acelas"
+        },
+        "createdTime": "2026-09-03T15:54:05.282Z",
+        "modifiedTime": "2026-09-03T15:54:05.282Z",
+        "content": "Yes, v3 is final — Tomás confirmed on 1 Sept.",
+        "action": "resolve"
+       }
+      ],
+      "author": {
+       "displayName": "Alejandro Acelas"
+      },
+      "quotedFileContent": {
+       "value": "script v3"
+      },
+      "id": "AAACGeHZ4dE",
+      "createdTime": "2026-09-02T20:14:13.751Z",
+      "modifiedTime": "2026-09-03T15:54:05.282Z",
+      "content": "Is v3 actually the final name? Tomás called it v2.1 in the standup.",
+      "resolved": true
+     },
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  },
+  {
+   "run": "20260903-rollout-to-launch-window",
+   "slug": "rollout-to-launch-window",
+   "request": "In the TL;DR paragraph we now call it the \"launch window\", not the \"rollout window\". Can you rename it there? Leave the rest of the doc alone.",
+   "expected": "The TL;DR paragraph contains `launch window` three times and `rollout window` zero times: the first bold, the second italic red inside the curly-quoted Slack quote, the third still a link to `https://example.com/rollout-plan` (URL unchanged). The word `rollout` in `Who owns the on-call rota during the rollout?` is unchanged. Nothing else changes.",
+   "target": "tab `Tab 1`, paragraph beginning `We are on track`.",
+   "allowed": "revision list grows; `modifiedTime` changes.",
+   "outcome": null,
+   "request_met": null,
+   "summary": {
+    "expected": 9,
+    "allowed": 0,
+    "unexpected": 3,
+    "visible_unexpected": 3,
+    "invisible_unexpected": 0
+   },
+   "items": [
+    {
+     "path": "tab[Tab 1]/para[4:We are on track for the rollou].text",
+     "kind": "text",
+     "before": "ro",
+     "after": "",
+     "after_context": "ack for the launch windo",
+     "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[4:We are on track for the rollou].text",
+     "kind": "text",
+     "before": "lo",
+     "after": "a",
+     "after_context": "ck for the launch window ",
+     "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[4:We are on track for the rollou].text",
+     "kind": "text",
+     "before": "t",
+     "after": "nch",
+     "after_context": " for the launch window of 1",
+     "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[4:We are on track for the rollou].text",
+     "kind": "text",
+     "before": "ro",
+     "after": "",
+     "after_context": "t touch the launch windo",
+     "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[4:We are on track for the rollou].style@\"l\"",
+     "before": {
+      "textStyle": {
+       "foregroundColor": {
+        "color": {
+         "rgbColor": {
+          "red": 1
+         }
+        }
+       },
+       "italic": true
+      }
+     },
+     "after": {
+      "textStyle": {
+       "italic": true
+      }
+     },
+     "kind": "style",
+     "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+     "snippet": "l",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[4:We are on track for the rollou].text",
+     "kind": "text",
+     "before": "lo",
+     "after": "a",
+     "after_context": " touch the launch window ",
+     "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[4:We are on track for the rollou].style@\"u\"",
+     "before": {
+      "textStyle": {
+       "foregroundColor": {
+        "color": {
+         "rgbColor": {
+          "red": 1
+         }
+        }
+       },
+       "italic": true
+      }
+     },
+     "after": {
+      "textStyle": {
+       "italic": true
+      }
+     },
+     "kind": "style",
+     "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+     "snippet": "u",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[4:We are on track for the rollou].text",
+     "kind": "text",
+     "before": "t",
+     "after": "nch",
+     "after_context": "ouch the launch window with",
+     "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[4:We are on track for the rollou].style@\" window\"",
+     "before": {
+      "textStyle": {
+       "foregroundColor": {
+        "color": {
+         "rgbColor": {
+          "red": 1
+         }
+        }
+       },
+       "italic": true
+      }
+     },
+     "after": {
+      "textStyle": {
+       "italic": true
+      }
+     },
+     "kind": "style",
+     "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+     "snippet": " window",
+     "class": "unexpected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[4:We are on track for the rollou].text",
+     "kind": "text",
+     "before": "ro",
+     "after": "",
+     "after_context": "st”, so the launch windo",
+     "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[4:We are on track for the rollou].text",
+     "kind": "text",
+     "before": "lo",
+     "after": "a",
+     "after_context": "t”, so the launch window ",
+     "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    },
+    {
+     "path": "tab[Tab 1]/para[4:We are on track for the rollou].text",
+     "kind": "text",
+     "before": "t",
+     "after": "nch",
+     "after_context": ", so the launch window is f",
+     "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+     "class": "expected",
+     "visible": true,
+     "needs_visual_review": false
+    }
+   ]
+  }
+ ]
+}

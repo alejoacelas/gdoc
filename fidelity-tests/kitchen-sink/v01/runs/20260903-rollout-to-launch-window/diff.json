@@ -1,0 +1,191 @@
+{
+ "task": "rollout-to-launch-window",
+ "items": [
+  {
+   "path": "tab[Tab 1]/para[4:We are on track for the rollou].text",
+   "kind": "text",
+   "before": "ro",
+   "after": "",
+   "after_context": "ack for the launch windo",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[4:We are on track for the rollou].text",
+   "kind": "text",
+   "before": "lo",
+   "after": "a",
+   "after_context": "ck for the launch window ",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[4:We are on track for the rollou].text",
+   "kind": "text",
+   "before": "t",
+   "after": "nch",
+   "after_context": " for the launch window of 1",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[4:We are on track for the rollou].text",
+   "kind": "text",
+   "before": "ro",
+   "after": "",
+   "after_context": "t touch the launch windo",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[4:We are on track for the rollou].style@\"l\"",
+   "before": {
+    "textStyle": {
+     "foregroundColor": {
+      "color": {
+       "rgbColor": {
+        "red": 1
+       }
+      }
+     },
+     "italic": true
+    }
+   },
+   "after": {
+    "textStyle": {
+     "italic": true
+    }
+   },
+   "kind": "style",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+   "snippet": "l",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[4:We are on track for the rollou].text",
+   "kind": "text",
+   "before": "lo",
+   "after": "a",
+   "after_context": " touch the launch window ",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[4:We are on track for the rollou].style@\"u\"",
+   "before": {
+    "textStyle": {
+     "foregroundColor": {
+      "color": {
+       "rgbColor": {
+        "red": 1
+       }
+      }
+     },
+     "italic": true
+    }
+   },
+   "after": {
+    "textStyle": {
+     "italic": true
+    }
+   },
+   "kind": "style",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+   "snippet": "u",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[4:We are on track for the rollou].text",
+   "kind": "text",
+   "before": "t",
+   "after": "nch",
+   "after_context": "ouch the launch window with",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[4:We are on track for the rollou].style@\" window\"",
+   "before": {
+    "textStyle": {
+     "foregroundColor": {
+      "color": {
+       "rgbColor": {
+        "red": 1
+       }
+      }
+     },
+     "italic": true
+    }
+   },
+   "after": {
+    "textStyle": {
+     "italic": true
+    }
+   },
+   "kind": "style",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+   "snippet": " window",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[4:We are on track for the rollou].text",
+   "kind": "text",
+   "before": "ro",
+   "after": "",
+   "after_context": "st”, so the launch windo",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[4:We are on track for the rollou].text",
+   "kind": "text",
+   "before": "lo",
+   "after": "a",
+   "after_context": "t”, so the launch window ",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[4:We are on track for the rollou].text",
+   "kind": "text",
+   "before": "t",
+   "after": "nch",
+   "after_context": ", so the launch window is f",
+   "after_para_text": "We are on track for the launch window of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the launch window without asking me first”, so the launch window is frozen until the Monday sync.",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -7,3 +7,3 @@\n \n-We are on track for the **rollout window** of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the *rollout window* without asking me first”, so the [rollout window](https://example.com/rollout-plan) is frozen until the Monday sync.\n+We are on track for the **launch window** of 15-19 Sept. infra sign-off is done; the data team still owes us the backfill numbers – see the budget table below. Priya wrote in Slack “don’t touch the *launch window* without asking me first”, so the [launch window](https://example.com/rollout-plan) is frozen until the Monday sync.\n ",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 9,
+  "allowed": 0,
+  "unexpected": 3,
+  "visible_unexpected": 3,
+  "invisible_unexpected": 0
+ }
+}

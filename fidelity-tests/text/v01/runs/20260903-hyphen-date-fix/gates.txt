@@ -5,6 +5,3 @@ gate preconditions: check tasks.md preconditions against:
   on "question for Tom&#225;s"
 {'suggestedInsertionIds': 1, 'dateElement': 0, 'footnoteReference': 1, 'strikethrough': 4}
 gdoc_version: gdoc 0.21.0
-docs_revision ANLCKQlyz4D9Ecw08F9P4_tFuOYLtovbhf6g-R2mRu1FIMHnE1BdiD51404gP_SHhtirv3eIV4ogH3eNSThPwSD3fyNYG63cirGjWwHc0gE
-drive_revision 13 2026-09-03T16:02:22.762Z
-captured -> /Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/text/v01/runs/20260903-beta-badge-straight-quotes/after (screenshots: gdt-shot)

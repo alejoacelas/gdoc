@@ -40,3 +40,31 @@ nothing — fix the locator). Seed docs land in the Drive folder `micro` under t
 
 Every finding of the two-night browser suite reproduces in a document of two or three
 paragraphs.
+
+## Preview API for comments and suggestions (tested 2026-09-04)
+
+Direct calls with gdoc's stored credentials and the plain `build("docs", "v1")` client work; the
+"preview" is an enrolment flag on the Cloud project, not a different endpoint. The generated
+client does not know the new fields, but the server accepts them:
+
+- Pending suggestion: `documents.batchUpdate` with the normal `deleteContentRange` +
+  `insertText` requests plus `"writeControl": {"requiredRevisionId": <rev>, "writeMode":
+  "SUGGEST"}`. The response returns `createdSuggestionIds`. Read back with
+  `suggestionsViewMode=SUGGESTIONS_INLINE`.
+- Anchored comment: `documents.batchUpdate` with `{"insertComment": {"content": …, "range":
+  {"startIndex", "endIndex"}}}`; the response carries `commentId` (same id Drive returns) and
+  `anchorId`; `documents.get` with `commentsViewMode=COMMENTS_VIEW_MODE_INCLUDED` (needs an
+  `AuthorizedSession` GET, the generated client rejects the unknown query parameter) returns
+  `commentAnchors`. Drive `comments.create` with a hand-built anchor only stores a string; the
+  comment is unanchored in the UI.
+- No request exists to accept or reject a suggestion or to resolve a comment through the Docs
+  API; only the read mode `PREVIEW_SUGGESTIONS_ACCEPTED`.
+- Gotcha, and a candidate micro case: `insertComment` ranges are interpreted in the
+  SUGGESTIONS_INLINE index space. An anchor computed from a default-view read of a document
+  that already holds suggestions lands in the wrong place. Check whether `gdoc comment --quote`
+  has this problem.
+
+Consequences for the campaign: seeds can carry anchored comments and pending suggestions, so
+the sweep covers "edit next to / under a comment anchor", "edit inside / next to a pending
+suggestion", and comment anchors become visible to the structural judge (read the document with
+`commentsViewMode` and diff `commentAnchors`), which removes the blind spot the browser suite had.

@@ -1,31 +1,43 @@
 # diff — write-tab-inherits-bullet
 
-expected 4 · allowed 4 · unexpected 13 (visible 11, invisible 2)
+expected 6 · allowed 3 · unexpected 9 (visible 7, invisible 2)
 
 - **expected** `tab[Tab 1]/para[new@2:First paragraph.⏎].text`
   - before: `"∅"`
   - after:  `"First paragraph.⏎"`
+- **expected** `tab[Tab 1]/para[new@2:First paragraph.⏎].bullet`
+  - before: `"∅"`
+  - after:  `{"listId": "kix.f7spk2j6yvr6", "textStyle": {}}`
 - **expected** `tab[Tab 1]/para[new@2:First paragraph.⏎].paragraphStyle`
   - before: `"∅"`
-  - after:  `{"namedStyleType": "NORMAL_TEXT"}`
+  - after:  `{"namedStyleType": "NORMAL_TEXT", "indentFirstLine": {"magnitude": 18, "unit": "PT"}, "indentStart": {"magnitude": 36, "unit": "PT"}}`
 - **unexpected** `tab[Tab 1]/para[new@3:⏎].text`
   - before: `"∅"`
   - after:  `"⏎"`
+- **allowed** `tab[Tab 1]/para[new@3:⏎].bullet`
+  - before: `"∅"`
+  - after:  `{"listId": "kix.f7spk2j6yvr6", "textStyle": {}}`
 - **unexpected** `tab[Tab 1]/para[new@3:⏎].paragraphStyle`
   - before: `"∅"`
-  - after:  `{"namedStyleType": "NORMAL_TEXT"}`
+  - after:  `{"namedStyleType": "NORMAL_TEXT", "indentFirstLine": {"magnitude": 18, "unit": "PT"}, "indentStart": {"magnitude": 36, "unit": "PT"}}`
 - **expected** `tab[Tab 1]/para[new@4:Second paragraph.⏎].text`
   - before: `"∅"`
   - after:  `"Second paragraph.⏎"`
+- **expected** `tab[Tab 1]/para[new@4:Second paragraph.⏎].bullet`
+  - before: `"∅"`
+  - after:  `{"listId": "kix.f7spk2j6yvr6", "textStyle": {}}`
 - **expected** `tab[Tab 1]/para[new@4:Second paragraph.⏎].paragraphStyle`
   - before: `"∅"`
-  - after:  `{"namedStyleType": "NORMAL_TEXT"}`
+  - after:  `{"namedStyleType": "NORMAL_TEXT", "indentFirstLine": {"magnitude": 18, "unit": "PT"}, "indentStart": {"magnitude": 36, "unit": "PT"}}`
 - **unexpected** `tab[Tab 1]/para[new@5:⏎].text`
   - before: `"∅"`
   - after:  `"⏎"`
+- **allowed** `tab[Tab 1]/para[new@5:⏎].bullet`
+  - before: `"∅"`
+  - after:  `{"listId": "kix.f7spk2j6yvr6", "textStyle": {}}`
 - **unexpected** `tab[Tab 1]/para[new@5:⏎].paragraphStyle`
   - before: `"∅"`
-  - after:  `{"namedStyleType": "NORMAL_TEXT"}`
+  - after:  `{"namedStyleType": "NORMAL_TEXT", "indentFirstLine": {"magnitude": 18, "unit": "PT"}, "indentStart": {"magnitude": 36, "unit": "PT"}}`
 - **unexpected** `tab[Tab 1]/para[del@0:Intro paragraph.⏎].text`
   - before: `"Intro paragraph.⏎"`
   - after:  `"∅"`
@@ -33,35 +45,14 @@ expected 4 · allowed 4 · unexpected 13 (visible 11, invisible 2)
   - before: `"first item⏎"`
   - after:  `"∅"`
 - **allowed** `tab[Tab 1]/para[del@1:first item⏎].bullet`
-  - before: `{"listId": "kix.uvuot02si0t9", "textStyle": {}}`
+  - before: `{"listId": "kix.f7spk2j6yvr6", "textStyle": {}}`
   - after:  `"∅"`
 - **unexpected** (invisible) `tab[Tab 1]/para[2:last item⏎].paragraphStyle.headingId`
   - before: `"∅"`
-  - after:  `"h.4m8i4h2qn6ga"`
-- **unexpected** `tab[Tab 1]/para[2:last item⏎].paragraphStyle.indentFirstLine.magnitude`
-  - before: `18`
-  - after:  `"∅"`
-- **unexpected** `tab[Tab 1]/para[2:last item⏎].paragraphStyle.indentFirstLine.unit`
-  - before: `"PT"`
-  - after:  `"∅"`
-- **unexpected** `tab[Tab 1]/para[2:last item⏎].paragraphStyle.indentStart.magnitude`
-  - before: `36`
-  - after:  `"∅"`
-- **unexpected** `tab[Tab 1]/para[2:last item⏎].paragraphStyle.indentStart.unit`
-  - before: `"PT"`
-  - after:  `"∅"`
+  - after:  `"h.b73pzqb10t0q"`
 - **unexpected** (invisible) `tab[Tab 1]/para[2:last item⏎].paragraphStyle.namedStyleType`
   - before: `"NORMAL_TEXT"`
   - after:  `"HEADING_1"`
-- **allowed** `tab[Tab 1]/para[2:last item⏎].bullet`
-  - before: `"∅"`
-  - after:  `null`
-- **allowed** (invisible) `tab[Tab 1]/para[2:last item⏎].bullet.listId`
-  - before: `"kix.uvuot02si0t9"`
-  - after:  `"∅"`
-- **allowed** `tab[Tab 1]/para[2:last item⏎].bullet.textStyle`
-  - before: `{}`
-  - after:  `"∅"`
 - **unexpected** `tab[Tab 1]/para[2:last item⏎].text`
   - before: `"last item"`
   - after:  `"New title"`
@@ -71,13 +62,15 @@ expected 4 · allowed 4 · unexpected 13 (visible 11, invisible 2)
 ```diff
 --- before/cat.md
 +++ after/cat.md
-@@ -1,5 +1,5 @@
+@@ -1,5 +1,7 @@
 -Intro paragraph.
-+# New title
++* # New title
  
 -* first item  
--* last item
-+First paragraph.
- 
-+Second paragraph.  
+-* last item  
++*   
++* First paragraph.  
++*   
++* Second paragraph.  
+ * 
 ```

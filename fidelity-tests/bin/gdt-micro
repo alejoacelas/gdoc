@@ -50,7 +50,8 @@ def seed_requests(seed, tab_id=None):
             start = idx
             for it in items:
                 reqs.append({"insertText": {"location": {"index": idx}, "text": it + "\n"}}); idx += u16(it) + 1
-            late.append({"createParagraphBullets": {"range": {"startIndex": start, "endIndex": idx - 1},
+            # terminal_bullet: also bullet the document's final (empty) paragraph, as issue #59 needs
+            late.append({"createParagraphBullets": {"range": {"startIndex": start, "endIndex": idx + (1 if p.get("terminal_bullet") else -1)},
                          "bulletPreset": "BULLET_DISC_CIRCLE_SQUARE" if "bullets" in p else "NUMBERED_DECIMAL_ALPHA_ROMAN"}})
             continue
         if "table" in p:

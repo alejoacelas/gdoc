@@ -1,5 +1,7 @@
-# New title
+* # New title
 
-First paragraph.
-
-Second paragraph.  
+*   
+* First paragraph.  
+*   
+* Second paragraph.  
+* 

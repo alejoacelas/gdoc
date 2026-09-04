@@ -9,13 +9,14 @@
    "bullets": [
     "first item",
     "last item"
-   ]
+   ],
+   "terminal_bullet": true
   }
  ],
  "request": "Rewrite the tab from markdown: a heading and two plain paragraphs.",
  "command": "sh -c \"printf '# New title\\n\\nFirst paragraph.\\n\\nSecond paragraph.\\n' > /tmp/gdt-micro-write.md && gdoc write --force --quiet --account {A} --tab '{TAB}' {DOC} /tmp/gdt-micro-write.md\"",
  "expected": "Tab holds exactly: HEADING_1 `New title`, then two NORMAL_TEXT paragraphs with no bullets.",
  "target": "heading `New title`, paragraph beginning `First paragraph`, paragraph beginning `Second paragraph`",
- "allowed": "revision list grows; renumber; lists map",
- "explain": "The tab has an intro paragraph and a two-item bulleted list. We asked gdoc to replace the whole tab with new content written in Markdown: a title and two plain paragraphs, no list. The new text is there, but the paragraphs still carry a bullet from the old list, and empty paragraphs appeared. This is the behaviour reported in gdoc issue 59. Look at the after tab: the paragraphs that should be plain have bullets in front of them."
+ "allowed": "revision list grows; renumber; lists map; the old paragraphs are removed; empty spacer paragraphs between the new paragraphs",
+ "explain": "The tab has an intro paragraph and a bulleted list, and the list runs to the very end of the tab. We asked gdoc to replace the whole tab with new content written in Markdown: a title and two plain paragraphs, no list. The new text is there, but every new paragraph, including the title, now has a bullet in front of it, inherited from the list that used to end the tab. This is the behaviour reported in gdoc issue 59. Look at the after tab: bullets in front of a title and of plain paragraphs, plus empty bulleted lines between them."
 }

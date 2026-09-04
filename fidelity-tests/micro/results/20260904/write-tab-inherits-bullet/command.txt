@@ -1,3 +1,3 @@
-$ sh -c "printf '# New title\n\nFirst paragraph.\n\nSecond paragraph.\n' > /tmp/gdt-micro-write.md && gdoc write --force --quiet --account alejandro.acelas-contractor@80000hours.org --tab 'Tab 1' 1cisScawG2fdNzBS_zeo3IGdGz86IfpTKHF5jP5dkJoQ /tmp/gdt-micro-write.md"
+$ sh -c "printf '# New title\n\nFirst paragraph.\n\nSecond paragraph.\n' > /tmp/gdt-micro-write.md && gdoc write --force --quiet --account alejandro.acelas-contractor@80000hours.org --tab 'Tab 1' 1gKb0GySACdbI83y-QGcVg91T1ytwLkXTKiW0Zk5M5Oc /tmp/gdt-micro-write.md"
 exit 0
 OK wrote "Tab 1"

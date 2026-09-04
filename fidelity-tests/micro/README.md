@@ -36,7 +36,7 @@ nothing — fix the locator). Seed docs land in the Drive folder `micro` under t
 | edit-resets-alignment | | COLLATERAL — right alignment lost |
 | edit-list-marker-restyles | #57 | COLLATERAL — `1. …` inside the replacement turned the paragraph into a numbered list |
 | edit-footnote-text | | NO-CHANGE (exit 3) — `edit` cannot see footnote text |
-| write-tab-inherits-bullet | #59 | COLLATERAL — rewritten tab's paragraphs carry the old list's bullet |
+| write-tab-inherits-bullet | #59 | COLLATERAL — when the old tab ended in a bulleted paragraph, every rewritten paragraph (title included) carries that bullet; without the terminal bullet the rewrite is clean apart from blank spacer paragraphs |
 
 Every finding of the two-night browser suite reproduces in a document of two or three
 paragraphs.

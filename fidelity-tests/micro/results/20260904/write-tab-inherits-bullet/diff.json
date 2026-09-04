@@ -12,10 +12,30 @@
    "needs_visual_review": false
   },
   {
+   "path": "tab[Tab 1]/para[new@2:First paragraph.⏎].bullet",
+   "before": "∅",
+   "after": {
+    "listId": "kix.f7spk2j6yvr6",
+    "textStyle": {}
+   },
+   "kind": "para",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
    "path": "tab[Tab 1]/para[new@2:First paragraph.⏎].paragraphStyle",
    "before": "∅",
    "after": {
-    "namedStyleType": "NORMAL_TEXT"
+    "namedStyleType": "NORMAL_TEXT",
+    "indentFirstLine": {
+     "magnitude": 18,
+     "unit": "PT"
+    },
+    "indentStart": {
+     "magnitude": 36,
+     "unit": "PT"
+    }
    },
    "kind": "para",
    "class": "expected",
@@ -33,10 +53,30 @@
    "needs_visual_review": false
   },
   {
+   "path": "tab[Tab 1]/para[new@3:⏎].bullet",
+   "before": "∅",
+   "after": {
+    "listId": "kix.f7spk2j6yvr6",
+    "textStyle": {}
+   },
+   "kind": "para",
+   "class": "allowed",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
    "path": "tab[Tab 1]/para[new@3:⏎].paragraphStyle",
    "before": "∅",
    "after": {
-    "namedStyleType": "NORMAL_TEXT"
+    "namedStyleType": "NORMAL_TEXT",
+    "indentFirstLine": {
+     "magnitude": 18,
+     "unit": "PT"
+    },
+    "indentStart": {
+     "magnitude": 36,
+     "unit": "PT"
+    }
    },
    "kind": "para",
    "class": "unexpected",
@@ -54,10 +94,30 @@
    "needs_visual_review": false
   },
   {
+   "path": "tab[Tab 1]/para[new@4:Second paragraph.⏎].bullet",
+   "before": "∅",
+   "after": {
+    "listId": "kix.f7spk2j6yvr6",
+    "textStyle": {}
+   },
+   "kind": "para",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
    "path": "tab[Tab 1]/para[new@4:Second paragraph.⏎].paragraphStyle",
    "before": "∅",
    "after": {
-    "namedStyleType": "NORMAL_TEXT"
+    "namedStyleType": "NORMAL_TEXT",
+    "indentFirstLine": {
+     "magnitude": 18,
+     "unit": "PT"
+    },
+    "indentStart": {
+     "magnitude": 36,
+     "unit": "PT"
+    }
    },
    "kind": "para",
    "class": "expected",
@@ -75,10 +135,30 @@
    "needs_visual_review": false
   },
   {
+   "path": "tab[Tab 1]/para[new@5:⏎].bullet",
+   "before": "∅",
+   "after": {
+    "listId": "kix.f7spk2j6yvr6",
+    "textStyle": {}
+   },
+   "kind": "para",
+   "class": "allowed",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
    "path": "tab[Tab 1]/para[new@5:⏎].paragraphStyle",
    "before": "∅",
    "after": {
-    "namedStyleType": "NORMAL_TEXT"
+    "namedStyleType": "NORMAL_TEXT",
+    "indentFirstLine": {
+     "magnitude": 18,
+     "unit": "PT"
+    },
+    "indentStart": {
+     "magnitude": 36,
+     "unit": "PT"
+    }
    },
    "kind": "para",
    "class": "unexpected",
@@ -106,7 +186,7 @@
   {
    "path": "tab[Tab 1]/para[del@1:first item⏎].bullet",
    "before": {
-    "listId": "kix.uvuot02si0t9",
+    "listId": "kix.f7spk2j6yvr6",
     "textStyle": {}
    },
    "after": "∅",
@@ -118,51 +198,11 @@
   {
    "path": "tab[Tab 1]/para[2:last item⏎].paragraphStyle.headingId",
    "before": "∅",
-   "after": "h.4m8i4h2qn6ga",
+   "after": "h.b73pzqb10t0q",
    "kind": "para",
    "after_para_text": "New title",
    "class": "unexpected",
    "visible": false,
-   "needs_visual_review": false
-  },
-  {
-   "path": "tab[Tab 1]/para[2:last item⏎].paragraphStyle.indentFirstLine.magnitude",
-   "before": 18,
-   "after": "∅",
-   "kind": "para",
-   "after_para_text": "New title",
-   "class": "unexpected",
-   "visible": true,
-   "needs_visual_review": false
-  },
-  {
-   "path": "tab[Tab 1]/para[2:last item⏎].paragraphStyle.indentFirstLine.unit",
-   "before": "PT",
-   "after": "∅",
-   "kind": "para",
-   "after_para_text": "New title",
-   "class": "unexpected",
-   "visible": true,
-   "needs_visual_review": false
-  },
-  {
-   "path": "tab[Tab 1]/para[2:last item⏎].paragraphStyle.indentStart.magnitude",
-   "before": 36,
-   "after": "∅",
-   "kind": "para",
-   "after_para_text": "New title",
-   "class": "unexpected",
-   "visible": true,
-   "needs_visual_review": false
-  },
-  {
-   "path": "tab[Tab 1]/para[2:last item⏎].paragraphStyle.indentStart.unit",
-   "before": "PT",
-   "after": "∅",
-   "kind": "para",
-   "after_para_text": "New title",
-   "class": "unexpected",
-   "visible": true,
    "needs_visual_review": false
   },
   {
@@ -173,36 +213,6 @@
    "after_para_text": "New title",
    "class": "unexpected",
    "visible": false,
-   "needs_visual_review": false
-  },
-  {
-   "path": "tab[Tab 1]/para[2:last item⏎].bullet",
-   "before": "∅",
-   "after": null,
-   "kind": "para",
-   "after_para_text": "New title",
-   "class": "allowed",
-   "visible": true,
-   "needs_visual_review": false
-  },
-  {
-   "path": "tab[Tab 1]/para[2:last item⏎].bullet.listId",
-   "before": "kix.uvuot02si0t9",
-   "after": "∅",
-   "kind": "para",
-   "after_para_text": "New title",
-   "class": "allowed",
-   "visible": false,
-   "needs_visual_review": false
-  },
-  {
-   "path": "tab[Tab 1]/para[2:last item⏎].bullet.textStyle",
-   "before": {},
-   "after": "∅",
-   "kind": "para",
-   "after_para_text": "New title",
-   "class": "allowed",
-   "visible": true,
    "needs_visual_review": false
   },
   {
@@ -219,13 +229,13 @@
    "needs_visual_review": false
   }
  ],
- "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -1,5 +1,5 @@\n-Intro paragraph.\n+# New title\n \n-* first item  \n-* last item\n+First paragraph.\n \n+Second paragraph.  ",
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -1,5 +1,7 @@\n-Intro paragraph.\n+* # New title\n \n-* first item  \n-* last item  \n+*   \n+* First paragraph.  \n+*   \n+* Second paragraph.  \n * ",
  "needs_visual_review_reasons": [],
  "summary": {
-  "expected": 4,
-  "allowed": 4,
-  "unexpected": 13,
-  "visible_unexpected": 11,
+  "expected": 6,
+  "allowed": 3,
+  "unexpected": 9,
+  "visible_unexpected": 7,
   "invisible_unexpected": 2
  }
 }

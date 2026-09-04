@@ -1,16 +1,16 @@
 {
  "name": "write-tab-inherits-bullet",
  "issue": "https://github.com/LucaDeLeo/gdoc/issues/59",
- "doc": "https://docs.google.com/document/d/1cisScawG2fdNzBS_zeo3IGdGz86IfpTKHF5jP5dkJoQ/edit",
- "command": "sh -c \"printf '# New title\\n\\nFirst paragraph.\\n\\nSecond paragraph.\\n' > /tmp/gdt-micro-write.md && gdoc write --force --quiet --account alejandro.acelas-contractor@80000hours.org --tab 'Tab 1' 1cisScawG2fdNzBS_zeo3IGdGz86IfpTKHF5jP5dkJoQ /tmp/gdt-micro-write.md\"",
+ "doc": "https://docs.google.com/document/d/1gKb0GySACdbI83y-QGcVg91T1ytwLkXTKiW0Zk5M5Oc/edit",
+ "command": "sh -c \"printf '# New title\\n\\nFirst paragraph.\\n\\nSecond paragraph.\\n' > /tmp/gdt-micro-write.md && gdoc write --force --quiet --account alejandro.acelas-contractor@80000hours.org --tab 'Tab 1' 1gKb0GySACdbI83y-QGcVg91T1ytwLkXTKiW0Zk5M5Oc /tmp/gdt-micro-write.md\"",
  "exit": 0,
  "summary": {
-  "expected": 4,
-  "allowed": 4,
-  "unexpected": 13,
-  "visible_unexpected": 11,
+  "expected": 6,
+  "allowed": 3,
+  "unexpected": 9,
+  "visible_unexpected": 7,
   "invisible_unexpected": 2
  },
  "outcome": "COLLATERAL",
- "seconds": 10.1
+ "seconds": 10.8
 }

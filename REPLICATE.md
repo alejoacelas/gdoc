@@ -22,3 +22,14 @@ Alejo wanted a fidelity test for the failure seen when `gdoc write --tab` rewrot
 - Added a "Reducing a failure seen in a real document" section to the `gdoc-fidelity-test` skill.
 
 Agent session 7b7d0e6b-823f-4b1b-855e-c973745645cd · Commits 8762094
+
+## Scripted browser captures and PDF comparison (2026-09-05)
+
+Alejo wanted a scripted replacement for the extension-driven Google Docs shooter, timed on existing fidelity documents and compared with PDF exports, without editing or sharing any document.
+
+- Added `gdt-shot-headless`: normal Chrome off-screen through Playwright/CDP, a dedicated `~/.config/gdt-chrome` profile with human login, fixed viewport and scroll offsets, and the existing `gdt-shot` filing format plus measured geometry and timings.
+- Fixed late-loading outline and toast controls found during trials; the final five-copy benchmark captured 48 views at 1.11 seconds/view on first load and 1.13 seconds/view warm, including setup. Restarting Chrome preserved login.
+- Exported the six supplied micro Docs with the work account and rendered PDFs at 150 dpi. Aligned crops agree on text, line breaks, bullets and footnote placement; these cases do not establish fidelity for comments, suggestions or chips. PDF export plus rendering took 7.82 seconds total versus 21.01 seconds for browser capture.
+- Saved original captures, timings, side-by-side evidence, reproduction scripts and install notes. Seven local tests passed; all 11 document modification timestamps stayed unchanged. Committed on `fidelity-tests` without pushing, as requested.
+
+Agent session 01a06e9e-61f8-7b20-be13-a1e8759790b0 · Commits 9a115e8

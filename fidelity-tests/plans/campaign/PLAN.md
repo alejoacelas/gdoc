@@ -13,7 +13,10 @@ A case is a JSON file: `seed` (constructs built through the Docs API, including 
 and pending suggestions via the preview surface), `command` (one gdoc command with `{DOC}`,
 `{A}`, `{TAB}` placeholders; a short `sequence` of commands is allowed when the error needs
 state), `assert` (the exact after-text of each target paragraph, the expected replacement count,
-and the styles that must remain, by range), `target` and `allowed` (locators as today).
+and the styles that must remain, by range), `target` and `allowed` (locators as today). A request whose end state spans several places
+lists them all: renaming a heading in a document with a table of contents asserts the new heading
+text *and* the updated TOC entry; a stale TOC is then incomplete completion, a rewritten TOC is
+collateral, and neither is decided after the run.
 
 The runner, per case: create the document directly in the campaign folder (Drive
 `files.create` with `parents`), seed in one `batchUpdate` where the API permits (text and

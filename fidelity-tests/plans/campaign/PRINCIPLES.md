@@ -7,8 +7,8 @@ with, replaced or dropped; a change that violates one of these is not an impleme
    and after (the Docs API representation, with suggestions and comments included), never by
    what the tool or the agent reports about itself.
 
-2. **Success is asserted, not inferred.** Every case states exactly what the target must read
-   afterwards. A run reports three separate facts: was the requested change made exactly, did
+2. **Success is asserted, not inferred.** Every case states the intended end state exactly,
+   wherever in the document it lies. A run reports three separate facts: was the requested change made exactly, did
    anything else change, did the command fail. None of them is derived from another.
 
 3. **Everything outside the declared target is protected.** Any difference outside the target

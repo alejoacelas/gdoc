@@ -6,17 +6,17 @@ One section per fixture. The fixture link is the frozen original (the "before" o
 
 One document per fixture with all of that fixture's edits applied in sequence, then painted: green = the change a task asked for, red = collateral, amber = allowed side effect, red left border = paragraph style changed; a numbered comment T1… per task sits where it edited; a header at the top lists the tasks and outcomes and links the unpainted copy.
 
-- **collab/v01** — https://docs.google.com/document/d/15guE3nrWCQqyz_voMato0k7yKdyRzhukzs182Lu6V80/edit — 5 edits: 3 COLLATERAL, 2 DONE
-- **kitchen-sink/v01** — https://docs.google.com/document/d/18lMyyYyB0n2lYA-typ4_LaIo6UGzRCoqTYDbw7Sfgew/edit — 7 edits: 2 COLLATERAL, 4 DONE, 1 GAP-CLI
-- **lists/v01** — https://docs.google.com/document/d/1C_cW3_cHTPO9U3kRocHHR61POUSa_4CpzkCj1r3PRso/edit — 12 edits: 5 COLLATERAL, 1 DECLINED-API, 5 DONE, 1 FAIL-AGENT
-- **tables/v01** — https://docs.google.com/document/d/1ROv2UtcrrIx2OZer0B54P3OYLiFH-nl5H-7QOazdPHM/edit — 11 edits: 1 COLLATERAL, 9 DONE, 1 GAP-CLI
-- **text/v01** — https://docs.google.com/document/d/1QgeTu7gHOcrZdIfHwv7KrkNVBz8WodXx8vjyTCwlkgg/edit — 11 edits: 8 COLLATERAL, 3 DONE
+- **collab/v01** — https://docs.google.com/document/d/15ywu96tJWH7AqgOijuxh0nixYbYFtOeMJAtcHfbVjkc/edit — 5 edits: 2 COLLATERAL, 3 DONE
+- **kitchen-sink/v01** — https://docs.google.com/document/d/1lBIB2T3eG0G-r6wiO9pLwyHuLeopyJVnvYriddz_evs/edit — 7 edits: 2 COLLATERAL, 4 DONE, 1 GAP-CLI
+- **lists/v01** — https://docs.google.com/document/d/1K1FzT436KfZdOYuIqxOBXguNUDbWxYokzOFdI3Z6Qyk/edit — 12 edits: 5 COLLATERAL, 1 DECLINED-API, 5 DONE, 1 FAIL-AGENT
+- **tables/v01** — https://docs.google.com/document/d/1Od_ShiE9_IINibY9OM1cGLNcf2Wc1U8SYod6uScA2ZU/edit — 11 edits: 1 COLLATERAL, 9 DONE, 1 GAP-CLI
+- **text/v01** — https://docs.google.com/document/d/15cUmAI2cwe_pTuJOoWsYpzcfnHdbmJ7EhAp6DVvYHSE/edit — 11 edits: 8 COLLATERAL, 3 DONE
 
 ## collab/v01
 
 Fixture (before): https://docs.google.com/document/d/16-VPn1wWF0ZmyWtlF8JbAq8qxJlfgiT71GNfjPcs00w/edit
 
-Batch `20260903-batch` (5 edits in sequence on one copy): run copy https://docs.google.com/document/d/1d2i9p2B2vuiOFVZ0Fme9U73rf0lY3c7WzgWl_UBz7a4/edit · **painted review copy** https://docs.google.com/document/d/15guE3nrWCQqyz_voMato0k7yKdyRzhukzs182Lu6V80/edit
+Batch `20260903-batch` (5 edits in sequence on one copy): run copy https://docs.google.com/document/d/1d2i9p2B2vuiOFVZ0Fme9U73rf0lY3c7WzgWl_UBz7a4/edit · **painted review copy** https://docs.google.com/document/d/15ywu96tJWH7AqgOijuxh0nixYbYFtOeMJAtcHfbVjkc/edit
 
 - **handbook-link-notion** — The finance handbook link points at the old handbook — change it to https://www.notion.so/people-ops/expenses. Keep the wording.
   - Outcome: **COLLATERAL** · edited copy: https://docs.google.com/document/d/1tjP_VgAfXiWKrRDrl0cByrP_7Qve9hrlhfvyQQayW-o/edit
@@ -25,7 +25,7 @@ Batch `20260903-batch` (5 edits in sequence on one copy): run copy https://docs.
 - **next-review-september** — The next review isn't June any more, it's September — fix the last line.
   - Outcome: **DECLINED-API** · edited copy: https://docs.google.com/document/d/1EFNaYQbifeqD537t9dmho7geEcZbZPzPuCGsltTVv2g/edit
 - **next-review-september** [batch 20260903-batch] — The next review isn't June any more, it's September — fix the last line.
-  - Outcome: **COLLATERAL** · edited copy: https://docs.google.com/document/d/1d2i9p2B2vuiOFVZ0Fme9U73rf0lY3c7WzgWl_UBz7a4/edit
+  - Outcome: **DONE** · edited copy: https://docs.google.com/document/d/1d2i9p2B2vuiOFVZ0Fme9U73rf0lY3c7WzgWl_UBz7a4/edit
 - **reopen-three-forms** — Someone resolved the comment about "three forms" but the text now says four — reopen that comment and reply "Reopening: the paragraph now says four forms, is that right?"
   - Outcome: **INVALID** · edited copy: https://docs.google.com/document/d/1txCEE5AxJbnBEWQeQ7MJF0Ou0Yl1-dRoDJ7fZP3v7es/edit
 - **reply-broadband-thread** — On the broadband comment thread (the one about £15 being too low), add a reply saying "Agreed, going with £25 — finance signed off on 3 Sept." Don't resolve it.
@@ -45,7 +45,7 @@ Batch `20260903-batch` (5 edits in sequence on one copy): run copy https://docs.
 
 Fixture (before): https://docs.google.com/document/d/1uqR5yBhTMYu-3qfJ9JibyJn9NJD7RZEiCMLnQngTB9g/edit
 
-Batch `20260903-batch` (7 edits in sequence on one copy): run copy https://docs.google.com/document/d/1MJvElMkEM1D_djAardtYrKWISmZm6fNINw87nybxyxA/edit · **painted review copy** https://docs.google.com/document/d/18lMyyYyB0n2lYA-typ4_LaIo6UGzRCoqTYDbw7Sfgew/edit
+Batch `20260903-batch` (7 edits in sequence on one copy): run copy https://docs.google.com/document/d/1MJvElMkEM1D_djAardtYrKWISmZm6fNINw87nybxyxA/edit · **painted review copy** https://docs.google.com/document/d/1lBIB2T3eG0G-r6wiO9pLwyHuLeopyJVnvYriddz_evs/edit
 
 - **add-open-question** — Add one more open question at the end of Tomás's list: "Do we need a rollback drill before the 15th?"
   - Outcome: **DONE** · edited copy: https://docs.google.com/document/d/11lWl1NRjf1Yh5ypjPGwL4Bzl71OaZrhzYAG9XjLEHaE/edit
@@ -86,7 +86,7 @@ Batch `20260903-batch` (7 edits in sequence on one copy): run copy https://docs.
 
 Fixture (before): https://docs.google.com/document/d/1dmd4Qf3PyZ48fJpOtzI7_2OcCSS3Iy7Ea05l4r7rtQ8/edit
 
-Batch `20260903-batch` (12 edits in sequence on one copy): run copy https://docs.google.com/document/d/1WKNjCfOeRg68xRNROUU0YCKane3-gCfsppCcnqhNI3E/edit · **painted review copy** https://docs.google.com/document/d/1C_cW3_cHTPO9U3kRocHHR61POUSa_4CpzkCj1r3PRso/edit
+Batch `20260903-batch` (12 edits in sequence on one copy): run copy https://docs.google.com/document/d/1WKNjCfOeRg68xRNROUU0YCKane3-gCfsppCcnqhNI3E/edit · **painted review copy** https://docs.google.com/document/d/1K1FzT436KfZdOYuIqxOBXguNUDbWxYokzOFdI3Z6Qyk/edit
 
 - **checklist-insert-after-checked-runbook** — In the onboarding checklist, add "Get added to the on-call rota (ask Marco)" as a new checkbox right after the runbook one.
   - Outcome: **DONE** · edited copy: https://docs.google.com/document/d/1cdQX3-1OK_OkBFg0uh6tgMZuHRxden7pUTsdUHvrPvM/edit
@@ -145,7 +145,7 @@ Batch `20260903-batch` (12 edits in sequence on one copy): run copy https://docs
 
 Fixture (before): https://docs.google.com/document/d/1qkVHvm__en97IXhioB83XK4lBKV6bvq67Aq6PcWbSYM/edit
 
-Batch `20260903-batch` (11 edits in sequence on one copy): run copy https://docs.google.com/document/d/1qTULReZ9fMsbm0dzsc-epg7kxTae2hQFvexKNabmPN8/edit · **painted review copy** https://docs.google.com/document/d/1ROv2UtcrrIx2OZer0B54P3OYLiFH-nl5H-7QOazdPHM/edit
+Batch `20260903-batch` (11 edits in sequence on one copy): run copy https://docs.google.com/document/d/1qTULReZ9fMsbm0dzsc-epg7kxTae2hQFvexKNabmPN8/edit · **painted review copy** https://docs.google.com/document/d/1Od_ShiE9_IINibY9OM1cGLNcf2Wc1U8SYod6uScA2ZU/edit
 
 - **acme-cost-49000** — Acme Cloud's Q3 cost went up to 49,000 — can you update the vendor table?
   - Outcome: **DONE** · edited copy: https://docs.google.com/document/d/1DoaABtJiJrPMo0cZIfcWslPz0xVFSHLsUD1SYX4TT0U/edit
@@ -196,7 +196,7 @@ Batch `20260903-batch` (11 edits in sequence on one copy): run copy https://docs
 
 Fixture (before): https://docs.google.com/document/d/1zU7pmkVdMCQEfJYSZ5-fTvoXUMWGtTuAcFyXNRqFZfU/edit
 
-Batch `20260903-batch` (11 edits in sequence on one copy): run copy https://docs.google.com/document/d/1dzI_lcHqKgetVer2YVs0kS0t_2ALWmv0Vh3YHlA8X-4/edit · **painted review copy** https://docs.google.com/document/d/1QgeTu7gHOcrZdIfHwv7KrkNVBz8WodXx8vjyTCwlkgg/edit
+Batch `20260903-batch` (11 edits in sequence on one copy): run copy https://docs.google.com/document/d/1dzI_lcHqKgetVer2YVs0kS0t_2ALWmv0Vh3YHlA8X-4/edit · **painted review copy** https://docs.google.com/document/d/15cUmAI2cwe_pTuJOoWsYpzcfnHdbmJ7EhAp6DVvYHSE/edit
 
 - **beta-badge-straight-quotes** — In the Key dates paragraph, the "beta" badge — the one written with straight quotes — is called the "preview" badge now. Marta's “beta” label stays as it is.
   - Outcome: **DONE** · edited copy: https://docs.google.com/document/d/1ZKZe1veY5CoZeso7giZevp5Ylqs8SGoZnzzoe1IvJUU/edit
@@ -242,3 +242,10 @@ Batch `20260903-batch` (11 edits in sequence on one copy): run copy https://docs
   - Outcome: **COLLATERAL** · edited copy: https://docs.google.com/document/d/1MTD0MJav8tqasmSD2qKPpIGTUHJFjhU4Ie0iNZDAOeg/edit
 - **tidy-double-spaces** [batch 20260903-batch] — There are a bunch of stray double spaces in this draft — can you tidy them up?
   - Outcome: **COLLATERAL** · edited copy: https://docs.google.com/document/d/1dzI_lcHqKgetVer2YVs0kS0t_2ALWmv0Vh3YHlA8X-4/edit
+
+## write/v01
+
+Fixture (before): https://docs.google.com/document/d/185pWbHuvuWkR20ppTRYTwLMSsBuq5aLfhFPf3k8nMiU/edit
+
+- **rewrite-tab-after-ui-bullet** [command track] — Replace the whole "Repro" tab with the contents of rewrite.md (a heading, a plain paragraph, a two-item bullet list, a closing plain paragraph). Command track: `gdoc write --tab Repro <copy> rewrite.md`.
+  - Outcome: **COLLATERAL** · edited copy: https://docs.google.com/document/d/185pWbHuvuWkR20ppTRYTwLMSsBuq5aLfhFPf3k8nMiU/edit

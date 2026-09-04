@@ -3,7 +3,7 @@
  "batch": "20260903-batch",
  "copy_id": "1WKNjCfOeRg68xRNROUU0YCKane3-gCfsppCcnqhNI3E",
  "fixture_doc": "https://docs.google.com/document/d/1dmd4Qf3PyZ48fJpOtzI7_2OcCSS3Iy7Ea05l4r7rtQ8/edit",
- "review_copy_id": "1C_cW3_cHTPO9U3kRocHHR61POUSa_4CpzkCj1r3PRso",
+ "review_copy_id": "1K1FzT436KfZdOYuIqxOBXguNUDbWxYokzOFdI3Z6Qyk",
  "runs": [
   {
    "run": "20260903-checklist-insert-after-checked-runbook",
@@ -226,7 +226,7 @@
    "outcome": "COLLATERAL",
    "request_met": "partial",
    "summary": {
-    "expected": 2,
+    "expected": 1,
     "allowed": 0,
     "unexpected": 0,
     "visible_unexpected": 0,
@@ -236,19 +236,10 @@
     {
      "path": "tab[Tab 1]/para[38:Marco to rotate the API keys b].text",
      "kind": "text",
-     "before": "M",
-     "after": "Priy",
-     "after_context": "Priya to rotate ",
-     "after_para_text": "Priya to rotate the API keys before Friday",
-     "class": "expected",
-     "visible": true,
-     "needs_visual_review": false
-    },
-    {
-     "path": "tab[Tab 1]/para[38:Marco to rotate the API keys b].text",
-     "kind": "text",
-     "before": "rco",
-     "after": "",
+     "before": "Marco",
+     "after": "Priya",
+     "after_pos": 0,
+     "after_len": 5,
      "after_context": "Priya to rotate t",
      "after_para_text": "Priya to rotate the API keys before Friday",
      "class": "expected",
@@ -292,6 +283,8 @@
       "textStyle": {}
      },
      "kind": "style",
+     "after_pos": 0,
+     "after_len": 34,
      "after_para_text": "Kubectl rollout restart deploy/api -n staging-eu",
      "snippet": "Kubectl rollout restart deploy/api",
      "class": "unexpected",
@@ -303,6 +296,8 @@
      "kind": "text",
      "before": "",
      "after": "-eu",
+     "after_pos": 45,
+     "after_len": 3,
      "after_context": "i -n staging-eu",
      "after_para_text": "Kubectl rollout restart deploy/api -n staging-eu",
      "class": "expected",
@@ -321,54 +316,21 @@
    "outcome": "COLLATERAL",
    "request_met": "partial",
    "summary": {
-    "expected": 2,
+    "expected": 1,
     "allowed": 0,
-    "unexpected": 2,
-    "visible_unexpected": 2,
+    "unexpected": 1,
+    "visible_unexpected": 1,
     "invisible_unexpected": 0
    },
    "items": [
     {
      "path": "tab[Tab 1]/para[42:Approved by Legal on 14 Aug, s].text",
      "kind": "text",
-     "before": "",
-     "after": "2",
-     "after_context": "by Legal on 21 Aug, see t",
-     "after_para_text": "Approved by Legal on 21 Aug, see the thread",
-     "class": "expected",
-     "visible": true,
-     "needs_visual_review": false
-    },
-    {
-     "path": "tab[Tab 1]/para[42:Approved by Legal on 14 Aug, s].style@\"1\"",
-     "before": {
-      "textStyle": {
-       "fontSize": {
-        "magnitude": 13,
-        "unit": "PT"
-       },
-       "weightedFontFamily": {
-        "fontFamily": "Georgia",
-        "weight": 400
-       }
-      }
-     },
-     "after": {
-      "textStyle": {}
-     },
-     "kind": "style",
-     "after_para_text": "Approved by Legal on 21 Aug, see the thread",
-     "snippet": "1",
-     "class": "unexpected",
-     "visible": true,
-     "needs_visual_review": false
-    },
-    {
-     "path": "tab[Tab 1]/para[42:Approved by Legal on 14 Aug, s].text",
-     "kind": "text",
-     "before": "4",
-     "after": "",
-     "after_context": " Legal on 21 Aug, see th",
+     "before": "14",
+     "after": "21",
+     "after_pos": 21,
+     "after_len": 2,
+     "after_context": "by Legal on 21 Aug, see th",
      "after_para_text": "Approved by Legal on 21 Aug, see the thread",
      "class": "expected",
      "visible": true,
@@ -392,6 +354,8 @@
       "textStyle": {}
      },
      "kind": "style",
+     "after_pos": 23,
+     "after_len": 21,
      "after_para_text": "Approved by Legal on 21 Aug, see the thread",
      "snippet": " Aug, see the thread",
      "class": "unexpected",
@@ -454,6 +418,8 @@
       }
      },
      "kind": "style",
+     "after_pos": 9,
+     "after_len": 19,
      "after_para_text": "Marco to rotate the API keys before Friday",
      "snippet": "rotate the API keys",
      "class": "expected",
@@ -472,7 +438,7 @@
    "outcome": "DONE",
    "request_met": "true",
    "summary": {
-    "expected": 2,
+    "expected": 1,
     "allowed": 0,
     "unexpected": 0,
     "visible_unexpected": 0,
@@ -482,20 +448,11 @@
     {
      "path": "tab[Tab 1]/para[33:We ship v2.14 on 1912 Sep even].text",
      "kind": "text",
-     "before": "Cyr",
-     "after": "Russ",
-     "after_context": "even if the Russian README i",
-     "after_para_text": "We ship v2.14 on 1912 Sep even if the Russian README is not done",
-     "class": "expected",
-     "visible": true,
-     "needs_visual_review": false
-    },
-    {
-     "path": "tab[Tab 1]/para[33:We ship v2.14 on 1912 Sep even].text",
-     "kind": "text",
-     "before": "llic",
-     "after": "an",
-     "after_context": "if the Russian README is n",
+     "before": "Cyrillic",
+     "after": "Russian",
+     "after_pos": 38,
+     "after_len": 7,
+     "after_context": "even if the Russian README is n",
      "after_para_text": "We ship v2.14 on 1912 Sep even if the Russian README is not done",
      "class": "expected",
      "visible": true,
@@ -525,6 +482,8 @@
      "kind": "text",
      "before": "",
      "after": " + Apple Pay",
+     "after_pos": 40,
+     "after_len": 12,
      "after_context": "(card + SEPA + Apple Pay)",
      "after_para_text": "Smoke test the payment flow (card + SEPA + Apple Pay)",
      "class": "expected",
@@ -1334,6 +1293,8 @@
      "kind": "text",
      "before": "-\t",
      "after": "",
+     "after_pos": 0,
+     "after_len": 0,
      "after_context": "Staging shar",
      "after_para_text": "Staging shares the prod cluster, namespace staging (yes, really)",
      "class": "expected",
@@ -1370,7 +1331,7 @@
    "outcome": "DONE",
    "request_met": "true",
    "summary": {
-    "expected": 15,
+    "expected": 9,
     "allowed": 0,
     "unexpected": 0,
     "visible_unexpected": 0,
@@ -1410,134 +1371,10 @@
     {
      "path": "tab[Tab 1]/para[44:BLOCKED: waiting on the securi].text",
      "kind": "text",
-     "before": "BL",
-     "after": "D",
-     "after_context": "DONE: securit",
-     "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
-     "class": "expected",
-     "visible": true,
-     "needs_visual_review": false
-    },
-    {
-     "path": "tab[Tab 1]/para[44:BLOCKED: waiting on the securi].style@\"O\"",
-     "before": {
-      "textStyle": {
-       "backgroundColor": {
-        "color": {
-         "rgbColor": {
-          "green": 1,
-          "red": 1
-         }
-        }
-       },
-       "foregroundColor": {
-        "color": {
-         "rgbColor": {
-          "red": 1
-         }
-        }
-       }
-      }
-     },
-     "after": {
-      "textStyle": {}
-     },
-     "kind": "style",
-     "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
-     "snippet": "O",
-     "class": "expected",
-     "visible": true,
-     "needs_visual_review": false
-    },
-    {
-     "path": "tab[Tab 1]/para[44:BLOCKED: waiting on the securi].text",
-     "kind": "text",
-     "before": "CK",
-     "after": "N",
-     "after_context": "DONE: security ",
-     "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
-     "class": "expected",
-     "visible": true,
-     "needs_visual_review": false
-    },
-    {
-     "path": "tab[Tab 1]/para[44:BLOCKED: waiting on the securi].style@\"E\"",
-     "before": {
-      "textStyle": {
-       "backgroundColor": {
-        "color": {
-         "rgbColor": {
-          "green": 1,
-          "red": 1
-         }
-        }
-       },
-       "foregroundColor": {
-        "color": {
-         "rgbColor": {
-          "red": 1
-         }
-        }
-       }
-      }
-     },
-     "after": {
-      "textStyle": {}
-     },
-     "kind": "style",
-     "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
-     "snippet": "E",
-     "class": "expected",
-     "visible": true,
-     "needs_visual_review": false
-    },
-    {
-     "path": "tab[Tab 1]/para[44:BLOCKED: waiting on the securi].text",
-     "kind": "text",
-     "before": "D",
-     "after": "",
-     "after_context": "DONE: security r",
-     "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
-     "class": "expected",
-     "visible": true,
-     "needs_visual_review": false
-    },
-    {
-     "path": "tab[Tab 1]/para[44:BLOCKED: waiting on the securi].style@\":\"",
-     "before": {
-      "textStyle": {
-       "backgroundColor": {
-        "color": {
-         "rgbColor": {
-          "green": 1,
-          "red": 1
-         }
-        }
-       },
-       "foregroundColor": {
-        "color": {
-         "rgbColor": {
-          "red": 1
-         }
-        }
-       }
-      }
-     },
-     "after": {
-      "textStyle": {}
-     },
-     "kind": "style",
-     "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
-     "snippet": ":",
-     "class": "expected",
-     "visible": true,
-     "needs_visual_review": false
-    },
-    {
-     "path": "tab[Tab 1]/para[44:BLOCKED: waiting on the securi].text",
-     "kind": "text",
-     "before": " waiting on the",
-     "after": "",
+     "before": "BLOCKED: waiting on the",
+     "after": "DONE:",
+     "after_pos": 0,
+     "after_len": 5,
      "after_context": "DONE: security re",
      "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
      "class": "expected",
@@ -1562,6 +1399,8 @@
       "textStyle": {}
      },
      "kind": "style",
+     "after_pos": 5,
+     "after_len": 17,
      "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
      "snippet": " security review ",
      "class": "expected",
@@ -1573,6 +1412,8 @@
      "kind": "text",
      "before": "",
      "after": "signed off ",
+     "after_pos": 22,
+     "after_len": 11,
      "after_context": "rity review signed off (Sam, 2 Sep)",
      "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
      "class": "expected",
@@ -1597,6 +1438,8 @@
       "textStyle": {}
      },
      "kind": "style",
+     "after_pos": 33,
+     "after_len": 6,
      "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
      "snippet": "(Sam, ",
      "class": "expected",
@@ -1608,6 +1451,8 @@
      "kind": "text",
      "before": "again",
      "after": "2 Sep",
+     "after_pos": 39,
+     "after_len": 5,
      "after_context": "d off (Sam, 2 Sep)",
      "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
      "class": "expected",
@@ -1632,6 +1477,8 @@
       "textStyle": {}
      },
      "kind": "style",
+     "after_pos": 44,
+     "after_len": 2,
      "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
      "snippet": ")",
      "class": "expected",

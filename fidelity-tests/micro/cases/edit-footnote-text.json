@@ -1,6 +1,18 @@
-{"name": "edit-footnote-text",
- "seed": [{"text": "Numbers come from the Finance sheet", "footnote": "Finance sheet v7, pulled 28 Aug."}, {"text": "Closing line."}],
+{
+ "name": "edit-footnote-text",
+ "seed": [
+  {
+   "text": "Numbers come from the Finance sheet",
+   "footnote": "Finance sheet v7, pulled 28 Aug."
+  },
+  {
+   "text": "Closing line."
+  }
+ ],
  "request": "The footnote should say v8, pulled 2 Sept.",
- "command": "gdoc edit --account {A} {DOC} 'Finance sheet v7, pulled 28 Aug.' 'Finance sheet v8, pulled 2 Sept.'",
+ "command": "gdoc edit --tab '{TAB}' --account {A} {DOC} 'Finance sheet v7, pulled 28 Aug.' 'Finance sheet v8, pulled 2 Sept.'",
  "expected": "Footnote reads `Finance sheet v8, pulled 2 Sept.`; body unchanged.",
- "target": "footnote", "allowed": "revision list grows"}
+ "target": "footnote",
+ "allowed": "revision list grows",
+ "explain": "The first paragraph ends with a footnote mark; the footnote at the bottom of the page reads 'Finance sheet v7, pulled 28 Aug.'. We asked gdoc to change it to 'v8, pulled 2 Sept.'. gdoc replied that it could not find that text, and changed nothing, although 'gdoc cat' prints the footnote. So the before and after tabs are identical here, and that is the problem: footnotes cannot be edited. Look at the footnote at the bottom of both tabs."
+}

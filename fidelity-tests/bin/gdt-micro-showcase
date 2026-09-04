@@ -1,0 +1,78 @@
+#!/Users/alejo/.local/share/uv/tools/gdoc/bin/python
+"""gdt-micro-showcase --title T CASE.json…  — one Google Doc, many tabs: a plain-language "Read me"
+tab first, then for every case a "before" tab (the seeded document) and an "after" tab (the same
+seed with the case's gdoc command applied). For showing people what a failure looks like."""
+import argparse, importlib.util, importlib.machinery, json, re, shlex, subprocess, sys, time
+from pathlib import Path
+here = Path(__file__).resolve().parent
+spec = importlib.util.spec_from_loader("gdtmicro", importlib.machinery.SourceFileLoader("gdtmicro", str(here / "gdt-micro")))
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+from googleapiclient.discovery import build
+
+
+def main():
+    ap = argparse.ArgumentParser(); ap.add_argument("cases", nargs="+"); ap.add_argument("--title", default="gdt micro — known failures")
+    a = ap.parse_args()
+    with m.account_context(m.ACCOUNT):
+        creds = m.get_credentials()
+    docs = build("docs", "v1", credentials=creds, cache_discovery=False)
+    cases = [json.load(open(p)) for c in a.cases for p in (sorted(Path(c).glob("*.json")) if Path(c).is_dir() else [Path(c)])]
+    doc = docs.documents().create(body={"title": a.title}).execute(); doc_id = doc["documentId"]
+    subprocess.run(["gdoc", "mv", "--account", m.ACCOUNT, doc_id, m.FOLDER], capture_output=True)
+    d = docs.documents().get(documentId=doc_id, includeTabsContent=True).execute()
+    readme_tab = d["tabs"][0]["tabProperties"]["tabId"]
+    reqs = [{"updateDocumentTabProperties": {"tabProperties": {"tabId": readme_tab, "title": "Read me"}, "fields": "title"}}]
+    tabs = {}
+    for n, c in enumerate(cases, 1):
+        for side in ("before", "after"):
+            reqs.append({"addDocumentTab": {"tabProperties": {"title": f"{n}{'a' if side == 'before' else 'b'} {c['name']} — {side}"}}})
+    res = docs.documents().batchUpdate(documentId=doc_id, body={"requests": reqs}).execute()
+    created = [r["addDocumentTab"]["tabProperties"] for r in res["replies"] if "addDocumentTab" in r]
+    for n, c in enumerate(cases, 1):
+        tabs[(n, "before")] = created[2 * (n - 1)]; tabs[(n, "after")] = created[2 * (n - 1) + 1]
+    # seed both tabs, run the command on the after tab
+    results = []
+    for n, c in enumerate(cases, 1):
+        for side in ("before", "after"):
+            m.seed_doc(docs, doc_id, c["seed"], tab_id=tabs[(n, side)]["tabId"])
+        after_title = tabs[(n, "after")]["title"]
+        cmd = c["command"].replace("{DOC}", doc_id).replace("{A}", m.ACCOUNT).replace("{TAB}", after_title)
+        r = subprocess.run(shlex.split(cmd), capture_output=True, text=True)
+        out_lines = [l for l in (r.stdout + r.stderr).strip().splitlines() if l.strip()]
+        said = next((l for l in reversed(out_lines) if l.startswith(("OK", "ERR"))), out_lines[-1] if out_lines else "")
+        results.append((n, c, cmd, r.returncode, said))
+        time.sleep(1)
+    # Read me tab
+    lines = []
+    def para(text, style="NORMAL_TEXT"): lines.append((text, style))
+    para(a.title, "TITLE")
+    para("This document collects the mistakes we have seen the gdoc command-line tool make when it edits a Google Doc. "
+         "Each case is a tiny document. The tab marked “before” is the document as it was; the tab marked “after” is the same "
+         "document after gdoc ran one command on it. Open the two tabs side by side (or switch between them) and look at the "
+         "place named below. The text you asked to change is usually correct; the damage is to the formatting around it.")
+    para("The rule of thumb for what to look at: bold, crossed-out words, highlights, fonts, alignment, list bullets and footnotes near the edit. "
+         "Those are the things a person would never expect to change when they ask for a small wording change.")
+    for n, c, cmd, code, last in results:
+        para(f"{n}. {c['name']}", "HEADING_2")
+        para(f"What was asked: {c.get('request', '')}")
+        para(c["explain"])
+        para(f"Command that was run: {cmd.replace(doc_id, 'DOC').replace(m.ACCOUNT, 'ACCOUNT')}")
+        para(f"gdoc replied: {last or '(no output)'} (exit code {code}).")
+        para(f"Tabs to compare: “{tabs[(n, 'before')]['title']}” and “{tabs[(n, 'after')]['title']}”.")
+        if c.get("issue"): para(f"Tracked at: {c['issue']}")
+    text = "\n".join(t for t, _ in lines) + "\n"
+    reqs = [{"insertText": {"location": {"index": 1, "tabId": readme_tab}, "text": text}}]
+    idx = 1
+    for t, style in lines:
+        end = idx + m.u16(t) + 1
+        if style != "NORMAL_TEXT":
+            reqs.append({"updateParagraphStyle": {"range": {"startIndex": idx, "endIndex": end, "tabId": readme_tab}, "paragraphStyle": {"namedStyleType": style}, "fields": "namedStyleType"}})
+        idx = end
+    docs.documents().batchUpdate(documentId=doc_id, body={"requests": reqs}).execute()
+    print(f"https://docs.google.com/document/d/{doc_id}/edit")
+    for n, c, cmd, code, last in results:
+        print(f"  {n}. {c['name']}: exit {code} — {last[:70]}")
+
+
+if __name__ == "__main__":
+    main()

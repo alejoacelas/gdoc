@@ -41,7 +41,7 @@ def rgb(hexs):
     h = hexs.lstrip("#"); return {"red": int(h[0:2], 16) / 255, "green": int(h[2:4], 16) / 255, "blue": int(h[4:6], 16) / 255}
 
 
-def seed_requests(seed):
+def seed_requests(seed, tab_id=None):
     """Build the document body in one batchUpdate: insert all text first, then style by range."""
     reqs, idx, ranges, late = [], 1, [], []
     for p in seed:
@@ -89,29 +89,50 @@ def seed_requests(seed):
     return reqs, late
 
 
-def seed_doc(docs, doc_id, seed):
+def _tag(reqs, tab_id):
+    """Add tabId to every location/range in a list of requests (in place)."""
+    if not tab_id: return reqs
+    def walk(o):
+        if isinstance(o, dict):
+            if "index" in o and "segmentId" not in o and "startIndex" not in o: o["tabId"] = tab_id
+            if "startIndex" in o: o["tabId"] = tab_id
+            if "segmentId" in o: o["tabId"] = tab_id
+            for v in o.values(): walk(v)
+        elif isinstance(o, list):
+            for v in o: walk(v)
+    walk(reqs); return reqs
+
+
+def tab_body(doc, tab_id):
+    for t in doc.get("tabs", []):
+        if t["tabProperties"]["tabId"] == tab_id: return t["documentTab"]["body"]["content"]
+    return doc["body"]["content"]
+
+
+def seed_doc(docs, doc_id, seed, tab_id=None):
     reqs, late = seed_requests(seed)
+    _tag(reqs, tab_id)
     docs.documents().batchUpdate(documentId=doc_id, body={"requests": reqs}).execute()
     plain = [r for r in late if isinstance(r, dict)]
     if plain:
-        docs.documents().batchUpdate(documentId=doc_id, body={"requests": plain}).execute()
+        docs.documents().batchUpdate(documentId=doc_id, body={"requests": _tag(plain, tab_id)}).execute()
     for r in [r for r in late if isinstance(r, tuple)]:
         if r[0] == "footnote":
-            res = docs.documents().batchUpdate(documentId=doc_id, body={"requests": [{"createFootnote": {"location": {"index": r[1]}}}]}).execute()
+            res = docs.documents().batchUpdate(documentId=doc_id, body={"requests": _tag([{"createFootnote": {"location": {"index": r[1]}}}], tab_id)}).execute()
             fid = res["replies"][0]["createFootnote"]["footnoteId"]
-            docs.documents().batchUpdate(documentId=doc_id, body={"requests": [{"insertText": {"location": {"segmentId": fid, "index": 0}, "text": r[2]}}]}).execute()
+            docs.documents().batchUpdate(documentId=doc_id, body={"requests": _tag([{"insertText": {"location": {"segmentId": fid, "index": 0}, "text": r[2]}}], tab_id)}).execute()
         elif r[0] == "table":
             _, at, rows = r
-            docs.documents().batchUpdate(documentId=doc_id, body={"requests": [{"insertTable": {"location": {"index": at}, "rows": len(rows), "columns": len(rows[0])}}]}).execute()
-            d = docs.documents().get(documentId=doc_id).execute()
-            tbl = [c for c in d["body"]["content"] if "table" in c][-1]["table"]
+            docs.documents().batchUpdate(documentId=doc_id, body={"requests": _tag([{"insertTable": {"location": {"index": at}, "rows": len(rows), "columns": len(rows[0])}}], tab_id)}).execute()
+            d = docs.documents().get(documentId=doc_id, includeTabsContent=True).execute()
+            tbl = [c for c in tab_body(d, tab_id) if "table" in c][-1]["table"]
             fills = []
             for ri, row in enumerate(tbl["tableRows"]):
                 for ci, cell in enumerate(row["tableCells"]):
                     txt = rows[ri][ci]
                     if txt: fills.append({"insertText": {"location": {"index": cell["content"][0]["startIndex"]}, "text": txt}})
             for f in sorted(fills, key=lambda x: -x["insertText"]["location"]["index"]):
-                docs.documents().batchUpdate(documentId=doc_id, body={"requests": [f]}).execute()
+                docs.documents().batchUpdate(documentId=doc_id, body={"requests": _tag([f], tab_id)}).execute()
 
 
 def run_case(path, keep, creds):
@@ -128,7 +149,7 @@ def run_case(path, keep, creds):
         (d / "cat.md").write_text(subprocess.run(["gdoc", "cat", "--quiet", "--account", ACCOUNT, doc_id], capture_output=True, text=True).stdout)
         (d / "comments.json").write_text(subprocess.run(["gdoc", "comments", "--all", "--quiet", "--account", ACCOUNT, doc_id, "--json"], capture_output=True, text=True).stdout or "{}")
     capture(out / "before")
-    cmd = case["command"].replace("{DOC}", doc_id).replace("{A}", ACCOUNT)
+    cmd = case["command"].replace("{DOC}", doc_id).replace("{A}", ACCOUNT).replace("{TAB}", "Tab 1")
     r = subprocess.run(shlex.split(cmd), capture_output=True, text=True)
     (out / "command.txt").write_text(f"$ {cmd}\nexit {r.returncode}\n{r.stdout}{r.stderr}")
     capture(out / "after")

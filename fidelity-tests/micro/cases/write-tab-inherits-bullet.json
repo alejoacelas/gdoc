@@ -1,6 +1,21 @@
-{"name": "write-tab-inherits-bullet", "issue": "https://github.com/LucaDeLeo/gdoc/issues/59",
- "seed": [{"text": "Intro paragraph."}, {"bullets": ["first item", "last item"]}],
+{
+ "name": "write-tab-inherits-bullet",
+ "issue": "https://github.com/LucaDeLeo/gdoc/issues/59",
+ "seed": [
+  {
+   "text": "Intro paragraph."
+  },
+  {
+   "bullets": [
+    "first item",
+    "last item"
+   ]
+  }
+ ],
  "request": "Rewrite the tab from markdown: a heading and two plain paragraphs.",
- "command": "sh -c \"printf '# New title\\n\\nFirst paragraph.\\n\\nSecond paragraph.\\n' > /tmp/gdt-micro-write.md && gdoc write --force --quiet --account {A} --tab 'Tab 1' {DOC} /tmp/gdt-micro-write.md\"",
+ "command": "sh -c \"printf '# New title\\n\\nFirst paragraph.\\n\\nSecond paragraph.\\n' > /tmp/gdt-micro-write.md && gdoc write --force --quiet --account {A} --tab '{TAB}' {DOC} /tmp/gdt-micro-write.md\"",
  "expected": "Tab holds exactly: HEADING_1 `New title`, then two NORMAL_TEXT paragraphs with no bullets.",
- "target": "heading `New title`, paragraph beginning `First paragraph`, paragraph beginning `Second paragraph`", "allowed": "revision list grows; renumber; lists map"}
+ "target": "heading `New title`, paragraph beginning `First paragraph`, paragraph beginning `Second paragraph`",
+ "allowed": "revision list grows; renumber; lists map",
+ "explain": "The tab has an intro paragraph and a two-item bulleted list. We asked gdoc to replace the whole tab with new content written in Markdown: a title and two plain paragraphs, no list. The new text is there, but the paragraphs still carry a bullet from the old list, and empty paragraphs appeared. This is the behaviour reported in gdoc issue 59. Look at the after tab: the paragraphs that should be plain have bullets in front of them."
+}

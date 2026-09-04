@@ -1,6 +1,24 @@
-{"name": "edit-list-marker-restyles", "issue": "https://github.com/LucaDeLeo/gdoc/issues/57",
- "seed": [{"text": "Priority: 2. Migrate the queue", "bold": [[0, 9]]}, {"text": "Next line."}],
+{
+ "name": "edit-list-marker-restyles",
+ "issue": "https://github.com/LucaDeLeo/gdoc/issues/57",
+ "seed": [
+  {
+   "text": "Priority: 2. Migrate the queue",
+   "bold": [
+    [
+     0,
+     9
+    ]
+   ]
+  },
+  {
+   "text": "Next line."
+  }
+ ],
  "request": "Change the priority text to '1. Migrate the queue'.",
- "command": "gdoc edit --account {A} {DOC} '2. Migrate the queue' '1. Migrate the queue'",
+ "command": "gdoc edit --tab '{TAB}' --account {A} {DOC} '2. Migrate the queue' '1. Migrate the queue'",
  "expected": "Paragraph reads `Priority: 1. Migrate the queue`, still a plain paragraph (no list), `Priority:` still bold.",
- "target": "paragraph beginning `Priority:`", "allowed": "revision list grows"}
+ "target": "paragraph beginning `Priority:`",
+ "allowed": "revision list grows",
+ "explain": "The first paragraph is 'Priority: 2. Migrate the queue', with 'Priority:' in bold. We asked gdoc to change the '2.' to '1.'. Because the new text begins with '1.', gdoc treated it like the start of a numbered list and turned the whole paragraph into a list item, and the bold on 'Priority:' is gone. Look at the first paragraph in the after tab: it now has a list number in front of it and no bold."
+}

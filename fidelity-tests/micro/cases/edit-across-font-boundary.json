@@ -1,6 +1,29 @@
-{"name": "edit-across-font-boundary",
- "seed": [{"text": "Kubectl rollout restart deploy/api -n staging", "font": [{"family": "Courier New", "size": 10, "ranges": [[0, 34]]}]}, {"text": "Deploy to staging"}],
+{
+ "name": "edit-across-font-boundary",
+ "seed": [
+  {
+   "text": "Kubectl rollout restart deploy/api -n staging",
+   "font": [
+    {
+     "family": "Courier New",
+     "size": 10,
+     "ranges": [
+      [
+       0,
+       34
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "text": "Deploy to staging"
+  }
+ ],
  "request": "The kubectl line should target namespace staging-eu.",
- "command": "gdoc edit --account {A} {DOC} 'deploy/api -n staging' 'deploy/api -n staging-eu'",
+ "command": "gdoc edit --tab '{TAB}' --account {A} {DOC} 'deploy/api -n staging' 'deploy/api -n staging-eu'",
  "expected": "Line reads `Kubectl rollout restart deploy/api -n staging-eu` with Courier New 10pt still on `Kubectl rollout restart deploy/api`; `Deploy to staging` untouched.",
- "target": "paragraph beginning `Kubectl rollout`", "allowed": "revision list grows"}
+ "target": "paragraph beginning `Kubectl rollout`",
+ "allowed": "revision list grows",
+ "explain": "The first paragraph is a command line. Its first part, 'Kubectl rollout restart deploy/api', is written in a typewriter font (Courier New, small), and the rest is in the normal font. We asked gdoc to change the namespace at the end from 'staging' to 'staging-eu'. The text changed correctly, but the whole line is now in the normal font: the typewriter font is gone, even though the edit did not touch those words. Compare the fonts of the first paragraph in the two tabs."
+}

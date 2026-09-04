@@ -1,8 +1,35 @@
-{"name": "edit-strips-sibling-bold", "issue": "https://github.com/LucaDeLeo/gdoc/issues/57",
- "seed": [{"text": "Heading", "style": "HEADING_2"},
-          {"text": "Ship the v2 script by Friday. Estimated effort: 3 dev-days (was 5)", "strike": [[9, 18]], "highlight": [[30, 46, "#ffff00"]]},
-          {"text": "Status: green"}],
+{
+ "name": "edit-strips-sibling-bold",
+ "issue": "https://github.com/LucaDeLeo/gdoc/issues/57",
+ "seed": [
+  {
+   "text": "Heading",
+   "style": "HEADING_2"
+  },
+  {
+   "text": "Ship the v2 script by Friday. Estimated effort: 3 dev-days (was 5)",
+   "strike": [
+    [
+     9,
+     18
+    ]
+   ],
+   "highlight": [
+    [
+     30,
+     46,
+     "#ffff00"
+    ]
+   ]
+  },
+  {
+   "text": "Status: green"
+  }
+ ],
  "request": "Change the estimated effort from 3 to 4 dev-days.",
- "command": "gdoc edit --account {A} {DOC} 'Estimated effort: 3 dev-days' 'Estimated effort: 4 dev-days'",
+ "command": "gdoc edit --tab '{TAB}' --account {A} {DOC} 'Estimated effort: 3 dev-days' 'Estimated effort: 4 dev-days'",
  "expected": "Paragraph reads `… Estimated effort: 4 dev-days (was 5)`; strikethrough on `v2 script` and highlight on `Estimated effort` intact.",
- "target": "paragraph beginning `Ship the v2`", "allowed": "revision list grows"}
+ "target": "paragraph beginning `Ship the v2`",
+ "allowed": "revision list grows",
+ "explain": "We asked gdoc to change one number in a sentence: 'Estimated effort: 3 dev-days' should become '4 dev-days'. The number did change. But in the same sentence two other things were lost: the words 'v2 script' were crossed out before and are not crossed out any more, and the yellow highlight on 'Estimated effort' is gone. Nothing asked for either of those. Look at the second paragraph in the before and after tabs and compare the crossed-out words and the yellow highlight."
+}

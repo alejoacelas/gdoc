@@ -1,6 +1,22 @@
-{"name": "edit-resets-alignment",
- "seed": [{"text": "Body paragraph."}, {"text": "— Marta, 2 Sept 2026", "align": "END"}, {"text": "Spaced paragraph with a date 2 Sept.", "spacing": 150}],
+{
+ "name": "edit-resets-alignment",
+ "seed": [
+  {
+   "text": "Body paragraph."
+  },
+  {
+   "text": "— Marta, 2 Sept 2026",
+   "align": "END"
+  },
+  {
+   "text": "Spaced paragraph with a date 2 Sept.",
+   "spacing": 150
+  }
+ ],
  "request": "Bump the signature date to 3 Sept 2026.",
- "command": "gdoc edit --account {A} {DOC} 'Marta, 2 Sept 2026' 'Marta, 3 Sept 2026'",
+ "command": "gdoc edit --tab '{TAB}' --account {A} {DOC} 'Marta, 2 Sept 2026' 'Marta, 3 Sept 2026'",
  "expected": "Signature reads `— Marta, 3 Sept 2026`, still right-aligned; the 1.5-spaced paragraph untouched.",
- "target": "paragraph beginning `— Marta`", "allowed": "revision list grows"}
+ "target": "paragraph beginning `— Marta`",
+ "allowed": "revision list grows",
+ "explain": "The second paragraph is a signature line, '— Marta, 2 Sept 2026', pushed to the right edge of the page. We asked gdoc to change the date to 3 Sept. The date changed, but the line moved to the left edge like an ordinary paragraph. The right alignment was lost. Compare where the signature sits in the two tabs."
+}

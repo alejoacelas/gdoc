@@ -3452,6 +3452,7 @@ def cmd_share(args) -> int:
     anyone = getattr(args, "anyone", False)
     role = getattr(args, "role", "reader")
     discoverable = getattr(args, "discoverable", False)
+    notify = getattr(args, "notify", False)
     quiet = getattr(args, "quiet", False)
 
     targets = sum(1 for t in (email, domain, anyone) if t)
@@ -3465,6 +3466,11 @@ def cmd_share(args) -> int:
             "--discoverable applies only to --domain/--anyone shares",
             exit_code=3,
         )
+    if notify and not email:
+        raise GdocError(
+            "--notify applies only to EMAIL shares",
+            exit_code=3,
+        )
 
     # Pre-flight awareness check
     from gdoc.notify import pre_flight
@@ -3476,6 +3482,7 @@ def cmd_share(args) -> int:
     create_permission(
         doc_id, email=email, role=role,
         domain=domain, anyone=anyone, discoverable=discoverable,
+        notify=notify,
     )
 
     if email:
@@ -4467,6 +4474,11 @@ def build_parser() -> GdocArgumentParser:
         choices=["reader", "writer", "commenter"],
         default="reader",
         help="Permission role",
+    )
+    share_p.add_argument(
+        "--notify", action="store_true",
+        help="Send Google's notification email "
+        "(EMAIL shares only; off by default)",
     )
     share_p.add_argument(
         "--discoverable", action="store_true",

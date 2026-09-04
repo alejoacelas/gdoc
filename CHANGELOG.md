@@ -4,6 +4,19 @@ All notable changes to `gdoc` are documented here. This project follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.0] — 2026-09-04
+
+### Changed
+- **`share DOC EMAIL` no longer sends Google's notification email by
+  default.** The permission call now passes `sendNotificationEmail=False`
+  explicitly (it was hardcoded `True`, and the Drive API's own default
+  for user grants is also on). The new `--notify` flag opts back in.
+  **Breaking**: workflows that relied on the recipient being emailed must
+  now pass `--notify`. Domain and `--anyone` shares are unchanged —
+  link-based, never emailed — and `--notify` combined with `--domain` or
+  `--anyone` is rejected before any API call (exit 3), the same guard
+  `--discoverable` uses in the other direction.
+
 ## [0.21.0] — 2026-08-26
 
 ### Added

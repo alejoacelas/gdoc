@@ -1,13 +1,10 @@
 # diff — russian-readme
 
-expected 2 · allowed 0 · unexpected 0 (visible 0, invisible 0)
+expected 1 · allowed 0 · unexpected 0 (visible 0, invisible 0)
 
 - **expected** `tab[Tab 1]/para[31:We ship v2.14 on 1912 Sep even].text`
-  - before: `"Cyr"`
-  - after:  `"Russ"`
-- **expected** `tab[Tab 1]/para[31:We ship v2.14 on 1912 Sep even].text`
-  - before: `"llic"`
-  - after:  `"an"`
+  - before: `"Cyrillic"`
+  - after:  `"Russian"`
 
 ## cat.md
 

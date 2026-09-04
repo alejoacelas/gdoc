@@ -6,6 +6,8 @@
    "kind": "text",
    "before": "-",
    "after": "–",
+   "after_pos": 47,
+   "after_len": 1,
    "after_context": "2026, not 14–18 Sept as t",
    "after_para_text": "The launch window opens 14–18 Sept 2026, not 14–18 Sept as the v2 draft said and not 14—18 Sept as the CMS rendered it.  Legal signed off on Tuesday; Marta wants the “beta” label gone and the \"beta\"  badge hidden in the same release.",
    "class": "expected",

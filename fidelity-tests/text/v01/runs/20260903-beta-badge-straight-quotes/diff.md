@@ -1,16 +1,13 @@
 # diff — beta-badge-straight-quotes
 
-expected 2 · allowed 0 · unexpected 1 (visible 1, invisible 0)
+expected 1 · allowed 0 · unexpected 1 (visible 1, invisible 0)
 
 - **unexpected** `tab[Tab 1]/para[5:The launch window opens 14–18 ].style@"launch window"`
   - before: `{"textStyle": {"bold": true}}`
   - after:  `{"textStyle": {}}`
 - **expected** `tab[Tab 1]/para[5:The launch window opens 14–18 ].text`
-  - before: `"b"`
-  - after:  `"pr"`
-- **expected** `tab[Tab 1]/para[5:The launch window opens 14–18 ].text`
-  - before: `"ta"`
-  - after:  `"view"`
+  - before: `"beta"`
+  - after:  `"preview"`
 
 ## cat.md
 

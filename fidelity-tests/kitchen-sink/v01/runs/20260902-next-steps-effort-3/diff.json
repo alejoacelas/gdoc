@@ -12,6 +12,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_pos": 9,
+   "after_len": 19,
    "after_para_text": "Ship the v2 migration script v3 script by Friday[1]. Estimated effort: 4 dev-days\t(was 5)",
    "snippet": "v2 migration script",
    "class": "unexpected",
@@ -36,6 +38,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_pos": 53,
+   "after_len": 16,
    "after_para_text": "Ship the v2 migration script v3 script by Friday[1]. Estimated effort: 4 dev-days\t(was 5)",
    "snippet": "Estimated effort",
    "class": "unexpected",
@@ -47,6 +51,8 @@
    "kind": "text",
    "before": "3",
    "after": "4",
+   "after_pos": 71,
+   "after_len": 1,
    "after_context": "ted effort: 4 dev-days\t(w",
    "after_para_text": "Ship the v2 migration script v3 script by Friday[1]. Estimated effort: 4 dev-days\t(was 5)",
    "class": "expected",

@@ -17,6 +17,8 @@
    "kind": "text",
    "before": "Priya",
    "after": "Tomás",
+   "after_pos": 0,
+   "after_len": 5,
    "after_context": "Tomás. JD on Noti",
    "after_para_text": "Tomás. JD on Notion",
    "class": "expected",

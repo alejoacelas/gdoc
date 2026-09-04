@@ -15,19 +15,10 @@
   {
    "path": "tab[Tab 1]/table[0]/cell[1,1]/para[0:48,500⏎].text",
    "kind": "text",
-   "before": "8",
-   "after": "9",
-   "after_context": "49,000",
-   "after_para_text": "49,000",
-   "class": "expected",
-   "visible": true,
-   "needs_visual_review": false
-  },
-  {
-   "path": "tab[Tab 1]/table[0]/cell[1,1]/para[0:48,500⏎].text",
-   "kind": "text",
-   "before": "5",
-   "after": "0",
+   "before": "8,5",
+   "after": "9,0",
+   "after_pos": 1,
+   "after_len": 3,
    "after_context": "49,000",
    "after_para_text": "49,000",
    "class": "expected",
@@ -38,7 +29,7 @@
  "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -13,3 +13,3 @@\n | :---- | :---- | :---- | :---- |\n-| Acme Cloud ☁️ | **48,500** | Sign MSA (Priya) | Aprobado ✅ |\n+| Acme Cloud ☁️ | **49,000** | Sign MSA (Priya) | Aprobado ✅ |\n | Datawise Ltd | 12,750  | Renew NDA (Tomás) | Pendiente: *pending legal review* |",
  "needs_visual_review_reasons": [],
  "summary": {
-  "expected": 2,
+  "expected": 1,
   "allowed": 1,
   "unexpected": 0,
   "visible_unexpected": 0,

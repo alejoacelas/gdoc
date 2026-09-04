@@ -1,16 +1,13 @@
 # diff — co2-formula
 
-expected 2 · allowed 0 · unexpected 1 (visible 1, invisible 0)
+expected 1 · allowed 0 · unexpected 1 (visible 1, invisible 0)
 
 - **unexpected** `tab[Tab 1]/para[10:The formula card still reads H].paragraphStyle.lineSpacing`
   - before: `150`
   - after:  `"∅"`
 - **expected** `tab[Tab 1]/para[10:The formula card still reads H].text`
-  - before: `"H"`
-  - after:  `"CO"`
-- **expected** `tab[Tab 1]/para[10:The formula card still reads H].text`
-  - before: `"O"`
-  - after:  `""`
+  - before: `"H2O"`
+  - after:  `"CO2"`
 
 ## cat.md
 

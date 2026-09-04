@@ -1,13 +1,10 @@
 # diff — key-rotation-owner-to-priya
 
-expected 2 · allowed 0 · unexpected 0 (visible 0, invisible 0)
+expected 1 · allowed 0 · unexpected 0 (visible 0, invisible 0)
 
 - **expected** `tab[Tab 1]/para[36:Marco to rotate the API keys b].text`
-  - before: `"M"`
-  - after:  `"Priy"`
-- **expected** `tab[Tab 1]/para[36:Marco to rotate the API keys b].text`
-  - before: `"rco"`
-  - after:  `""`
+  - before: `"Marco"`
+  - after:  `"Priya"`
 
 ## cat.md
 

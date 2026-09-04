@@ -30,6 +30,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_pos": 159,
+   "after_len": 21,
    "after_para_text": "Should contractors be eligible? Legal thinks it blurs the employment status line; the engineering leads think excluding them is unfair since half the platform team are contractors. Legal will confirm by 15 Sept.team are contractors. People Ops has no strong view either way.",
    "snippet": "team are contractors.",
    "class": "unexpected",
@@ -68,6 +70,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_pos": 180,
+   "after_len": 1,
    "after_para_text": "Should contractors be eligible? Legal thinks it blurs the employment status line; the engineering leads think excluding them is unfair since half the platform team are contractors. Legal will confirm by 15 Sept.team are contractors. People Ops has no strong view either way.",
    "snippet": " ",
    "class": "unexpected",
@@ -79,6 +83,8 @@
    "kind": "text",
    "before": "",
    "after": "Legal will confirm by 15 Sept.team are contractors. ",
+   "after_pos": 181,
+   "after_len": 52,
    "after_context": "ontractors. Legal will confirm by 15 Sept.team are contractors. People Ops h",
    "after_para_text": "Should contractors be eligible? Legal thinks it blurs the employment status line; the engineering leads think excluding them is unfair since half the platform team are contractors. Legal will confirm by 15 Sept.team are contractors. People Ops has no strong view either way.",
    "class": "expected",

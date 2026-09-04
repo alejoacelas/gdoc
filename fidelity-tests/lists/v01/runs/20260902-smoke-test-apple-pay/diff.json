@@ -6,6 +6,8 @@
    "kind": "text",
    "before": "",
    "after": " + Apple Pay",
+   "after_pos": 40,
+   "after_len": 12,
    "after_context": "(card + SEPA + Apple Pay)",
    "after_para_text": "Smoke test the payment flow (card + SEPA + Apple Pay)",
    "class": "expected",

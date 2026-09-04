@@ -17,6 +17,8 @@
    "kind": "text",
    "before": "4",
    "after": "9",
+   "after_pos": 4,
+   "after_len": 1,
    "after_context": "$12,900",
    "after_para_text": "$12,900",
    "class": "expected",

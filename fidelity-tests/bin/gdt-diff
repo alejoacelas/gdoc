@@ -247,7 +247,19 @@ def compare_paragraphs(pb, pa):
             sb, sa = b["spans"], a["spans"]
             cb = [c for c, _ in sb]; ca = [c for c, _ in sa]
             csm = difflib.SequenceMatcher(a=cb, b=ca, autojunk=False)
-            for tag, i1, i2, j1, j2 in csm.get_opcodes():
+            # fold tiny "equal" fragments (< 3 chars) that sit between two edits into the edit:
+            # a shared "e" between "June" and "September" is not unchanged text
+            ops = csm.get_opcodes()
+            merged = []
+            for k, op in enumerate(ops):
+                tag, i1, i2, j1, j2 = op
+                if tag == "equal" and i2 - i1 < 3 and 0 < k < len(ops) - 1 and ops[k - 1][0] != "equal" and ops[k + 1][0] != "equal":
+                    tag = "replace"
+                if merged and merged[-1][0] != "equal" and tag != "equal":
+                    merged[-1] = ("replace", merged[-1][1], i2, merged[-1][3], j2)
+                else:
+                    merged.append((tag, i1, i2, j1, j2))
+            for tag, i1, i2, j1, j2 in merged:
                 if tag == "equal":
                     k = i1
                     while k < i2:
@@ -259,13 +271,14 @@ def compare_paragraphs(pb, pa):
                             snippet = "".join(cb[start:k]).replace("\n", "⏎")[:40]
                             items.append({"path": f'{path}.style@"{snippet}"',
                                           "before": json.loads(sb[start][1]), "after": json.loads(sa[j1 + (start - i1)][1]),
-                                          "kind": "style"})
+                                          "kind": "style", "after_pos": j1 + (start - i1), "after_len": k - start})
                         else:
                             k += 1
                 else:
                     items.append({"path": f"{path}.text", "kind": "text",
                                   "before": "".join(cb[i1:i2]).replace("\n", "⏎"),
                                   "after": "".join(ca[j1:j2]).replace("\n", "⏎"),
+                                  "after_pos": j1, "after_len": j2 - j1,
                                   "after_context": "".join(ca[max(0, j1 - 12):min(len(ca), j2 + 12)]).replace("\n", "")})
             for it in items[start_n:]:
                 it["after_para_text"] = ta[j].replace("\n", "")

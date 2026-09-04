@@ -1,43 +1,19 @@
 # diff — rollout-to-launch-window
 
-expected 9 · allowed 0 · unexpected 3 (visible 3, invisible 0)
+expected 3 · allowed 0 · unexpected 1 (visible 1, invisible 0)
 
 - **expected** `tab[Tab 1]/para[4:We are on track for the rollou].text`
-  - before: `"ro"`
-  - after:  `""`
+  - before: `"rollout"`
+  - after:  `"launch"`
 - **expected** `tab[Tab 1]/para[4:We are on track for the rollou].text`
-  - before: `"lo"`
-  - after:  `"a"`
-- **expected** `tab[Tab 1]/para[4:We are on track for the rollou].text`
-  - before: `"t"`
-  - after:  `"nch"`
-- **expected** `tab[Tab 1]/para[4:We are on track for the rollou].text`
-  - before: `"ro"`
-  - after:  `""`
-- **unexpected** `tab[Tab 1]/para[4:We are on track for the rollou].style@"l"`
-  - before: `{"textStyle": {"foregroundColor": {"color": {"rgbColor": {"red": 1}}}, "italic": true}}`
-  - after:  `{"textStyle": {"italic": true}}`
-- **expected** `tab[Tab 1]/para[4:We are on track for the rollou].text`
-  - before: `"lo"`
-  - after:  `"a"`
-- **unexpected** `tab[Tab 1]/para[4:We are on track for the rollou].style@"u"`
-  - before: `{"textStyle": {"foregroundColor": {"color": {"rgbColor": {"red": 1}}}, "italic": true}}`
-  - after:  `{"textStyle": {"italic": true}}`
-- **expected** `tab[Tab 1]/para[4:We are on track for the rollou].text`
-  - before: `"t"`
-  - after:  `"nch"`
+  - before: `"rollout"`
+  - after:  `"launch"`
 - **unexpected** `tab[Tab 1]/para[4:We are on track for the rollou].style@" window"`
   - before: `{"textStyle": {"foregroundColor": {"color": {"rgbColor": {"red": 1}}}, "italic": true}}`
   - after:  `{"textStyle": {"italic": true}}`
 - **expected** `tab[Tab 1]/para[4:We are on track for the rollou].text`
-  - before: `"ro"`
-  - after:  `""`
-- **expected** `tab[Tab 1]/para[4:We are on track for the rollou].text`
-  - before: `"lo"`
-  - after:  `"a"`
-- **expected** `tab[Tab 1]/para[4:We are on track for the rollou].text`
-  - before: `"t"`
-  - after:  `"nch"`
+  - before: `"rollout"`
+  - after:  `"launch"`
 
 ## cat.md
 

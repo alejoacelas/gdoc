@@ -87,8 +87,13 @@ def main():
                 s, e = 0, len(text)
             elif "/para[del@" in path:
                 continue
+            elif it.get("after_pos") is not None and para["text"] == apt and it.get("after_len", 0) > 0:
+                s, e = it["after_pos"], it["after_pos"] + it["after_len"]      # exact position from the diff
+            elif it.get("after_pos") is not None and para["text"] == apt and it.get("kind") == "text":
+                ctx = it.get("after_context") or ""; cpos = text.find(ctx) if ctx else -1
+                s, e = (cpos, cpos + len(ctx)) if cpos >= 0 else (-1, -1)     # deletion: paint the context
             elif it.get("kind") == "style" and it.get("snippet"):
-                pos = text.find(it["snippet"]); s, e = (pos, pos + len(it["snippet"])) if pos >= 0 else (-1, -1)
+                pos = text.find(it["snippet"]); s, e = (pos, pos + len(it["snippet"])) if pos >= 0 and len(it["snippet"]) >= 3 else (-1, -1)
             elif it.get("kind") == "text":
                 ctx = it.get("after_context") or ""
                 aft = (it.get("after") or "").replace("⏎", "")

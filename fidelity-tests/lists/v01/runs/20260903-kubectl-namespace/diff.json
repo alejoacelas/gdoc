@@ -19,6 +19,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_pos": 0,
+   "after_len": 34,
    "after_para_text": "Kubectl rollout restart deploy/api -n staging-eu",
    "snippet": "Kubectl rollout restart deploy/api",
    "class": "unexpected",
@@ -30,6 +32,8 @@
    "kind": "text",
    "before": "",
    "after": "-eu",
+   "after_pos": 45,
+   "after_len": 3,
    "after_context": "i -n staging-eu",
    "after_para_text": "Kubectl rollout restart deploy/api -n staging-eu",
    "class": "expected",

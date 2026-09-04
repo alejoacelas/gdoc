@@ -1,13 +1,10 @@
 # diff — key-dates-en-dash-slip
 
-expected 2 · allowed 0 · unexpected 0 (visible 0, invisible 0)
+expected 1 · allowed 0 · unexpected 0 (visible 0, invisible 0)
 
 - **expected** `tab[Tab 1]/para[5:The launch window opens 14–18 ].text`
-  - before: `"4"`
-  - after:  `"5"`
-- **expected** `tab[Tab 1]/para[5:The launch window opens 14–18 ].text`
-  - before: `"8"`
-  - after:  `"9"`
+  - before: `"4–18"`
+  - after:  `"5–19"`
 
 ## cat.md
 

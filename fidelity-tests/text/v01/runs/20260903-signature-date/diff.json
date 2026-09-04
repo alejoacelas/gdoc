@@ -16,6 +16,8 @@
    "kind": "text",
    "before": "2",
    "after": "3",
+   "after_pos": 9,
+   "after_len": 1,
    "after_context": "— Marta, 3 Sept 2026",
    "after_para_text": "— Marta, 3 Sept 2026",
    "class": "expected",

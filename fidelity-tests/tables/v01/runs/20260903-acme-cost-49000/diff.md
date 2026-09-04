@@ -1,16 +1,13 @@
 # diff — acme-cost-49000
 
-expected 2 · allowed 1 · unexpected 0 (visible 0, invisible 0)
+expected 1 · allowed 1 · unexpected 0 (visible 0, invisible 0)
 
 - **allowed** (invisible) `tab[Tab 1]/table[0]/cell[1,1]/para[0:48,500⏎].paragraphStyle.avoidWidowAndOrphan`
   - before: `false`
   - after:  `"∅"`
 - **expected** `tab[Tab 1]/table[0]/cell[1,1]/para[0:48,500⏎].text`
-  - before: `"8"`
-  - after:  `"9"`
-- **expected** `tab[Tab 1]/table[0]/cell[1,1]/para[0:48,500⏎].text`
-  - before: `"5"`
-  - after:  `"0"`
+  - before: `"8,5"`
+  - after:  `"9,0"`
 
 ## cat.md
 

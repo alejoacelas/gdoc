@@ -4,44 +4,11 @@
   {
    "path": "tab[Tab 1]/para[40:Approved by Legal on 14 Aug, s].text",
    "kind": "text",
-   "before": "",
-   "after": "2",
-   "after_context": "by Legal on 21 Aug, see t",
-   "after_para_text": "Approved by Legal on 21 Aug, see the thread",
-   "class": "expected",
-   "visible": true,
-   "needs_visual_review": false
-  },
-  {
-   "path": "tab[Tab 1]/para[40:Approved by Legal on 14 Aug, s].style@\"1\"",
-   "before": {
-    "textStyle": {
-     "fontSize": {
-      "magnitude": 13,
-      "unit": "PT"
-     },
-     "weightedFontFamily": {
-      "fontFamily": "Georgia",
-      "weight": 400
-     }
-    }
-   },
-   "after": {
-    "textStyle": {}
-   },
-   "kind": "style",
-   "after_para_text": "Approved by Legal on 21 Aug, see the thread",
-   "snippet": "1",
-   "class": "unexpected",
-   "visible": true,
-   "needs_visual_review": false
-  },
-  {
-   "path": "tab[Tab 1]/para[40:Approved by Legal on 14 Aug, s].text",
-   "kind": "text",
-   "before": "4",
-   "after": "",
-   "after_context": " Legal on 21 Aug, see th",
+   "before": "14",
+   "after": "21",
+   "after_pos": 21,
+   "after_len": 2,
+   "after_context": "by Legal on 21 Aug, see th",
    "after_para_text": "Approved by Legal on 21 Aug, see the thread",
    "class": "expected",
    "visible": true,
@@ -65,6 +32,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_pos": 23,
+   "after_len": 21,
    "after_para_text": "Approved by Legal on 21 Aug, see the thread",
    "snippet": " Aug, see the thread",
    "class": "unexpected",
@@ -75,10 +44,10 @@
  "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -57,3 +57,3 @@\n * Kubectl rollout restart deploy/api \\-n staging  \n-* Approved by Legal on 14 Aug, see the thread  \n+* Approved by Legal on 21 Aug, see the thread  \n * Owner:\tMarco    ",
  "needs_visual_review_reasons": [],
  "summary": {
-  "expected": 2,
+  "expected": 1,
   "allowed": 0,
-  "unexpected": 2,
-  "visible_unexpected": 2,
+  "unexpected": 1,
+  "visible_unexpected": 1,
   "invisible_unexpected": 0
  }
 }

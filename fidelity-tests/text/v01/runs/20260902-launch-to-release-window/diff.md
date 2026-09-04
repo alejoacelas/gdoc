@@ -1,55 +1,25 @@
 # diff — launch-to-release-window
 
-expected 15 · allowed 0 · unexpected 1 (visible 0, invisible 1)
+expected 5 · allowed 0 · unexpected 1 (visible 0, invisible 1)
 
 - **unexpected** (invisible) `tab[Tab 1]/para[0:Northstar 2.1 launch window — ].paragraphStyle.headingId`
   - before: `"h.fhr9e3eq4raj"`
   - after:  `"h.wvksaq6uclq3"`
 - **expected** `tab[Tab 1]/para[0:Northstar 2.1 launch window — ].text`
-  - before: `""`
-  - after:  `"re"`
-- **expected** `tab[Tab 1]/para[0:Northstar 2.1 launch window — ].text`
-  - before: `""`
-  - after:  `"e"`
-- **expected** `tab[Tab 1]/para[0:Northstar 2.1 launch window — ].text`
-  - before: `"unch"`
-  - after:  `"se"`
+  - before: `"launch"`
+  - after:  `"release"`
 - **expected** `tab[Tab 1]/para[5:The launch window opens 14–18 ].text`
-  - before: `""`
-  - after:  `"re"`
-- **expected** `tab[Tab 1]/para[5:The launch window opens 14–18 ].text`
-  - before: `""`
-  - after:  `"e"`
-- **expected** `tab[Tab 1]/para[5:The launch window opens 14–18 ].text`
-  - before: `"unch"`
-  - after:  `"se"`
+  - before: `"launch"`
+  - after:  `"release"`
 - **expected** `tab[Tab 1]/para[6:Ana’s note: the launch window ].text`
-  - before: `""`
-  - after:  `"re"`
+  - before: `"launch"`
+  - after:  `"release"`
 - **expected** `tab[Tab 1]/para[6:Ana’s note: the launch window ].text`
-  - before: `""`
-  - after:  `"e"`
-- **expected** `tab[Tab 1]/para[6:Ana’s note: the launch window ].text`
-  - before: `"unch"`
-  - after:  `"se"`
-- **expected** `tab[Tab 1]/para[6:Ana’s note: the launch window ].text`
-  - before: `""`
-  - after:  `"re"`
-- **expected** `tab[Tab 1]/para[6:Ana’s note: the launch window ].text`
-  - before: `""`
-  - after:  `"e"`
-- **expected** `tab[Tab 1]/para[6:Ana’s note: the launch window ].text`
-  - before: `"unch"`
-  - after:  `"se"`
+  - before: `"launch"`
+  - after:  `"release"`
 - **expected** `tab[Tab 1]/para[7:If anything slips, the launch ].text`
-  - before: `""`
-  - after:  `"re"`
-- **expected** `tab[Tab 1]/para[7:If anything slips, the launch ].text`
-  - before: `""`
-  - after:  `"e"`
-- **expected** `tab[Tab 1]/para[7:If anything slips, the launch ].text`
-  - before: `"unch"`
-  - after:  `"se"`
+  - before: `"launch"`
+  - after:  `"release"`
 
 ## cat.md
 

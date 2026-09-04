@@ -1,16 +1,13 @@
 # diff — merged-owner-cell-interim
 
-expected 2 · allowed 1 · unexpected 0 (visible 0, invisible 0)
+expected 1 · allowed 1 · unexpected 0 (visible 0, invisible 0)
 
 - **allowed** (invisible) `tab[Tab 1]/table[0]/cell[3,2]/para[0:Owner TBD — shared between Ops].paragraphStyle.avoidWidowAndOrphan`
   - before: `false`
   - after:  `"∅"`
 - **expected** `tab[Tab 1]/table[0]/cell[3,2]/para[0:Owner TBD — shared between Ops].text`
-  - before: `""`
-  - after:  `":"`
-- **expected** `tab[Tab 1]/table[0]/cell[3,2]/para[0:Owner TBD — shared between Ops].text`
-  - before: `"TBD"`
-  - after:  `"Ops (interim)"`
+  - before: `" TBD"`
+  - after:  `": Ops (interim)"`
 
 ## cat.md
 

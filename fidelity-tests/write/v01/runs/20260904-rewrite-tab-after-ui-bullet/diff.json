@@ -158,42 +158,11 @@
   {
    "path": "tab[Repro]/para[0:Seed⏎].text",
    "kind": "text",
-   "before": "S",
-   "after": "R",
-   "after_context": "Rewritten hea",
-   "after_para_text": "Rewritten heading",
-   "class": "unexpected",
-   "visible": true,
-   "needs_visual_review": false
-  },
-  {
-   "path": "tab[Repro]/para[0:Seed⏎].text",
-   "kind": "text",
-   "before": "",
-   "after": "writt",
+   "before": "Seed",
+   "after": "Rewritten heading",
+   "after_pos": 0,
+   "after_len": 17,
    "after_context": "Rewritten heading",
-   "after_para_text": "Rewritten heading",
-   "class": "unexpected",
-   "visible": true,
-   "needs_visual_review": false
-  },
-  {
-   "path": "tab[Repro]/para[0:Seed⏎].text",
-   "kind": "text",
-   "before": "",
-   "after": "n hea",
-   "after_context": "Rewritten heading",
-   "after_para_text": "Rewritten heading",
-   "class": "unexpected",
-   "visible": true,
-   "needs_visual_review": false
-  },
-  {
-   "path": "tab[Repro]/para[0:Seed⏎].text",
-   "kind": "text",
-   "before": "",
-   "after": "ing",
-   "after_context": "written heading",
    "after_para_text": "Rewritten heading",
    "class": "unexpected",
    "visible": true,
@@ -204,6 +173,8 @@
    "kind": "text",
    "before": "ceholder",
    "after": "in",
+   "after_pos": 3,
+   "after_len": 2,
    "after_context": "Plain paragraph a",
    "after_para_text": "Plain paragraph after the heading.",
    "class": "unexpected",
@@ -213,8 +184,10 @@
   {
    "path": "tab[Repro]/para[2:Placeholder paragraph one.⏎].text",
    "kind": "text",
-   "before": "o",
-   "after": "after the headi",
+   "before": "one",
+   "after": "after the heading",
+   "after_pos": 16,
+   "after_len": 17,
    "after_context": "n paragraph after the heading.",
    "after_para_text": "Plain paragraph after the heading.",
    "class": "unexpected",
@@ -222,43 +195,12 @@
    "needs_visual_review": false
   },
   {
-   "path": "tab[Repro]/para[2:Placeholder paragraph one.⏎].text",
-   "kind": "text",
-   "before": "e",
-   "after": "g",
-   "after_context": "r the heading.",
-   "after_para_text": "Plain paragraph after the heading.",
-   "class": "unexpected",
-   "visible": true,
-   "needs_visual_review": false
-  },
-  {
    "path": "tab[Repro]/para[5:beta item⏎].text",
    "kind": "text",
-   "before": "",
-   "after": "first ",
-   "after_context": "first bullet",
-   "after_para_text": "first bullet",
-   "class": "unexpected",
-   "visible": true,
-   "needs_visual_review": false
-  },
-  {
-   "path": "tab[Repro]/para[5:beta item⏎].text",
-   "kind": "text",
-   "before": "",
-   "after": "ull",
-   "after_context": "first bullet",
-   "after_para_text": "first bullet",
-   "class": "unexpected",
-   "visible": true,
-   "needs_visual_review": false
-  },
-  {
-   "path": "tab[Repro]/para[5:beta item⏎].text",
-   "kind": "text",
-   "before": "a item",
-   "after": "",
+   "before": "beta item",
+   "after": "first bullet",
+   "after_pos": 0,
+   "after_len": 12,
    "after_context": "first bullet",
    "after_para_text": "first bullet",
    "class": "unexpected",
@@ -271,8 +213,8 @@
  "summary": {
   "expected": 0,
   "allowed": 0,
-  "unexpected": 22,
-  "visible_unexpected": 21,
+  "unexpected": 16,
+  "visible_unexpected": 15,
   "invisible_unexpected": 1
  }
 }

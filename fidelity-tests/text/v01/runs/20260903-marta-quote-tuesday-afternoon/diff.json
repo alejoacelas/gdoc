@@ -6,6 +6,8 @@
    "kind": "text",
    "before": "",
    "after": " afternoon",
+   "after_pos": 170,
+   "after_len": 10,
    "after_context": "ne’s Tuesday afternoon” and the la",
    "after_para_text": "Northstar 2.2 is the biggest release since 1.0: release-notes-2.1.md (more soon...) as Marta put it in #launch, “we finally fixed the sync bug that ate everyone’s Tuesday afternoon” and the landing-page draft says Faster sync. Fewer surprises. More soon… (Tomás pasted that last bit from the web page, hence the fonts.)",
    "class": "unexpected",

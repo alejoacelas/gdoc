@@ -1,16 +1,10 @@
 # diff — legal-approval-date-georgia-run
 
-expected 2 · allowed 0 · unexpected 2 (visible 2, invisible 0)
+expected 1 · allowed 0 · unexpected 1 (visible 1, invisible 0)
 
 - **expected** `tab[Tab 1]/para[40:Approved by Legal on 14 Aug, s].text`
-  - before: `""`
-  - after:  `"2"`
-- **unexpected** `tab[Tab 1]/para[40:Approved by Legal on 14 Aug, s].style@"1"`
-  - before: `{"textStyle": {"fontSize": {"magnitude": 13, "unit": "PT"}, "weightedFontFamily": {"fontFamily": "Georgia", "weight": 400}}}`
-  - after:  `{"textStyle": {}}`
-- **expected** `tab[Tab 1]/para[40:Approved by Legal on 14 Aug, s].text`
-  - before: `"4"`
-  - after:  `""`
+  - before: `"14"`
+  - after:  `"21"`
 - **unexpected** `tab[Tab 1]/para[40:Approved by Legal on 14 Aug, s].style@" Aug, see the thread⏎"`
   - before: `{"textStyle": {"fontSize": {"magnitude": 13, "unit": "PT"}, "weightedFontFamily": {"fontFamily": "Georgia", "weight": 400}}}`
   - after:  `{"textStyle": {}}`

@@ -1,16 +1,10 @@
 # diff — next-review-september
 
-expected 2 · allowed 0 · unexpected 1 (visible 1, invisible 0)
+expected 1 · allowed 0 · unexpected 0 (visible 0, invisible 0)
 
 - **expected** `tab[Tab 1]/para[22:Next review: JuneMarch. Owner:].text`
-  - before: `"Jun"`
-  - after:  `"S"`
-- **unexpected** `tab[Tab 1]/para[22:Next review: JuneMarch. Owner:].style@"e"`
-  - before: `{"suggestedInsertionIds": ["suggest.fr9lnzlv781n"], "textStyle": {}}`
-  - after:  `{"textStyle": {}}`
-- **expected** `tab[Tab 1]/para[22:Next review: JuneMarch. Owner:].text`
-  - before: `""`
-  - after:  `"ptember"`
+  - before: `"June"`
+  - after:  `"September"`
 
 ## cat.md
 

@@ -34,134 +34,10 @@
   {
    "path": "tab[Tab 1]/para[42:BLOCKED: waiting on the securi].text",
    "kind": "text",
-   "before": "BL",
-   "after": "D",
-   "after_context": "DONE: securit",
-   "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
-   "class": "expected",
-   "visible": true,
-   "needs_visual_review": false
-  },
-  {
-   "path": "tab[Tab 1]/para[42:BLOCKED: waiting on the securi].style@\"O\"",
-   "before": {
-    "textStyle": {
-     "backgroundColor": {
-      "color": {
-       "rgbColor": {
-        "green": 1,
-        "red": 1
-       }
-      }
-     },
-     "foregroundColor": {
-      "color": {
-       "rgbColor": {
-        "red": 1
-       }
-      }
-     }
-    }
-   },
-   "after": {
-    "textStyle": {}
-   },
-   "kind": "style",
-   "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
-   "snippet": "O",
-   "class": "expected",
-   "visible": true,
-   "needs_visual_review": false
-  },
-  {
-   "path": "tab[Tab 1]/para[42:BLOCKED: waiting on the securi].text",
-   "kind": "text",
-   "before": "CK",
-   "after": "N",
-   "after_context": "DONE: security ",
-   "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
-   "class": "expected",
-   "visible": true,
-   "needs_visual_review": false
-  },
-  {
-   "path": "tab[Tab 1]/para[42:BLOCKED: waiting on the securi].style@\"E\"",
-   "before": {
-    "textStyle": {
-     "backgroundColor": {
-      "color": {
-       "rgbColor": {
-        "green": 1,
-        "red": 1
-       }
-      }
-     },
-     "foregroundColor": {
-      "color": {
-       "rgbColor": {
-        "red": 1
-       }
-      }
-     }
-    }
-   },
-   "after": {
-    "textStyle": {}
-   },
-   "kind": "style",
-   "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
-   "snippet": "E",
-   "class": "expected",
-   "visible": true,
-   "needs_visual_review": false
-  },
-  {
-   "path": "tab[Tab 1]/para[42:BLOCKED: waiting on the securi].text",
-   "kind": "text",
-   "before": "D",
-   "after": "",
-   "after_context": "DONE: security r",
-   "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
-   "class": "expected",
-   "visible": true,
-   "needs_visual_review": false
-  },
-  {
-   "path": "tab[Tab 1]/para[42:BLOCKED: waiting on the securi].style@\":\"",
-   "before": {
-    "textStyle": {
-     "backgroundColor": {
-      "color": {
-       "rgbColor": {
-        "green": 1,
-        "red": 1
-       }
-      }
-     },
-     "foregroundColor": {
-      "color": {
-       "rgbColor": {
-        "red": 1
-       }
-      }
-     }
-    }
-   },
-   "after": {
-    "textStyle": {}
-   },
-   "kind": "style",
-   "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
-   "snippet": ":",
-   "class": "expected",
-   "visible": true,
-   "needs_visual_review": false
-  },
-  {
-   "path": "tab[Tab 1]/para[42:BLOCKED: waiting on the securi].text",
-   "kind": "text",
-   "before": " waiting on the",
-   "after": "",
+   "before": "BLOCKED: waiting on the",
+   "after": "DONE:",
+   "after_pos": 0,
+   "after_len": 5,
    "after_context": "DONE: security re",
    "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
    "class": "expected",
@@ -186,6 +62,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_pos": 5,
+   "after_len": 17,
    "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
    "snippet": " security review ",
    "class": "expected",
@@ -197,6 +75,8 @@
    "kind": "text",
    "before": "",
    "after": "signed off ",
+   "after_pos": 22,
+   "after_len": 11,
    "after_context": "rity review signed off (Sam, 2 Sep)",
    "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
    "class": "expected",
@@ -221,6 +101,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_pos": 33,
+   "after_len": 6,
    "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
    "snippet": "(Sam, ",
    "class": "expected",
@@ -232,6 +114,8 @@
    "kind": "text",
    "before": "again",
    "after": "2 Sep",
+   "after_pos": 39,
+   "after_len": 5,
    "after_context": "d off (Sam, 2 Sep)",
    "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
    "class": "expected",
@@ -256,6 +140,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_pos": 44,
+   "after_len": 2,
    "after_para_text": "DONE: security review signed off (Sam, 2 Sep)",
    "snippet": ")",
    "class": "expected",
@@ -266,7 +152,7 @@
  "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -59,3 +59,3 @@\n * Owner:\tMarco    \n-* BLOCKED: waiting on the security review (Sam, again)  \n+* DONE: security review signed off (Sam, 2 Sep)  \n * ",
  "needs_visual_review_reasons": [],
  "summary": {
-  "expected": 15,
+  "expected": 9,
   "allowed": 0,
   "unexpected": 0,
   "visible_unexpected": 0,

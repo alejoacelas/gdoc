@@ -30,6 +30,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_pos": 0,
+   "after_len": 6,
    "after_para_text": "Paused until Q1, see budget",
    "snippet": "Paused",
    "class": "unexpected",
@@ -41,6 +43,8 @@
    "kind": "text",
    "before": "4",
    "after": "1",
+   "after_pos": 14,
+   "after_len": 1,
    "after_context": "used until Q1, see budget",
    "after_para_text": "Paused until Q1, see budget",
    "class": "expected",
@@ -65,6 +69,8 @@
     "textStyle": {}
    },
    "kind": "style",
+   "after_pos": 17,
+   "after_len": 11,
    "after_para_text": "Paused until Q1, see budget",
    "snippet": "see budget",
    "class": "unexpected",

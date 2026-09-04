@@ -1,58 +1,22 @@
 # diff — rollout-to-launch-window
 
-expected 9 · allowed 0 · unexpected 9 (visible 9, invisible 0)
+expected 3 · allowed 0 · unexpected 3 (visible 3, invisible 0)
 
 - **expected** `tab[Tab 1]/para[4:We are on track for the rollou].text`
-  - before: `"ro"`
-  - after:  `""`
-- **unexpected** `tab[Tab 1]/para[4:We are on track for the rollou].style@"l"`
-  - before: `{"textStyle": {"bold": true}}`
-  - after:  `{"textStyle": {}}`
-- **expected** `tab[Tab 1]/para[4:We are on track for the rollou].text`
-  - before: `"lo"`
-  - after:  `"a"`
-- **unexpected** `tab[Tab 1]/para[4:We are on track for the rollou].style@"u"`
-  - before: `{"textStyle": {"bold": true}}`
-  - after:  `{"textStyle": {}}`
-- **expected** `tab[Tab 1]/para[4:We are on track for the rollou].text`
-  - before: `"t"`
-  - after:  `"nch"`
+  - before: `"rollout"`
+  - after:  `"launch"`
 - **unexpected** `tab[Tab 1]/para[4:We are on track for the rollou].style@" window"`
   - before: `{"textStyle": {"bold": true}}`
   - after:  `{"textStyle": {}}`
 - **expected** `tab[Tab 1]/para[4:We are on track for the rollou].text`
-  - before: `"ro"`
-  - after:  `""`
-- **unexpected** `tab[Tab 1]/para[4:We are on track for the rollou].style@"l"`
-  - before: `{"textStyle": {"foregroundColor": {"color": {"rgbColor": {"red": 1}}}, "italic": true}}`
-  - after:  `{"textStyle": {}}`
-- **expected** `tab[Tab 1]/para[4:We are on track for the rollou].text`
-  - before: `"lo"`
-  - after:  `"a"`
-- **unexpected** `tab[Tab 1]/para[4:We are on track for the rollou].style@"u"`
-  - before: `{"textStyle": {"foregroundColor": {"color": {"rgbColor": {"red": 1}}}, "italic": true}}`
-  - after:  `{"textStyle": {}}`
-- **expected** `tab[Tab 1]/para[4:We are on track for the rollou].text`
-  - before: `"t"`
-  - after:  `"nch"`
+  - before: `"rollout"`
+  - after:  `"launch"`
 - **unexpected** `tab[Tab 1]/para[4:We are on track for the rollou].style@" window"`
   - before: `{"textStyle": {"foregroundColor": {"color": {"rgbColor": {"red": 1}}}, "italic": true}}`
   - after:  `{"textStyle": {}}`
 - **expected** `tab[Tab 1]/para[4:We are on track for the rollou].text`
-  - before: `"ro"`
-  - after:  `""`
-- **unexpected** `tab[Tab 1]/para[4:We are on track for the rollou].style@"l"`
-  - before: `{"textStyle": {"foregroundColor": {"color": {"rgbColor": {"blue": 0.8, "green": 0.33333334, "red": 0.06666667}}}, "link": {"url": "https://example.com/rollout-plan"}, "underline": true}}`
-  - after:  `{"textStyle": {}}`
-- **expected** `tab[Tab 1]/para[4:We are on track for the rollou].text`
-  - before: `"lo"`
-  - after:  `"a"`
-- **unexpected** `tab[Tab 1]/para[4:We are on track for the rollou].style@"u"`
-  - before: `{"textStyle": {"foregroundColor": {"color": {"rgbColor": {"blue": 0.8, "green": 0.33333334, "red": 0.06666667}}}, "link": {"url": "https://example.com/rollout-plan"}, "underline": true}}`
-  - after:  `{"textStyle": {}}`
-- **expected** `tab[Tab 1]/para[4:We are on track for the rollou].text`
-  - before: `"t"`
-  - after:  `"nch"`
+  - before: `"rollout"`
+  - after:  `"launch"`
 - **unexpected** `tab[Tab 1]/para[4:We are on track for the rollou].style@" window"`
   - before: `{"textStyle": {"foregroundColor": {"color": {"rgbColor": {"blue": 0.8, "green": 0.33333334, "red": 0.06666667}}}, "link": {"url": "https://example.com/rollout-plan"}, "underline": true}}`
   - after:  `{"textStyle": {}}`

@@ -1,6 +1,6 @@
 # diff — rewrite-tab-after-ui-bullet
 
-expected 0 · allowed 0 · unexpected 22 (visible 21, invisible 1)
+expected 0 · allowed 0 · unexpected 16 (visible 15, invisible 1)
 
 - **unexpected** `tab[Repro]/para[new@5:second bullet⏎].text`
   - before: `"∅"`
@@ -39,35 +39,17 @@ expected 0 · allowed 0 · unexpected 22 (visible 21, invisible 1)
   - before: `"h.sw3bblfxsa73"`
   - after:  `"h.cr2tlksvi7x"`
 - **unexpected** `tab[Repro]/para[0:Seed⏎].text`
-  - before: `"S"`
-  - after:  `"R"`
-- **unexpected** `tab[Repro]/para[0:Seed⏎].text`
-  - before: `""`
-  - after:  `"writt"`
-- **unexpected** `tab[Repro]/para[0:Seed⏎].text`
-  - before: `""`
-  - after:  `"n hea"`
-- **unexpected** `tab[Repro]/para[0:Seed⏎].text`
-  - before: `""`
-  - after:  `"ing"`
+  - before: `"Seed"`
+  - after:  `"Rewritten heading"`
 - **unexpected** `tab[Repro]/para[2:Placeholder paragraph one.⏎].text`
   - before: `"ceholder"`
   - after:  `"in"`
 - **unexpected** `tab[Repro]/para[2:Placeholder paragraph one.⏎].text`
-  - before: `"o"`
-  - after:  `"after the headi"`
-- **unexpected** `tab[Repro]/para[2:Placeholder paragraph one.⏎].text`
-  - before: `"e"`
-  - after:  `"g"`
+  - before: `"one"`
+  - after:  `"after the heading"`
 - **unexpected** `tab[Repro]/para[5:beta item⏎].text`
-  - before: `""`
-  - after:  `"first "`
-- **unexpected** `tab[Repro]/para[5:beta item⏎].text`
-  - before: `""`
-  - after:  `"ull"`
-- **unexpected** `tab[Repro]/para[5:beta item⏎].text`
-  - before: `"a item"`
-  - after:  `""`
+  - before: `"beta item"`
+  - after:  `"first bullet"`
 
 ## cat.md
 

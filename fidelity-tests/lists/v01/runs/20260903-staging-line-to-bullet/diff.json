@@ -785,6 +785,8 @@
    "kind": "text",
    "before": "-\t",
    "after": "",
+   "after_pos": 0,
+   "after_len": 0,
    "after_context": "Staging shar",
    "after_para_text": "Staging shares the prod cluster, namespace staging (yes, really)",
    "class": "expected",

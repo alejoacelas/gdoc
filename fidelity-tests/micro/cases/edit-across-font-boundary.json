@@ -1,0 +1,6 @@
+{"name": "edit-across-font-boundary",
+ "seed": [{"text": "Kubectl rollout restart deploy/api -n staging", "font": [{"family": "Courier New", "size": 10, "ranges": [[0, 34]]}]}, {"text": "Deploy to staging"}],
+ "request": "The kubectl line should target namespace staging-eu.",
+ "command": "gdoc edit --account {A} {DOC} 'deploy/api -n staging' 'deploy/api -n staging-eu'",
+ "expected": "Line reads `Kubectl rollout restart deploy/api -n staging-eu` with Courier New 10pt still on `Kubectl rollout restart deploy/api`; `Deploy to staging` untouched.",
+ "target": "paragraph beginning `Kubectl rollout`", "allowed": "revision list grows"}

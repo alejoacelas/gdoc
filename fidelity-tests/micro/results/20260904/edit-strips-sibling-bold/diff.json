@@ -1,0 +1,72 @@
+{
+ "task": "edit-strips-sibling-bold",
+ "items": [
+  {
+   "path": "tab[Tab 1]/para[1:Ship the v2 script by Friday. ].style@\"v2 script\"",
+   "before": {
+    "textStyle": {
+     "strikethrough": true
+    }
+   },
+   "after": {
+    "textStyle": {}
+   },
+   "kind": "style",
+   "after_pos": 9,
+   "after_len": 9,
+   "after_para_text": "Ship the v2 script by Friday. Estimated effort: 4 dev-days (was 5)",
+   "snippet": "v2 script",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[1:Ship the v2 script by Friday. ].style@\"Estimated effort\"",
+   "before": {
+    "textStyle": {
+     "backgroundColor": {
+      "color": {
+       "rgbColor": {
+        "green": 1,
+        "red": 1
+       }
+      }
+     }
+    }
+   },
+   "after": {
+    "textStyle": {}
+   },
+   "kind": "style",
+   "after_pos": 30,
+   "after_len": 16,
+   "after_para_text": "Ship the v2 script by Friday. Estimated effort: 4 dev-days (was 5)",
+   "snippet": "Estimated effort",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Tab 1]/para[1:Ship the v2 script by Friday. ].text",
+   "kind": "text",
+   "before": "3",
+   "after": "4",
+   "after_pos": 48,
+   "after_len": 1,
+   "after_context": "ted effort: 4 dev-days (w",
+   "after_para_text": "Ship the v2 script by Friday. Estimated effort: 4 dev-days (was 5)",
+   "class": "expected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -2,3 +2,3 @@\n \n-Ship the ~~v2 script~~ by Friday. Estimated effort: 3 dev-days (was 5\\)  \n+Ship the v2 script by Friday. Estimated effort: 4 dev-days (was 5\\)  \n Status: green  ",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 1,
+  "allowed": 0,
+  "unexpected": 2,
+  "visible_unexpected": 2,
+  "invisible_unexpected": 0
+ }
+}

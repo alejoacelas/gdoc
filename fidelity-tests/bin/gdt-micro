@@ -1,0 +1,165 @@
+#!/Users/alejo/.local/share/uv/tools/gdoc/bin/python
+"""gdt-micro CASE.json [CASE.json …] [--keep] [--jobs N]   — fast fidelity loop on minimal docs.
+
+A case seeds a tiny document through the Docs API (seconds, no browser), runs ONE gdoc command
+on it, and judges the result with gdt-diff against the case's Target/Allowed. Output: one line
+per case plus results/<date>/<case>/{before,after}/structure.json, diff.md, result.json.
+
+Case file:
+{
+  "name": "edit-strips-sibling-bold",
+  "issue": "https://github.com/LucaDeLeo/gdoc/issues/57",      # optional
+  "seed": [ {"text": "Estimated effort: 3 dev-days", "bold": [[0, 16]]}, {"text": "plain", "style": "HEADING_2"},
+            {"bullets": ["a", "b"]}, {"table": [["h1","h2"],["c1","c2"]]}, {"footnote": "note text", "text": "Body¹"} ],
+  "command": "gdoc edit --account {A} {DOC} 'Estimated effort: 3 dev-days' 'Estimated effort: 4 dev-days'",
+  "expected": "…text a judge can check…",
+  "target": "paragraph beginning `Estimated effort`",
+  "allowed": "revision list grows"
+}
+Seed paragraph keys: text, style (NORMAL_TEXT|HEADING_1..6|TITLE), bold/italic/strike/underline
+(list of [start,end] char ranges), font {"family","size", "ranges"}, color [start,end,"#rrggbb"],
+highlight [start,end,"#rrggbb"], link [start,end,url], align (START|CENTER|END|JUSTIFIED),
+spacing (e.g. 150), indent (pt), bullets (list of strings → one bulleted list), numbered (list),
+table (rows of cells), footnote (text appended as a footnote reference at the end of the paragraph)."""
+import argparse, json, os, re, shlex, subprocess, sys, tempfile, time, datetime
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from gdoc.util import account_context
+from gdoc.auth import get_credentials
+from googleapiclient.discovery import build
+
+ROOT = Path(__file__).resolve().parent.parent
+CFG = dict(re.findall(r"^(\w+):\s*(.*?)\s*$", (ROOT / "config.yaml").read_text(), re.M))
+ACCOUNT = CFG["account"]
+FOLDER = (ROOT / "micro" / "folder.txt").read_text().strip()
+
+
+def u16(s): return len(s.encode("utf-16-le")) // 2
+
+
+def rgb(hexs):
+    h = hexs.lstrip("#"); return {"red": int(h[0:2], 16) / 255, "green": int(h[2:4], 16) / 255, "blue": int(h[4:6], 16) / 255}
+
+
+def seed_requests(seed):
+    """Build the document body in one batchUpdate: insert all text first, then style by range."""
+    reqs, idx, ranges, late = [], 1, [], []
+    for p in seed:
+        if "bullets" in p or "numbered" in p:
+            items = p.get("bullets") or p.get("numbered")
+            start = idx
+            for it in items:
+                reqs.append({"insertText": {"location": {"index": idx}, "text": it + "\n"}}); idx += u16(it) + 1
+            late.append({"createParagraphBullets": {"range": {"startIndex": start, "endIndex": idx - 1},
+                         "bulletPreset": "BULLET_DISC_CIRCLE_SQUARE" if "bullets" in p else "NUMBERED_DECIMAL_ALPHA_ROMAN"}})
+            continue
+        if "table" in p:
+            rows = p["table"]; late.append(("table", idx, rows)); reqs.append({"insertText": {"location": {"index": idx}, "text": "\n"}}); idx += 1
+            continue
+        text = p["text"]; start = idx
+        reqs.append({"insertText": {"location": {"index": idx}, "text": text + "\n"}}); idx += u16(text) + 1
+        ranges.append((start, idx - 1, p))
+    for start, end, p in ranges:
+        def rg(a, b): return {"startIndex": start + u16(p["text"][:a]), "endIndex": start + u16(p["text"][:b])}
+        if p.get("style"):
+            late.append({"updateParagraphStyle": {"range": {"startIndex": start, "endIndex": end + 1}, "paragraphStyle": {"namedStyleType": p["style"]}, "fields": "namedStyleType"}})
+        ps, fields = {}, []
+        if p.get("align"): ps["alignment"] = p["align"]; fields.append("alignment")
+        if p.get("spacing"): ps["lineSpacing"] = p["spacing"]; fields.append("lineSpacing")
+        if p.get("indent"): ps["indentStart"] = {"magnitude": p["indent"], "unit": "PT"}; ps["indentFirstLine"] = {"magnitude": p["indent"], "unit": "PT"}; fields += ["indentStart", "indentFirstLine"]
+        if fields:
+            late.append({"updateParagraphStyle": {"range": {"startIndex": start, "endIndex": end + 1}, "paragraphStyle": ps, "fields": ",".join(fields)}})
+        for key, field in (("bold", "bold"), ("italic", "italic"), ("strike", "strikethrough"), ("underline", "underline")):
+            for a, b in p.get(key, []):
+                late.append({"updateTextStyle": {"range": rg(a, b), "textStyle": {field: True}, "fields": field}})
+        for a, b, hx in p.get("color", []):
+            late.append({"updateTextStyle": {"range": rg(a, b), "textStyle": {"foregroundColor": {"color": {"rgbColor": rgb(hx)}}}, "fields": "foregroundColor"}})
+        for a, b, hx in p.get("highlight", []):
+            late.append({"updateTextStyle": {"range": rg(a, b), "textStyle": {"backgroundColor": {"color": {"rgbColor": rgb(hx)}}}, "fields": "backgroundColor"}})
+        for a, b, url in p.get("link", []):
+            late.append({"updateTextStyle": {"range": rg(a, b), "textStyle": {"link": {"url": url}}, "fields": "link"}})
+        for f in p.get("font", []):
+            ts, fl = {}, []
+            if f.get("family"): ts["weightedFontFamily"] = {"fontFamily": f["family"]}; fl.append("weightedFontFamily")
+            if f.get("size"): ts["fontSize"] = {"magnitude": f["size"], "unit": "PT"}; fl.append("fontSize")
+            for a, b in f["ranges"]:
+                late.append({"updateTextStyle": {"range": rg(a, b), "textStyle": ts, "fields": ",".join(fl)}})
+        if p.get("footnote"):
+            late.append(("footnote", end, p["footnote"]))
+    return reqs, late
+
+
+def seed_doc(docs, doc_id, seed):
+    reqs, late = seed_requests(seed)
+    docs.documents().batchUpdate(documentId=doc_id, body={"requests": reqs}).execute()
+    plain = [r for r in late if isinstance(r, dict)]
+    if plain:
+        docs.documents().batchUpdate(documentId=doc_id, body={"requests": plain}).execute()
+    for r in [r for r in late if isinstance(r, tuple)]:
+        if r[0] == "footnote":
+            res = docs.documents().batchUpdate(documentId=doc_id, body={"requests": [{"createFootnote": {"location": {"index": r[1]}}}]}).execute()
+            fid = res["replies"][0]["createFootnote"]["footnoteId"]
+            docs.documents().batchUpdate(documentId=doc_id, body={"requests": [{"insertText": {"location": {"segmentId": fid, "index": 0}, "text": r[2]}}]}).execute()
+        elif r[0] == "table":
+            _, at, rows = r
+            docs.documents().batchUpdate(documentId=doc_id, body={"requests": [{"insertTable": {"location": {"index": at}, "rows": len(rows), "columns": len(rows[0])}}]}).execute()
+            d = docs.documents().get(documentId=doc_id).execute()
+            tbl = [c for c in d["body"]["content"] if "table" in c][-1]["table"]
+            fills = []
+            for ri, row in enumerate(tbl["tableRows"]):
+                for ci, cell in enumerate(row["tableCells"]):
+                    txt = rows[ri][ci]
+                    if txt: fills.append({"insertText": {"location": {"index": cell["content"][0]["startIndex"]}, "text": txt}})
+            for f in sorted(fills, key=lambda x: -x["insertText"]["location"]["index"]):
+                docs.documents().batchUpdate(documentId=doc_id, body={"requests": [f]}).execute()
+
+
+def run_case(path, keep, creds):
+    docs = build("docs", "v1", credentials=creds, cache_discovery=False)   # one client per thread
+    case = json.load(open(path)); name = case["name"]
+    out = ROOT / "micro" / "results" / datetime.date.today().strftime("%Y%m%d") / name
+    out.mkdir(parents=True, exist_ok=True); t0 = time.time()
+    doc = docs.documents().create(body={"title": f"gdt-micro {name}"}).execute(); doc_id = doc["documentId"]
+    subprocess.run(["gdoc", "mv", "--account", ACCOUNT, doc_id, FOLDER], capture_output=True, text=True)
+    seed_doc(docs, doc_id, case["seed"])
+    def capture(d):
+        d.mkdir(exist_ok=True)
+        (d / "structure.json").write_text(subprocess.run(["gdoc", "structure", "--quiet", "--account", ACCOUNT, doc_id], capture_output=True, text=True).stdout)
+        (d / "cat.md").write_text(subprocess.run(["gdoc", "cat", "--quiet", "--account", ACCOUNT, doc_id], capture_output=True, text=True).stdout)
+        (d / "comments.json").write_text(subprocess.run(["gdoc", "comments", "--all", "--quiet", "--account", ACCOUNT, doc_id, "--json"], capture_output=True, text=True).stdout or "{}")
+    capture(out / "before")
+    cmd = case["command"].replace("{DOC}", doc_id).replace("{A}", ACCOUNT)
+    r = subprocess.run(shlex.split(cmd), capture_output=True, text=True)
+    (out / "command.txt").write_text(f"$ {cmd}\nexit {r.returncode}\n{r.stdout}{r.stderr}")
+    capture(out / "after")
+    tasks = out / "task.md"
+    tasks.write_text(f"## {name}\n\n- **Request:** {case.get('request', case['command'])}\n- **Expected:** {case.get('expected','')}\n- **Target:** {case.get('target','')}\n- **Allowed:** {case.get('allowed','revision list grows')}\n- **Preconditions:** seeded\n")
+    dr = subprocess.run([str(ROOT / "bin" / "gdt-diff"), str(out / "before"), str(out / "after"), "--task", f"{tasks}#{name}", "--out", str(out)], capture_output=True, text=True)
+    s = json.load(open(out / "diff.json"))["summary"] if (out / "diff.json").exists() else {}
+    changed = (out / "before" / "structure.json").read_text() != (out / "after" / "structure.json").read_text()
+    if s.get("unexpected", 0): outcome = "COLLATERAL"
+    elif not changed: outcome = "NO-CHANGE" + (f" (exit {r.returncode})" if r.returncode else "")
+    elif s.get("expected", 0): outcome = "DONE"
+    else: outcome = "UNJUDGED"
+    res = {"name": name, "issue": case.get("issue"), "doc": f"https://docs.google.com/document/d/{doc_id}/edit", "command": cmd, "exit": r.returncode,
+           "summary": s, "outcome": outcome, "seconds": round(time.time() - t0, 1)}
+    (out / "result.json").write_text(json.dumps(res, indent=1))
+    return res
+
+
+def main():
+    ap = argparse.ArgumentParser(); ap.add_argument("cases", nargs="+"); ap.add_argument("--keep", action="store_true"); ap.add_argument("--jobs", type=int, default=4)
+    a = ap.parse_args()
+    with account_context(ACCOUNT):
+        creds = get_credentials()
+    paths = []
+    for c in a.cases:
+        p = Path(c); paths += sorted(p.glob("*.json")) if p.is_dir() else [p]
+    with ThreadPoolExecutor(max_workers=a.jobs) as ex:
+        results = list(ex.map(lambda p: run_case(p, a.keep, creds), paths))
+    for r in results:
+        s = r["summary"]; print(f"{r['outcome']:18s} {r['name']:42s} exp={s.get('expected',0):<3} unexp={s.get('unexpected',0):<3} {r['seconds']:>5}s  {r['doc']}")
+
+
+if __name__ == "__main__":
+    main()

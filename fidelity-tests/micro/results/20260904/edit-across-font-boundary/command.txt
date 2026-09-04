@@ -1,0 +1,7 @@
+$ gdoc edit --account alejandro.acelas-contractor@80000hours.org 1KpwgxwhTfk8UYb0ppPs2fQsXP-46Vy4gs3_DUkUEuAw 'deploy/api -n staging' 'deploy/api -n staging-eu'
+exit 0
+OK replaced 1 occurrence
+--- since last interaction (0 sec ago) ---
+ ✎ doc edited by Alejandro Acelas (v2 → v4)
+---
+WARN: doc changed since last read

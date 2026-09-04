@@ -1,0 +1,16 @@
+{
+ "name": "edit-list-marker-restyles",
+ "issue": "https://github.com/LucaDeLeo/gdoc/issues/57",
+ "doc": "https://docs.google.com/document/d/1oYE443RCvPudw6pdaFEmumTzR9C7TvrrLiNCRqCjujk/edit",
+ "command": "gdoc edit --account alejandro.acelas-contractor@80000hours.org 1oYE443RCvPudw6pdaFEmumTzR9C7TvrrLiNCRqCjujk '2. Migrate the queue' '1. Migrate the queue'",
+ "exit": 0,
+ "summary": {
+  "expected": 1,
+  "allowed": 0,
+  "unexpected": 90,
+  "visible_unexpected": 89,
+  "invisible_unexpected": 1
+ },
+ "outcome": "COLLATERAL",
+ "seconds": 10.3
+}

@@ -1,0 +1,6 @@
+{"name": "edit-resets-alignment",
+ "seed": [{"text": "Body paragraph."}, {"text": "— Marta, 2 Sept 2026", "align": "END"}, {"text": "Spaced paragraph with a date 2 Sept.", "spacing": 150}],
+ "request": "Bump the signature date to 3 Sept 2026.",
+ "command": "gdoc edit --account {A} {DOC} 'Marta, 2 Sept 2026' 'Marta, 3 Sept 2026'",
+ "expected": "Signature reads `— Marta, 3 Sept 2026`, still right-aligned; the 1.5-spaced paragraph untouched.",
+ "target": "paragraph beginning `— Marta`", "allowed": "revision list grows"}

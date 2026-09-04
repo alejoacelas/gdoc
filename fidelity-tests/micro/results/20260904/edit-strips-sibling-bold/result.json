@@ -1,0 +1,16 @@
+{
+ "name": "edit-strips-sibling-bold",
+ "issue": "https://github.com/LucaDeLeo/gdoc/issues/57",
+ "doc": "https://docs.google.com/document/d/111lxft0SkrbuVvMWYiBtjqBbsW4tmQHW8jE69a3kI9E/edit",
+ "command": "gdoc edit --account alejandro.acelas-contractor@80000hours.org 111lxft0SkrbuVvMWYiBtjqBbsW4tmQHW8jE69a3kI9E 'Estimated effort: 3 dev-days' 'Estimated effort: 4 dev-days'",
+ "exit": 0,
+ "summary": {
+  "expected": 1,
+  "allowed": 0,
+  "unexpected": 2,
+  "visible_unexpected": 2,
+  "invisible_unexpected": 0
+ },
+ "outcome": "COLLATERAL",
+ "seconds": 10.4
+}

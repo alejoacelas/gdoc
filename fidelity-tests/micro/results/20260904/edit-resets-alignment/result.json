@@ -1,0 +1,16 @@
+{
+ "name": "edit-resets-alignment",
+ "issue": null,
+ "doc": "https://docs.google.com/document/d/1Jo9eIpxNxysh5LvifyqmDKStBQvf6MZIcVk6sV4gIXM/edit",
+ "command": "gdoc edit --account alejandro.acelas-contractor@80000hours.org 1Jo9eIpxNxysh5LvifyqmDKStBQvf6MZIcVk6sV4gIXM 'Marta, 2 Sept 2026' 'Marta, 3 Sept 2026'",
+ "exit": 0,
+ "summary": {
+  "expected": 1,
+  "allowed": 0,
+  "unexpected": 1,
+  "visible_unexpected": 1,
+  "invisible_unexpected": 0
+ },
+ "outcome": "COLLATERAL",
+ "seconds": 10.6
+}

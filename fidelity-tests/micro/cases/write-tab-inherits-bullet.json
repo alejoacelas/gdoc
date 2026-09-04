@@ -1,0 +1,6 @@
+{"name": "write-tab-inherits-bullet", "issue": "https://github.com/LucaDeLeo/gdoc/issues/59",
+ "seed": [{"text": "Intro paragraph."}, {"bullets": ["first item", "last item"]}],
+ "request": "Rewrite the tab from markdown: a heading and two plain paragraphs.",
+ "command": "sh -c \"printf '# New title\\n\\nFirst paragraph.\\n\\nSecond paragraph.\\n' > /tmp/gdt-micro-write.md && gdoc write --force --quiet --account {A} --tab 'Tab 1' {DOC} /tmp/gdt-micro-write.md\"",
+ "expected": "Tab holds exactly: HEADING_1 `New title`, then two NORMAL_TEXT paragraphs with no bullets.",
+ "target": "heading `New title`, paragraph beginning `First paragraph`, paragraph beginning `Second paragraph`", "allowed": "revision list grows; renumber; lists map"}

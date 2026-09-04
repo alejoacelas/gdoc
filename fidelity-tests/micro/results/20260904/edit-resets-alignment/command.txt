@@ -1,0 +1,7 @@
+$ gdoc edit --account alejandro.acelas-contractor@80000hours.org 1Jo9eIpxNxysh5LvifyqmDKStBQvf6MZIcVk6sV4gIXM 'Marta, 2 Sept 2026' 'Marta, 3 Sept 2026'
+exit 0
+OK replaced 1 occurrence
+--- since last interaction (0 sec ago) ---
+ ✎ doc edited by Alejandro Acelas (v2 → v4)
+---
+WARN: doc changed since last read

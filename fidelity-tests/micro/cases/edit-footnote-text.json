@@ -1,0 +1,6 @@
+{"name": "edit-footnote-text",
+ "seed": [{"text": "Numbers come from the Finance sheet", "footnote": "Finance sheet v7, pulled 28 Aug."}, {"text": "Closing line."}],
+ "request": "The footnote should say v8, pulled 2 Sept.",
+ "command": "gdoc edit --account {A} {DOC} 'Finance sheet v7, pulled 28 Aug.' 'Finance sheet v8, pulled 2 Sept.'",
+ "expected": "Footnote reads `Finance sheet v8, pulled 2 Sept.`; body unchanged.",
+ "target": "footnote", "allowed": "revision list grows"}

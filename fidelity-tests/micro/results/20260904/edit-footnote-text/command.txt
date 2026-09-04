@@ -1,0 +1,7 @@
+$ gdoc edit --account alejandro.acelas-contractor@80000hours.org 1GH1Rr1Ajud8X_jFgZCwOuuiwdqmywz0XYH7zH-o9AN4 'Finance sheet v7, pulled 28 Aug.' 'Finance sheet v8, pulled 2 Sept.'
+exit 3
+--- since last interaction (0 sec ago) ---
+ ✎ doc edited by Alejandro Acelas (v2 → v4)
+---
+WARN: doc changed since last read
+ERR: no match found

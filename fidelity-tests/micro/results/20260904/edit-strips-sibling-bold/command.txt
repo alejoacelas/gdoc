@@ -1,0 +1,7 @@
+$ gdoc edit --account alejandro.acelas-contractor@80000hours.org 111lxft0SkrbuVvMWYiBtjqBbsW4tmQHW8jE69a3kI9E 'Estimated effort: 3 dev-days' 'Estimated effort: 4 dev-days'
+exit 0
+OK replaced 1 occurrence
+--- since last interaction (0 sec ago) ---
+ ✎ doc edited by Alejandro Acelas (v2 → v4)
+---
+WARN: doc changed since last read

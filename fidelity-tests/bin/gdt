@@ -7,6 +7,7 @@
 #   run-start FIXTURE_DIR SLUG [--copy-id ID]   copy (gdoc cp) or adopt a UI-made copy, rename, move to runs/,
 #                               gates, before capture; prints the run dir and copy URL
 #   run-end RUN_DIR             after capture, revision-later gate, gdt-diff
+#   micro CASE.json|DIR…        fast loop: seed a minimal doc via the Docs API, run one command, judge (see micro/README.md)
 #   index                       regenerate INDEX.md
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd); root=$(dirname "$here")
@@ -116,6 +117,7 @@ print(f"gate after_revision_later: {verdict}  drive {b['id']}->{a['id']}  docs {
 PY2
     "$here/gdt-diff" "$run/before" "$run/after" --task "$fx/tasks.md#$slug" --out "$run";;
   batch-end) exec python3 "$here/gdt-batch-end" "$@";;
+  micro) exec "$here/gdt-micro" "$@";;
   index) exec python3 "$here/gdt-index";;
   *) sed -n '2,8p' "$0";;
 esac

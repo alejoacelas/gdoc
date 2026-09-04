@@ -1,0 +1,6 @@
+{"name": "edit-list-marker-restyles", "issue": "https://github.com/LucaDeLeo/gdoc/issues/57",
+ "seed": [{"text": "Priority: 2. Migrate the queue", "bold": [[0, 9]]}, {"text": "Next line."}],
+ "request": "Change the priority text to '1. Migrate the queue'.",
+ "command": "gdoc edit --account {A} {DOC} '2. Migrate the queue' '1. Migrate the queue'",
+ "expected": "Paragraph reads `Priority: 1. Migrate the queue`, still a plain paragraph (no list), `Priority:` still bold.",
+ "target": "paragraph beginning `Priority:`", "allowed": "revision list grows"}

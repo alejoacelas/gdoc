@@ -1,0 +1,16 @@
+{
+ "name": "edit-across-font-boundary",
+ "issue": null,
+ "doc": "https://docs.google.com/document/d/1KpwgxwhTfk8UYb0ppPs2fQsXP-46Vy4gs3_DUkUEuAw/edit",
+ "command": "gdoc edit --account alejandro.acelas-contractor@80000hours.org 1KpwgxwhTfk8UYb0ppPs2fQsXP-46Vy4gs3_DUkUEuAw 'deploy/api -n staging' 'deploy/api -n staging-eu'",
+ "exit": 0,
+ "summary": {
+  "expected": 1,
+  "allowed": 0,
+  "unexpected": 1,
+  "visible_unexpected": 1,
+  "invisible_unexpected": 0
+ },
+ "outcome": "COLLATERAL",
+ "seconds": 11.1
+}

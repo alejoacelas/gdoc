@@ -1,0 +1,16 @@
+{
+ "name": "edit-footnote-text",
+ "issue": null,
+ "doc": "https://docs.google.com/document/d/1GH1Rr1Ajud8X_jFgZCwOuuiwdqmywz0XYH7zH-o9AN4/edit",
+ "command": "gdoc edit --account alejandro.acelas-contractor@80000hours.org 1GH1Rr1Ajud8X_jFgZCwOuuiwdqmywz0XYH7zH-o9AN4 'Finance sheet v7, pulled 28 Aug.' 'Finance sheet v8, pulled 2 Sept.'",
+ "exit": 3,
+ "summary": {
+  "expected": 0,
+  "allowed": 0,
+  "unexpected": 0,
+  "visible_unexpected": 0,
+  "invisible_unexpected": 0
+ },
+ "outcome": "NO-CHANGE (exit 3)",
+ "seconds": 10.5
+}

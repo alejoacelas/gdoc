@@ -80,3 +80,14 @@ gdoc insert --account $A --tab "Tab 1" --position start <copy> header.md
 Expect: the markdown is inserted before the existing content; the document's first paragraph keeps HEADING_1.
 Observed: the original first paragraph (`🚀 Q3 platform migration …`) becomes NORMAL_TEXT. Found while
 building the review-copy header; the painter now inserts through the Docs API instead.
+
+## write-v01-write-tab-inherits-terminal-bullet   (write/v01, 2026-09-04, COLLATERAL, https://github.com/LucaDeLeo/gdoc/issues/59)
+gdoc write --account $A --tab Repro <copy> fidelity-tests/write/v01/rewrite.md
+Expect: H1, plain paragraph, two list items, plain paragraph; only the two items carry a bullet.
+Observed: all nine paragraphs (heading, blank separators, prose) become items of the list that owned the
+tab's terminal empty paragraph, 36pt indent; `gdoc cat` prints `* # Rewritten heading`. Precondition: the
+tab's terminal paragraph carries a bullet (`write/v01/build.sh` adds it with createParagraphBullets; the
+Docs UI leaves one whenever a list is the last thing typed). gdoc-written lists never bullet the terminal
+paragraph, so a tab seeded only by gdoc does not reproduce. Cause: `_tab_body_range` keeps the final
+newline, its paragraph survives the delete with the bullet, and the inserted text merges into it.
+Run: write/v01/runs/20260904-rewrite-tab-after-ui-bullet. Unit test: tests/test_write_tab_terminal_bullet.py.

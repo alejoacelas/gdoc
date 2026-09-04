@@ -1,0 +1,278 @@
+{
+ "task": "rewrite-tab-after-ui-bullet",
+ "items": [
+  {
+   "path": "tab[Repro]/para[new@5:second bullet⏎].text",
+   "before": "∅",
+   "after": "second bullet⏎",
+   "kind": "text",
+   "after_para_text": "second bullet",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Repro]/para[new@5:second bullet⏎].bullet",
+   "before": "∅",
+   "after": {
+    "listId": "kix.95e8uvky1zrr",
+    "textStyle": {}
+   },
+   "kind": "para",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Repro]/para[new@5:second bullet⏎].paragraphStyle",
+   "before": "∅",
+   "after": {
+    "namedStyleType": "NORMAL_TEXT",
+    "indentFirstLine": {
+     "magnitude": 18,
+     "unit": "PT"
+    },
+    "indentStart": {
+     "magnitude": 36,
+     "unit": "PT"
+    }
+   },
+   "kind": "para",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Repro]/para[new@7:Closing plain paragraph.⏎].text",
+   "before": "∅",
+   "after": "Closing plain paragraph.⏎",
+   "kind": "text",
+   "after_para_text": "Closing plain paragraph.",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Repro]/para[new@7:Closing plain paragraph.⏎].bullet",
+   "before": "∅",
+   "after": {
+    "listId": "kix.95e8uvky1zrr",
+    "textStyle": {}
+   },
+   "kind": "para",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Repro]/para[new@7:Closing plain paragraph.⏎].paragraphStyle",
+   "before": "∅",
+   "after": {
+    "namedStyleType": "NORMAL_TEXT",
+    "indentFirstLine": {
+     "magnitude": 18,
+     "unit": "PT"
+    },
+    "indentStart": {
+     "magnitude": 36,
+     "unit": "PT"
+    }
+   },
+   "kind": "para",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Repro]/para[new@8:⏎].text",
+   "before": "∅",
+   "after": "⏎",
+   "kind": "text",
+   "after_para_text": "",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Repro]/para[new@8:⏎].bullet",
+   "before": "∅",
+   "after": {
+    "listId": "kix.95e8uvky1zrr",
+    "textStyle": {}
+   },
+   "kind": "para",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Repro]/para[new@8:⏎].paragraphStyle",
+   "before": "∅",
+   "after": {
+    "namedStyleType": "NORMAL_TEXT",
+    "indentFirstLine": {
+     "magnitude": 18,
+     "unit": "PT"
+    },
+    "indentStart": {
+     "magnitude": 36,
+     "unit": "PT"
+    }
+   },
+   "kind": "para",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Repro]/para[del@4:alpha item⏎].text",
+   "before": "alpha item⏎",
+   "after": "∅",
+   "kind": "text",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Repro]/para[del@4:alpha item⏎].bullet",
+   "before": {
+    "listId": "kix.95e8uvky1zrr",
+    "textStyle": {}
+   },
+   "after": "∅",
+   "kind": "para",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Repro]/para[0:Seed⏎].paragraphStyle.headingId",
+   "before": "h.sw3bblfxsa73",
+   "after": "h.cr2tlksvi7x",
+   "kind": "para",
+   "after_para_text": "Rewritten heading",
+   "class": "unexpected",
+   "visible": false,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Repro]/para[0:Seed⏎].text",
+   "kind": "text",
+   "before": "S",
+   "after": "R",
+   "after_context": "Rewritten hea",
+   "after_para_text": "Rewritten heading",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Repro]/para[0:Seed⏎].text",
+   "kind": "text",
+   "before": "",
+   "after": "writt",
+   "after_context": "Rewritten heading",
+   "after_para_text": "Rewritten heading",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Repro]/para[0:Seed⏎].text",
+   "kind": "text",
+   "before": "",
+   "after": "n hea",
+   "after_context": "Rewritten heading",
+   "after_para_text": "Rewritten heading",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Repro]/para[0:Seed⏎].text",
+   "kind": "text",
+   "before": "",
+   "after": "ing",
+   "after_context": "written heading",
+   "after_para_text": "Rewritten heading",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Repro]/para[2:Placeholder paragraph one.⏎].text",
+   "kind": "text",
+   "before": "ceholder",
+   "after": "in",
+   "after_context": "Plain paragraph a",
+   "after_para_text": "Plain paragraph after the heading.",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Repro]/para[2:Placeholder paragraph one.⏎].text",
+   "kind": "text",
+   "before": "o",
+   "after": "after the headi",
+   "after_context": "n paragraph after the heading.",
+   "after_para_text": "Plain paragraph after the heading.",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Repro]/para[2:Placeholder paragraph one.⏎].text",
+   "kind": "text",
+   "before": "e",
+   "after": "g",
+   "after_context": "r the heading.",
+   "after_para_text": "Plain paragraph after the heading.",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Repro]/para[5:beta item⏎].text",
+   "kind": "text",
+   "before": "",
+   "after": "first ",
+   "after_context": "first bullet",
+   "after_para_text": "first bullet",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Repro]/para[5:beta item⏎].text",
+   "kind": "text",
+   "before": "",
+   "after": "ull",
+   "after_context": "first bullet",
+   "after_para_text": "first bullet",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  },
+  {
+   "path": "tab[Repro]/para[5:beta item⏎].text",
+   "kind": "text",
+   "before": "a item",
+   "after": "",
+   "after_context": "first bullet",
+   "after_para_text": "first bullet",
+   "class": "unexpected",
+   "visible": true,
+   "needs_visual_review": false
+  }
+ ],
+ "cat_diff": "--- before/cat.md\n+++ after/cat.md\n@@ -4,9 +4,11 @@\n \n-* # Seed\n+* # Rewritten heading\n \n *   \n-* Placeholder paragraph one.  \n+* Plain paragraph after the heading.  \n *   \n-* alpha item  \n-* beta item  \n+* first bullet  \n+* second bullet  \n+*   \n+* Closing plain paragraph.  \n * ",
+ "needs_visual_review_reasons": [],
+ "summary": {
+  "expected": 0,
+  "allowed": 0,
+  "unexpected": 22,
+  "visible_unexpected": 21,
+  "invisible_unexpected": 1
+ }
+}

@@ -52,7 +52,9 @@ Commit only when the calling project's instructions say to, on the branch they n
 
 Fixture doc `gdt-<area>-v<NN>`; run copy `gdt-<area>-v<NN> run <YYYYMMDD> <slug>`. Area
 is one lowercase word (`text`, `lists`, `tables`, `objects`, `layout`, `chips`,
-`collab`, `kitchen-sink`). A new version is a new doc; never edit a fixture.
+`collab`, `kitchen-sink`, `write`). A new version is a new doc; never edit a fixture.
+A scripted fixture (built by a `build.sh` beside `fixture.md`, no browser) may be trashed
+after its baseline capture; `fixture.md` then carries `status: trashed after capture`.
 
 ## Fixtures
 
@@ -84,6 +86,35 @@ Every task has five fields, and a run cannot start until all five are present:
 Include at least one task that needs a correct read to do at all, one that rewrites a
 whole section, one adjacent to an object the API cannot create, one whose target
 phrase also appears elsewhere, and one you expect to be impossible.
+
+## Reducing a failure seen in a real document
+
+When a gdoc command misbehaves on a document you cannot put in the repo:
+
+- Freeze first: `gdoc structure --tab <id>` and `gdoc pull` of the misbehaving doc into a
+  private folder outside the repo. The tab may be deleted or repaired at any moment.
+- Diff the failing tab's structure against a tab that behaves, paragraph by paragraph. The
+  odd property is usually one field; in the worked example it was a `bullet` on the tab's
+  terminal empty paragraph.
+- Rebuild only that property in a scratch doc: gdoc commands plus, if needed, one Docs API
+  request from a Python snippet (`from gdoc.util import set_active_account`, then
+  `from gdoc.api.docs import get_docs_service`). Rerun the failing command. If it
+  reproduces, the fixture is scripted and anonymous: save the recipe as
+  `<area>/v<NN>/build.sh` with its seed and input files beside it.
+- Only if the real snapshot alone reproduces, anonymise it: replace every textRun
+  `content` with placeholder text of the same length, keep every style, bullet and list
+  property, and confirm the anonymised copy still fails before it enters the repo.
+- Capture `before/` right after the build and `after/` after the command with `gdt capture`;
+  run `gdt-diff --task`; write `transcript.md` and `verdict.md` (track `command`); add the
+  `repros.md` entry; add a pytest that pins the fix (mock `get_document_with_tabs` with the
+  offending body and assert the request the fix must send). The pytest fails until the fix
+  lands; that is its job.
+- `gdt validate-fixture` reports the missing screenshots; record that in
+  `baseline/shot.json` and `built.md` rather than adding pictures.
+- Trash the scratch docs. Commit on the branch the project names; do not push.
+- Worked example: `fidelity-tests/write/v01`, its run
+  `runs/20260904-rewrite-tab-after-ui-bullet`, `repros.md#write-v01-write-tab-inherits-terminal-bullet`,
+  and `tests/test_write_tab_terminal_bullet.py` (LucaDeLeo/gdoc#59).
 
 ## Running a task
 

@@ -373,6 +373,10 @@ Mocking: `get_docs_service` supplies mocked Docs resources and responses; shared
 - **TestZeroWidthReplace** (1) — zero-width formatted replacements emit a pure `insertText` request because Docs rejects empty delete ranges.
 - **TestInsertMarkdownIntoTab** (5) — tab insertion and replacement choose correct body indices, pin the revision, include tab IDs, avoid empty deletes, and reject unknown tabs.
 
+#### `tests/test_write_tab_terminal_bullet.py` — `gdoc/api/docs.py` (`insert_markdown_into_tab`, replace path)
+Mocking: Patches `get_document_with_tabs` with a tab body whose terminal empty paragraph carries a bullet, and `get_docs_service` to capture the batch.
+- **TestReplaceTabWithBulletedTerminalParagraph** (2) — `write --tab` must clear the bullet on the surviving terminal paragraph before inserting (fails until LucaDeLeo/gdoc#59 is fixed), and must add no such request when the terminal paragraph is plain.
+
 #### `tests/test_api_drive.py` — `gdoc/api/drive.py` (Drive wrappers and error translation)
 Mocking: `get_drive_service` or `list_files` is patched with chained `MagicMock` requests; `_make_http_error` constructs status-specific Google API failures.
 - **TestTranslateHttpError** (5) — HTTP 401 becomes `AuthError`; 403, 404, and 500 become specific `GdocError` messages, including the non-exportable Docs case.

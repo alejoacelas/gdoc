@@ -1,0 +1,115 @@
+{
+  "doc_url": "https://docs.google.com/document/d/15ywu96tJWH7AqgOijuxh0nixYbYFtOeMJAtcHfbVjkc/edit",
+  "resolved_url": "https://docs.google.com/document/d/15ywu96tJWH7AqgOijuxh0nixYbYFtOeMJAtcHfbVjkc/edit?tab=t.0#heading=h.3t3zvz4w9b17",
+  "account": "alejandro.acelas-contractor@80000hours.org",
+  "chrome_version": "152.0.7977.76",
+  "chrome_launched": false,
+  "http_cache_cleared": false,
+  "geometry": {
+    "viewport": {
+      "width": 1440,
+      "height": 828
+    },
+    "outer": {
+      "width": 1440,
+      "height": 923
+    },
+    "devicePixelRatio": 1
+  },
+  "load_and_setup_seconds": 3.1077,
+  "views": [
+    {
+      "requested": 0,
+      "actual": 0,
+      "scrollHeight": 2377,
+      "clientHeight": 699,
+      "seconds": 0.4522,
+      "image": "view-01.jpg",
+      "pages": [
+        {
+          "x": 304,
+          "y": 145,
+          "width": 794,
+          "height": 1123
+        },
+        {
+          "x": 304,
+          "y": 1278,
+          "width": 794,
+          "height": 1123
+        }
+      ]
+    },
+    {
+      "requested": 650,
+      "actual": 650,
+      "scrollHeight": 2377,
+      "clientHeight": 699,
+      "seconds": 0.463,
+      "image": "view-02.jpg",
+      "pages": [
+        {
+          "x": 304,
+          "y": -505,
+          "width": 794,
+          "height": 1123
+        },
+        {
+          "x": 304,
+          "y": 628,
+          "width": 794,
+          "height": 1123
+        }
+      ]
+    },
+    {
+      "requested": 1300,
+      "actual": 1300,
+      "scrollHeight": 2377,
+      "clientHeight": 699,
+      "seconds": 0.4223,
+      "image": "view-03.jpg",
+      "pages": [
+        {
+          "x": 304,
+          "y": -1155,
+          "width": 794,
+          "height": 1123
+        },
+        {
+          "x": 304,
+          "y": -22,
+          "width": 794,
+          "height": 1123
+        }
+      ]
+    },
+    {
+      "requested": 1950,
+      "actual": 1678,
+      "scrollHeight": 2377,
+      "clientHeight": 699,
+      "seconds": 0.4484,
+      "image": "view-04.jpg",
+      "pages": [
+        {
+          "x": 304,
+          "y": -1533,
+          "width": 794,
+          "height": 1123
+        },
+        {
+          "x": 304,
+          "y": -400,
+          "width": 794,
+          "height": 1123
+        }
+      ]
+    }
+  ],
+  "filing_seconds": 0.045,
+  "total_seconds": 4.9526,
+  "layout": "print; 100% Docs zoom; outlines collapsed; View > Comments > Hide comments",
+  "step_px": 650,
+  "viewport_policy": "1440x828 CSS pixels; JPEG device scale normalized"
+}

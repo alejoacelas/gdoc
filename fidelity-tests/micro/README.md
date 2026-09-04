@@ -68,3 +68,59 @@ Consequences for the campaign: seeds can carry anchored comments and pending sug
 the sweep covers "edit next to / under a comment anchor", "edit inside / next to a pending
 suggestion", and comment anchors become visible to the structural judge (read the document with
 `commentsViewMode` and diff `commentAnchors`), which removes the blind spot the browser suite had.
+
+## Scripted browser captures
+
+Use `bin/gdt-shot-headless` from `fidelity-tests/` to replace the Chrome-extension
+shooter. It runs normal Google Chrome off-screen, with Playwright over CDP and a
+separate profile at `~/.config/gdt-chrome`. It never shares or edits a document.
+
+Install Google Chrome and `uv`; for PDF comparisons, install Poppler (`brew install
+poppler`). The executable installs its pinned Playwright dependency through `uv` on
+first use; no Playwright browser download is needed. This launcher targets macOS's
+`/Applications/Google Chrome.app`.
+
+```bash
+bin/gdt-shot-headless 'DOC_URL' /tmp/my-capture
+bin/gdt-shot-headless 'DOC_URL?tab=t.TAB_ID' /tmp/my-tab-capture --views 3
+```
+
+On first use, the script opens Chrome and prints a login instruction. Sign in as
+`alejandro.acelas-contractor@80000hours.org`, leave Chrome sync off, and leave the
+Doc open. The script waits for the human login, then continues. Sessions stay in
+that profile; neither credentials nor cookies belong in the repository. Port 9224
+must be free or belong to that dedicated Chrome. Close only the dedicated profile
+if Chrome reports a profile lock; then rerun the command.
+
+- Captures use a fixed 1440×828 CSS viewport, 100% Docs zoom, print layout, collapsed
+  outlines and hidden comment cards/panel. Chrome is asked for a 1440×1200 window;
+  macOS may clamp the outer height. Actual geometry is recorded.
+- The editor scrolls to 0, 650, 1300, … until its bottom is visible. `--views N`
+  requests exactly N views, retaining repeated bottom views when Chrome clamps
+  the offset. Use the same count for before/after comparisons.
+- `gdt-shot` files `view-01.jpg`, `view-02.jpg`, … and the existing `shot.json`.
+  `capture.json` adds actual geometry, requested/actual offsets and timings. An
+  existing capture is refused; use a fresh output directory. A failed capture
+  never publishes `shot.json`.
+- Capture documents sequentially. Keep the dedicated window untouched while it
+  runs. Documents open elsewhere may show collaborator cursors in the image.
+  Authentication errors, access denial and changed UI selectors fail visibly.
+- `--cold-cache` clears only the dedicated browser's HTTP cache before navigation
+  for a first-load measurement. Cookies and login remain. The default reuses cache.
+
+The [benchmark and browser/PDF comparison](shots-benchmark.md) includes the five
+painted review copies and all six micro cases. Reproduce it from this directory,
+using a new output path:
+
+```bash
+python3 benchmark-shots.py --out /tmp/gdt-benchmark-new
+./compare-shots.py /tmp/gdt-benchmark-new
+```
+
+The benchmark only reads the URLs in `../REVIEW.md` and the six dated result files;
+PDF exports explicitly select the work account. Local scrolling and filing tests
+visit no Google documents:
+
+```bash
+uv run --with playwright==1.62.0 --with pytest pytest ../tests/test_shot_headless.py
+```

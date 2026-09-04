@@ -5,10 +5,34 @@
 Always Google Docs screenshots, never PDF export. Export drops comments, suggestion
 colours, chip rendering and the pagination a reader sees.
 
-## Procedure
+## Scripted procedure (default)
+
+From `fidelity-tests/`, run:
+
+```bash
+bin/gdt-shot-headless 'DOC_URL' OUTDIR [--views N]
+```
+
+The script runs normal Chrome off-screen through Playwright/CDP, using the dedicated
+`~/.config/gdt-chrome` profile. First use waits for the human to sign in as
+`alejandro.acelas-contractor@80000hours.org`; never automate login or share the Doc.
+It sets a 1440×828 CSS viewport, print layout and 100% zoom, collapses outlines,
+hides comment cards/panels, and scrolls `.kix-appview-editor` to 0, 650, 1300, … .
+It files JPEGs through `bin/gdt-shot`, preserving the existing capture format.
+`capture.json` records actual geometry, clamped offsets and timings in addition to
+`shot.json`. Use matching `--views N` counts for before/after captures and fresh
+output directories. Capture sequentially; do not touch the dedicated window.
+
+The historic outer-window size was not a reproducible viewport: macOS clamps window
+height, and the old notes below and `gdt-shot` disagree on the approximate viewport.
+Use the scripted viewport for both sides of a new pair. See
+[installation and benchmark](../../../../fidelity-tests/micro/README.md#scripted-browser-captures).
+
+## Chrome-extension fallback
 
 The browser tool captures the viewport, not a page, so captures are **views** at fixed
-scroll offsets. The driving agent does this with the claude-in-chrome tools:
+scroll offsets. If the scripted shooter cannot handle a changed Docs UI, use the
+claude-in-chrome tools:
 
 1. Resize the window to 1440×1200 (`resize_window`; the viewport comes out ~1440×780).
    100% zoom, print layout on, outline panel collapsed, suggestions shown inline.

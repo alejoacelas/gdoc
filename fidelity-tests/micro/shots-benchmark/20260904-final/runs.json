@@ -1,0 +1,949 @@
+[
+  {
+    "kind": "metadata-before",
+    "case": "collab",
+    "command": [
+      "gdoc",
+      "info",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--json",
+      "https://docs.google.com/document/d/15ywu96tJWH7AqgOijuxh0nixYbYFtOeMJAtcHfbVjkc/edit"
+    ],
+    "seconds": 0.9208,
+    "exit": 0,
+    "stdout": "{\"ok\": true, \"id\": \"15ywu96tJWH7AqgOijuxh0nixYbYFtOeMJAtcHfbVjkc\", \"title\": \"gdt-collab-v01 batch 20260903 REVIEW v2\", \"owner\": \"Alejandro Acelas\", \"modified\": \"2026-09-04T19:12:29.557Z\", \"words\": 964}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "browser-first",
+    "case": "collab",
+    "command": [
+      "/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/bin/gdt-shot-headless",
+      "https://docs.google.com/document/d/15ywu96tJWH7AqgOijuxh0nixYbYFtOeMJAtcHfbVjkc/edit",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/painted/collab/first",
+      "--cold-cache"
+    ],
+    "seconds": 5.0729,
+    "exit": 0,
+    "stdout": "{\"outdir\": \"/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/micro/shots-benchmark/20260904-final/painted/collab/first\", \"views\": 4, \"seconds\": 4.9423}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "browser-warm",
+    "case": "collab",
+    "command": [
+      "/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/bin/gdt-shot-headless",
+      "https://docs.google.com/document/d/15ywu96tJWH7AqgOijuxh0nixYbYFtOeMJAtcHfbVjkc/edit",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/painted/collab/warm"
+    ],
+    "seconds": 5.0828,
+    "exit": 0,
+    "stdout": "{\"outdir\": \"/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/micro/shots-benchmark/20260904-final/painted/collab/warm\", \"views\": 4, \"seconds\": 4.9526}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "metadata-after",
+    "case": "collab",
+    "command": [
+      "gdoc",
+      "info",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--json",
+      "https://docs.google.com/document/d/15ywu96tJWH7AqgOijuxh0nixYbYFtOeMJAtcHfbVjkc/edit"
+    ],
+    "seconds": 0.8323,
+    "exit": 0,
+    "stdout": "{\"ok\": true, \"id\": \"15ywu96tJWH7AqgOijuxh0nixYbYFtOeMJAtcHfbVjkc\", \"title\": \"gdt-collab-v01 batch 20260903 REVIEW v2\", \"owner\": \"Alejandro Acelas\", \"modified\": \"2026-09-04T19:12:29.557Z\", \"words\": 964}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "metadata-before",
+    "case": "kitchen-sink",
+    "command": [
+      "gdoc",
+      "info",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--json",
+      "https://docs.google.com/document/d/1lBIB2T3eG0G-r6wiO9pLwyHuLeopyJVnvYriddz_evs/edit"
+    ],
+    "seconds": 0.9715,
+    "exit": 0,
+    "stdout": "{\"ok\": true, \"id\": \"1lBIB2T3eG0G-r6wiO9pLwyHuLeopyJVnvYriddz_evs\", \"title\": \"gdt-kitchen-sink-v01 batch 20260903 REVIEW v2\", \"owner\": \"Alejandro Acelas\", \"modified\": \"2026-09-04T19:11:22.630Z\", \"words\": 1004}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "browser-first",
+    "case": "kitchen-sink",
+    "command": [
+      "/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/bin/gdt-shot-headless",
+      "https://docs.google.com/document/d/1lBIB2T3eG0G-r6wiO9pLwyHuLeopyJVnvYriddz_evs/edit",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/painted/kitchen-sink/first",
+      "--cold-cache"
+    ],
+    "seconds": 4.8686,
+    "exit": 0,
+    "stdout": "{\"outdir\": \"/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/micro/shots-benchmark/20260904-final/painted/kitchen-sink/first\", \"views\": 4, \"seconds\": 4.7563}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "browser-warm",
+    "case": "kitchen-sink",
+    "command": [
+      "/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/bin/gdt-shot-headless",
+      "https://docs.google.com/document/d/1lBIB2T3eG0G-r6wiO9pLwyHuLeopyJVnvYriddz_evs/edit",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/painted/kitchen-sink/warm"
+    ],
+    "seconds": 5.2615,
+    "exit": 0,
+    "stdout": "{\"outdir\": \"/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/micro/shots-benchmark/20260904-final/painted/kitchen-sink/warm\", \"views\": 4, \"seconds\": 5.1336}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "metadata-after",
+    "case": "kitchen-sink",
+    "command": [
+      "gdoc",
+      "info",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--json",
+      "https://docs.google.com/document/d/1lBIB2T3eG0G-r6wiO9pLwyHuLeopyJVnvYriddz_evs/edit"
+    ],
+    "seconds": 0.9318,
+    "exit": 0,
+    "stdout": "{\"ok\": true, \"id\": \"1lBIB2T3eG0G-r6wiO9pLwyHuLeopyJVnvYriddz_evs\", \"title\": \"gdt-kitchen-sink-v01 batch 20260903 REVIEW v2\", \"owner\": \"Alejandro Acelas\", \"modified\": \"2026-09-04T19:11:22.630Z\", \"words\": 1004}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "metadata-before",
+    "case": "lists",
+    "command": [
+      "gdoc",
+      "info",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--json",
+      "https://docs.google.com/document/d/1K1FzT436KfZdOYuIqxOBXguNUDbWxYokzOFdI3Z6Qyk/edit"
+    ],
+    "seconds": 0.9391,
+    "exit": 0,
+    "stdout": "{\"ok\": true, \"id\": \"1K1FzT436KfZdOYuIqxOBXguNUDbWxYokzOFdI3Z6Qyk\", \"title\": \"gdt-lists-v01 batch 20260903 REVIEW v2\", \"owner\": \"Alejandro Acelas\", \"modified\": \"2026-09-04T19:11:44.372Z\", \"words\": 1970}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "browser-first",
+    "case": "lists",
+    "command": [
+      "/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/bin/gdt-shot-headless",
+      "https://docs.google.com/document/d/1K1FzT436KfZdOYuIqxOBXguNUDbWxYokzOFdI3Z6Qyk/edit",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/painted/lists/first",
+      "--cold-cache"
+    ],
+    "seconds": 5.7348,
+    "exit": 0,
+    "stdout": "{\"outdir\": \"/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/micro/shots-benchmark/20260904-final/painted/lists/first\", \"views\": 6, \"seconds\": 5.6191}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "browser-warm",
+    "case": "lists",
+    "command": [
+      "/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/bin/gdt-shot-headless",
+      "https://docs.google.com/document/d/1K1FzT436KfZdOYuIqxOBXguNUDbWxYokzOFdI3Z6Qyk/edit",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/painted/lists/warm"
+    ],
+    "seconds": 5.83,
+    "exit": 0,
+    "stdout": "{\"outdir\": \"/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/micro/shots-benchmark/20260904-final/painted/lists/warm\", \"views\": 6, \"seconds\": 5.6928}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "metadata-after",
+    "case": "lists",
+    "command": [
+      "gdoc",
+      "info",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--json",
+      "https://docs.google.com/document/d/1K1FzT436KfZdOYuIqxOBXguNUDbWxYokzOFdI3Z6Qyk/edit"
+    ],
+    "seconds": 1.072,
+    "exit": 0,
+    "stdout": "{\"ok\": true, \"id\": \"1K1FzT436KfZdOYuIqxOBXguNUDbWxYokzOFdI3Z6Qyk\", \"title\": \"gdt-lists-v01 batch 20260903 REVIEW v2\", \"owner\": \"Alejandro Acelas\", \"modified\": \"2026-09-04T19:11:44.372Z\", \"words\": 1970}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "metadata-before",
+    "case": "tables",
+    "command": [
+      "gdoc",
+      "info",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--json",
+      "https://docs.google.com/document/d/1Od_ShiE9_IINibY9OM1cGLNcf2Wc1U8SYod6uScA2ZU/edit"
+    ],
+    "seconds": 0.9541,
+    "exit": 0,
+    "stdout": "{\"ok\": true, \"id\": \"1Od_ShiE9_IINibY9OM1cGLNcf2Wc1U8SYod6uScA2ZU\", \"title\": \"gdt-tables-v01 batch 20260903 REVIEW v2\", \"owner\": \"Alejandro Acelas\", \"modified\": \"2026-09-04T19:12:00.858Z\", \"words\": 1450}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "browser-first",
+    "case": "tables",
+    "command": [
+      "/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/bin/gdt-shot-headless",
+      "https://docs.google.com/document/d/1Od_ShiE9_IINibY9OM1cGLNcf2Wc1U8SYod6uScA2ZU/edit",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/painted/tables/first",
+      "--cold-cache"
+    ],
+    "seconds": 5.9147,
+    "exit": 0,
+    "stdout": "{\"outdir\": \"/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/micro/shots-benchmark/20260904-final/painted/tables/first\", \"views\": 6, \"seconds\": 5.797}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "browser-warm",
+    "case": "tables",
+    "command": [
+      "/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/bin/gdt-shot-headless",
+      "https://docs.google.com/document/d/1Od_ShiE9_IINibY9OM1cGLNcf2Wc1U8SYod6uScA2ZU/edit",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/painted/tables/warm"
+    ],
+    "seconds": 6.0482,
+    "exit": 0,
+    "stdout": "{\"outdir\": \"/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/micro/shots-benchmark/20260904-final/painted/tables/warm\", \"views\": 6, \"seconds\": 5.9251}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "metadata-after",
+    "case": "tables",
+    "command": [
+      "gdoc",
+      "info",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--json",
+      "https://docs.google.com/document/d/1Od_ShiE9_IINibY9OM1cGLNcf2Wc1U8SYod6uScA2ZU/edit"
+    ],
+    "seconds": 0.9787,
+    "exit": 0,
+    "stdout": "{\"ok\": true, \"id\": \"1Od_ShiE9_IINibY9OM1cGLNcf2Wc1U8SYod6uScA2ZU\", \"title\": \"gdt-tables-v01 batch 20260903 REVIEW v2\", \"owner\": \"Alejandro Acelas\", \"modified\": \"2026-09-04T19:12:00.858Z\", \"words\": 1450}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "metadata-before",
+    "case": "text",
+    "command": [
+      "gdoc",
+      "info",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--json",
+      "https://docs.google.com/document/d/15cUmAI2cwe_pTuJOoWsYpzcfnHdbmJ7EhAp6DVvYHSE/edit"
+    ],
+    "seconds": 1.1074,
+    "exit": 0,
+    "stdout": "{\"ok\": true, \"id\": \"15cUmAI2cwe_pTuJOoWsYpzcfnHdbmJ7EhAp6DVvYHSE\", \"title\": \"gdt-text-v01 batch 20260903 REVIEW v2\", \"owner\": \"Alejandro Acelas\", \"modified\": \"2026-09-04T19:12:19.918Z\", \"words\": 1897}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "browser-first",
+    "case": "text",
+    "command": [
+      "/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/bin/gdt-shot-headless",
+      "https://docs.google.com/document/d/15cUmAI2cwe_pTuJOoWsYpzcfnHdbmJ7EhAp6DVvYHSE/edit",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/painted/text/first",
+      "--cold-cache"
+    ],
+    "seconds": 5.0501,
+    "exit": 0,
+    "stdout": "{\"outdir\": \"/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/micro/shots-benchmark/20260904-final/painted/text/first\", \"views\": 4, \"seconds\": 4.921}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "browser-warm",
+    "case": "text",
+    "command": [
+      "/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/bin/gdt-shot-headless",
+      "https://docs.google.com/document/d/15cUmAI2cwe_pTuJOoWsYpzcfnHdbmJ7EhAp6DVvYHSE/edit",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/painted/text/warm"
+    ],
+    "seconds": 4.8857,
+    "exit": 0,
+    "stdout": "{\"outdir\": \"/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/micro/shots-benchmark/20260904-final/painted/text/warm\", \"views\": 4, \"seconds\": 4.7465}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "metadata-after",
+    "case": "text",
+    "command": [
+      "gdoc",
+      "info",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--json",
+      "https://docs.google.com/document/d/15cUmAI2cwe_pTuJOoWsYpzcfnHdbmJ7EhAp6DVvYHSE/edit"
+    ],
+    "seconds": 0.9105,
+    "exit": 0,
+    "stdout": "{\"ok\": true, \"id\": \"15cUmAI2cwe_pTuJOoWsYpzcfnHdbmJ7EhAp6DVvYHSE\", \"title\": \"gdt-text-v01 batch 20260903 REVIEW v2\", \"owner\": \"Alejandro Acelas\", \"modified\": \"2026-09-04T19:12:19.918Z\", \"words\": 1897}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "metadata-before",
+    "case": "edit-across-font-boundary",
+    "command": [
+      "gdoc",
+      "info",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--json",
+      "https://docs.google.com/document/d/1KpwgxwhTfk8UYb0ppPs2fQsXP-46Vy4gs3_DUkUEuAw/edit"
+    ],
+    "seconds": 1.2673,
+    "exit": 0,
+    "stdout": "{\"ok\": true, \"id\": \"1KpwgxwhTfk8UYb0ppPs2fQsXP-46Vy4gs3_DUkUEuAw\", \"title\": \"gdt-micro edit-across-font-boundary\", \"owner\": \"Alejandro Acelas\", \"modified\": \"2026-09-04T20:12:49.473Z\", \"words\": 9}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "micro-browser",
+    "case": "edit-across-font-boundary",
+    "command": [
+      "/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/bin/gdt-shot-headless",
+      "https://docs.google.com/document/d/1KpwgxwhTfk8UYb0ppPs2fQsXP-46Vy4gs3_DUkUEuAw/edit",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-across-font-boundary/browser"
+    ],
+    "seconds": 3.4861,
+    "exit": 0,
+    "stdout": "{\"outdir\": \"/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-across-font-boundary/browser\", \"views\": 2, \"seconds\": 3.3613}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-export",
+    "case": "edit-across-font-boundary",
+    "command": [
+      "gdoc",
+      "export",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--format",
+      "pdf",
+      "--out",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-across-font-boundary/export.pdf",
+      "https://docs.google.com/document/d/1KpwgxwhTfk8UYb0ppPs2fQsXP-46Vy4gs3_DUkUEuAw/edit"
+    ],
+    "seconds": 0.6855,
+    "exit": 0,
+    "stdout": "OK exported fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-across-font-boundary/export.pdf (pdf, 17680 bytes)\n",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-render",
+    "case": "edit-across-font-boundary",
+    "command": [
+      "pdftoppm",
+      "-r",
+      "150",
+      "-png",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-across-font-boundary/export.pdf",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-across-font-boundary/pdf"
+    ],
+    "seconds": 0.0901,
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-info",
+    "case": "edit-across-font-boundary",
+    "command": [
+      "pdfinfo",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-across-font-boundary/export.pdf"
+    ],
+    "seconds": 0.0092,
+    "exit": 0,
+    "stdout": "Title:           gdt-micro edit-across-font-boundary\nProducer:        Skia/PDF m154 Google Docs Renderer\nCustom Metadata: no\nMetadata Stream: no\nTagged:          yes\nUserProperties:  no\nSuspects:        no\nForm:            none\nJavaScript:      no\nPages:           1\nEncrypted:       no\nPage size:       596 x 842 pts (A4)\nPage rot:        0\nFile size:       17680 bytes\nOptimized:       no\nPDF version:     1.4\n",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-fonts",
+    "case": "edit-across-font-boundary",
+    "command": [
+      "pdffonts",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-across-font-boundary/export.pdf"
+    ],
+    "seconds": 0.0088,
+    "exit": 0,
+    "stdout": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nAAAAAA+ArialMT                       CID TrueType      Identity-H       yes yes yes      4  0\n",
+    "stderr": ""
+  },
+  {
+    "kind": "metadata-after",
+    "case": "edit-across-font-boundary",
+    "command": [
+      "gdoc",
+      "info",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--json",
+      "https://docs.google.com/document/d/1KpwgxwhTfk8UYb0ppPs2fQsXP-46Vy4gs3_DUkUEuAw/edit"
+    ],
+    "seconds": 0.9011,
+    "exit": 0,
+    "stdout": "{\"ok\": true, \"id\": \"1KpwgxwhTfk8UYb0ppPs2fQsXP-46Vy4gs3_DUkUEuAw\", \"title\": \"gdt-micro edit-across-font-boundary\", \"owner\": \"Alejandro Acelas\", \"modified\": \"2026-09-04T20:12:49.473Z\", \"words\": 9}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "metadata-before",
+    "case": "edit-footnote-text",
+    "command": [
+      "gdoc",
+      "info",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--json",
+      "https://docs.google.com/document/d/1GH1Rr1Ajud8X_jFgZCwOuuiwdqmywz0XYH7zH-o9AN4/edit"
+    ],
+    "seconds": 0.9447,
+    "exit": 0,
+    "stdout": "{\"ok\": true, \"id\": \"1GH1Rr1Ajud8X_jFgZCwOuuiwdqmywz0XYH7zH-o9AN4\", \"title\": \"gdt-micro edit-footnote-text\", \"owner\": \"Alejandro Acelas\", \"modified\": \"2026-09-04T20:12:46.559Z\", \"words\": 15}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "micro-browser",
+    "case": "edit-footnote-text",
+    "command": [
+      "/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/bin/gdt-shot-headless",
+      "https://docs.google.com/document/d/1GH1Rr1Ajud8X_jFgZCwOuuiwdqmywz0XYH7zH-o9AN4/edit",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-footnote-text/browser"
+    ],
+    "seconds": 3.5339,
+    "exit": 0,
+    "stdout": "{\"outdir\": \"/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-footnote-text/browser\", \"views\": 2, \"seconds\": 3.3994}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-export",
+    "case": "edit-footnote-text",
+    "command": [
+      "gdoc",
+      "export",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--format",
+      "pdf",
+      "--out",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-footnote-text/export.pdf",
+      "https://docs.google.com/document/d/1GH1Rr1Ajud8X_jFgZCwOuuiwdqmywz0XYH7zH-o9AN4/edit"
+    ],
+    "seconds": 0.6938,
+    "exit": 0,
+    "stdout": "OK exported fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-footnote-text/export.pdf (pdf, 21064 bytes)\n",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-render",
+    "case": "edit-footnote-text",
+    "command": [
+      "pdftoppm",
+      "-r",
+      "150",
+      "-png",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-footnote-text/export.pdf",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-footnote-text/pdf"
+    ],
+    "seconds": 0.0758,
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-info",
+    "case": "edit-footnote-text",
+    "command": [
+      "pdfinfo",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-footnote-text/export.pdf"
+    ],
+    "seconds": 0.0095,
+    "exit": 0,
+    "stdout": "Title:           gdt-micro edit-footnote-text\nProducer:        Skia/PDF m154 Google Docs Renderer\nCustom Metadata: no\nMetadata Stream: no\nTagged:          yes\nUserProperties:  no\nSuspects:        no\nForm:            none\nJavaScript:      no\nPages:           1\nEncrypted:       no\nPage size:       596 x 842 pts (A4)\nPage rot:        0\nFile size:       21064 bytes\nOptimized:       no\nPDF version:     1.4\n",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-fonts",
+    "case": "edit-footnote-text",
+    "command": [
+      "pdffonts",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-footnote-text/export.pdf"
+    ],
+    "seconds": 0.0088,
+    "exit": 0,
+    "stdout": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nAAAAAA+ArialMT                       CID TrueType      Identity-H       yes yes yes      5  0\n",
+    "stderr": ""
+  },
+  {
+    "kind": "metadata-after",
+    "case": "edit-footnote-text",
+    "command": [
+      "gdoc",
+      "info",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--json",
+      "https://docs.google.com/document/d/1GH1Rr1Ajud8X_jFgZCwOuuiwdqmywz0XYH7zH-o9AN4/edit"
+    ],
+    "seconds": 0.875,
+    "exit": 0,
+    "stdout": "{\"ok\": true, \"id\": \"1GH1Rr1Ajud8X_jFgZCwOuuiwdqmywz0XYH7zH-o9AN4\", \"title\": \"gdt-micro edit-footnote-text\", \"owner\": \"Alejandro Acelas\", \"modified\": \"2026-09-04T20:12:46.559Z\", \"words\": 15}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "metadata-before",
+    "case": "edit-list-marker-restyles",
+    "command": [
+      "gdoc",
+      "info",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--json",
+      "https://docs.google.com/document/d/1oYE443RCvPudw6pdaFEmumTzR9C7TvrrLiNCRqCjujk/edit"
+    ],
+    "seconds": 0.9877,
+    "exit": 0,
+    "stdout": "{\"ok\": true, \"id\": \"1oYE443RCvPudw6pdaFEmumTzR9C7TvrrLiNCRqCjujk\", \"title\": \"gdt-micro edit-list-marker-restyles\", \"owner\": \"Alejandro Acelas\", \"modified\": \"2026-09-04T20:12:48.930Z\", \"words\": 7}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "micro-browser",
+    "case": "edit-list-marker-restyles",
+    "command": [
+      "/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/bin/gdt-shot-headless",
+      "https://docs.google.com/document/d/1oYE443RCvPudw6pdaFEmumTzR9C7TvrrLiNCRqCjujk/edit",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-list-marker-restyles/browser"
+    ],
+    "seconds": 3.4808,
+    "exit": 0,
+    "stdout": "{\"outdir\": \"/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-list-marker-restyles/browser\", \"views\": 2, \"seconds\": 3.3665}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-export",
+    "case": "edit-list-marker-restyles",
+    "command": [
+      "gdoc",
+      "export",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--format",
+      "pdf",
+      "--out",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-list-marker-restyles/export.pdf",
+      "https://docs.google.com/document/d/1oYE443RCvPudw6pdaFEmumTzR9C7TvrrLiNCRqCjujk/edit"
+    ],
+    "seconds": 0.7851,
+    "exit": 0,
+    "stdout": "OK exported fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-list-marker-restyles/export.pdf (pdf, 17258 bytes)\n",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-render",
+    "case": "edit-list-marker-restyles",
+    "command": [
+      "pdftoppm",
+      "-r",
+      "150",
+      "-png",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-list-marker-restyles/export.pdf",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-list-marker-restyles/pdf"
+    ],
+    "seconds": 0.0711,
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-info",
+    "case": "edit-list-marker-restyles",
+    "command": [
+      "pdfinfo",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-list-marker-restyles/export.pdf"
+    ],
+    "seconds": 0.0086,
+    "exit": 0,
+    "stdout": "Title:           gdt-micro edit-list-marker-restyles\nProducer:        Skia/PDF m154 Google Docs Renderer\nCustom Metadata: no\nMetadata Stream: no\nTagged:          yes\nUserProperties:  no\nSuspects:        no\nForm:            none\nJavaScript:      no\nPages:           1\nEncrypted:       no\nPage size:       596 x 842 pts (A4)\nPage rot:        0\nFile size:       17258 bytes\nOptimized:       no\nPDF version:     1.4\n",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-fonts",
+    "case": "edit-list-marker-restyles",
+    "command": [
+      "pdffonts",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-list-marker-restyles/export.pdf"
+    ],
+    "seconds": 0.0082,
+    "exit": 0,
+    "stdout": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nAAAAAA+ArialMT                       CID TrueType      Identity-H       yes yes yes      4  0\n",
+    "stderr": ""
+  },
+  {
+    "kind": "metadata-after",
+    "case": "edit-list-marker-restyles",
+    "command": [
+      "gdoc",
+      "info",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--json",
+      "https://docs.google.com/document/d/1oYE443RCvPudw6pdaFEmumTzR9C7TvrrLiNCRqCjujk/edit"
+    ],
+    "seconds": 0.9355,
+    "exit": 0,
+    "stdout": "{\"ok\": true, \"id\": \"1oYE443RCvPudw6pdaFEmumTzR9C7TvrrLiNCRqCjujk\", \"title\": \"gdt-micro edit-list-marker-restyles\", \"owner\": \"Alejandro Acelas\", \"modified\": \"2026-09-04T20:12:48.930Z\", \"words\": 7}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "metadata-before",
+    "case": "edit-resets-alignment",
+    "command": [
+      "gdoc",
+      "info",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--json",
+      "https://docs.google.com/document/d/1Jo9eIpxNxysh5LvifyqmDKStBQvf6MZIcVk6sV4gIXM/edit"
+    ],
+    "seconds": 0.9483,
+    "exit": 0,
+    "stdout": "{\"ok\": true, \"id\": \"1Jo9eIpxNxysh5LvifyqmDKStBQvf6MZIcVk6sV4gIXM\", \"title\": \"gdt-micro edit-resets-alignment\", \"owner\": \"Alejandro Acelas\", \"modified\": \"2026-09-04T20:12:49.279Z\", \"words\": 14}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "micro-browser",
+    "case": "edit-resets-alignment",
+    "command": [
+      "/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/bin/gdt-shot-headless",
+      "https://docs.google.com/document/d/1Jo9eIpxNxysh5LvifyqmDKStBQvf6MZIcVk6sV4gIXM/edit",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-resets-alignment/browser"
+    ],
+    "seconds": 3.5078,
+    "exit": 0,
+    "stdout": "{\"outdir\": \"/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-resets-alignment/browser\", \"views\": 2, \"seconds\": 3.3912}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-export",
+    "case": "edit-resets-alignment",
+    "command": [
+      "gdoc",
+      "export",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--format",
+      "pdf",
+      "--out",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-resets-alignment/export.pdf",
+      "https://docs.google.com/document/d/1Jo9eIpxNxysh5LvifyqmDKStBQvf6MZIcVk6sV4gIXM/edit"
+    ],
+    "seconds": 0.7238,
+    "exit": 0,
+    "stdout": "OK exported fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-resets-alignment/export.pdf (pdf, 20113 bytes)\n",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-render",
+    "case": "edit-resets-alignment",
+    "command": [
+      "pdftoppm",
+      "-r",
+      "150",
+      "-png",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-resets-alignment/export.pdf",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-resets-alignment/pdf"
+    ],
+    "seconds": 0.0752,
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-info",
+    "case": "edit-resets-alignment",
+    "command": [
+      "pdfinfo",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-resets-alignment/export.pdf"
+    ],
+    "seconds": 0.01,
+    "exit": 0,
+    "stdout": "Title:           gdt-micro edit-resets-alignment\nProducer:        Skia/PDF m154 Google Docs Renderer\nCustom Metadata: no\nMetadata Stream: no\nTagged:          yes\nUserProperties:  no\nSuspects:        no\nForm:            none\nJavaScript:      no\nPages:           1\nEncrypted:       no\nPage size:       596 x 842 pts (A4)\nPage rot:        0\nFile size:       20113 bytes\nOptimized:       no\nPDF version:     1.4\n",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-fonts",
+    "case": "edit-resets-alignment",
+    "command": [
+      "pdffonts",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-resets-alignment/export.pdf"
+    ],
+    "seconds": 0.0099,
+    "exit": 0,
+    "stdout": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nAAAAAA+ArialMT                       CID TrueType      Identity-H       yes yes yes      4  0\n",
+    "stderr": ""
+  },
+  {
+    "kind": "metadata-after",
+    "case": "edit-resets-alignment",
+    "command": [
+      "gdoc",
+      "info",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--json",
+      "https://docs.google.com/document/d/1Jo9eIpxNxysh5LvifyqmDKStBQvf6MZIcVk6sV4gIXM/edit"
+    ],
+    "seconds": 0.9073,
+    "exit": 0,
+    "stdout": "{\"ok\": true, \"id\": \"1Jo9eIpxNxysh5LvifyqmDKStBQvf6MZIcVk6sV4gIXM\", \"title\": \"gdt-micro edit-resets-alignment\", \"owner\": \"Alejandro Acelas\", \"modified\": \"2026-09-04T20:12:49.279Z\", \"words\": 14}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "metadata-before",
+    "case": "edit-strips-sibling-bold",
+    "command": [
+      "gdoc",
+      "info",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--json",
+      "https://docs.google.com/document/d/111lxft0SkrbuVvMWYiBtjqBbsW4tmQHW8jE69a3kI9E/edit"
+    ],
+    "seconds": 0.9541,
+    "exit": 0,
+    "stdout": "{\"ok\": true, \"id\": \"111lxft0SkrbuVvMWYiBtjqBbsW4tmQHW8jE69a3kI9E\", \"title\": \"gdt-micro edit-strips-sibling-bold\", \"owner\": \"Alejandro Acelas\", \"modified\": \"2026-09-04T20:12:48.921Z\", \"words\": 15}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "micro-browser",
+    "case": "edit-strips-sibling-bold",
+    "command": [
+      "/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/bin/gdt-shot-headless",
+      "https://docs.google.com/document/d/111lxft0SkrbuVvMWYiBtjqBbsW4tmQHW8jE69a3kI9E/edit",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-strips-sibling-bold/browser"
+    ],
+    "seconds": 3.607,
+    "exit": 0,
+    "stdout": "{\"outdir\": \"/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-strips-sibling-bold/browser\", \"views\": 2, \"seconds\": 3.4928}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-export",
+    "case": "edit-strips-sibling-bold",
+    "command": [
+      "gdoc",
+      "export",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--format",
+      "pdf",
+      "--out",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-strips-sibling-bold/export.pdf",
+      "https://docs.google.com/document/d/111lxft0SkrbuVvMWYiBtjqBbsW4tmQHW8jE69a3kI9E/edit"
+    ],
+    "seconds": 0.6749,
+    "exit": 0,
+    "stdout": "OK exported fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-strips-sibling-bold/export.pdf (pdf, 22798 bytes)\n",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-render",
+    "case": "edit-strips-sibling-bold",
+    "command": [
+      "pdftoppm",
+      "-r",
+      "150",
+      "-png",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-strips-sibling-bold/export.pdf",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-strips-sibling-bold/pdf"
+    ],
+    "seconds": 0.0788,
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-info",
+    "case": "edit-strips-sibling-bold",
+    "command": [
+      "pdfinfo",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-strips-sibling-bold/export.pdf"
+    ],
+    "seconds": 0.0089,
+    "exit": 0,
+    "stdout": "Title:           gdt-micro edit-strips-sibling-bold\nProducer:        Skia/PDF m154 Google Docs Renderer\nCustom Metadata: no\nMetadata Stream: no\nTagged:          yes\nUserProperties:  no\nSuspects:        no\nForm:            none\nJavaScript:      no\nPages:           1\nEncrypted:       no\nPage size:       596 x 842 pts (A4)\nPage rot:        0\nFile size:       22798 bytes\nOptimized:       no\nPDF version:     1.4\n",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-fonts",
+    "case": "edit-strips-sibling-bold",
+    "command": [
+      "pdffonts",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/edit-strips-sibling-bold/export.pdf"
+    ],
+    "seconds": 0.0086,
+    "exit": 0,
+    "stdout": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nAAAAAA+ArialMT                       CID TrueType      Identity-H       yes yes yes      4  0\n",
+    "stderr": ""
+  },
+  {
+    "kind": "metadata-after",
+    "case": "edit-strips-sibling-bold",
+    "command": [
+      "gdoc",
+      "info",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--json",
+      "https://docs.google.com/document/d/111lxft0SkrbuVvMWYiBtjqBbsW4tmQHW8jE69a3kI9E/edit"
+    ],
+    "seconds": 0.8524,
+    "exit": 0,
+    "stdout": "{\"ok\": true, \"id\": \"111lxft0SkrbuVvMWYiBtjqBbsW4tmQHW8jE69a3kI9E\", \"title\": \"gdt-micro edit-strips-sibling-bold\", \"owner\": \"Alejandro Acelas\", \"modified\": \"2026-09-04T20:12:48.921Z\", \"words\": 15}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "metadata-before",
+    "case": "write-tab-inherits-bullet",
+    "command": [
+      "gdoc",
+      "info",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--json",
+      "https://docs.google.com/document/d/1gKb0GySACdbI83y-QGcVg91T1ytwLkXTKiW0Zk5M5Oc/edit"
+    ],
+    "seconds": 0.9537,
+    "exit": 0,
+    "stdout": "{\"ok\": true, \"id\": \"1gKb0GySACdbI83y-QGcVg91T1ytwLkXTKiW0Zk5M5Oc\", \"title\": \"gdt-micro write-tab-inherits-bullet\", \"owner\": \"Alejandro Acelas\", \"modified\": \"2026-09-04T21:41:42.831Z\", \"words\": 12}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "micro-browser",
+    "case": "write-tab-inherits-bullet",
+    "command": [
+      "/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/bin/gdt-shot-headless",
+      "https://docs.google.com/document/d/1gKb0GySACdbI83y-QGcVg91T1ytwLkXTKiW0Zk5M5Oc/edit",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/write-tab-inherits-bullet/browser"
+    ],
+    "seconds": 3.3956,
+    "exit": 0,
+    "stdout": "{\"outdir\": \"/Users/alejo/best/work/tools/active/gdoc/cli/fidelity-tests/micro/shots-benchmark/20260904-final/micro/write-tab-inherits-bullet/browser\", \"views\": 2, \"seconds\": 3.2808}\n",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-export",
+    "case": "write-tab-inherits-bullet",
+    "command": [
+      "gdoc",
+      "export",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--format",
+      "pdf",
+      "--out",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/write-tab-inherits-bullet/export.pdf",
+      "https://docs.google.com/document/d/1gKb0GySACdbI83y-QGcVg91T1ytwLkXTKiW0Zk5M5Oc/edit"
+    ],
+    "seconds": 3.7913,
+    "exit": 0,
+    "stdout": "OK exported fidelity-tests/micro/shots-benchmark/20260904-final/micro/write-tab-inherits-bullet/export.pdf (pdf, 19069 bytes)\n",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-render",
+    "case": "write-tab-inherits-bullet",
+    "command": [
+      "pdftoppm",
+      "-r",
+      "150",
+      "-png",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/write-tab-inherits-bullet/export.pdf",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/write-tab-inherits-bullet/pdf"
+    ],
+    "seconds": 0.0756,
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-info",
+    "case": "write-tab-inherits-bullet",
+    "command": [
+      "pdfinfo",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/write-tab-inherits-bullet/export.pdf"
+    ],
+    "seconds": 0.0099,
+    "exit": 0,
+    "stdout": "Title:           gdt-micro write-tab-inherits-bullet\nProducer:        Skia/PDF m154 Google Docs Renderer\nCustom Metadata: no\nMetadata Stream: no\nTagged:          yes\nUserProperties:  no\nSuspects:        no\nForm:            none\nJavaScript:      no\nPages:           1\nEncrypted:       no\nPage size:       596 x 842 pts (A4)\nPage rot:        0\nFile size:       19069 bytes\nOptimized:       no\nPDF version:     1.4\n",
+    "stderr": ""
+  },
+  {
+    "kind": "pdf-fonts",
+    "case": "write-tab-inherits-bullet",
+    "command": [
+      "pdffonts",
+      "fidelity-tests/micro/shots-benchmark/20260904-final/micro/write-tab-inherits-bullet/export.pdf"
+    ],
+    "seconds": 0.0095,
+    "exit": 0,
+    "stdout": "name                                 type              encoding         emb sub uni object ID\n------------------------------------ ----------------- ---------------- --- --- --- ---------\nAAAAAA+ArialMT                       CID TrueType      Identity-H       yes yes yes      4  0\n",
+    "stderr": ""
+  },
+  {
+    "kind": "metadata-after",
+    "case": "write-tab-inherits-bullet",
+    "command": [
+      "gdoc",
+      "info",
+      "--account",
+      "alejandro.acelas-contractor@80000hours.org",
+      "--quiet",
+      "--json",
+      "https://docs.google.com/document/d/1gKb0GySACdbI83y-QGcVg91T1ytwLkXTKiW0Zk5M5Oc/edit"
+    ],
+    "seconds": 0.9632,
+    "exit": 0,
+    "stdout": "{\"ok\": true, \"id\": \"1gKb0GySACdbI83y-QGcVg91T1ytwLkXTKiW0Zk5M5Oc\", \"title\": \"gdt-micro write-tab-inherits-bullet\", \"owner\": \"Alejandro Acelas\", \"modified\": \"2026-09-04T21:41:42.831Z\", \"words\": 12}\n",
+    "stderr": ""
+  }
+]

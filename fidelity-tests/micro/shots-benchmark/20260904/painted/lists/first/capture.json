@@ -1,0 +1,74 @@
+{
+  "doc_url": "https://docs.google.com/document/d/1K1FzT436KfZdOYuIqxOBXguNUDbWxYokzOFdI3Z6Qyk/edit",
+  "resolved_url": "https://docs.google.com/document/d/1K1FzT436KfZdOYuIqxOBXguNUDbWxYokzOFdI3Z6Qyk/edit?tab=t.0#heading=h.pk7uybp6uuo6",
+  "account": "alejandro.acelas-contractor@80000hours.org",
+  "chrome_version": "152.0.7977.76",
+  "chrome_launched": false,
+  "geometry": {
+    "viewport": {
+      "width": 1440,
+      "height": 828
+    },
+    "outer": {
+      "width": 1440,
+      "height": 923
+    },
+    "devicePixelRatio": 1
+  },
+  "load_and_setup_seconds": 2.3643,
+  "views": [
+    {
+      "requested": 0,
+      "actual": 0,
+      "scrollHeight": 3510,
+      "clientHeight": 699,
+      "seconds": 0.4116,
+      "image": "raw-01.jpg"
+    },
+    {
+      "requested": 650,
+      "actual": 650,
+      "scrollHeight": 3510,
+      "clientHeight": 699,
+      "seconds": 0.4299,
+      "image": "raw-02.jpg"
+    },
+    {
+      "requested": 1300,
+      "actual": 1300,
+      "scrollHeight": 3510,
+      "clientHeight": 699,
+      "seconds": 0.4347,
+      "image": "raw-03.jpg"
+    },
+    {
+      "requested": 1950,
+      "actual": 1950,
+      "scrollHeight": 3510,
+      "clientHeight": 699,
+      "seconds": 0.4333,
+      "image": "raw-04.jpg"
+    },
+    {
+      "requested": 2600,
+      "actual": 2600,
+      "scrollHeight": 3510,
+      "clientHeight": 699,
+      "seconds": 0.4464,
+      "image": "raw-05.jpg"
+    },
+    {
+      "requested": 3250,
+      "actual": 2811,
+      "scrollHeight": 3510,
+      "clientHeight": 699,
+      "seconds": 0.4507,
+      "image": "raw-06.jpg"
+    }
+  ],
+  "filing_seconds": 0.0439,
+  "total_seconds": 5.0148,
+  "layout": "print; 100% Docs zoom; outlines collapsed; View > Comments > Hide comments",
+  "step_px": 650,
+  "viewport_policy": "1440x828 CSS pixels, device scale normalized in JPEG"
+}

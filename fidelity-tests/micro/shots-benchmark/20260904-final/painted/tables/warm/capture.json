@@ -1,0 +1,183 @@
+{
+  "doc_url": "https://docs.google.com/document/d/1Od_ShiE9_IINibY9OM1cGLNcf2Wc1U8SYod6uScA2ZU/edit",
+  "resolved_url": "https://docs.google.com/document/d/1Od_ShiE9_IINibY9OM1cGLNcf2Wc1U8SYod6uScA2ZU/edit?tab=t.0#heading=h.mx95um3olq9b",
+  "account": "alejandro.acelas-contractor@80000hours.org",
+  "chrome_version": "152.0.7977.76",
+  "chrome_launched": false,
+  "http_cache_cleared": false,
+  "geometry": {
+    "viewport": {
+      "width": 1440,
+      "height": 828
+    },
+    "outer": {
+      "width": 1440,
+      "height": 923
+    },
+    "devicePixelRatio": 1
+  },
+  "load_and_setup_seconds": 3.2146,
+  "views": [
+    {
+      "requested": 0,
+      "actual": 0,
+      "scrollHeight": 3510,
+      "clientHeight": 699,
+      "seconds": 0.448,
+      "image": "view-01.jpg",
+      "pages": [
+        {
+          "x": 304,
+          "y": 145,
+          "width": 794,
+          "height": 1123
+        },
+        {
+          "x": 304,
+          "y": 1278,
+          "width": 794,
+          "height": 1123
+        }
+      ]
+    },
+    {
+      "requested": 650,
+      "actual": 650,
+      "scrollHeight": 3510,
+      "clientHeight": 699,
+      "seconds": 0.4387,
+      "image": "view-02.jpg",
+      "pages": [
+        {
+          "x": 304,
+          "y": -505,
+          "width": 794,
+          "height": 1123
+        },
+        {
+          "x": 304,
+          "y": 628,
+          "width": 794,
+          "height": 1123
+        }
+      ]
+    },
+    {
+      "requested": 1300,
+      "actual": 1300,
+      "scrollHeight": 3510,
+      "clientHeight": 699,
+      "seconds": 0.4266,
+      "image": "view-03.jpg",
+      "pages": [
+        {
+          "x": 304,
+          "y": -1155,
+          "width": 794,
+          "height": 1123
+        },
+        {
+          "x": 304,
+          "y": -22,
+          "width": 794,
+          "height": 1123
+        },
+        {
+          "x": 304,
+          "y": 1111,
+          "width": 794,
+          "height": 1123
+        }
+      ]
+    },
+    {
+      "requested": 1950,
+      "actual": 1950,
+      "scrollHeight": 3510,
+      "clientHeight": 699,
+      "seconds": 0.4278,
+      "image": "view-04.jpg",
+      "pages": [
+        {
+          "x": 304,
+          "y": -1805,
+          "width": 794,
+          "height": 1123
+        },
+        {
+          "x": 304,
+          "y": -672,
+          "width": 794,
+          "height": 1123
+        },
+        {
+          "x": 304,
+          "y": 461,
+          "width": 794,
+          "height": 1123
+        }
+      ]
+    },
+    {
+      "requested": 2600,
+      "actual": 2600,
+      "scrollHeight": 3510,
+      "clientHeight": 699,
+      "seconds": 0.4497,
+      "image": "view-05.jpg",
+      "pages": [
+        {
+          "x": 304,
+          "y": -2455,
+          "width": 794,
+          "height": 1123
+        },
+        {
+          "x": 304,
+          "y": -1322,
+          "width": 794,
+          "height": 1123
+        },
+        {
+          "x": 304,
+          "y": -189,
+          "width": 794,
+          "height": 1123
+        }
+      ]
+    },
+    {
+      "requested": 3250,
+      "actual": 2811,
+      "scrollHeight": 3510,
+      "clientHeight": 699,
+      "seconds": 0.4495,
+      "image": "view-06.jpg",
+      "pages": [
+        {
+          "x": 304,
+          "y": -2666,
+          "width": 794,
+          "height": 1123
+        },
+        {
+          "x": 304,
+          "y": -1533,
+          "width": 794,
+          "height": 1123
+        },
+        {
+          "x": 304,
+          "y": -400,
+          "width": 794,
+          "height": 1123
+        }
+      ]
+    }
+  ],
+  "filing_seconds": 0.0484,
+  "total_seconds": 5.9251,
+  "layout": "print; 100% Docs zoom; outlines collapsed; View > Comments > Hide comments",
+  "step_px": 650,
+  "viewport_policy": "1440x828 CSS pixels; JPEG device scale normalized"
+}

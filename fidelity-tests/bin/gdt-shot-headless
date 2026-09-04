@@ -1,0 +1,368 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["playwright==1.62.0"]
+# ///
+"""Capture Google Docs through a dedicated, human-authenticated Chrome over CDP.
+
+The historical name does not imply headless Chrome: a normal off-screen window keeps
+Google login and canvas rendering working. No document content is read from the DOM.
+"""
+
+import argparse
+import json
+import os
+import re
+import shlex
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+from urllib.request import urlopen
+
+from playwright.sync_api import sync_playwright
+
+ACCOUNT = "alejandro.acelas-contractor@80000hours.org"
+PROFILE = Path.home() / ".config/gdt-chrome"
+CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+PORT = 9224
+ENDPOINT = f"http://127.0.0.1:{PORT}"
+STEP = 650
+# Legacy captures disagree on viewport height; use a fixed, explicit CSS viewport.
+VIEWPORT = {"width": 1440, "height": 828}
+
+
+def endpoint_ready():
+    try:
+        with urlopen(ENDPOINT + "/json/version", timeout=1) as response:
+            return bool(json.load(response).get("webSocketDebuggerUrl"))
+    except OSError:
+        return False
+
+
+def dedicated_browser():
+    commands = subprocess.check_output(["ps", "-ax", "-o", "command="], text=True)
+    # Chrome's executable contains spaces; compare its prefix before parsing flags.
+    for line in commands.splitlines():
+        if line.startswith(CHROME + " "):
+            args = shlex.split(line[len(CHROME) :])
+            if f"--remote-debugging-port={PORT}" in args:
+                return f"--user-data-dir={PROFILE}" in args
+    return False
+
+
+def connect_chrome():
+    if endpoint_ready():
+        if not dedicated_browser():
+            raise RuntimeError(
+                f"Port {PORT} is not Chrome with profile {PROFILE}; refusing to attach"
+            )
+        return False
+    PROFILE.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with (PROFILE / "chrome.log").open("ab") as log:
+        subprocess.Popen(
+            [
+                CHROME,
+                f"--user-data-dir={PROFILE}",
+                f"--remote-debugging-port={PORT}",
+                "--remote-debugging-address=127.0.0.1",
+                "--no-first-run",
+                "--no-default-browser-check",
+                "--window-size=1440,1200",
+                "about:blank",
+            ],
+            stdout=log,
+            stderr=log,
+            start_new_session=True,
+        )
+    for _ in range(100):
+        if endpoint_ready() and dedicated_browser():
+            return True
+        time.sleep(0.1)
+    raise RuntimeError(
+        f"Chrome did not start. Check {PROFILE}/chrome.log; "
+        "close only the dedicated profile and retry"
+    )
+
+
+def wait_for_doc(page):
+    deadline = time.monotonic() + 60
+    prompted = False
+    while True:
+        if page.locator(".kix-appview-editor").count():
+            page.locator(".kix-appview-editor").wait_for(state="visible")
+            break
+        if (
+            "accounts.google.com" in page.url
+            or page.get_by_role("link", name="Sign in", exact=True).count()
+        ):
+            if not prompted:
+                cdp = page.context.new_cdp_session(page)
+                window = cdp.send("Browser.getWindowForTarget")["windowId"]
+                cdp.send(
+                    "Browser.setWindowBounds",
+                    {"windowId": window, "bounds": {"windowState": "normal"}},
+                )
+                cdp.send(
+                    "Browser.setWindowBounds",
+                    {"windowId": window, "bounds": {"left": 50, "top": 50}},
+                )
+                page.bring_to_front()
+                print(
+                    f"LOGIN REQUIRED: In the dedicated Chrome window ({PROFILE}), "
+                    f"sign in as {ACCOUNT}. "
+                    "Do not enable Chrome sync. Leave the Google Doc open. "
+                    "Waiting for human login (Ctrl-C to stop).",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                prompted = True
+            # Login is never automated and has no deadline.
+            deadline = time.monotonic() + 60
+        elif time.monotonic() > deadline:
+            raise RuntimeError(
+                "Google Docs editor did not load "
+                "(permission denied, login incomplete, or network error)"
+            )
+        page.wait_for_timeout(500)
+    page.locator(f'[aria-label*="{ACCOUNT}"]').first.wait_for(state="attached")
+    page.locator(".kix-canvas-tile-content").first.wait_for(state="attached")
+    page.evaluate("document.fonts.ready")
+
+
+def menu_item(page, text):
+    # Google appends submenu arrows / keyboard hints; exact accessible names fail.
+    return (
+        page.locator(".goog-menuitem")
+        .filter(has_text=re.compile("^" + re.escape(text)))
+        .filter(visible=True)
+    )
+
+
+def prepare_view(page):
+    hide = page.locator(
+        '[aria-label="Hide tabs and outlines"], [aria-label="Hide document outline"]'
+    )
+    for item in hide.all():
+        if item.is_visible():
+            item.click()
+    page.locator("#docs-view-menu").click()
+    layout = menu_item(page, "Show print layout")
+    if layout.get_attribute("aria-checked") != "true":
+        layout.click()
+        page.locator("#docs-view-menu").click()
+    menu_item(page, "Comments").hover()
+    comments = menu_item(page, "Hide comments")
+    comments.wait_for(state="visible")
+    if comments.get_attribute("aria-checked") != "true":
+        comments.click()
+        toast = page.locator(".appsElementsGm3WizSnackbar-snackbar__dismiss")
+        toast.wait_for(state="visible", timeout=5000)
+        toast.click()
+        toast.wait_for(state="hidden")
+    else:
+        page.keyboard.press("Escape")
+        page.keyboard.press("Escape")
+    # Dismiss the UI toast and close any all-comments side panel.
+    for item in page.locator(
+        ".appsElementsGm3WizSnackbar-snackbar__dismiss, "
+        ".docs-docos-activity-sidebar-close"
+    ).all():
+        if item.is_visible():
+            item.click()
+    zoom = page.locator("#zoomSelect input")
+    if zoom.input_value() != "100%":
+        zoom.fill("100%")
+        zoom.press("Enter")
+    if zoom.input_value() != "100%":
+        raise RuntimeError("Could not set Docs zoom to 100%")
+    # Tabs/outlines can appear after the first canvas tile (observed on tables).
+    for item in hide.all():
+        if item.is_visible():
+            item.click()
+            item.wait_for(state="hidden")
+    # Only blur focus; never send keystrokes into the canvas editor.
+    page.evaluate("document.activeElement.blur()")
+    page.mouse.move(0, 0)
+
+
+def scroll_state(page, offset):
+    return page.locator(".kix-appview-editor").evaluate(
+        """(e, offset) => {
+      e.scrollTop = offset;
+      return {requested: offset, actual: e.scrollTop,
+              scrollHeight: e.scrollHeight, clientHeight: e.clientHeight};
+    }""",
+        offset,
+    )
+
+
+def capture(page, staging, views):
+    records = []
+    offset = 0
+    while True:
+        start = time.monotonic()
+        state = scroll_state(page, offset)
+        # Allow canvas tiles to paint; Docs keeps network connections open.
+        page.wait_for_timeout(350)
+        page.evaluate("document.fonts.ready")
+        page.evaluate(
+            "() => new Promise(r => "
+            "requestAnimationFrame(() => requestAnimationFrame(r)))"
+        )
+        state = scroll_state(page, offset)
+        image = staging / f"raw-{len(records) + 1:02d}.jpg"
+        page.screenshot(path=str(image), type="jpeg", quality=90, scale="css")
+        records.append(
+            {
+                **state,
+                "seconds": round(time.monotonic() - start, 4),
+                "image": f"view-{len(records) + 1:02d}.jpg",
+                "pages": page.locator(".kix-page-paginated").evaluate_all(
+                    "es => es.map(e => {const r=e.getBoundingClientRect();"
+                    "return {x:r.x,y:r.y,width:r.width,height:r.height}})"
+                ),
+            }
+        )
+        if views is not None:
+            if len(records) >= views:
+                break
+        elif state["actual"] + state["clientHeight"] >= state["scrollHeight"] - 1:
+            break
+        offset += STEP
+        if len(records) >= 500:
+            raise RuntimeError(
+                "Exceeded 500 views; editor scroll height may be unstable"
+            )
+    return records
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("doc_url")
+    parser.add_argument("outdir", type=Path)
+    parser.add_argument(
+        "--views",
+        type=int,
+        help="exact view count, including clamped offsets on short docs",
+    )
+    parser.add_argument(
+        "--cold-cache",
+        action="store_true",
+        help="clear dedicated Chrome HTTP cache before navigation",
+    )
+    args = parser.parse_args()
+    if not re.fullmatch(
+        r"https://docs\.google\.com/document/d/[A-Za-z0-9_-]+/edit(?:[?#][^\s]*)?",
+        args.doc_url,
+    ):
+        parser.error(
+            "Use https://docs.google.com/document/d/ID/edit (tab query preserved)"
+        )
+    if args.views is not None and not 1 <= args.views <= 500:
+        parser.error("--views must be between 1 and 500")
+    out = args.outdir.resolve()
+    if out.exists() and (
+        list(out.glob("view-*"))
+        or any((out / n).exists() for n in ["shot.json", "capture.json"])
+    ):
+        parser.error("Output already contains a capture; use a fresh directory")
+    start = time.monotonic()
+    launched = connect_chrome()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with (
+        tempfile.TemporaryDirectory(prefix=".gdt-shot-", dir=out.parent) as temp,
+        sync_playwright() as p,
+    ):
+        staging = Path(temp)
+        browser = p.chromium.connect_over_cdp(ENDPOINT)
+        page = browser.contexts[0].new_page()
+        page.set_default_timeout(15000)
+        try:
+            if args.cold_cache:
+                page.context.new_cdp_session(page).send("Network.clearBrowserCache")
+            page.goto(args.doc_url, wait_until="domcontentloaded", timeout=60000)
+            wait_for_doc(page)
+            cdp = page.context.new_cdp_session(page)
+            window = cdp.send("Browser.getWindowForTarget")["windowId"]
+            cdp.send(
+                "Browser.setWindowBounds",
+                {"windowId": window, "bounds": {"windowState": "normal"}},
+            )
+            cdp.send(
+                "Browser.setWindowBounds",
+                {
+                    "windowId": window,
+                    "bounds": {"left": -16000, "top": 0, "width": 1440, "height": 1200},
+                },
+            )
+            page.set_viewport_size(VIEWPORT)
+            prepare_view(page)
+            page.wait_for_timeout(500)
+            geometry = page.evaluate(
+                "({viewport:{width:innerWidth,height:innerHeight},outer:{width:outerWidth,height:outerHeight},devicePixelRatio})"
+            )
+            load_seconds = time.monotonic() - start
+            records = capture(page, staging, args.views)
+            filed = staging / "filed"
+            file_start = time.monotonic()
+            subprocess.run(
+                [
+                    str(Path(__file__).with_name("gdt-shot")),
+                    str(filed),
+                    "--step",
+                    str(STEP),
+                    *[
+                        str(staging / f"raw-{i + 1:02d}.jpg")
+                        for i in range(len(records))
+                    ],
+                ],
+                check=True,
+                stdout=subprocess.DEVNULL,
+            )
+            metadata = {
+                "doc_url": args.doc_url,
+                "resolved_url": page.url,
+                "account": ACCOUNT,
+                "chrome_version": browser.version,
+                "chrome_launched": launched,
+                "http_cache_cleared": args.cold_cache,
+                "geometry": geometry,
+                "load_and_setup_seconds": round(load_seconds, 4),
+                "views": records,
+                "filing_seconds": round(time.monotonic() - file_start, 4),
+                "total_seconds": round(time.monotonic() - start, 4),
+                "layout": (
+                    "print; 100% Docs zoom; outlines collapsed; "
+                    "View > Comments > Hide comments"
+                ),
+                "step_px": STEP,
+                "viewport_policy": "1440x828 CSS pixels; JPEG device scale normalized",
+            }
+            (filed / "capture.json").write_text(json.dumps(metadata, indent=2) + "\n")
+            out.mkdir(exist_ok=True)
+            for f in sorted(filed.iterdir(), key=lambda f: f.name == "shot.json"):
+                os.replace(f, out / f.name)
+            print(
+                json.dumps(
+                    {
+                        "outdir": str(out),
+                        "views": len(records),
+                        "seconds": metadata["total_seconds"],
+                    }
+                )
+            )
+        finally:
+            page.close()
+            # Disconnect only; keep Chrome warm for the next run.
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(130)
+    except Exception as exc:
+        print(f"gdt-shot-headless: {exc}", file=sys.stderr)
+        sys.exit(1)

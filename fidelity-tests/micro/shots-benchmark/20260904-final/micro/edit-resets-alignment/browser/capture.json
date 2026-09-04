@@ -1,0 +1,59 @@
+{
+  "doc_url": "https://docs.google.com/document/d/1Jo9eIpxNxysh5LvifyqmDKStBQvf6MZIcVk6sV4gIXM/edit",
+  "resolved_url": "https://docs.google.com/document/d/1Jo9eIpxNxysh5LvifyqmDKStBQvf6MZIcVk6sV4gIXM/edit?tab=t.0",
+  "account": "alejandro.acelas-contractor@80000hours.org",
+  "chrome_version": "152.0.7977.76",
+  "chrome_launched": false,
+  "http_cache_cleared": false,
+  "geometry": {
+    "viewport": {
+      "width": 1440,
+      "height": 828
+    },
+    "outer": {
+      "width": 1440,
+      "height": 923
+    },
+    "devicePixelRatio": 1
+  },
+  "load_and_setup_seconds": 2.4859,
+  "views": [
+    {
+      "requested": 0,
+      "actual": 0,
+      "scrollHeight": 1244,
+      "clientHeight": 699,
+      "seconds": 0.4419,
+      "image": "view-01.jpg",
+      "pages": [
+        {
+          "x": 304,
+          "y": 145,
+          "width": 794,
+          "height": 1123
+        }
+      ]
+    },
+    {
+      "requested": 650,
+      "actual": 545,
+      "scrollHeight": 1244,
+      "clientHeight": 699,
+      "seconds": 0.4243,
+      "image": "view-02.jpg",
+      "pages": [
+        {
+          "x": 304,
+          "y": -400,
+          "width": 794,
+          "height": 1123
+        }
+      ]
+    }
+  ],
+  "filing_seconds": 0.0331,
+  "total_seconds": 3.3912,
+  "layout": "print; 100% Docs zoom; outlines collapsed; View > Comments > Hide comments",
+  "step_px": 650,
+  "viewport_policy": "1440x828 CSS pixels; JPEG device scale normalized"
+}

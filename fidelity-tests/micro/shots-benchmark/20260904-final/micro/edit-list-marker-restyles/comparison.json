@@ -1,0 +1,16 @@
+{
+  "page_size_css_px": [
+    794,
+    1123
+  ],
+  "crop_bounds": {
+    "body": [
+      75,
+      76,
+      336,
+      153
+    ]
+  },
+  "pdf_scale": 1.332214765100671,
+  "browser_rows_covered": 1123
+}

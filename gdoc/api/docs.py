@@ -241,6 +241,8 @@ def flatten_tabs(tabs: list[dict], _level: int = 0) -> list[dict]:
             # listId -> list definition; needed to tell ordered from bullet
             # lists when rendering a tab as markdown.
             "lists": doc_tab.get("lists", {}),
+            **{key: doc_tab[key] for key in ("headers", "footers", "footnotes")
+               if key in doc_tab},
         })
         for child in tab.get("childTabs", []):
             result.extend(flatten_tabs([child], _level=_level + 1))
@@ -492,6 +494,27 @@ def _collect_segments(content: list[dict]) -> list[list[tuple[int, str]]]:
     return segments
 
 
+def _search_containers(document: dict):
+    """Yield the first/selected tab's independent index spaces, body first.
+
+    Accept a legacy document, a raw tabs document, or one flattened tab.
+    Segment IDs are sorted so API map iteration cannot change write order.
+    """
+    if "tabs" in document:
+        tabs = flatten_tabs(document["tabs"])
+        if not tabs:
+            return
+        document = tabs[0]
+    tab_id = document.get("id")
+    coordinates = {"tabId": tab_id} if tab_id else {}
+    yield document.get("body", {}), {"container": "body", **coordinates}
+    for collection, kind in (("headers", "header"), ("footers", "footer"),
+                             ("footnotes", "footnote")):
+        for segment_id, content in sorted(document.get(collection, {}).items()):
+            yield content, {"container": kind, "segmentId": segment_id,
+                            **coordinates}
+
+
 def find_text_in_document(
     document: dict | None,
     text: str,
@@ -499,7 +522,11 @@ def find_text_in_document(
     body: dict | None = None,
     normalize: bool = False,
 ) -> list[dict]:
-    """Find all occurrences of text within the document body.
+    """Find text in the first/selected tab's body and non-body containers.
+
+    Passing ``body`` explicitly limits the search to that content and keeps
+    the legacy two-key range shape. A full document or flattened tab also
+    searches its headers, footers, and footnotes, retaining their addresses.
 
     Searches body.content per segment (top-level paragraphs, and each table
     cell on its own) so a match never crosses a table-cell boundary.
@@ -519,7 +546,17 @@ def find_text_in_document(
     if body is None:
         if document is None:
             return []
-        body = document.get("body", {})
+        matches = []
+        for content, coordinates in _search_containers(document):
+            for match in find_text_in_document(
+                None, text, match_case=match_case, body=content,
+                normalize=normalize,
+            ):
+                # Preserve the legacy body shape when no tab was supplied.
+                if coordinates != {"container": "body"}:
+                    match.update(coordinates)
+                matches.append(match)
+        return matches
 
     matches = []
     for chars in _collect_segments(body.get("content", [])):
@@ -1501,6 +1538,37 @@ def insert_markdown_into_tab(
     }
 
 
+def _match_space(match: dict) -> tuple[str, str]:
+    """Identity of an independent Docs index space (empty segment = body)."""
+    return match.get("tabId", ""), match.get("segmentId", "")
+
+
+def _replacement_order(match: dict) -> tuple:
+    tab, segment = _match_space(match)
+    kind_order = {"body": 0, "header": 1, "footer": 2, "footnote": 3}
+    kind = kind_order.get(match.get("container", "body"), 4)
+    return tab, bool(segment), kind, segment, -match["startIndex"]
+
+
+def check_segment_replacement(parsed, markdown: str, matches: list[dict]) -> None:
+    """Non-body replacements support a single plain/inline paragraph only."""
+    if not any(m.get("segmentId") for m in matches):
+        return
+    try:
+        check_inline_only_markdown(parsed)
+    except GdocError:
+        raise GdocError(
+            "headers, footers, and footnotes support only plain or inline "
+            "Markdown replacements", exit_code=3,
+        ) from None
+    if ("\n" in parsed.plain_text.rstrip("\n")
+            or re.search(r"(?m)^ {0,3}(?:`{3,}|~{3,})", markdown)):
+        raise GdocError(
+            "headers, footers, and footnotes support only plain or inline "
+            "Markdown replacements", exit_code=3,
+        )
+
+
 def _build_replacement_requests(
     parsed, matches: list[dict], tab_id: str | None = None,
 ) -> tuple[list[dict], list[dict]]:
@@ -1508,18 +1576,18 @@ def _build_replacement_requests(
 
     Pure function shared by ``replace_formatted`` (EDIT) and
     ``suggest_replacement`` (SUGGEST). Matches are processed in descending
-    startIndex order so earlier ranges are unaffected by the length change
-    of later replacements within the one batch.
+    startIndex order within each independent segment, with deterministic
+    body/header/footer/footnote ordering between containers.
 
     Returns (sorted_matches, requests).
     """
     from gdoc.mdparse import to_docs_requests
 
-    sorted_matches = sorted(
-        matches, key=lambda m: m["startIndex"], reverse=True,
-    )
+    sorted_matches = sorted(matches, key=_replacement_order)
     all_requests: list[dict] = []
     for match in sorted_matches:
+        match_tab = match.get("tabId", tab_id)
+        segment_id = match.get("segmentId")
         # Delete the matched range (skip empty ranges — Docs API rejects
         # them with "The range should not be empty", and a zero-width
         # match is a pure insert).
@@ -1528,14 +1596,23 @@ def _build_replacement_requests(
                 "startIndex": match["startIndex"],
                 "endIndex": match["endIndex"],
             }
-            if tab_id:
-                delete_range["tabId"] = tab_id
+            if match_tab:
+                delete_range["tabId"] = match_tab
+            if segment_id:
+                delete_range["segmentId"] = segment_id
             all_requests.append({
                 "deleteContentRange": {"range": delete_range}
             })
-        all_requests.extend(
-            to_docs_requests(parsed, match["startIndex"], tab_id=tab_id)
+        requests = to_docs_requests(
+            _inline_only(parsed) if segment_id else parsed,
+            match["startIndex"], tab_id=match_tab,
         )
+        if segment_id:
+            for request in requests:
+                operation = next(iter(request.values()))
+                address = operation.get("range", operation.get("location"))
+                address["segmentId"] = segment_id
+        all_requests.extend(requests)
     return sorted_matches, all_requests
 
 
@@ -1565,6 +1642,7 @@ def replace_formatted(
     from gdoc.mdparse import parse_markdown, utf16_len
 
     parsed = parse_markdown(new_markdown)
+    check_segment_replacement(parsed, new_markdown, matches)
 
     # Same guard as suggest_replacement: overlapping matches ("aa" in
     # "aaa" with --all) would make the last-to-first delete/insert plan
@@ -1589,6 +1667,11 @@ def replace_formatted(
         service.documents().batchUpdate(
             documentId=doc_id, body=body,
         ).execute()
+
+        occurrences = len(sorted_matches)
+        sorted_matches = [m for m in sorted_matches if not m.get("segmentId")]
+        if not sorted_matches:
+            return occurrences
 
         # Clean up leftover heading paragraphs (before table insertion
         # so indices haven't shifted from table expansion).
@@ -1652,7 +1735,7 @@ def replace_formatted(
                     )
                     _insert_table(doc_id, idx, table, tab_id=tab_id)
 
-        return len(sorted_matches)
+        return occurrences
     except HttpError as e:
         _translate_http_error(e, doc_id)
 
@@ -2021,9 +2104,10 @@ def check_suggest_preview_access(doc_id: str) -> None:
 def _reject_overlapping_matches(matches: list[dict]) -> None:
     """Two matches sharing text (``aa`` in ``aaa``) can't both be replaced:
     the last-to-first delete/insert plan would land on shifted text."""
-    ordered = sorted(matches, key=lambda m: m["startIndex"])
+    ordered = sorted(matches, key=lambda m: (_match_space(m), m["startIndex"]))
     for prev, cur in zip(ordered, ordered[1:]):
-        if cur["startIndex"] < prev["endIndex"]:
+        if (_match_space(prev) == _match_space(cur)
+                and cur["startIndex"] < prev["endIndex"]):
             raise GdocError(
                 "matches overlap each other (the anchor repeats within "
                 f"itself around index {cur['startIndex']}); use a longer "
@@ -2082,6 +2166,7 @@ def suggest_replacement(
 
     parsed = parse_markdown(new_markdown)
     check_inline_only_markdown(parsed)
+    check_segment_replacement(parsed, new_markdown, matches)
     _reject_overlapping_matches(matches)
     _strip_trailing_newline_unless_hr(parsed)
     sorted_matches, requests = _build_replacement_requests(

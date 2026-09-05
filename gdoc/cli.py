@@ -1036,6 +1036,7 @@ class _ReplacementPlan:
     revision_id: str
     tab_id: str | None
     search_body: dict
+    search_scope: dict
 
 
 def _resolve_replacement_text(args, cell) -> tuple[str | None, str | None]:
@@ -1171,6 +1172,7 @@ def _prepare_text_replacement(
         tab_match = resolve_tab(tabs, tab_name) if tab_name else tabs[0]
         tab_id = tab_match["id"]
         search_body = tab_match["body"]
+        search_scope = tab_match
     elif tab_name:
         from gdoc.api.docs import flatten_tabs, get_document_with_tabs, resolve_tab
         doc = get_document_with_tabs(doc_id)
@@ -1179,10 +1181,12 @@ def _prepare_text_replacement(
         tab_match = resolve_tab(tabs, tab_name)
         tab_id = tab_match["id"]
         search_body = tab_match["body"]
+        search_scope = tab_match
     else:
         document = get_document(doc_id)
         revision_id = document.get("revisionId", "")
         search_body = document.get("body", {})
+        search_scope = document
 
     if cell is not None:
         from gdoc.api.docs import resolve_cell_range
@@ -1194,9 +1198,12 @@ def _prepare_text_replacement(
             raise GdocError(f"cell not found: {cell!r}", exit_code=3)
         matches = [cell_range]
     else:
+        has_segments = any(search_scope.get(key)
+                           for key in ("headers", "footers", "footnotes"))
         matches = find_text_in_document(
-            None, old_text, match_case=case_sensitive,
-            body=search_body, normalize=normalize,
+            search_scope if has_segments else None, old_text,
+            match_case=case_sensitive,
+            body=None if has_segments else search_body, normalize=normalize,
         )
         if not matches:
             from gdoc.api.docs import diagnose_no_match
@@ -1215,6 +1222,7 @@ def _prepare_text_replacement(
     return _ReplacementPlan(
         quiet=quiet, change_info=change_info, matches=matches,
         revision_id=revision_id, tab_id=tab_id, search_body=search_body,
+        search_scope=search_scope,
     )
 
 
@@ -1232,6 +1240,8 @@ def cmd_edit(args) -> int:
     # Check if replacement contains tables — not supported with --all
     from gdoc.mdparse import parse_markdown as _parse_md
     _parsed = _parse_md(new_text)
+    from gdoc.api.docs import check_segment_replacement
+    check_segment_replacement(_parsed, new_text, matches)
     if _parsed.tables and len(matches) > 1:
         raise GdocError(
             "replacement with tables not supported with --all",
@@ -1311,11 +1321,20 @@ def cmd_suggest(args) -> int:
     # Never touch an existing review thread by accident: Google may merge a
     # change into an overlapping open suggestion, so refuse any match that
     # intersects one (v1; an explicit opt-in can come later).
-    from gdoc.api.docs import find_suggestions_in_range
+    from gdoc.api.docs import (
+        _search_containers,
+        check_segment_replacement,
+        find_suggestions_in_range,
+    )
 
+    check_segment_replacement(parse_markdown(new_text), new_text, plan.matches)
+    containers = {
+        coordinates.get("segmentId"): content
+        for content, coordinates in _search_containers(plan.search_scope)
+    }
     for m in plan.matches:
         overlapping = find_suggestions_in_range(
-            plan.search_body, m["startIndex"], m["endIndex"],
+            containers[m.get("segmentId")], m["startIndex"], m["endIndex"],
         )
         if overlapping:
             ids = ", ".join(sorted(overlapping))

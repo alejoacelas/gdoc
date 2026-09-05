@@ -1959,6 +1959,25 @@ def classify_markdown_rebuild(
     return sorted(blockers), sorted(styles)
 
 
+def _body_object_ids(body: dict) -> set[str]:
+    """Ids of inline and positioned objects referenced from a body."""
+    ids: set[str] = set()
+
+    def visit(value):
+        if isinstance(value, list):
+            for item in value:
+                visit(item)
+        elif isinstance(value, dict):
+            if value.get("inlineObjectId"):
+                ids.add(value["inlineObjectId"])
+            ids.update(value.get("positionedObjectIds") or [])
+            for item in value.values():
+                visit(item)
+
+    visit(body.get("content", []))
+    return ids
+
+
 # documentTab keys a body-range deletion never mutates.
 _TAB_BODY_UNAFFECTED = frozenset({"headers", "footers", "documentStyle",
                                   "namedStyles"})
@@ -2000,6 +2019,12 @@ def check_markdown_rebuild(
         retained = scope
         scope = {k: v for k, v in scope.items()
                  if k not in _TAB_BODY_UNAFFECTED}
+        # Objects that live only in retained segments (headers, footers)
+        # survive a body replacement; keep the ones the body references.
+        body_ids = _body_object_ids(scope.get("body") or {})
+        for key in ("inlineObjects", "positionedObjects"):
+            if isinstance(scope.get(key), dict):
+                scope[key] = {k: v for k, v in scope[key].items() if k in body_ids}
     blockers, styles = classify_markdown_rebuild(
         scope, tab_scope=tab_id is not None,
         retained_named_styles=retained.get("namedStyles") if tab_id else None,

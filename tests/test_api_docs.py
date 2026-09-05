@@ -1459,9 +1459,31 @@ def test_tab_rebuild_blocks_images(mocker):
     from gdoc.api.docs import check_markdown_rebuild
 
     mocker.patch('gdoc.api.comments.list_comments', return_value=[])
-    with pytest.raises(GdocError, match='inlineObjects') as error:
-        check_markdown_rebuild('doc', document=_image_doc(), tab_id='notes')
+    doc = _image_doc()
+    doc['tabs'][0]['documentTab']['body']['content'].append({'paragraph': {
+        'elements': [{'inlineObjectElement': {'inlineObjectId': 'kix.img'}}]}})
+    with pytest.raises(GdocError, match='inlineObjectElement.*inlineObjects') as error:
+        check_markdown_rebuild('doc', document=doc, tab_id='notes')
     assert error.value.exit_code == 3
+
+
+def test_tab_rebuild_ignores_objects_only_in_headers(mocker):
+    """A header image is retained by a body replacement; a body image is not."""
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    doc = _rebuild_doc()
+    tab = doc['tabs'][0]['documentTab']
+    tab['headers'] = {'h': {'content': [{'paragraph': {'elements': [
+        {'inlineObjectElement': {'inlineObjectId': 'kix.logo'}}]}}]}}
+    tab['inlineObjects'] = {'kix.logo': {'inlineObjectProperties': {}}}
+    check_markdown_rebuild('doc', document=doc, tab_id='notes')
+    with pytest.raises(GdocError, match='headers'):
+        check_markdown_rebuild('doc', document=doc)
+    tab['body']['content'].append({'paragraph': {'elements': [
+        {'inlineObjectElement': {'inlineObjectId': 'kix.logo'}}]}})
+    with pytest.raises(GdocError, match='inlineObjectElement.*inlineObjects'):
+        check_markdown_rebuild('doc', document=doc, tab_id='notes')
 
 
 def test_whole_document_rebuild_blocks_images_too(mocker):

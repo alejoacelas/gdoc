@@ -21,13 +21,15 @@ def _stdin_json(file_path):
 
 @pytest.fixture(autouse=True)
 def _stub_single_tab():
-    """Default `count_document_tabs` to `1` for the whole test module.
+    """Default to a single-tab doc with nothing the rebuild guard blocks.
 
-    The multi-tab safety check would otherwise call the real Docs API.
-    Tests asserting the multi-tab skip override this with their own
-    patch.
+    The multi-tab safety check and the rebuild guard would otherwise call
+    the real Docs and Drive APIs. Tests asserting a skip override these
+    with their own patches.
     """
-    with patch("gdoc.api.docs.count_document_tabs", return_value=1):
+    with patch("gdoc.api.docs.count_document_tabs", return_value=1), \
+            patch("gdoc.api.docs.get_document_with_tabs", return_value={}), \
+            patch("gdoc.api.comments.list_comments", return_value=[]):
         yield
 
 
@@ -164,3 +166,35 @@ class TestSyncHookMultiTabSafety:
         assert "SYNC: skipped" in err
         assert "My Doc" in err
         assert "multi-tab" in err
+
+
+class TestSyncHookRebuildGuard:
+    """The hook runs unattended, so unsupported native state skips the sync."""
+
+    @patch("gdoc.api.docs.get_document_with_tabs",
+           return_value={'body': {'content': [{'table': {}}]}})
+    @patch("gdoc.api.drive.update_doc_content")
+    def test_skip_unsupported_native_state(
+        self, mock_update_doc, _doc, tmp_path, capsys,
+    ):
+        f = tmp_path / "spec.md"
+        f.write_text("---\ngdoc: abc123\ntitle: My Doc\n---\n# Hello\n")
+        with patch("sys.stdin", _stdin_json(str(f))):
+            assert cmd_sync_hook(_make_args()) == 0
+        mock_update_doc.assert_not_called()
+        err = capsys.readouterr().err
+        assert 'SYNC: skipped "My Doc"' in err
+        assert "table" in err
+
+    @patch("gdoc.api.comments.list_comments",
+           return_value=[{'id': 'c', 'anchor': 'kix.abc'}])
+    @patch("gdoc.api.drive.update_doc_content")
+    def test_skip_anchored_comments(
+        self, mock_update_doc, _comments, tmp_path, capsys,
+    ):
+        f = tmp_path / "spec.md"
+        f.write_text("---\ngdoc: abc123\n---\n# Hello\n")
+        with patch("sys.stdin", _stdin_json(str(f))):
+            assert cmd_sync_hook(_make_args()) == 0
+        mock_update_doc.assert_not_called()
+        assert "comment anchors" in capsys.readouterr().err

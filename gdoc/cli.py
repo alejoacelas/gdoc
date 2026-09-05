@@ -1896,6 +1896,16 @@ def cmd_sync_hook(args) -> int:
             )
             return 0
 
+        # Same rebuild guard as `push`: the hook cannot ask for
+        # --allow-lossy-rebuild, so unsupported native state skips the sync.
+        from gdoc.api.docs import check_markdown_rebuild
+        try:
+            check_markdown_rebuild(doc_id)
+        except GdocError as e:
+            title = metadata.get("title", doc_id)
+            print(f'SYNC: skipped "{title}" ({e})', file=sys.stderr)
+            return 0
+
         from gdoc.api.drive import update_doc_content
 
         command_version = update_doc_content(doc_id, body)

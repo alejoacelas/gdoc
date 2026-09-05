@@ -853,6 +853,9 @@ class TestInsertMarkdownIntoTab:
     ({'suggestedTextStyleChanges': {'s': {}}}, 'pending suggestions'),
     ({'namedRanges': {'Reference': {}}}, 'named ranges'),
     ({'footnoteReference': {'footnoteId': 'f'}}, 'footnotes'),
+    ({'body': {'content': [{'tableOfContents': {'content': []}}]}},
+     'table of contents'),
+    ({'elements': [{'equation': {}}]}, 'equations'),
     ({'inlineObjects': {'kix.d': {'inlineObjectProperties': {'embeddedObject': {
         'embeddedDrawingProperties': {}}}}}}, 'drawings'),
     ({'positionedObjects': {'kix.c': {'positionedObjectProperties': {

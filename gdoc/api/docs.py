@@ -1427,6 +1427,10 @@ def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
                     continue
                 if key in {"table", "footnoteReference"}:
                     blockers.add("tables" if key == "table" else "footnotes")
+                if key == "tableOfContents":
+                    blockers.add("table of contents")
+                if key == "equation":
+                    blockers.add("equations")
                 if key == "embeddedDrawingProperties":
                     blockers.add("drawings")
                 if key == "sheetsChartReference":

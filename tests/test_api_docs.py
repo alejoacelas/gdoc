@@ -1571,6 +1571,20 @@ def test_tab_rebuild_title_only_warns(mocker, capsys):
     assert 'title/subtitle' in capsys.readouterr().err
 
 
+def test_tab_rebuild_checks_formatting_at_its_offsets(mocker):
+    """Same text, formatting moved to another occurrence: not a round trip."""
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    doc = _styled_tab(('x', {}), ('*', {}), ('*\n', {'bold': True}))
+    with pytest.raises(GdocError, match='round-trip|literal Markdown') as error:
+        check_markdown_rebuild('doc', document=doc, tab_id='notes')
+    assert error.value.exit_code == 3
+    # Repeated text with formatting on the right occurrence still passes.
+    doc = _styled_tab(('ab ', {}), ('ab\n', {'bold': True}))
+    check_markdown_rebuild('doc', document=doc, tab_id='notes')
+
+
 def test_tab_rebuild_blocks_when_exporter_drops_formatting(mocker):
     """Safety net: an exporter gap blocks instead of losing styles silently."""
     from gdoc.api.docs import check_markdown_rebuild

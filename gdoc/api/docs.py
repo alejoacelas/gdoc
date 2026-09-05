@@ -1706,20 +1706,40 @@ def _tab_text_round_trips(document_tab: dict) -> tuple[bool, bool]:
             if parsed_kinds.get(index, "NORMAL_TEXT") != kind:
                 styles_ok = False
 
-    expected_styles = sorted(
-        (run["content"].strip(" \n"), key)
-        for paragraph in paragraphs
-        for pe in paragraph.get("elements", [])
-        for run in [pe.get("textRun") or {}]
-        if run.get("content", "").strip()
-        for key in _inline_style_keys(run.get("textStyle") or {})
-    )
-    actual_styles = sorted(
-        (parsed.plain_text[r.start:r.end], key)
-        for r in parsed.styles if r.type == "text_style"
-        for key in _inline_style_keys(r.style)
-    )
-    return text_ok, styles_ok and expected_styles == actual_styles
+    # Every allowlisted inline style must come back on the same characters.
+    # The exporter keeps a run's surrounding spaces outside the markers, so
+    # those characters carry no style on either side.
+    if text_ok and styles_ok:
+        line_starts, offset = [], 0
+        for line in parsed.plain_text.split("\n"):
+            line_starts.append(offset)
+            offset += len(line) + 1
+        for index, (paragraph, actual) in enumerate(zip(paragraphs, actual_lines)):
+            expected_vector: list[frozenset] = []
+            for pe in paragraph.get("elements", []):
+                run = pe.get("textRun") or {}
+                content = run.get("content", "")
+                body = content[:-1] if content.endswith("\n") else content
+                keys = frozenset(_inline_style_keys(run.get("textStyle") or {}))
+                core_start = len(body) - len(body.lstrip(" "))
+                core_end = len(body.rstrip(" "))
+                expected_vector.extend(
+                    keys if core_start <= i < core_end else frozenset()
+                    for i in range(len(body)))
+            skipped = (len(actual) - len(actual.lstrip("\t"))
+                       if paragraph.get("bullet") is not None else 0)
+            base = line_starts[index] + skipped
+            actual_vector = [
+                frozenset(
+                    key for r in parsed.styles
+                    if r.type == "text_style" and r.start <= base + i < r.end
+                    for key in _inline_style_keys(r.style))
+                for i in range(len(expected_vector))
+            ]
+            if expected_vector != actual_vector:
+                styles_ok = False
+                break
+    return text_ok, styles_ok
 
 
 def _named_style_directions(named_styles: dict | None) -> dict[str, str]:

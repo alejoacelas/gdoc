@@ -1028,11 +1028,29 @@ def test_rebuild_warns_on_explicit_page_setup(override):
     assert classify_markdown_rebuild({'documentStyle': style}) == ([], ['page setup'])
 
 
-def test_rebuild_ignores_the_opening_section_break():
+def _opening_section(style):
+    return {'body': {'content': [{'sectionBreak': {'sectionStyle': style}},
+                                 {'paragraph': {}}]}}
+
+
+def test_rebuild_ignores_the_default_opening_section_break():
     from gdoc.api.docs import classify_markdown_rebuild
 
-    body = {'content': [{'sectionBreak': {'sectionStyle': {}}}, {'paragraph': {}}]}
-    assert classify_markdown_rebuild({'body': body}) == ([], [])
+    style = {'columnSeparatorStyle': 'NONE', 'contentDirection': 'LEFT_TO_RIGHT',
+             'sectionType': 'CONTINUOUS', 'columnProperties': [{'width': {}}]}
+    assert classify_markdown_rebuild(_opening_section(style)) == ([], [])
+
+
+@pytest.mark.parametrize('style,expected', [
+    ({'marginTop': {'magnitude': 144, 'unit': 'PT'}}, ([], ['section layout'])),
+    ({'flipPageOrientation': True}, ([], ['section layout'])),
+    ({'defaultHeaderId': 'h'}, (['defaultHeaderId'], [])),
+    ({'columnProperties': [{}, {}]}, (['columnProperties'], [])),
+])
+def test_rebuild_inspects_the_opening_section_style(style, expected):
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    assert classify_markdown_rebuild(_opening_section(style)) == expected
 
 
 def test_rebuild_silent_on_import_default_page_setup():

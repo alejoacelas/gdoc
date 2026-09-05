@@ -495,7 +495,9 @@ class TestWriteQuietForce:
         rc = cmd_write(args)
         assert rc == 0
         mock_pf.assert_not_called()
-        mock_ver.assert_not_called()
+        # The unchanged-content check reads the version once, before the
+        # export, so a matched no-op records a revision it compared.
+        mock_ver.assert_called_once_with("abc123")
         mock_load.assert_not_called()
         mock_update_doc.assert_called_once()
 
@@ -515,7 +517,9 @@ class TestWriteQuietForce:
         cmd_write(args)
         # Only update_doc_content should be called (no pre-flight calls)
         mock_pf.assert_not_called()
-        mock_ver.assert_not_called()
+        # The unchanged-content check reads the version once, before the
+        # export, so a matched no-op records a revision it compared.
+        mock_ver.assert_called_once_with("abc123")
         mock_load.assert_not_called()
 
 
@@ -914,6 +918,24 @@ def test_write_noop_ignores_only_blank_edges(mocker, tmp_path, local, uploads):
     assert upload.called is uploads
 
 
+def test_write_noop_baseline_is_the_compared_version(mocker, tmp_path):
+    """A concurrent edit after the export must not become the baseline."""
+    f = tmp_path / 'notes.md'
+    f.write_text('Summary')
+    # Pre-flight saw version 12; an edit lands (13) before the export.
+    mocker.patch('gdoc.notify.pre_flight', return_value=ChangeInfo(
+        current_version=12, last_read_version=12))
+    later = mocker.patch('gdoc.api.drive.get_file_version',
+                         return_value={'version': 13})
+    mocker.patch('gdoc.api.drive.export_doc', return_value='Summary')
+    state = mocker.patch('gdoc.state.update_state_after_command')
+    upload = mocker.patch('gdoc.api.drive.update_doc_content')
+    assert cmd_write(_make_args(file=str(f))) == 0
+    upload.assert_not_called()
+    later.assert_not_called()
+    assert state.call_args.kwargs['command_version'] == 12
+
+
 def test_write_lossy_opt_in_preserves_drive_parameters(mocker, tmp_path):
     f = tmp_path / 'notes.md'
     f.write_text('Summary')
@@ -977,12 +999,12 @@ def test_write_unchanged_without_conflict_skips_inspection(mocker, tmp_path):
     f.write_text('Summary')
     mocker.patch('gdoc.notify.pre_flight', return_value=ChangeInfo(
         current_version=10, last_read_version=10))
-    matches = mocker.patch('gdoc.cli._doc_matches', return_value=True)
+    matches = mocker.patch('gdoc.cli._doc_matches', return_value=10)
     inspect = mocker.patch('gdoc.api.docs.get_document_with_tabs')
     mocker.patch('gdoc.api.drive.get_file_version', return_value={'version': 10})
     mocker.patch('gdoc.state.update_state_after_command')
     upload = mocker.patch('gdoc.api.drive.update_doc_content')
     assert cmd_write(_make_args(file=str(f))) == 0
-    matches.assert_called_once_with('abc123', 'Summary')
+    assert matches.call_args.args[:2] == ('abc123', 'Summary')
     inspect.assert_not_called()
     upload.assert_not_called()

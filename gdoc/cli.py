@@ -701,7 +701,7 @@ def cmd_insert(args) -> int:
     if not content.strip():
         raise GdocError("input file has no content to insert", exit_code=3)
 
-    change_info, _ = _check_write_conflict(doc_id, quiet, force)
+    change_info, _, _ = _check_write_conflict(doc_id, quiet, force)
 
     from gdoc.api.docs import insert_markdown_into_tab
 
@@ -1419,30 +1419,45 @@ def _comparable_markdown(text: str) -> str:
     return "\n".join(lines).rstrip()
 
 
-def _doc_matches(doc_id: str, body: str) -> bool:
-    """True if the doc's current markdown export equals the content to write."""
-    from gdoc.api.drive import export_doc
+def _doc_matches(doc_id: str, body: str, version: int | None = None) -> int | None:
+    """Version whose Markdown export equals the content to write, else None.
+
+    `version` is the doc version observed before this call (pre-flight or
+    the quiet version check); it is read here only when nothing observed
+    it yet. Either way it predates the export, so a concurrent edit can
+    only leave the recorded baseline behind (the next write then reports a
+    conflict), never advance it past a revision nobody compared.
+    """
+    from gdoc.api.drive import export_doc, get_file_version
 
     try:
+        if version is None:
+            version = get_file_version(doc_id).get("version")
         current = export_doc(doc_id, mime_type="text/markdown")
     except GdocError:
-        return False
-    return _comparable_markdown(current) == _comparable_markdown(body)
+        return None
+    if _comparable_markdown(current) != _comparable_markdown(body):
+        return None
+    return version
 
 
 def _finish_noop_write(
     doc_id: str, change_info, args, quiet: bool, command: str,
+    matched_version: int | None = None,
 ) -> int:
     """Conclude a write-like command whose content already matches the doc.
 
-    Skips the upload, reports in-sync, and heals the read baseline so the
-    next write doesn't trip conflict detection again.
+    Skips the upload, reports in-sync, and heals the read baseline to
+    `matched_version`, the revision whose export matched, so the next write
+    doesn't trip conflict detection again.
     """
-    from gdoc.api.drive import get_file_version
     from gdoc.format import format_json, get_output_mode
     from gdoc.state import update_state_after_command
 
-    command_version = get_file_version(doc_id).get("version")
+    command_version = matched_version
+    if command_version is None:
+        from gdoc.api.drive import get_file_version
+        command_version = get_file_version(doc_id).get("version")
     mode = get_output_mode(args)
     if mode == "json":
         print(format_json(in_sync=True, version=command_version))
@@ -1464,9 +1479,12 @@ def _check_write_conflict(
 ):
     """Run conflict detection for write-like commands.
 
-    Returns (change_info, in_sync). in_sync is True when the version moved
-    but the doc content already equals `body` (e.g. our own earlier write or
-    a cosmetic Docs version bump) — the caller should skip the upload.
+    Returns (change_info, in_sync, current_version). in_sync is the matched
+    version when the version moved but the doc content already equals `body`
+    (e.g. our own earlier write or a cosmetic Docs version bump) — the caller
+    should skip the upload — and False otherwise. current_version is the doc
+    version this check observed, or None when it made no version call
+    (quiet + force).
     Raises GdocError(exit_code=3) on a real conflict.
     """
     if not quiet:
@@ -1474,26 +1492,31 @@ def _check_write_conflict(
 
         change_info = pre_flight(doc_id, quiet=False)
         _require_doc(doc_id, change_info)
+        current_version = change_info.current_version
 
         if not force:
             if change_info.last_read_version is None:
-                if body is not None and _doc_matches(doc_id, body):
-                    return change_info, True
+                if body is not None:
+                    matched = _doc_matches(doc_id, body, current_version)
+                    if matched is not None:
+                        return change_info, matched, current_version
                 raise GdocError(
                     "no read baseline. Run 'gdoc cat' first, "
                     "or use --force to overwrite.",
                     exit_code=3,
                 )
             if change_info.has_conflict:
-                if body is not None and _doc_matches(doc_id, body):
-                    return change_info, True
+                if body is not None:
+                    matched = _doc_matches(doc_id, body, current_version)
+                    if matched is not None:
+                        return change_info, matched, current_version
                 raise GdocError(
                     "doc changed since last read. "
                     "Run 'gdoc cat' first, "
                     "or use --force to overwrite.",
                     exit_code=3,
                 )
-        return change_info, False
+        return change_info, False, current_version
 
     if not force:
         from gdoc.state import load_state
@@ -1501,8 +1524,10 @@ def _check_write_conflict(
         state = load_state(doc_id)
 
         if state is None or state.last_read_version is None:
-            if body is not None and _doc_matches(doc_id, body):
-                return None, True
+            if body is not None:
+                matched = _doc_matches(doc_id, body)
+                if matched is not None:
+                    return None, matched, matched
             raise GdocError(
                 "no read baseline. Run 'gdoc cat' first, "
                 "or use --force to overwrite.",
@@ -1517,16 +1542,19 @@ def _check_write_conflict(
             current_version is not None
             and current_version != state.last_read_version
         ):
-            if body is not None and _doc_matches(doc_id, body):
-                return None, True
+            if body is not None:
+                matched = _doc_matches(doc_id, body, current_version)
+                if matched is not None:
+                    return None, matched, current_version
             raise GdocError(
                 "doc changed since last read. "
                 "Run 'gdoc cat' first, "
                 "or use --force to overwrite.",
                 exit_code=3,
             )
+        return None, False, current_version
 
-    return None, False
+    return None, False, None
 
 
 def cmd_write(args) -> int:
@@ -1556,11 +1584,15 @@ def cmd_write(args) -> int:
 
     # Conflict detection. Content comparison only applies to full-doc
     # writes — a tab write's body never equals the whole-doc export.
-    change_info, in_sync = _check_write_conflict(
+    change_info, in_sync, current_version = _check_write_conflict(
         doc_id, quiet, force, body=None if tab_name else content,
     )
-    if in_sync or (not tab_name and _doc_matches(doc_id, content)):
-        return _finish_noop_write(doc_id, change_info, args, quiet, command="write")
+    matched = in_sync or (
+        not tab_name and _doc_matches(doc_id, content, current_version)
+    )
+    if matched:
+        return _finish_noop_write(doc_id, change_info, args, quiet,
+                                  command="write", matched_version=matched)
 
     from gdoc.format import format_json, get_output_mode
     mode = get_output_mode(args)
@@ -1753,9 +1785,13 @@ def cmd_push(args) -> int:
     doc_id = _resolve_doc_id(metadata["gdoc"])
 
     # Conflict detection (reuse shared helper)
-    change_info, in_sync = _check_write_conflict(doc_id, quiet, force, body=body)
-    if in_sync or _doc_matches(doc_id, body):
-        return _finish_noop_write(doc_id, change_info, args, quiet, command="push")
+    change_info, in_sync, current_version = _check_write_conflict(
+        doc_id, quiet, force, body=body,
+    )
+    matched = in_sync or _doc_matches(doc_id, body, current_version)
+    if matched:
+        return _finish_noop_write(doc_id, change_info, args, quiet,
+                                  command="push", matched_version=matched)
 
     # Refuse destructive multi-tab collapse unless the user opts in.
     # `pull`/`push` round-trips a multi-tab doc through a flat markdown

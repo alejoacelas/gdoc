@@ -1466,6 +1466,9 @@ _TEXT_STYLE_WARNINGS = {
     "baselineOffset": "baseline",
 }
 _ALLOWED_PARAGRAPH_STYLE = frozenset({"namedStyleType", "headingId", "direction"})
+# What the opening section break carries in a default document.
+_ALLOWED_SECTION_STYLE = frozenset({"columnSeparatorStyle", "contentDirection",
+                                    "sectionType"})
 
 
 def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
@@ -1509,6 +1512,19 @@ def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
             else:
                 styles.add("layout")
 
+    def section_style(style: dict) -> None:
+        for name, value in style.items():
+            if name in _ALLOWED_SECTION_STYLE:
+                continue
+            if name == "columnProperties":
+                if len(value or []) > 1:
+                    blockers.add("columnProperties")
+            elif name.endswith("Id"):
+                if value:
+                    blockers.add(name)
+            else:
+                styles.add("section layout")
+
     def structural_elements(content: list, listed: bool) -> None:
         for index, element in enumerate(content):
             if not isinstance(element, dict):
@@ -1517,9 +1533,8 @@ def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
                 # Every body opens with one section break; more mean sections.
                 if index > 0:
                     blockers.add("sectionBreak")
-                section = (element.get("sectionBreak") or {}).get("sectionStyle") or {}
-                if len(section.get("columnProperties") or []) > 1:
-                    blockers.add("columnProperties")
+                section_style((element.get("sectionBreak") or {})
+                              .get("sectionStyle") or {})
                 element = {k: v for k, v in element.items() if k != "sectionBreak"}
             visit(element, listed)
 

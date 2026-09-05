@@ -283,7 +283,9 @@ class TestPushQuiet:
         rc = cmd_push(args)
         assert rc == 0
         mock_pf.assert_not_called()
-        mock_ver.assert_not_called()
+        # The unchanged-content check reads the version once, before the
+        # export, so a matched no-op records a revision it compared.
+        mock_ver.assert_called_once_with("abc123")
         mock_load.assert_not_called()
 
 
@@ -419,12 +421,12 @@ def test_push_unchanged_without_conflict_skips_upload(mocker, tmp_path):
     f.write_text(FRONTMATTER + 'Summary')
     mocker.patch('gdoc.notify.pre_flight', return_value=ChangeInfo(
         current_version=10, last_read_version=10))
-    matches = mocker.patch('gdoc.cli._doc_matches', return_value=True)
+    matches = mocker.patch('gdoc.cli._doc_matches', return_value=10)
     mocker.patch('gdoc.api.drive.get_file_version', return_value={'version': 10})
     mocker.patch('gdoc.state.update_state_after_command')
     upload = mocker.patch('gdoc.api.drive.update_doc_content')
     assert cmd_push(_make_args(file=str(f))) == 0
-    matches.assert_called_once_with('abc123', 'Summary')
+    assert matches.call_args.args[:2] == ('abc123', 'Summary')
     upload.assert_not_called()
 
 

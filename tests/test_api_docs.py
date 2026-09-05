@@ -853,6 +853,12 @@ class TestInsertMarkdownIntoTab:
     ({'suggestedTextStyleChanges': {'s': {}}}, 'pending suggestions'),
     ({'namedRanges': {'Reference': {}}}, 'named ranges'),
     ({'footnoteReference': {'footnoteId': 'f'}}, 'footnotes'),
+    ({'inlineObjects': {'kix.d': {'inlineObjectProperties': {'embeddedObject': {
+        'embeddedDrawingProperties': {}}}}}}, 'drawings'),
+    ({'positionedObjects': {'kix.c': {'positionedObjectProperties': {
+        'embeddedObject': {'linkedContentReference': {
+            'sheetsChartReference': {'spreadsheetId': 's', 'chartId': 1}}}}}}},
+     'linked charts'),
 ])
 def test_rebuild_blocker_classes(native, reason):
     from gdoc.api.docs import classify_markdown_rebuild
@@ -941,6 +947,42 @@ def test_tab_rebuild_ignores_untouched_headers_and_footers(mocker):
     check_markdown_rebuild('doc', document=_headed_doc(), tab_id='notes')
 
 
+def test_rebuild_ignores_unanchored_quoted_comments(mocker):
+    """`comment --quote` fallbacks carry quotedFileContent but no anchor."""
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[
+        {'id': 'c', 'quotedFileContent': {'value': 'Reference'}},
+        {'id': 'd', 'anchor': ''},
+    ])
+    check_markdown_rebuild('doc', document=_rebuild_doc())
+
+
+def _image_doc():
+    doc = _rebuild_doc()
+    doc['tabs'][0]['documentTab']['inlineObjects'] = {'kix.img': {
+        'inlineObjectProperties': {'embeddedObject': {'imageProperties': {
+            'contentUri': 'https://lh3.googleusercontent.com/img'}}}}}
+    return doc
+
+
+def test_tab_rebuild_blocks_images(mocker):
+    """parse_markdown emits no images, so a tab replacement would drop them."""
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    with pytest.raises(GdocError, match='images') as error:
+        check_markdown_rebuild('doc', document=_image_doc(), tab_id='notes')
+    assert error.value.exit_code == 3
+
+
+def test_whole_document_rebuild_keeps_plain_images(mocker):
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    check_markdown_rebuild('doc', document=_image_doc())
+
+
 def test_whole_document_rebuild_still_blocks_headers_and_footers(mocker):
     from gdoc.api.docs import check_markdown_rebuild
 
@@ -977,8 +1019,9 @@ def test_rebuild_exact_tab_batch(mocker, allow_lossy):
     )
 
 
-@pytest.mark.parametrize('anchor', [{'anchor': '{"region":"reference"}'},
-                                  {'quotedFileContent': {'value': 'Reference'}}])
+@pytest.mark.parametrize('anchor', [{'anchor': 'kix.xhdvo21465'},
+                                  {'anchor': '{"region":"reference"}',
+                                   'quotedFileContent': {'value': 'Reference'}}])
 def test_rebuild_protects_comment_anchors(mocker, anchor):
     from gdoc.api.docs import check_markdown_rebuild
 

@@ -1427,6 +1427,10 @@ def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
                     continue
                 if key in {"table", "footnoteReference"}:
                     blockers.add("tables" if key == "table" else "footnotes")
+                if key == "embeddedDrawingProperties":
+                    blockers.add("drawings")
+                if key == "sheetsChartReference":
+                    blockers.add("linked charts")
                 if item:
                     if key in {"headers", "footers", "defaultHeaderId",
                                "defaultFooterId", "firstPageHeaderId",
@@ -1491,7 +1495,10 @@ def check_markdown_rebuild(
 
     A tab replacement deletes only the tab's body range, so that tab's
     headers, footers and header/footer document-style ids are left alone
-    and are not inspected. A whole-document rebuild replaces everything.
+    and are not inspected. It rebuilds through parse_markdown, which has
+    no image syntax, so any inline or positioned object blocks it. A
+    whole-document rebuild replaces everything through Drive's Markdown
+    import, which can carry images but never drawings or linked charts.
 
     Drive comment anchors do not reliably identify their tab. Conservatively
     protect anchored comments anywhere in the document for a tab replacement.
@@ -1518,10 +1525,16 @@ def check_markdown_rebuild(
         scope = {k: v for k, v in scope.items()
                  if k not in _TAB_BODY_UNAFFECTED}
     blockers, styles = classify_markdown_rebuild(scope)
+    if tab_id is not None and (scope.get("inlineObjects")
+                               or scope.get("positionedObjects")):
+        # parse_markdown has no image syntax, so a tab rebuild drops them.
+        blockers.append("images")
     if force_collapse_tabs and "multiple tabs" in blockers:
         blockers.remove("multiple tabs")
     comments = list_comments(doc_id, include_anchor=True)
-    if any(c.get("anchor") or c.get("quotedFileContent") for c in comments):
+    # `comment --quote` stores quotedFileContent on an unanchored comment as
+    # annotation metadata; only Drive's `anchor` marks a positioned comment.
+    if any(c.get("anchor") for c in comments):
         blockers.append("comment anchors")
     if blockers and (not allow_lossy_rebuild or "multiple tabs" in blockers):
         raise GdocError(

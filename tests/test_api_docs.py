@@ -2,12 +2,12 @@
 
 from unittest.mock import MagicMock, patch
 
-from gdoc.api.import_defaults import IMPORT_DOCUMENT_STYLE
 import httplib2
 import pytest
 from googleapiclient.errors import HttpError
 
 from gdoc.api.docs import _translate_http_error, replace_all_text
+from gdoc.api.import_defaults import IMPORT_DOCUMENT_STYLE
 from gdoc.util import AuthError, GdocError
 
 

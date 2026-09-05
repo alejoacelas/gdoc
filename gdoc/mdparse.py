@@ -50,7 +50,10 @@ _ITALIC_RE = re.compile(
     r"|(?<!_)_(?!_)(.+?)(?<!_)_(?!_)"
 )
 _STRIKE_RE = re.compile(r"~~(.+?)~~")
-_CODE_RE = re.compile(r"`([^`]+)`")
+# Single-backtick code spans only. A backtick that abuts another backtick is
+# part of a longer run (a ``` fence reaching the inline parser via a partial
+# paragraph edit) and must stay literal instead of losing one delimiter.
+_CODE_RE = re.compile(r"(?<!`)`([^`]+)`(?!`)")
 _LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 
 # Inline patterns in precedence order. Each entry: (regex, kind). On a tie at

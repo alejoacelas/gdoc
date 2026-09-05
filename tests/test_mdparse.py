@@ -1,6 +1,6 @@
 """Tests for the markdown parser and Docs API request builder."""
 
-from gdoc.mdparse import parse_markdown, to_docs_requests
+from gdoc.mdparse import parse_inline, parse_markdown, to_docs_requests
 
 
 class TestParsePlainText:
@@ -578,6 +578,15 @@ class TestBackslashEscapes:
         assert result.plain_text == "use `literal` backticks\n"
         code = [s for s in result.styles if "weightedFontFamily" in s.style]
         assert code == []
+
+    def test_backtick_runs_stay_literal_inline(self):
+        # A ``` fence that reaches the inline parser (partial paragraph edit)
+        # must not be read as a single-backtick span minus one delimiter.
+        text, styles = parse_inline("```\ncode\n```")
+        assert (text, styles) == ("```\ncode\n```", [])
+        text, styles = parse_inline("see ```python\nx = 1\n``` and `ok`")
+        assert text == "see ```python\nx = 1\n``` and ok"
+        assert [text[s.start:s.end] for s in styles] == ["ok"]
 
     def test_code_span_keeps_backslashes(self):
         # Code spans are literal — backslashes must NOT be stripped inside

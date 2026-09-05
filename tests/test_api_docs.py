@@ -925,32 +925,14 @@ def test_rebuild_ignores_empty_native_maps():
 
 
 def _import_named_styles():
-    """Full NamedStyles matching what the import leaves behind."""
-    from gdoc.api.docs import _IMPORT_NAMED_STYLES
+    """Full NamedStyles exactly as the import leaves them."""
+    import copy
 
-    styles = []
-    for kind, (font, size, bold, italic, rgb, above, below, spacing) in (
-            _IMPORT_NAMED_STYLES.items()):
-        text = {'fontSize': {'magnitude': size, 'unit': 'PT'}}
-        if font:
-            text['weightedFontFamily'] = {'fontFamily': font, 'weight': 400}
-        if bold is not None:
-            text['bold'] = bold
-        if italic is not None:
-            text['italic'] = italic
-        if rgb:
-            text['foregroundColor'] = {'color': {'rgbColor': dict(
-                zip(('red', 'green', 'blue'), rgb))}}
-        para = {}
-        if above is not None:
-            para['spaceAbove'] = {'magnitude': above, 'unit': 'PT'}
-        if below is not None:
-            para['spaceBelow'] = {'magnitude': below, 'unit': 'PT'}
-        if spacing is not None:
-            para['lineSpacing'] = spacing
-        styles.append({'namedStyleType': kind, 'textStyle': text,
-                       'paragraphStyle': para})
-    return {'styles': styles}
+    from gdoc.api.import_defaults import IMPORT_NAMED_STYLES
+
+    return {'styles': [
+        {'namedStyleType': kind, **copy.deepcopy(definition)}
+        for kind, definition in IMPORT_NAMED_STYLES.items()]}
 
 
 def _lists(*levels):
@@ -1031,6 +1013,14 @@ def test_rebuild_accepts_import_default_named_styles():
     ('HEADING_2', {'textStyle': {'foregroundColor': {'color': {'rgbColor': {
         'red': 0.1, 'green': 0.3, 'blue': 0.6}}}}}),
     ('NORMAL_TEXT', {'paragraphStyle': {'lineSpacing': 150}}),
+    ('HEADING_1', {'textStyle': {'underline': True}}),
+    ('NORMAL_TEXT', {'textStyle': {'backgroundColor': {'color': {'rgbColor': {
+        'red': 1, 'green': 1}}}}}),
+    ('HEADING_2', {'paragraphStyle': {'alignment': 'CENTER'}}),
+    ('NORMAL_TEXT', {'paragraphStyle': {'direction': 'RIGHT_TO_LEFT'}}),
+    ('NORMAL_TEXT', {'paragraphStyle': {'indentStart': {'magnitude': 36,
+                                                        'unit': 'PT'}}}),
+    ('HEADING_3', {'textStyle': {'fieldAddedNextYear': True}}),
 ])
 def test_rebuild_warns_on_customized_named_styles(kind, patch):
     from gdoc.api.docs import classify_markdown_rebuild
@@ -1178,6 +1168,7 @@ def test_rebuild_ignores_the_default_opening_section_break():
 @pytest.mark.parametrize('style,expected', [
     ({'marginTop': {'magnitude': 144, 'unit': 'PT'}}, ([], ['section layout'])),
     ({'flipPageOrientation': True}, ([], ['section layout'])),
+    ({'contentDirection': 'RIGHT_TO_LEFT'}, ([], ['section layout'])),
     ({'defaultHeaderId': 'h'}, (['defaultHeaderId'], [])),
     ({'columnProperties': [{}, {}]}, (['columnProperties'], [])),
 ])

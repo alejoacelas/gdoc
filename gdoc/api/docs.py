@@ -1457,46 +1457,32 @@ _IGNORED_KEYS = frozenset({
 # itself emits (hyphen bullets, decimal numbering).
 _ALLOWED_GLYPH_TYPES = frozenset({"DECIMAL", "ALPHA", "ROMAN"})
 _ALLOWED_GLYPH_SYMBOLS = frozenset({"\u25cf", "\u25cb", "\u25a0", "-"})
-# Named-style definitions Drive's Markdown import leaves behind (identical
-# to a blank document's; verified live on 2026-09-05). A rebuild resets a
-# document's own definitions to these.
-_IMPORT_NAMED_STYLES = {
-    "NORMAL_TEXT": ("Arial", 11, False, False, None, None, None, 115),
-    "TITLE": (None, 26, None, None, None, None, 3, None),
-    "SUBTITLE": ("Arial", 15, None, False, (0.4, 0.4, 0.4), None, 16, None),
-    "HEADING_1": (None, 20, None, None, None, 20, 6, None),
-    "HEADING_2": (None, 16, False, None, None, 18, 6, None),
-    "HEADING_3": (None, 14, False, None, (0.263, 0.263, 0.263), 16, 4, None),
-    "HEADING_4": (None, 12, None, None, (0.4, 0.4, 0.4), 14, 4, None),
-    "HEADING_5": (None, 11, None, None, (0.4, 0.4, 0.4), 12, 4, None),
-    "HEADING_6": (None, 11, None, True, (0.4, 0.4, 0.4), 12, 4, None),
-}
-
-
-def _named_style_signature(style: dict) -> tuple:
-    """Project a NamedStyle onto the fields a reader would notice."""
-    text = style.get("textStyle") or {}
-    para = style.get("paragraphStyle") or {}
-    rgb = ((text.get("foregroundColor") or {}).get("color") or {}).get("rgbColor")
-    colour = None
-    if rgb:
-        colour = tuple(round(rgb.get(k, 0), 3) for k in ("red", "green", "blue"))
-
-    def magnitude(value):
-        return (value or {}).get("magnitude")
-
-    return (
-        (text.get("weightedFontFamily") or {}).get("fontFamily"),
-        magnitude(text.get("fontSize")), text.get("bold"), text.get("italic"),
-        colour, magnitude(para.get("spaceAbove")), magnitude(para.get("spaceBelow")),
-        para.get("lineSpacing"),
-    )
+def _normalize_style(value):
+    """Sort keys and round floats so two style definitions compare exactly."""
+    if isinstance(value, dict):
+        return {k: _normalize_style(v) for k, v in sorted(value.items())}
+    if isinstance(value, list):
+        return [_normalize_style(v) for v in value]
+    if isinstance(value, float):
+        return round(value, 3)
+    return value
 
 
 def _named_styles_differ_from_import(named_styles: dict) -> bool:
+    """True if any named-style definition differs from what the import leaves.
+
+    Whole definitions are compared, so every text or paragraph field the
+    Docs API exposes counts, including ones added later.
+    """
+    from gdoc.api.import_defaults import IMPORT_NAMED_STYLES
+
     for style in named_styles.get("styles") or []:
-        expected = _IMPORT_NAMED_STYLES.get(style.get("namedStyleType"))
-        if expected is not None and _named_style_signature(style) != expected:
+        expected = IMPORT_NAMED_STYLES.get(style.get("namedStyleType"))
+        if expected is None:
+            continue
+        actual = {"textStyle": _normalize_style(style.get("textStyle") or {}),
+                  "paragraphStyle": _normalize_style(style.get("paragraphStyle") or {})}
+        if actual != expected:
             return True
     return False
 
@@ -1586,8 +1572,7 @@ _TEXT_STYLE_WARNINGS = {
 }
 _ALLOWED_PARAGRAPH_STYLE = frozenset({"namedStyleType", "headingId"})
 # What the opening section break carries in a default document.
-_ALLOWED_SECTION_STYLE = frozenset({"columnSeparatorStyle", "contentDirection",
-                                    "sectionType"})
+_ALLOWED_SECTION_STYLE = frozenset({"columnSeparatorStyle", "sectionType"})
 
 
 def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
@@ -1640,7 +1625,10 @@ def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
         for name, value in style.items():
             if name in _ALLOWED_SECTION_STYLE:
                 continue
-            if name == "columnProperties":
+            if name == "contentDirection":
+                if value not in (None, "LEFT_TO_RIGHT"):
+                    styles.add("section layout")
+            elif name == "columnProperties":
                 if len(value or []) > 1:
                     blockers.add("columnProperties")
             elif name.endswith("Id"):

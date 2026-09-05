@@ -1840,11 +1840,17 @@ def classify_markdown_rebuild(
                 styles.add("list boundaries")
             previous_list = list_id
             if "sectionBreak" in element:
+                section_break = element.get("sectionBreak") or {}
                 # Every body opens with one section break; more mean sections.
                 if index > 0:
                     blockers.add("sectionBreak")
-                section_style((element.get("sectionBreak") or {})
-                              .get("sectionStyle") or {})
+                # A tab replacement deletes from index 1, so the opening
+                # break and everything on it stay in place.
+                if index > 0 or not tab_scope:
+                    section_style(section_break.get("sectionStyle") or {})
+                    # Suggestions or anything else on the break: deny by default.
+                    visit({k: v for k, v in section_break.items()
+                           if k != "sectionStyle"}, nesting)
                 element = {k: v for k, v in element.items() if k != "sectionBreak"}
             visit(element, nesting)
 

@@ -1312,6 +1312,34 @@ def test_rebuild_inspects_the_opening_section_style(style, expected):
     assert classify_markdown_rebuild(_opening_section(style)) == expected
 
 
+def test_rebuild_blocks_suggestions_on_the_opening_section_break():
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    native = {'body': {'content': [
+        {'sectionBreak': {'sectionStyle': {}, 'suggestedInsertionIds': ['s']}},
+        {'paragraph': {}}]}}
+    assert classify_markdown_rebuild(native) == (['suggestedInsertionIds'], [])
+    native = {'body': {'content': [
+        {'sectionBreak': {'sectionStyle': {},
+                          'suggestedSectionStyleChanges': {'s': {}}}}]}}
+    assert classify_markdown_rebuild(native) == (['suggestedSectionStyleChanges'], [])
+
+
+def test_tab_rebuild_leaves_the_opening_section_break_alone():
+    """Body deletion starts at index 1; the opening break is retained."""
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    opening = {'sectionBreak': {
+        'sectionStyle': {'columnProperties': [{}, {}], 'defaultHeaderId': 'h',
+                         'marginTop': {'magnitude': 144, 'unit': 'PT'}},
+        'suggestedInsertionIds': ['s']}}
+    native = {'body': {'content': [opening, {'paragraph': {}}]}}
+    assert classify_markdown_rebuild(native, tab_scope=True) == ([], [])
+    # A later section break is inside the deleted range and still blocks.
+    native['body']['content'].append({'sectionBreak': {'sectionStyle': {}}})
+    assert classify_markdown_rebuild(native, tab_scope=True) == (['sectionBreak'], [])
+
+
 def test_rebuild_silent_on_import_default_page_setup():
     from gdoc.api.docs import classify_markdown_rebuild
 

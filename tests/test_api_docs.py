@@ -939,21 +939,36 @@ def _lists(*levels):
     return {'kix.l': {'listProperties': {'nestingLevels': list(levels)}}}
 
 
-@pytest.mark.parametrize('lists', [
-    _lists({'glyphSymbol': '\u25cf'}, {'glyphSymbol': '\u25cb'},
-           {'glyphSymbol': '\u25a0'}, {'glyphSymbol': '\u25cf'}),
-    _lists({'glyphType': 'DECIMAL', 'glyphFormat': '%0.'},
-           {'glyphType': 'ALPHA', 'glyphFormat': '%1.'},
-           {'glyphType': 'ROMAN', 'glyphFormat': '%2.'},
-           {'glyphType': 'DECIMAL', 'glyphFormat': '%3.'}),
-    _lists({'glyphSymbol': '-', 'glyphFormat': '%0', 'startNumber': 1,
-            'bulletAlignment': 'START'}, {'glyphSymbol': '-'},
-           {'glyphType': 'DECIMAL'}),
+_UI_BULLETS = _lists({'glyphSymbol': '\u25cf'}, {'glyphSymbol': '\u25cb'},
+                     {'glyphSymbol': '\u25a0'}, {'glyphSymbol': '\u25cf'})
+_UI_NUMBERS = _lists({'glyphType': 'DECIMAL', 'glyphFormat': '%0.'},
+                     {'glyphType': 'ALPHA', 'glyphFormat': '%1.'},
+                     {'glyphType': 'ROMAN', 'glyphFormat': '%2.'},
+                     {'glyphType': 'DECIMAL', 'glyphFormat': '%3.'})
+_IMPORT_GLYPHS = _lists({'glyphSymbol': '-', 'glyphFormat': '%0', 'startNumber': 1,
+                         'bulletAlignment': 'START'}, {'glyphSymbol': '-'},
+                        {'glyphType': 'DECIMAL'}, {'glyphType': 'DECIMAL'})
+
+
+@pytest.mark.parametrize('lists,tab_scope', [
+    (_UI_BULLETS, True), (_UI_NUMBERS, True), (_IMPORT_GLYPHS, False),
 ])
-def test_rebuild_accepts_preset_list_glyphs(lists):
+def test_rebuild_accepts_the_glyphs_its_path_produces(lists, tab_scope):
+    """Tab rebuilds recreate the UI presets; whole-document imports emit
+    hyphens and decimals at every level."""
     from gdoc.api.docs import classify_markdown_rebuild
 
-    assert classify_markdown_rebuild({'lists': lists}) == ([], [])
+    assert classify_markdown_rebuild({'lists': lists}, tab_scope=tab_scope) == ([], [])
+
+
+@pytest.mark.parametrize('lists,tab_scope', [
+    (_UI_BULLETS, False), (_UI_NUMBERS, False), (_IMPORT_GLYPHS, True),
+])
+def test_rebuild_warns_on_the_other_paths_glyphs(lists, tab_scope):
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    assert classify_markdown_rebuild({'lists': lists}, tab_scope=tab_scope) == (
+        [], ['list style'])
 
 
 _IMPORT_LEVEL = {
@@ -1126,7 +1141,7 @@ def test_rebuild_allowlist_passes_silently():
               'suggestionsViewMode': 'DEFAULT_FOR_CURRENT_ACCESS', 'tabs': [{
         'tabProperties': {'tabId': 't', 'title': 'Tab'}, 'childTabs': [],
         'documentTab': {
-            'lists': _lists({'glyphSymbol': '\u25cf'}, {'glyphSymbol': '\u25cb'}),
+            'lists': _lists({'glyphSymbol': '-'}, {'glyphSymbol': '-'}),
             'namedStyles': _import_named_styles(),
             'body': {'content': [
                 {'sectionBreak': {'sectionStyle': {'columnProperties': [{}]}}},
@@ -1351,6 +1366,46 @@ def test_whole_document_rebuild_blocks_images_too(mocker):
     mocker.patch('gdoc.api.comments.list_comments', return_value=[])
     with pytest.raises(GdocError, match='inlineObjects'):
         check_markdown_rebuild('doc', document=_image_doc())
+
+
+def _tab_with_paragraphs(*texts):
+    doc = _rebuild_doc()
+    doc['tabs'][0]['documentTab']['body'] = {'content': [
+        {'paragraph': {'paragraphStyle': {'namedStyleType': 'NORMAL_TEXT'},
+                       'elements': [{'textRun': {'content': t + '\n'}}]}}
+        for t in texts]}
+    return doc
+
+
+@pytest.mark.parametrize('literal', ['# literal', '1. literal', '**literal**',
+                                     '- literal', '> quoted', '[x](y)'])
+def test_tab_rebuild_blocks_literal_markdown(mocker, literal):
+    """cat --tab exports the text verbatim; write --tab would reinterpret it."""
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    doc = _tab_with_paragraphs('Plain text', literal)
+    with pytest.raises(GdocError, match='literal Markdown text') as error:
+        check_markdown_rebuild('doc', document=doc, tab_id='notes')
+    assert error.value.exit_code == 3
+    # Drive's own export escapes, so a whole-document rebuild is unaffected.
+    check_markdown_rebuild('doc', document=doc)
+
+
+def test_tab_rebuild_accepts_text_that_round_trips(mocker):
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    doc = _tab_with_paragraphs('Plain text', 'Price is 5 * 3 and a_b', '')
+    tab = doc['tabs'][0]['documentTab']
+    tab['body']['content'].append({'paragraph': {
+        'paragraphStyle': {'namedStyleType': 'HEADING_2'},
+        'elements': [{'textRun': {'content': 'Heading\n'}}]}})
+    tab['body']['content'].append({'paragraph': {
+        'elements': [{'textRun': {'content': 'bold ', 'textStyle': {'bold': True}}},
+                     {'textRun': {'content': 'link\n', 'textStyle': {
+                         'link': {'url': 'https://e.com/a_(b)'}}}}]}})
+    check_markdown_rebuild('doc', document=doc, tab_id='notes')
 
 
 def test_whole_document_rebuild_still_blocks_headers_and_footers(mocker):

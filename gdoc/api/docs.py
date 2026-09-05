@@ -1542,18 +1542,29 @@ def _list_level_text_style_customized(style: dict) -> bool:
     return False
 
 
-def _list_level_customized(level: dict, nesting: int) -> bool:
+def _list_level_customized(level: dict, nesting: int, tab_scope: bool) -> bool:
+    """True if the rebuild path would give this level different formatting.
+
+    A tab replacement goes through parse_markdown, which always requests the
+    Docs UI presets (decimal/alpha/roman, filled/hollow/square per level); a
+    whole-document import emits decimal numbering and hyphen bullets at
+    every level.
+    """
     if _list_indents_customized(level, nesting):
         return True
+    if tab_scope:
+        glyph_type = _UI_ORDERED_CYCLE[nesting % 3]
+        glyph_symbol = _UI_BULLET_CYCLE[nesting % 3]
+    else:
+        glyph_type, glyph_symbol = "DECIMAL", "-"
     for name, value in level.items():
         if name in {"indentFirstLine", "indentStart", "indentEnd"}:
             continue
         if name == "glyphType":
-            # Decimal everywhere (import) or the UI cycle for this level.
-            if value and value not in ("DECIMAL", _UI_ORDERED_CYCLE[nesting % 3]):
+            if value and value != glyph_type:
                 return True
         elif name == "glyphSymbol":
-            if value and value not in ("-", _UI_BULLET_CYCLE[nesting % 3]):
+            if value and value != glyph_symbol:
                 return True
         elif name == "glyphFormat":
             if value and not _GLYPH_FORMAT_RE.match(value):
@@ -1572,7 +1583,8 @@ def _list_level_customized(level: dict, nesting: int) -> bool:
     return False
 
 
-def _inspect_lists(lists: dict, blockers: set, styles: set) -> None:
+def _inspect_lists(lists: dict, blockers: set, styles: set,
+                   tab_scope: bool) -> None:
     """Deny-by-default over list definitions.
 
     `listProperties.nestingLevels` is allowed structure whose glyphs and
@@ -1585,7 +1597,7 @@ def _inspect_lists(lists: dict, blockers: set, styles: set) -> None:
             if name == "listProperties":
                 levels = (value or {}).get("nestingLevels", [])
                 for nesting, level in enumerate(levels):
-                    if _list_level_customized(level or {}, nesting):
+                    if _list_level_customized(level or {}, nesting, tab_scope):
                         styles.add("list style")
             elif value:
                 blockers.add(name)
@@ -1606,8 +1618,39 @@ _ALLOWED_PARAGRAPH_STYLE = frozenset({"namedStyleType"})
 _ALLOWED_SECTION_STYLE = frozenset({"columnSeparatorStyle", "sectionType"})
 
 
-def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
+def _tab_text_round_trips(document_tab: dict) -> bool:
+    """Does every paragraph survive `get_tab_text(markdown=True)` -> parse?
+
+    The tab exporter does not escape literal Markdown, so a paragraph whose
+    text reads like `# literal` or `**literal**` comes back as a heading or
+    bold text with the markers gone. Export each paragraph the way the
+    rebuild would and compare the parsed plain text with the original.
+    """
+    from gdoc.mdparse import parse_markdown
+
+    lists = document_tab.get("lists", {}) or {}
+    counters: dict = {}
+    for element in (document_tab.get("body") or {}).get("content", []) or []:
+        paragraph = element.get("paragraph") if isinstance(element, dict) else None
+        if paragraph is None:
+            continue
+        plain = " ".join(_extract_paragraphs_text([element]).split())
+        exported = _paragraph_markdown(paragraph, lists, counters)
+        if not exported.strip():
+            continue
+        parsed = parse_markdown(exported)
+        if " ".join(parsed.plain_text.split()) != plain:
+            return False
+    return True
+
+
+def classify_markdown_rebuild(
+    native: dict, *, tab_scope: bool = False,
+) -> tuple[list[str], list[str]]:
     """Deny-by-default inspection of raw native state.
+
+    `tab_scope` selects the rebuild path whose output is the allowlist: a tab
+    replacement (parse_markdown presets) or a whole-document import.
 
     Return sorted (blockers, styles_to_rebuild). Every key the walk reaches
     must be allowlisted: structure Markdown cannot carry blocks under its
@@ -1723,7 +1766,7 @@ def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
                 paragraph_style(item or {}, nesting)
             elif key == "lists":
                 if isinstance(item, dict):
-                    _inspect_lists(item, blockers, styles)
+                    _inspect_lists(item, blockers, styles, tab_scope)
             elif key == "namedStyles":
                 if isinstance(item, dict) and _named_styles_differ_from_import(item):
                     styles.add("named styles")
@@ -1788,7 +1831,9 @@ def check_markdown_rebuild(
             raise GdocError("tab not found during rebuild inspection", exit_code=3)
         scope = {k: v for k, v in scope.items()
                  if k not in _TAB_BODY_UNAFFECTED}
-    blockers, styles = classify_markdown_rebuild(scope)
+    blockers, styles = classify_markdown_rebuild(scope, tab_scope=tab_id is not None)
+    if tab_id is not None and not _tab_text_round_trips(scope):
+        blockers.append("literal Markdown text")
     if force_collapse_tabs and "multiple tabs" in blockers:
         blockers.remove("multiple tabs")
     comments = list_comments(doc_id, include_anchor=True)

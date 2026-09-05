@@ -878,6 +878,40 @@ def test_write_refuses_unsupported_state(mocker, tmp_path, override, native, rea
     state.assert_not_called()
 
 
+@pytest.mark.parametrize('local,remote,same', [
+    ('\n\ncontent\n', 'content\n', True),
+    ('content  \n\n', 'content', True),
+    ('a\r\nb\r\n', 'a\nb\n', True),
+    ('  \n content', 'content', False),
+    ('    content', 'content', False),
+    ('content', 'content\nmore', False),
+])
+def test_comparable_markdown(local, remote, same):
+    from gdoc.cli import _comparable_markdown
+
+    assert (_comparable_markdown(local) == _comparable_markdown(remote)) is same
+
+
+@pytest.mark.parametrize('local,uploads', [
+    ('\nSummary\n\n', False),
+    ('    Summary', True),
+])
+def test_write_noop_ignores_only_blank_edges(mocker, tmp_path, local, uploads):
+    """Blank edges are not content; first-line indentation is."""
+    f = tmp_path / 'notes.md'
+    f.write_text(local)
+    mocker.patch('gdoc.notify.pre_flight', return_value=ChangeInfo(
+        current_version=10, last_read_version=10))
+    mocker.patch('gdoc.api.drive.export_doc', return_value='Summary\n')
+    mocker.patch('gdoc.api.drive.get_file_version', return_value={'version': 10})
+    mocker.patch('gdoc.api.docs.get_document_with_tabs', return_value={})
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    mocker.patch('gdoc.state.update_state_after_command')
+    upload = mocker.patch('gdoc.api.drive.update_doc_content', return_value=11)
+    assert cmd_write(_make_args(file=str(f))) == 0
+    assert upload.called is uploads
+
+
 def test_write_lossy_opt_in_preserves_drive_parameters(mocker, tmp_path):
     f = tmp_path / 'notes.md'
     f.write_text('Summary')

@@ -1405,6 +1405,20 @@ def cmd_suggest(args) -> int:
     return 0
 
 
+def _comparable_markdown(text: str) -> str:
+    """Normalize Markdown for the no-op comparison.
+
+    Drop leading blank lines, trailing whitespace and line-ending
+    differences: Drive's Markdown import renders none of them. Keep the
+    first line's indentation, which can turn a paragraph into a code
+    block, so a change there still uploads.
+    """
+    lines = text.splitlines()
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    return "\n".join(lines).rstrip()
+
+
 def _doc_matches(doc_id: str, body: str) -> bool:
     """True if the doc's current markdown export equals the content to write."""
     from gdoc.api.drive import export_doc
@@ -1413,7 +1427,7 @@ def _doc_matches(doc_id: str, body: str) -> bool:
         current = export_doc(doc_id, mime_type="text/markdown")
     except GdocError:
         return False
-    return current.strip() == body.strip()
+    return _comparable_markdown(current) == _comparable_markdown(body)
 
 
 def _finish_noop_write(

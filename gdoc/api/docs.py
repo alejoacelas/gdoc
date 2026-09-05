@@ -1479,11 +1479,19 @@ def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
     return sorted(blockers), sorted(styles)
 
 
+# documentTab keys a body-range deletion never mutates.
+_TAB_BODY_UNAFFECTED = frozenset({"headers", "footers", "documentStyle"})
+
+
 def check_markdown_rebuild(
     doc_id: str, *, document: dict | None = None, tab_id: str | None = None,
     allow_lossy_rebuild: bool = False, force_collapse_tabs: bool = False,
 ) -> None:
     """Refuse unsupported state before a rebuild; warn about rebuilt styles.
+
+    A tab replacement deletes only the tab's body range, so that tab's
+    headers, footers and header/footer document-style ids are left alone
+    and are not inspected. A whole-document rebuild replaces everything.
 
     Drive comment anchors do not reliably identify their tab. Conservatively
     protect anchored comments anywhere in the document for a tab replacement.
@@ -1507,6 +1515,8 @@ def check_markdown_rebuild(
         scope = find(doc.get("tabs", []))
         if scope is None:
             raise GdocError("tab not found during rebuild inspection", exit_code=3)
+        scope = {k: v for k, v in scope.items()
+                 if k not in _TAB_BODY_UNAFFECTED}
     blockers, styles = classify_markdown_rebuild(scope)
     if force_collapse_tabs and "multiple tabs" in blockers:
         blockers.remove("multiple tabs")

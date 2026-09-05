@@ -901,7 +901,7 @@ def _rebuild_doc(unsafe=False):
         }},
     ]}}
     if unsafe:
-        native['footers'] = {'footer': {'content': []}}
+        native['namedRanges'] = {'Reference': {'namedRanges': []}}
     return {'revisionId': 'revision', 'tabs': [{
         'tabProperties': {'tabId': 'notes', 'title': 'Notes'},
         'documentTab': native,
@@ -916,10 +916,38 @@ def test_rebuild_unsafe_tab_never_batches(mocker):
     )
     mocker.patch('gdoc.api.comments.list_comments', return_value=[])
     service = mocker.patch('gdoc.api.docs.get_docs_service').return_value
-    with pytest.raises(GdocError, match='headers/footers') as error:
+    with pytest.raises(GdocError, match='named ranges') as error:
         insert_markdown_into_tab('doc', 'Notes', 'Summary', replace=True)
     assert error.value.exit_code == 3
     service.documents.return_value.batchUpdate.assert_not_called()
+
+
+def _headed_doc():
+    """Single tab whose header/footer segments sit outside the body range."""
+    doc = _rebuild_doc()
+    tab = doc['tabs'][0]['documentTab']
+    tab['headers'] = {'header': {'content': [{'paragraph': {}}]}}
+    tab['footers'] = {'footer': {'content': [{'paragraph': {}}]}}
+    tab['documentStyle'] = {'defaultHeaderId': 'header',
+                            'defaultFooterId': 'footer'}
+    return doc
+
+
+def test_tab_rebuild_ignores_untouched_headers_and_footers(mocker):
+    """A tab replacement deletes only the body, so segments outside it pass."""
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    check_markdown_rebuild('doc', document=_headed_doc(), tab_id='notes')
+
+
+def test_whole_document_rebuild_still_blocks_headers_and_footers(mocker):
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    with pytest.raises(GdocError, match='headers/footers') as error:
+        check_markdown_rebuild('doc', document=_headed_doc())
+    assert error.value.exit_code == 3
 
 
 @pytest.mark.parametrize('allow_lossy', [False, True])

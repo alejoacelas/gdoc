@@ -1541,12 +1541,17 @@ def _inline_baseline(paragraph: dict, match: dict) -> tuple[dict, str]:
         (el["textRun"].get("textStyle", {}) for el in runs
          if el.get("startIndex", 0) < start <= el.get("endIndex", 0)), following,
     )
-    # Docs only "generally" carries neighbouring style onto inserted text and
-    # never inherits links, so a linked target gets its link reapplied even
-    # when the neighbour carries the same one.
-    fields = sorted(key for key in target.keys() | neighbour.keys()
-                    if target.get(key) != neighbour.get(key)
-                    or (key == "link" and key in target))
+    fields = {key for key in target.keys() | neighbour.keys()
+              if target.get(key) != neighbour.get(key)}
+    if "link" in target:
+        # Docs only "generally" carries neighbouring style onto inserted text
+        # and never inherits links, so a linked target gets its link reapplied
+        # even when the neighbour shares it. Setting a link also resets colour
+        # and underline to the link defaults unless they travel in the same
+        # request, so the target's own values ride along.
+        fields.update(key for key in ("link", "foregroundColor", "underline")
+                      if key in target)
+    fields = sorted(fields)
     return {key: target[key] for key in fields if key in target}, ",".join(fields)
 
 

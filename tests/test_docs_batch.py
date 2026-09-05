@@ -303,10 +303,17 @@ def test_complete_heading_exact_batch(mocker, replacement, inserted, structural)
     })
 
 
-def test_inline_reapplies_link_shared_with_neighbour(mocker):
+@pytest.mark.parametrize("decor,fields", [
+    ({}, "link"),
+    ({"underline": True,
+      "foregroundColor": {"color": {"rgbColor": {"red": 0.5}}}},
+     "foregroundColor,link,underline"),
+])
+def test_inline_reapplies_link_shared_with_neighbour(mocker, decor, fields):
     # Docs does not guarantee inserted text inherits a neighbour's link, so a
-    # homogeneously linked target must get its link restored explicitly.
-    link = {"link": {"url": "https://example.com/spec"}}
+    # homogeneously linked target must get its link restored explicitly, and
+    # setting a link resets colour/underline unless sent in the same request.
+    link = {"link": {"url": "https://example.com/spec"}, **decor}
     body = _styled_body(left=dict(link))
     body["content"][0]["paragraph"]["elements"][1]["textRun"]["textStyle"] = dict(link)
     service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
@@ -319,7 +326,7 @@ def test_inline_reapplies_link_shared_with_neighbour(mocker):
                 {"insertText": {"location": {"index": 9}, "text": "done"}},
                 {"updateTextStyle": {
                     "range": {"startIndex": 9, "endIndex": 13},
-                    "textStyle": link, "fields": "link",
+                    "textStyle": link, "fields": fields,
                 }},
             ],
             "writeControl": {"requiredRevisionId": "rev-a"},

@@ -1225,6 +1225,8 @@ def test_rebuild_allowlist_passes_silently():
     ({'paragraphStyle': {'alignment': 'END'}}, 'alignment'),
     ({'paragraphStyle': {'direction': 'RIGHT_TO_LEFT'}}, 'direction'),
     ({'textStyle': {'bold': False}}, 'emphasis overrides'),
+    ({'paragraphStyle': {'namedStyleType': 'TITLE'}}, 'title/subtitle'),
+    ({'paragraphStyle': {'namedStyleType': 'SUBTITLE'}}, 'title/subtitle'),
     ({'textStyle': {'italic': False}}, 'emphasis overrides'),
     ({'body': {'content': [{'paragraph': {
         'bullet': {'listId': 'l', 'nestingLevel': 0, 'textStyle': {'bold': True}},
@@ -1511,6 +1513,32 @@ def test_tab_rebuild_round_trips_combined_inline_styles(mocker):
         ('bold code\n', {**_CODE, 'bold': True}),
     )
     check_markdown_rebuild('doc', document=doc, tab_id='notes')
+
+
+def test_tab_rebuild_blocks_when_exporter_drops_a_heading_level(mocker):
+    """Safety net for paragraph styles: a heading must come back a heading."""
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    mocker.patch('gdoc.api.docs._HEADING_LEVELS', {})
+    doc = _tab_with_paragraphs('Plain')
+    doc['tabs'][0]['documentTab']['body']['content'].append({'paragraph': {
+        'paragraphStyle': {'namedStyleType': 'HEADING_2'},
+        'elements': [{'textRun': {'content': 'Heading\n'}}]}})
+    with pytest.raises(GdocError, match='inline formatting round-trip'):
+        check_markdown_rebuild('doc', document=doc, tab_id='notes')
+
+
+def test_tab_rebuild_title_only_warns(mocker, capsys):
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    doc = _tab_with_paragraphs('Plain')
+    doc['tabs'][0]['documentTab']['body']['content'].append({'paragraph': {
+        'paragraphStyle': {'namedStyleType': 'TITLE'},
+        'elements': [{'textRun': {'content': 'The title\n'}}]}})
+    check_markdown_rebuild('doc', document=doc, tab_id='notes')
+    assert 'title/subtitle' in capsys.readouterr().err
 
 
 def test_tab_rebuild_blocks_when_exporter_drops_formatting(mocker):

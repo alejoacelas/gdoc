@@ -1,5 +1,6 @@
 """Google Docs API v1 wrapper functions with error translation."""
 
+import bisect
 import re
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -1448,7 +1449,7 @@ def _page_setup_differs_from_import(document_style: dict) -> bool:
 # importer for whole documents, parse_markdown for tabs). Everything the
 # classifier reaches that is not covered here blocks under its field name.
 MARKDOWN_ROUNDTRIP_ALLOWLIST = (
-    "paragraphs with a named style (normal text, title, subtitle, headings)",
+    "paragraphs styled as normal text or headings 1-6",
     "bullet and numbered lists",
     "bold, italic, strikethrough, inline code (Courier New) and URL links",
 )
@@ -1627,7 +1628,7 @@ _TEXT_STYLE_WARNINGS = {
     "underline": "underline", "smallCaps": "small caps", "fontSize": "font",
     "baselineOffset": "baseline",
 }
-_ALLOWED_PARAGRAPH_STYLE = frozenset({"namedStyleType"})
+_ALLOWED_PARAGRAPH_STYLE: frozenset = frozenset()  # every field is inspected
 # What the opening section break carries in a default document.
 _ALLOWED_SECTION_STYLE = frozenset({"columnSeparatorStyle", "sectionType"})
 
@@ -1651,9 +1652,9 @@ def _tab_text_round_trips(document_tab: dict) -> tuple[bool, bool]:
     table or a code fence) are judged the way the rebuild will treat them.
     Returns (text_ok, styles_ok): every paragraph must come back as the
     same line, whitespace included (the exporter strips a heading's leading
-    indent, and literal `# x` loses its marker), and every allowlisted
-    inline style must come back on the same text, so an exporter gap
-    blocks instead of silently dropping formatting.
+    indent, and literal `# x` loses its marker), with the same named style,
+    and every allowlisted inline style must come back on the same text, so
+    an exporter gap blocks instead of silently dropping formatting.
     """
     from gdoc.mdparse import parse_markdown
 
@@ -1686,6 +1687,27 @@ def _tab_text_round_trips(document_tab: dict) -> tuple[bool, bool]:
                 text_ok = False
                 break
 
+    # Each paragraph must come back with the named style it had. Title and
+    # subtitle are warned about separately (no Markdown form on any path).
+    styles_ok = True
+    if text_ok:
+        line_starts, offset = [], 0
+        for line in parsed.plain_text.split("\n"):
+            line_starts.append(offset)
+            offset += len(line) + 1
+        parsed_kinds: dict[int, str] = {}
+        for r in parsed.styles:
+            if r.type == "paragraph_style" and "namedStyleType" in r.style:
+                line = bisect.bisect_right(line_starts, r.start) - 1
+                parsed_kinds[line] = r.style["namedStyleType"]
+        for index, paragraph in enumerate(paragraphs):
+            kind = (paragraph.get("paragraphStyle") or {}).get(
+                "namedStyleType", "NORMAL_TEXT")
+            if kind in ("TITLE", "SUBTITLE"):
+                continue
+            if parsed_kinds.get(index, "NORMAL_TEXT") != kind:
+                styles_ok = False
+
     expected_styles = sorted(
         (run["content"].strip(" \n"), key)
         for paragraph in paragraphs
@@ -1699,7 +1721,7 @@ def _tab_text_round_trips(document_tab: dict) -> tuple[bool, bool]:
         for r in parsed.styles if r.type == "text_style"
         for key in _inline_style_keys(r.style)
     )
-    return text_ok, expected_styles == actual_styles
+    return text_ok, styles_ok and expected_styles == actual_styles
 
 
 def _named_style_directions(named_styles: dict | None) -> dict[str, str]:
@@ -1760,6 +1782,12 @@ def classify_markdown_rebuild(
             styles.add("list style")  # moved off the importer's indents
         for name in style:
             if name in _ALLOWED_PARAGRAPH_STYLE:
+                continue
+            if name == "namedStyleType":
+                # Markdown has no title or subtitle; both come back as a
+                # heading or normal text.
+                if style[name] in ("TITLE", "SUBTITLE"):
+                    styles.add("title/subtitle")
                 continue
             if name == "direction":
                 # The rebuild emits no direction: the paragraph inherits the

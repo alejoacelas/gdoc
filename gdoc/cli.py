@@ -4260,9 +4260,9 @@ def build_parser() -> GdocArgumentParser:
     write_p.add_argument(
         "--allow-lossy-rebuild", action="store_true",
         help=("Allow a Markdown rebuild to drop native structure. Only "
-              "paragraphs with a named style (normal text, title, subtitle, "
-              "headings), bullet and numbered lists, and bold, italic, "
-              "strikethrough, inline code and URL links survive a rebuild; "
+              "paragraphs styled as normal text or headings, bullet and "
+              "numbered lists, and bold, italic, strikethrough, inline code "
+              "and URL links survive a rebuild; "
               "anything else (tables, footnotes, headers/footers, images, "
               "drawings, breaks, smart chips, suggestions, named ranges, "
               "comment anchors, unknown elements) refuses without this flag. "
@@ -4336,9 +4336,9 @@ def build_parser() -> GdocArgumentParser:
     push_p.add_argument(
         "--allow-lossy-rebuild", action="store_true",
         help=("Allow a Markdown rebuild to drop native structure. Only "
-              "paragraphs with a named style (normal text, title, subtitle, "
-              "headings), bullet and numbered lists, and bold, italic, "
-              "strikethrough, inline code and URL links survive a rebuild; "
+              "paragraphs styled as normal text or headings, bullet and "
+              "numbered lists, and bold, italic, strikethrough, inline code "
+              "and URL links survive a rebuild; "
               "anything else (tables, footnotes, headers/footers, images, "
               "drawings, breaks, smart chips, suggestions, named ranges, "
               "comment anchors, unknown elements) refuses without this flag. "

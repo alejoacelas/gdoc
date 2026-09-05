@@ -858,6 +858,11 @@ class TestInsertMarkdownIntoTab:
     ({'elements': [{'equation': {}}]}, 'equations'),
     ({'elements': [{'pageBreak': {}}]}, 'page/column breaks'),
     ({'elements': [{'columnBreak': {}}]}, 'page/column breaks'),
+    ({'elements': [{'person': {'personId': 'p'}}]}, 'smart chips'),
+    ({'elements': [{'richLink': {'richLinkId': 'r'}}]}, 'smart chips'),
+    ({'body': {'content': [{'sectionBreak': {}}, {'paragraph': {}},
+                           {'sectionBreak': {'sectionStyle': {}}}]}},
+     'section breaks'),
     ({'inlineObjects': {'kix.d': {'inlineObjectProperties': {'embeddedObject': {
         'embeddedDrawingProperties': {}}}}}}, 'drawings'),
     ({'positionedObjects': {'kix.c': {'positionedObjectProperties': {
@@ -930,6 +935,13 @@ def test_rebuild_warns_on_explicit_page_setup(override):
 
     style = {**_IMPORT_STYLE, **override}
     assert classify_markdown_rebuild({'documentStyle': style}) == ([], ['page setup'])
+
+
+def test_rebuild_ignores_the_opening_section_break():
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    body = {'content': [{'sectionBreak': {'sectionStyle': {}}}, {'paragraph': {}}]}
+    assert classify_markdown_rebuild({'body': body}) == ([], [])
 
 
 def test_rebuild_silent_on_import_default_page_setup():

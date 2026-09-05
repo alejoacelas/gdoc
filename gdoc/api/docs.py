@@ -1461,6 +1461,13 @@ def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
                     blockers.add("table of contents")
                 if key in {"pageBreak", "columnBreak"}:
                     blockers.add("page/column breaks")
+                if key in {"person", "richLink"}:
+                    blockers.add("smart chips")
+                # Every body opens with one section break; more mean sections.
+                if key == "body" and isinstance(item, dict) and sum(
+                    "sectionBreak" in el for el in item.get("content", [])
+                ) > 1:
+                    blockers.add("section breaks")
                 if key == "equation":
                     blockers.add("equations")
                 if key == "embeddedDrawingProperties":

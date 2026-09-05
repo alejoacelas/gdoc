@@ -1629,6 +1629,15 @@ _TEXT_STYLE_WARNINGS = {
 _ALLOWED_PARAGRAPH_STYLE: frozenset = frozenset()  # every field is inspected
 # What the opening section break carries in a default document.
 _ALLOWED_SECTION_STYLE = frozenset({"columnSeparatorStyle", "sectionType"})
+# The import emits no columnProperties (verified live on 2026-09-05): one
+# implicit column spanning US Letter minus one-inch margins, no padding.
+_IMPORT_COLUMN_WIDTH_PT = 612.0 - 2 * 72.0
+
+
+def _single_column_customized(column: dict) -> bool:
+    width = float((column.get("width") or {}).get("magnitude", _IMPORT_COLUMN_WIDTH_PT))
+    padding = float((column.get("paddingEnd") or {}).get("magnitude", 0))
+    return abs(width - _IMPORT_COLUMN_WIDTH_PT) > 1 or abs(padding) > 1
 
 
 def _inline_style_keys(style: dict) -> list[str]:
@@ -1862,6 +1871,8 @@ def classify_markdown_rebuild(
             elif name == "columnProperties":
                 if len(value or []) > 1:
                     blockers.add("columnProperties")
+                elif value and _single_column_customized(value[0] or {}):
+                    styles.add("section layout")
             elif name.endswith("Id"):
                 if value:
                     blockers.add(name)

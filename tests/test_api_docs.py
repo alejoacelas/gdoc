@@ -1185,7 +1185,7 @@ def test_rebuild_allowlist_passes_silently():
             'lists': _lists({'glyphSymbol': '-'}, {'glyphSymbol': '-'}),
             'namedStyles': _import_named_styles(),
             'body': {'content': [
-                {'sectionBreak': {'sectionStyle': {'columnProperties': [{}]}}},
+                {'sectionBreak': {'sectionStyle': {'sectionType': 'CONTINUOUS'}}},
                 {'startIndex': 1, 'endIndex': 9, 'paragraph': {
                     'paragraphStyle': {'namedStyleType': 'HEADING_1',
                                        'direction': 'LEFT_TO_RIGHT'},
@@ -1295,7 +1295,7 @@ def test_rebuild_ignores_the_default_opening_section_break():
     from gdoc.api.docs import classify_markdown_rebuild
 
     style = {'columnSeparatorStyle': 'NONE', 'contentDirection': 'LEFT_TO_RIGHT',
-             'sectionType': 'CONTINUOUS', 'columnProperties': [{'width': {}}]}
+             'sectionType': 'CONTINUOUS'}
     assert classify_markdown_rebuild(_opening_section(style)) == ([], [])
 
 
@@ -1303,6 +1303,13 @@ def test_rebuild_ignores_the_default_opening_section_break():
     ({'marginTop': {'magnitude': 144, 'unit': 'PT'}}, ([], ['section layout'])),
     ({'flipPageOrientation': True}, ([], ['section layout'])),
     ({'contentDirection': 'RIGHT_TO_LEFT'}, ([], ['section layout'])),
+    ({'columnProperties': [{'width': {'magnitude': 400, 'unit': 'PT'}}]},
+     ([], ['section layout'])),
+    ({'columnProperties': [{'paddingEnd': {'magnitude': 36, 'unit': 'PT'}}]},
+     ([], ['section layout'])),
+    ({'columnProperties': [{'width': {'magnitude': 468, 'unit': 'PT'},
+                            'paddingEnd': {'magnitude': 0, 'unit': 'PT'}}]},
+     ([], [])),
     ({'defaultHeaderId': 'h'}, (['defaultHeaderId'], [])),
     ({'columnProperties': [{}, {}]}, (['columnProperties'], [])),
 ])

@@ -1002,6 +1002,7 @@ def test_rebuild_accepts_import_generated_list_level():
 
 @pytest.mark.parametrize('levels', [
     ({**_IMPORT_LEVEL, 'indentStart': {'magnitude': 50, 'unit': 'PT'}},),
+    ({**_IMPORT_LEVEL, 'indentStart': {'magnitude': 37, 'unit': 'PT'}},),
     ({**_IMPORT_LEVEL, 'indentFirstLine': {'magnitude': 0, 'unit': 'PT'}},),
     (_IMPORT_LEVEL, {**_IMPORT_LEVEL, 'glyphFormat': '%1'}),  # level 1 at 18/36
     ({**_IMPORT_LEVEL, 'indentEnd': {'magnitude': 20, 'unit': 'PT'}},),
@@ -1055,6 +1056,7 @@ def test_rebuild_warns_on_ruler_moved_list_paragraph():
     from gdoc.api.docs import classify_markdown_rebuild
 
     assert classify_markdown_rebuild(_list_paragraph(1, 54, 90)) == ([], ['list style'])
+    assert classify_markdown_rebuild(_list_paragraph(0, 18, 37)) == ([], ['list style'])
 
 
 @pytest.mark.parametrize('level', [

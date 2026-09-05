@@ -1484,6 +1484,8 @@ def _named_styles_differ_from_import(named_styles: dict) -> bool:
 
 
 _GLYPH_FORMAT_RE = re.compile(r"^%\d+\.?$")  # "%0", "%1." as the import emits
+# Magnitudes are compared exactly; this only absorbs floating-point noise.
+_PT_TOLERANCE = 0.01
 
 
 def _generated_list_indents(nesting: int) -> tuple[float, float]:
@@ -1497,7 +1499,7 @@ def _list_indents_customized(fields: dict, nesting: int) -> bool:
     for name, expected in (("indentFirstLine", first), ("indentStart", start)):
         if name in fields:
             actual = (fields[name] or {}).get("magnitude", expected)
-            if abs(float(actual) - expected) > 1:
+            if abs(float(actual) - expected) > _PT_TOLERANCE:
                 return True
     return bool((fields.get("indentEnd") or {}).get("magnitude"))
 
@@ -1525,7 +1527,8 @@ def _list_level_text_style_customized(style: dict) -> bool:
                           or value.get("weight", 400) != 400):
                 return True
         elif name == "fontSize":
-            if value and abs(float(value.get("magnitude", size)) - size) > 0.5:
+            magnitude = float((value or {}).get("magnitude", size))
+            if value and abs(magnitude - size) > _PT_TOLERANCE:
                 return True
         elif value:
             return True  # a marker link, or a field this code does not know
@@ -1623,7 +1626,8 @@ _IMPORT_COLUMN_WIDTH_PT = 612.0 - 2 * 72.0
 def _single_column_customized(column: dict) -> bool:
     width = float((column.get("width") or {}).get("magnitude", _IMPORT_COLUMN_WIDTH_PT))
     padding = float((column.get("paddingEnd") or {}).get("magnitude", 0))
-    return abs(width - _IMPORT_COLUMN_WIDTH_PT) > 1 or abs(padding) > 1
+    return (abs(width - _IMPORT_COLUMN_WIDTH_PT) > _PT_TOLERANCE
+            or abs(padding) > _PT_TOLERANCE)
 
 
 def _inline_style_keys(style: dict) -> list[str]:

@@ -1450,9 +1450,70 @@ MARKDOWN_ROUNDTRIP_ALLOWLIST = (
 # Keys that carry positions, identity or structure Markdown does not need.
 _IGNORED_KEYS = frozenset({
     "startIndex", "endIndex", "documentId", "title", "revisionId",
-    "suggestionsViewMode", "tabProperties", "namedStyles", "lists",
-    "listId", "nestingLevel",
+    "suggestionsViewMode", "tabProperties", "listId", "nestingLevel",
 })
+# List glyphs the rebuild reproduces: the Docs UI presets (filled/hollow/
+# square bullets; decimal, alpha, roman numbering) and what the import
+# itself emits (hyphen bullets, decimal numbering).
+_ALLOWED_GLYPH_TYPES = frozenset({"DECIMAL", "ALPHA", "ROMAN"})
+_ALLOWED_GLYPH_SYMBOLS = frozenset({"\u25cf", "\u25cb", "\u25a0", "-"})
+# Named-style definitions Drive's Markdown import leaves behind (identical
+# to a blank document's; verified live on 2026-09-05). A rebuild resets a
+# document's own definitions to these.
+_IMPORT_NAMED_STYLES = {
+    "NORMAL_TEXT": ("Arial", 11, False, False, None, None, None, 115),
+    "TITLE": (None, 26, None, None, None, None, 3, None),
+    "SUBTITLE": ("Arial", 15, None, False, (0.4, 0.4, 0.4), None, 16, None),
+    "HEADING_1": (None, 20, None, None, None, 20, 6, None),
+    "HEADING_2": (None, 16, False, None, None, 18, 6, None),
+    "HEADING_3": (None, 14, False, None, (0.263, 0.263, 0.263), 16, 4, None),
+    "HEADING_4": (None, 12, None, None, (0.4, 0.4, 0.4), 14, 4, None),
+    "HEADING_5": (None, 11, None, None, (0.4, 0.4, 0.4), 12, 4, None),
+    "HEADING_6": (None, 11, None, True, (0.4, 0.4, 0.4), 12, 4, None),
+}
+
+
+def _named_style_signature(style: dict) -> tuple:
+    """Project a NamedStyle onto the fields a reader would notice."""
+    text = style.get("textStyle") or {}
+    para = style.get("paragraphStyle") or {}
+    rgb = ((text.get("foregroundColor") or {}).get("color") or {}).get("rgbColor")
+    colour = None
+    if rgb:
+        colour = tuple(round(rgb.get(k, 0), 3) for k in ("red", "green", "blue"))
+
+    def magnitude(value):
+        return (value or {}).get("magnitude")
+
+    return (
+        (text.get("weightedFontFamily") or {}).get("fontFamily"),
+        magnitude(text.get("fontSize")), text.get("bold"), text.get("italic"),
+        colour, magnitude(para.get("spaceAbove")), magnitude(para.get("spaceBelow")),
+        para.get("lineSpacing"),
+    )
+
+
+def _named_styles_differ_from_import(named_styles: dict) -> bool:
+    for style in named_styles.get("styles") or []:
+        expected = _IMPORT_NAMED_STYLES.get(style.get("namedStyleType"))
+        if expected is not None and _named_style_signature(style) != expected:
+            return True
+    return False
+
+
+def _list_styles_differ(lists: dict) -> bool:
+    for definition in lists.values():
+        levels = (definition or {}).get("listProperties", {}).get("nestingLevels", [])
+        for level in levels:
+            glyph_type = level.get("glyphType")
+            if glyph_type and glyph_type not in _ALLOWED_GLYPH_TYPES:
+                return True
+            symbol = level.get("glyphSymbol")
+            if symbol and symbol not in _ALLOWED_GLYPH_SYMBOLS:
+                return True
+            if level.get("startNumber", 1) != 1:
+                return True
+    return False
 # Containers whose children are inspected one key at a time.
 _RECURSE_KEYS = frozenset({"tabs", "childTabs", "documentTab", "body",
                            "elements", "textRun"})
@@ -1477,9 +1538,10 @@ def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
     Return sorted (blockers, styles_to_rebuild). Every key the walk reaches
     must be allowlisted: structure Markdown cannot carry blocks under its
     own field name, so element kinds this code has never seen still refuse.
-    Style overrides outside the allowlist only warn. Effective named-style
-    defaults are ignored. This is a loss check, not a guarantee of
-    full-fidelity Markdown round-tripping.
+    Style overrides outside the allowlist only warn, as do list glyphs and
+    named-style definitions that differ from what the import produces. This
+    is a loss check, not a guarantee of full-fidelity Markdown
+    round-tripping.
     """
     blockers: set[str] = set()
     styles: set[str] = set()
@@ -1561,6 +1623,12 @@ def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
                 text_style(item or {})
             elif key == "paragraphStyle":
                 paragraph_style(item or {}, listed)
+            elif key == "lists":
+                if isinstance(item, dict) and _list_styles_differ(item):
+                    styles.add("list style")
+            elif key == "namedStyles":
+                if isinstance(item, dict) and _named_styles_differ_from_import(item):
+                    styles.add("named styles")
             elif key == "documentStyle":
                 if isinstance(item, dict):
                     if _page_setup_differs_from_import(item):
@@ -1583,7 +1651,8 @@ def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
 
 
 # documentTab keys a body-range deletion never mutates.
-_TAB_BODY_UNAFFECTED = frozenset({"headers", "footers", "documentStyle"})
+_TAB_BODY_UNAFFECTED = frozenset({"headers", "footers", "documentStyle",
+                                  "namedStyles"})
 
 
 def check_markdown_rebuild(

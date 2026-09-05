@@ -924,6 +924,103 @@ def test_rebuild_ignores_empty_native_maps():
                                       'inlineObjects': {}}) == ([], [])
 
 
+def _import_named_styles():
+    """Full NamedStyles matching what the import leaves behind."""
+    from gdoc.api.docs import _IMPORT_NAMED_STYLES
+
+    styles = []
+    for kind, (font, size, bold, italic, rgb, above, below, spacing) in (
+            _IMPORT_NAMED_STYLES.items()):
+        text = {'fontSize': {'magnitude': size, 'unit': 'PT'}}
+        if font:
+            text['weightedFontFamily'] = {'fontFamily': font, 'weight': 400}
+        if bold is not None:
+            text['bold'] = bold
+        if italic is not None:
+            text['italic'] = italic
+        if rgb:
+            text['foregroundColor'] = {'color': {'rgbColor': dict(
+                zip(('red', 'green', 'blue'), rgb))}}
+        para = {}
+        if above is not None:
+            para['spaceAbove'] = {'magnitude': above, 'unit': 'PT'}
+        if below is not None:
+            para['spaceBelow'] = {'magnitude': below, 'unit': 'PT'}
+        if spacing is not None:
+            para['lineSpacing'] = spacing
+        styles.append({'namedStyleType': kind, 'textStyle': text,
+                       'paragraphStyle': para})
+    return {'styles': styles}
+
+
+def _lists(*levels):
+    return {'kix.l': {'listProperties': {'nestingLevels': list(levels)}}}
+
+
+@pytest.mark.parametrize('lists', [
+    _lists({'glyphSymbol': '\u25cf'}, {'glyphSymbol': '\u25cb'},
+           {'glyphSymbol': '\u25a0'}),
+    _lists({'glyphType': 'DECIMAL', 'glyphFormat': '%0.'},
+           {'glyphType': 'ALPHA', 'glyphFormat': '%1.'},
+           {'glyphType': 'ROMAN', 'glyphFormat': '%2.'}),
+    _lists({'glyphSymbol': '-', 'glyphFormat': '%0', 'startNumber': 1,
+            'bulletAlignment': 'START'}),
+])
+def test_rebuild_accepts_preset_list_glyphs(lists):
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    assert classify_markdown_rebuild({'lists': lists}) == ([], [])
+
+
+@pytest.mark.parametrize('level', [
+    {'glyphType': 'UPPER_ROMAN'}, {'glyphType': 'ZERO_DECIMAL'},
+    {'glyphSymbol': '\u27a2'}, {'glyphType': 'DECIMAL', 'startNumber': 4},
+])
+def test_rebuild_warns_on_custom_list_glyphs(level):
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    assert classify_markdown_rebuild({'lists': _lists(level)}) == ([], ['list style'])
+
+
+def test_rebuild_accepts_import_default_named_styles():
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    assert classify_markdown_rebuild(
+        {'namedStyles': _import_named_styles()}) == ([], [])
+
+
+@pytest.mark.parametrize('kind,patch', [
+    ('NORMAL_TEXT', {'textStyle': {'weightedFontFamily': {'fontFamily': 'Roboto'}}}),
+    ('HEADING_1', {'textStyle': {'fontSize': {'magnitude': 28, 'unit': 'PT'}}}),
+    ('HEADING_2', {'textStyle': {'foregroundColor': {'color': {'rgbColor': {
+        'red': 0.1, 'green': 0.3, 'blue': 0.6}}}}}),
+    ('NORMAL_TEXT', {'paragraphStyle': {'lineSpacing': 150}}),
+])
+def test_rebuild_warns_on_customized_named_styles(kind, patch):
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    named = _import_named_styles()
+    for style in named['styles']:
+        if style['namedStyleType'] == kind:
+            for section, fields in patch.items():
+                style[section].update(fields)
+    assert classify_markdown_rebuild({'namedStyles': named}) == ([], ['named styles'])
+
+
+def test_named_styles_warning_is_whole_document_only(mocker, capsys):
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    doc = _rebuild_doc()
+    doc['tabs'][0]['documentTab']['namedStyles'] = {'styles': [{
+        'namedStyleType': 'NORMAL_TEXT',
+        'textStyle': {'weightedFontFamily': {'fontFamily': 'Roboto'}}}]}
+    check_markdown_rebuild('doc', document=doc, tab_id='notes')
+    assert capsys.readouterr().err == ''
+    check_markdown_rebuild('doc', document=doc)
+    assert 'named styles' in capsys.readouterr().err
+
+
 def test_rebuild_allowlist_passes_silently():
     """Everything the importer round-trips: named styles, lists, inline styles."""
     from gdoc.api.docs import classify_markdown_rebuild
@@ -933,8 +1030,8 @@ def test_rebuild_allowlist_passes_silently():
               'suggestionsViewMode': 'DEFAULT_FOR_CURRENT_ACCESS', 'tabs': [{
         'tabProperties': {'tabId': 't', 'title': 'Tab'}, 'childTabs': [],
         'documentTab': {
-            'lists': {'l': {'listProperties': {}}},
-            'namedStyles': {'styles': [{'namedStyleType': 'NORMAL_TEXT'}]},
+            'lists': _lists({'glyphSymbol': '\u25cf'}, {'glyphSymbol': '\u25cb'}),
+            'namedStyles': _import_named_styles(),
             'body': {'content': [
                 {'sectionBreak': {'sectionStyle': {'columnProperties': [{}]}}},
                 {'startIndex': 1, 'endIndex': 9, 'paragraph': {

@@ -1488,8 +1488,22 @@ def _named_styles_differ_from_import(named_styles: dict) -> bool:
 
 
 _GLYPH_FORMAT_RE = re.compile(r"^%\d+\.?$")  # "%0", "%1." as the import emits
-# Nesting-level fields the import regenerates on its own terms.
-_LIST_LEVEL_GENERATED = frozenset({"indentFirstLine", "indentStart"})
+
+
+def _generated_list_indents(nesting: int) -> tuple[float, float]:
+    """(indentFirstLine, indentStart) in points the importer gives a level."""
+    return 18.0 + 36.0 * nesting, 36.0 + 36.0 * nesting
+
+
+def _list_indents_customized(fields: dict, nesting: int) -> bool:
+    """True if a list level or list paragraph moved off the generated indents."""
+    first, start = _generated_list_indents(nesting)
+    for name, expected in (("indentFirstLine", first), ("indentStart", start)):
+        if name in fields:
+            actual = (fields[name] or {}).get("magnitude", expected)
+            if abs(float(actual) - expected) > 1:
+                return True
+    return bool((fields.get("indentEnd") or {}).get("magnitude"))
 
 
 def _list_level_text_style_customized(style: dict) -> bool:
@@ -1515,9 +1529,11 @@ def _list_level_text_style_customized(style: dict) -> bool:
     return False
 
 
-def _list_level_customized(level: dict) -> bool:
+def _list_level_customized(level: dict, nesting: int) -> bool:
+    if _list_indents_customized(level, nesting):
+        return True
     for name, value in level.items():
-        if name in _LIST_LEVEL_GENERATED:
+        if name in {"indentFirstLine", "indentStart", "indentEnd"}:
             continue
         if name == "glyphType":
             if value and value not in _ALLOWED_GLYPH_TYPES:
@@ -1553,8 +1569,9 @@ def _inspect_lists(lists: dict, blockers: set, styles: set) -> None:
     for definition in lists.values():
         for name, value in (definition or {}).items():
             if name == "listProperties":
-                for level in (value or {}).get("nestingLevels", []):
-                    if _list_level_customized(level or {}):
+                levels = (value or {}).get("nestingLevels", [])
+                for nesting, level in enumerate(levels):
+                    if _list_level_customized(level or {}, nesting):
                         styles.add("list style")
             elif value:
                 blockers.add(name)
@@ -1603,7 +1620,10 @@ def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
             else:
                 styles.add(_TEXT_STYLE_WARNINGS.get(name, "text style"))
 
-    def paragraph_style(style: dict, listed: bool) -> None:
+    def paragraph_style(style: dict, nesting: int | None) -> None:
+        """`nesting` is the list level of a list paragraph, else None."""
+        if nesting is not None and _list_indents_customized(style, nesting):
+            styles.add("list style")  # moved off the importer's indents
         for name in style:
             if name in _ALLOWED_PARAGRAPH_STYLE:
                 continue
@@ -1616,7 +1636,7 @@ def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
             elif name in {"lineSpacing", "spaceAbove", "spaceBelow"}:
                 styles.add("spacing")
             elif name.startswith("indent"):
-                if not listed:  # list items carry importer-generated indents
+                if nesting is None:
                     styles.add("indents")
             else:
                 styles.add("layout")
@@ -1637,7 +1657,7 @@ def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
             else:
                 styles.add("section layout")
 
-    def structural_elements(content: list, listed: bool) -> None:
+    def structural_elements(content: list, nesting: int | None) -> None:
         for index, element in enumerate(content):
             if not isinstance(element, dict):
                 continue
@@ -1648,12 +1668,12 @@ def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
                 section_style((element.get("sectionBreak") or {})
                               .get("sectionStyle") or {})
                 element = {k: v for k, v in element.items() if k != "sectionBreak"}
-            visit(element, listed)
+            visit(element, nesting)
 
-    def visit(value, listed: bool = False) -> None:
+    def visit(value, nesting: int | None = None) -> None:
         if isinstance(value, list):
             for item in value:
-                visit(item, listed)
+                visit(item, nesting)
             return
         if not isinstance(value, dict):
             return
@@ -1661,18 +1681,20 @@ def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
             if key in _IGNORED_KEYS:
                 continue
             if key in _RECURSE_KEYS:
-                visit(item, listed)
+                visit(item, nesting)
             elif key == "content":
                 if isinstance(item, list):
-                    structural_elements(item, listed)
+                    structural_elements(item, nesting)
             elif key == "paragraph":
-                visit(item, listed="bullet" in (item or {}))
+                bullet = (item or {}).get("bullet")
+                visit(item, (bullet or {}).get("nestingLevel", 0)
+                      if bullet is not None else nesting)
             elif key == "bullet":
-                visit(item, listed=True)
+                visit(item, (item or {}).get("nestingLevel", 0))
             elif key == "textStyle":
                 text_style(item or {})
             elif key == "paragraphStyle":
-                paragraph_style(item or {}, listed)
+                paragraph_style(item or {}, nesting)
             elif key == "lists":
                 if isinstance(item, dict):
                     _inspect_lists(item, blockers, styles)

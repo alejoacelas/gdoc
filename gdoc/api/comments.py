@@ -144,11 +144,16 @@ def create_comment(
         body: dict = {"content": content}
         if quote:
             body["quotedFileContent"] = {"value": quote}
-        result = service.comments().create(
-            fileId=file_id,
-            body=body,
-            fields="id, content, author(displayName, emailAddress), createdTime, resolved",
-        ).execute()
+        result = (
+            service.comments()
+            .create(
+                fileId=file_id,
+                body=body,
+                fields=("id, content, author(displayName, emailAddress), "
+                        "createdTime, resolved"),
+            )
+            .execute()
+        )
         return result
     except HttpError as e:
         _translate_http_error(e, file_id)
@@ -175,12 +180,17 @@ def create_reply(
             body["content"] = content
         if action:
             body["action"] = action
-        result = service.replies().create(
-            fileId=file_id,
-            commentId=comment_id,
-            body=body,
-            fields="id, content, action, author(displayName, emailAddress), createdTime",
-        ).execute()
+        result = (
+            service.replies()
+            .create(
+                fileId=file_id,
+                commentId=comment_id,
+                body=body,
+                fields=("id, content, action, author(displayName, emailAddress), "
+                        "createdTime"),
+            )
+            .execute()
+        )
         return result
     except HttpError as e:
         _translate_http_error(e, file_id)

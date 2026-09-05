@@ -1,9 +1,8 @@
 """Tests for the `gdoc write` command handler."""
 
 import json
-import os
 from types import SimpleNamespace
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
@@ -890,7 +889,9 @@ def test_write_lossy_opt_in_preserves_drive_parameters(mocker, tmp_path):
     mocker.patch('gdoc.api.comments.list_comments', return_value=[])
     mocker.patch('gdoc.state.update_state_after_command')
     service = mocker.patch('gdoc.api.drive.get_drive_service').return_value
-    service.files.return_value.update.return_value.execute.return_value = {'version': 11}
+    service.files.return_value.update.return_value.execute.return_value = {
+        "version": 11
+    }
     assert cmd_write(_make_args(file=str(f), allow_lossy_rebuild=True)) == 0
     params = service.files.return_value.update.call_args.kwargs
     media = params.pop('media_body')
@@ -930,7 +931,9 @@ def test_write_tab_lossy_flag_reaches_api(mocker, tmp_path):
     mocker.patch('gdoc.api.drive.get_file_version', return_value={'version': 11})
     insert = mocker.patch('gdoc.api.docs.insert_markdown_into_tab', return_value={
         'tab_id': 'notes', 'tab_title': 'Notes', 'insert_index': 1})
-    assert cmd_write(_make_args(file=str(f), tab='Notes', allow_lossy_rebuild=True)) == 0
+    assert (
+        cmd_write(_make_args(file=str(f), tab="Notes", allow_lossy_rebuild=True)) == 0
+    )
     insert.assert_called_once_with('abc123', 'Notes', 'Summary', replace=True,
                                    allow_lossy_rebuild=True)
 

@@ -2,12 +2,11 @@
 
 import json
 from types import SimpleNamespace
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from gdoc.cli import cmd_new, cmd_cp, cmd_share
-from gdoc.notify import ChangeInfo
+from gdoc.cli import cmd_cp, cmd_new, cmd_share
 from gdoc.util import AuthError, GdocError
 
 
@@ -167,7 +166,9 @@ class TestCmdCp:
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.copy_doc", return_value=API_RESULT_COPY)
     def test_cp_json_output(self, mock_copy, _pf, _update, capsys):
-        args = _make_args("cp", doc="src_doc", title="Copy Title", json=True, quiet=True)
+        args = _make_args(
+            "cp", doc="src_doc", title="Copy Title", json=True, quiet=True
+        )
         rc = cmd_cp(args)
         assert rc == 0
         data = json.loads(capsys.readouterr().out)
@@ -180,7 +181,9 @@ class TestCmdCp:
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.copy_doc", return_value=API_RESULT_COPY)
     def test_cp_verbose_output(self, mock_copy, _pf, _update, capsys):
-        args = _make_args("cp", doc="src_doc", title="Copy Title", verbose=True, quiet=True)
+        args = _make_args(
+            "cp", doc="src_doc", title="Copy Title", verbose=True, quiet=True
+        )
         rc = cmd_cp(args)
         assert rc == 0
         out = capsys.readouterr().out
@@ -222,7 +225,9 @@ class TestCmdCp:
 
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
-    @patch("gdoc.api.drive.copy_doc", side_effect=GdocError("Document not found: src_doc"))
+    @patch(
+        "gdoc.api.drive.copy_doc", side_effect=GdocError("Document not found: src_doc")
+    )
     def test_cp_api_error(self, mock_copy, _pf, _update):
         args = _make_args("cp", doc="src_doc", title="Copy Title", quiet=True)
         with pytest.raises(GdocError, match="Document not found"):
@@ -237,7 +242,9 @@ class TestCmdCp:
             cmd_cp(args)
 
     def test_cp_invalid_doc_id(self):
-        args = _make_args("cp", doc="not-a-valid-url://bad", title="Copy Title", quiet=True)
+        args = _make_args(
+            "cp", doc="not-a-valid-url://bad", title="Copy Title", quiet=True
+        )
         with pytest.raises(GdocError) as exc_info:
             cmd_cp(args)
         assert exc_info.value.exit_code == 3
@@ -275,7 +282,9 @@ class TestCmdShare:
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.create_permission", return_value={"id": "perm1"})
     def test_share_terse_output(self, mock_perm, _pf, _update, capsys):
-        args = _make_args("share", doc="abc123", email="alice@co.com", role="reader", quiet=True)
+        args = _make_args(
+            "share", doc="abc123", email="alice@co.com", role="reader", quiet=True
+        )
         rc = cmd_share(args)
         assert rc == 0
         assert "OK shared with alice@co.com as reader" in capsys.readouterr().out
@@ -284,11 +293,23 @@ class TestCmdShare:
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.create_permission", return_value={"id": "perm1"})
     def test_share_json_output(self, mock_perm, _pf, _update, capsys):
-        args = _make_args("share", doc="abc123", email="alice@co.com", role="writer", json=True, quiet=True)
+        args = _make_args(
+            "share",
+            doc="abc123",
+            email="alice@co.com",
+            role="writer",
+            json=True,
+            quiet=True,
+        )
         rc = cmd_share(args)
         assert rc == 0
         data = json.loads(capsys.readouterr().out)
-        assert data == {"ok": True, "email": "alice@co.com", "role": "writer", "status": "shared"}
+        assert data == {
+            "ok": True,
+            "email": "alice@co.com",
+            "role": "writer",
+            "status": "shared",
+        }
 
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
@@ -305,7 +326,9 @@ class TestCmdShare:
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.create_permission", return_value={"id": "perm1"})
     def test_share_writer_role(self, mock_perm, _pf, _update):
-        args = _make_args("share", doc="abc123", email="alice@co.com", role="writer", quiet=True)
+        args = _make_args(
+            "share", doc="abc123", email="alice@co.com", role="writer", quiet=True
+        )
         cmd_share(args)
         mock_perm.assert_called_once_with(
             "abc123", email="alice@co.com", role="writer",
@@ -316,7 +339,9 @@ class TestCmdShare:
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.create_permission", return_value={"id": "perm1"})
     def test_share_commenter_role(self, mock_perm, _pf, _update):
-        args = _make_args("share", doc="abc123", email="alice@co.com", role="commenter", quiet=True)
+        args = _make_args(
+            "share", doc="abc123", email="alice@co.com", role="commenter", quiet=True
+        )
         cmd_share(args)
         mock_perm.assert_called_once_with(
             "abc123", email="alice@co.com", role="commenter",
@@ -335,28 +360,46 @@ class TestCmdShare:
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.create_permission", return_value={"id": "perm1"})
     def test_share_state_updated(self, mock_perm, _pf, mock_update):
-        args = _make_args("share", doc="abc123", email="alice@co.com", role="reader", quiet=True)
+        args = _make_args(
+            "share", doc="abc123", email="alice@co.com", role="reader", quiet=True
+        )
         cmd_share(args)
         mock_update.assert_called_once_with("abc123", None, command="share", quiet=True)
 
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
-    @patch("gdoc.api.drive.create_permission", side_effect=GdocError("Permission denied: abc123"))
+    @patch(
+        "gdoc.api.drive.create_permission",
+        side_effect=GdocError("Permission denied: abc123"),
+    )
     def test_share_api_error(self, mock_perm, _pf, _update):
-        args = _make_args("share", doc="abc123", email="alice@co.com", role="reader", quiet=True)
+        args = _make_args(
+            "share", doc="abc123", email="alice@co.com", role="reader", quiet=True
+        )
         with pytest.raises(GdocError, match="Permission denied"):
             cmd_share(args)
 
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
-    @patch("gdoc.api.drive.create_permission", side_effect=AuthError("Authentication expired"))
+    @patch(
+        "gdoc.api.drive.create_permission",
+        side_effect=AuthError("Authentication expired"),
+    )
     def test_share_auth_error(self, mock_perm, _pf, _update):
-        args = _make_args("share", doc="abc123", email="alice@co.com", role="reader", quiet=True)
+        args = _make_args(
+            "share", doc="abc123", email="alice@co.com", role="reader", quiet=True
+        )
         with pytest.raises(AuthError):
             cmd_share(args)
 
     def test_share_invalid_doc_id(self):
-        args = _make_args("share", doc="not-a-valid-url://bad", email="alice@co.com", role="reader", quiet=True)
+        args = _make_args(
+            "share",
+            doc="not-a-valid-url://bad",
+            email="alice@co.com",
+            role="reader",
+            quiet=True,
+        )
         with pytest.raises(GdocError) as exc_info:
             cmd_share(args)
         assert exc_info.value.exit_code == 3
@@ -429,9 +472,10 @@ class TestCreateDocAPI:
 
     @patch("gdoc.api.drive.get_drive_service")
     def test_create_404_error(self, mock_get_service):
-        from gdoc.api.drive import create_doc
         import httplib2
         from googleapiclient.errors import HttpError
+
+        from gdoc.api.drive import create_doc
 
         mock_service = MagicMock()
         mock_get_service.return_value = mock_service
@@ -445,9 +489,10 @@ class TestCreateDocAPI:
 
     @patch("gdoc.api.drive.get_drive_service")
     def test_create_401_error(self, mock_get_service):
-        from gdoc.api.drive import create_doc
         import httplib2
         from googleapiclient.errors import HttpError
+
+        from gdoc.api.drive import create_doc
 
         mock_service = MagicMock()
         mock_get_service.return_value = mock_service
@@ -488,7 +533,9 @@ class TestCopyDocAPI:
         copy_doc("src_doc", "Copy")
 
         call_kwargs = mock_service.files().copy.call_args
-        assert call_kwargs.kwargs.get("fileId", call_kwargs[1].get("fileId")) == "src_doc"
+        assert (
+            call_kwargs.kwargs.get("fileId", call_kwargs[1].get("fileId")) == "src_doc"
+        )
 
     @patch("gdoc.api.drive.get_drive_service")
     def test_copy_passes_title(self, mock_get_service):
@@ -508,9 +555,10 @@ class TestCopyDocAPI:
 
     @patch("gdoc.api.drive.get_drive_service")
     def test_copy_404_error(self, mock_get_service):
-        from gdoc.api.drive import copy_doc
         import httplib2
         from googleapiclient.errors import HttpError
+
+        from gdoc.api.drive import copy_doc
 
         mock_service = MagicMock()
         mock_get_service.return_value = mock_service
@@ -568,9 +616,10 @@ class TestCreatePermissionAPI:
 
     @patch("gdoc.api.drive.get_drive_service")
     def test_permission_404_error(self, mock_get_service):
-        from gdoc.api.drive import create_permission
         import httplib2
         from googleapiclient.errors import HttpError
+
+        from gdoc.api.drive import create_permission
 
         mock_service = MagicMock()
         mock_get_service.return_value = mock_service
@@ -584,9 +633,10 @@ class TestCreatePermissionAPI:
 
     @patch("gdoc.api.drive.get_drive_service")
     def test_permission_403_error(self, mock_get_service):
-        from gdoc.api.drive import create_permission
         import httplib2
         from googleapiclient.errors import HttpError
+
+        from gdoc.api.drive import create_permission
 
         mock_service = MagicMock()
         mock_get_service.return_value = mock_service
@@ -600,9 +650,10 @@ class TestCreatePermissionAPI:
 
     @patch("gdoc.api.drive.get_drive_service")
     def test_permission_401_error(self, mock_get_service):
-        from gdoc.api.drive import create_permission
         import httplib2
         from googleapiclient.errors import HttpError
+
+        from gdoc.api.drive import create_permission
 
         mock_service = MagicMock()
         mock_get_service.return_value = mock_service

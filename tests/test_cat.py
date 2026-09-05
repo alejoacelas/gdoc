@@ -41,7 +41,9 @@ class TestCatMarkdown:
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
     @patch("gdoc.api.drive.export_doc", return_value="# Hello World\n")
-    def test_cat_default_markdown(self, mock_export, _mock_svc, _mock_pf, _mock_update, capsys):
+    def test_cat_default_markdown(
+        self, mock_export, _mock_svc, _mock_pf, _mock_update, capsys
+    ):
         args = _make_args()
         rc = cmd_cat(args)
         assert rc == 0
@@ -53,7 +55,9 @@ class TestCatMarkdown:
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
     @patch("gdoc.api.drive.export_doc", return_value="content")
-    def test_cat_url_input(self, mock_export, _mock_svc, _mock_pf, _mock_update, capsys):
+    def test_cat_url_input(
+        self, mock_export, _mock_svc, _mock_pf, _mock_update, capsys
+    ):
         args = _make_args(doc="https://docs.google.com/document/d/abc123/edit")
         rc = cmd_cat(args)
         assert rc == 0
@@ -79,7 +83,9 @@ class TestCatJson:
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
     @patch("gdoc.api.drive.export_doc", return_value="# Hello")
-    def test_cat_json_mode(self, mock_export, _mock_svc, _mock_pf, _mock_update, capsys):
+    def test_cat_json_mode(
+        self, mock_export, _mock_svc, _mock_pf, _mock_update, capsys
+    ):
         args = _make_args(json=True)
         rc = cmd_cat(args)
         assert rc == 0
@@ -230,7 +236,9 @@ class TestCatAwareness:
     @patch("gdoc.notify.pre_flight")
     @patch("gdoc.api.drive.get_drive_service")
     @patch("gdoc.api.drive.export_doc", return_value="content")
-    def test_preflight_called_before_export(self, mock_export, _svc, mock_pf, mock_update):
+    def test_preflight_called_before_export(
+        self, mock_export, _svc, mock_pf, mock_update
+    ):
         """pre_flight is called before export_doc."""
         mock_pf.return_value = ChangeInfo()
         args = _make_args()
@@ -345,7 +353,9 @@ class TestCatMaxBytes:
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value="Hello World, this is long content")
+    @patch(
+        "gdoc.api.drive.export_doc", return_value="Hello World, this is long content"
+    )
     def test_max_bytes_truncates(self, _export, _svc, _pf, _update, capsys):
         args = _make_args(max_bytes=5)
         rc = cmd_cat(args)
@@ -379,7 +389,9 @@ class TestCatMaxBytes:
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
     @patch("gdoc.api.drive.export_doc", return_value="Hello World")
-    def test_max_bytes_json_truncates_content(self, _export, _svc, _pf, _update, capsys):
+    def test_max_bytes_json_truncates_content(
+        self, _export, _svc, _pf, _update, capsys
+    ):
         args = _make_args(max_bytes=5, json=True)
         rc = cmd_cat(args)
         assert rc == 0

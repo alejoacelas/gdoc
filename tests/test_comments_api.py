@@ -1,12 +1,15 @@
 """Tests for the comments API wrapper."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from gdoc.api.comments import (
-    create_comment, create_reply, delete_comment,
-    get_comment, list_comments,
+    create_comment,
+    create_reply,
+    delete_comment,
+    get_comment,
+    list_comments,
 )
 from gdoc.util import AuthError, GdocError
 

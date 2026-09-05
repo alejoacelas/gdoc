@@ -1,6 +1,5 @@
 """Tests for the annotation engine (cat --comments)."""
 
-import pytest
 
 from gdoc.annotate import annotate_markdown
 
@@ -30,9 +29,14 @@ class TestSingleMatchAnnotation:
         result = annotate_markdown(md, [comment])
         lines = result.split("\n")
         # "content line" is on line 3 (1-indexed), annotation follows
-        assert any("     3\t" in l and "content line" in l for l in lines)
-        assert any('[#1 open]' in l and 'alice@co.com' in l and 'on "content line"' in l for l in lines)
-        assert any('"This needs a citation"' in l for l in lines)
+        assert any("     3\t" in line and "content line" in line for line in lines)
+        assert any(
+            "[#1 open]" in line
+            and "alice@co.com" in line
+            and 'on "content line"' in line
+            for line in lines
+        )
+        assert any('"This needs a citation"' in line for line in lines)
 
     def test_annotation_on_first_line(self):
         md = "First line here\nSecond line\n"
@@ -96,8 +100,8 @@ class TestMultilineAnchor:
         # Anchor spans lines 2-3, annotation after line 3
         # Find the annotation line
         annotation_idx = None
-        for i, l in enumerate(lines):
-            if "[#c1 open]" in l:
+        for i, line in enumerate(lines):
+            if "[#c1 open]" in line:
                 annotation_idx = i
                 break
         assert annotation_idx is not None
@@ -210,7 +214,11 @@ class TestRepliesShown:
         comment = _make_comment(
             anchor="Some text",
             replies=[
-                {"author": {"emailAddress": "bob@co.com"}, "content": "", "action": "resolve"},
+                {
+                    "author": {"emailAddress": "bob@co.com"},
+                    "content": "",
+                    "action": "resolve",
+                },
             ],
         )
         result = annotate_markdown(md, [comment])
@@ -229,8 +237,10 @@ class TestRepliesShown:
 
 class TestAnchorTextTruncation:
     def test_long_anchor_truncated_in_display(self):
-        md = "This is a very long piece of text that should be truncated in the annotation display.\n"
-        anchor = "This is a very long piece of text that should be truncated in the annotation display"
+        md = ("This is a very long piece of text that should be truncated "
+              "in the annotation display.\n")
+        anchor = ("This is a very long piece of text that should be truncated "
+                  "in the annotation display")
         comment = _make_comment(anchor=anchor)
         result = annotate_markdown(md, [comment])
         # Anchor in display should be truncated to 40 chars

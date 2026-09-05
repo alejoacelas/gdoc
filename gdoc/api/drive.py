@@ -17,7 +17,8 @@ def _translate_http_error(e: HttpError, file_id: str) -> None:
         reason = e.reason if hasattr(e, "reason") and e.reason else ""
         if "Export only supports Docs Editors files" in reason:
             raise GdocError(
-                "Cannot export file as markdown: file is not a Google Docs editor document"
+                "Cannot export file as markdown: "
+                "file is not a Google Docs editor document"
             )
         raise GdocError(f"Permission denied: {file_id}")
 

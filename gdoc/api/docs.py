@@ -1408,12 +1408,132 @@ def _strip_trailing_newline_unless_hr(parsed) -> None:
                 s.end = old_len - 1
 
 
+def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
+    """Classify raw native state; ignore effective named-style defaults.
+
+    Return sorted (blockers, styles_to_rebuild). This is a loss warning,
+    not a guarantee of full-fidelity Markdown round-tripping.
+    """
+    blockers: set[str] = set()
+    styles: set[str] = set()
+
+    def visit(value):
+        if isinstance(value, list):
+            for item in value:
+                visit(item)
+        elif isinstance(value, dict):
+            for key, item in value.items():
+                if key == "namedStyles":
+                    continue
+                if key in {"table", "footnoteReference"}:
+                    blockers.add("tables" if key == "table" else "footnotes")
+                if item:
+                    if key in {"headers", "footers", "defaultHeaderId",
+                               "defaultFooterId", "firstPageHeaderId",
+                               "firstPageFooterId", "evenPageHeaderId",
+                               "evenPageFooterId"}:
+                        blockers.add("headers/footers")
+                    elif key == "footnotes":
+                        blockers.add("footnotes")
+                    elif key == "namedRanges":
+                        blockers.add("named ranges")
+                    elif key.startswith("suggested"):
+                        blockers.add("pending suggestions")
+                    elif key in {"bullet", "lists"}:
+                        styles.add("lists")
+                if key == "textStyle" and isinstance(item, dict):
+                    for field, reason in {
+                        "foregroundColor": "colour", "backgroundColor": "highlight",
+                        "underline": "underline", "weightedFontFamily": "font",
+                        "fontSize": "font", "baselineOffset": "baseline",
+                    }.items():
+                        if field in item:
+                            styles.add(reason)
+                    link = item.get("link", {})
+                    if any(k in link for k in ("headingId", "bookmarkId",
+                                              "heading", "bookmark", "tabId")):
+                        styles.add("internal links")
+                if key == "paragraphStyle" and isinstance(item, dict):
+                    if item.get("namedStyleType", "NORMAL_TEXT") != "NORMAL_TEXT":
+                        styles.add("headings")
+                    for field in item:
+                        if field in {"namedStyleType", "headingId"}:
+                            continue
+                        if field == "alignment":
+                            styles.add("alignment")
+                        elif field in {"lineSpacing", "spaceAbove", "spaceBelow"}:
+                            styles.add("spacing")
+                        elif field.startswith("indent"):
+                            styles.add("indents")
+                        else:
+                            styles.add("layout")
+                # Document-wide defaults are not paragraph/run overrides.
+                if key != "documentStyle":
+                    visit(item)
+                elif isinstance(item, dict):
+                    visit({k: v for k, v in item.items() if k.endswith("Id")})
+
+    visit(native)
+    if len(flatten_tabs(native.get("tabs", []))) > 1:
+        blockers.add("multiple tabs")
+    return sorted(blockers), sorted(styles)
+
+
+def check_markdown_rebuild(
+    doc_id: str, *, document: dict | None = None, tab_id: str | None = None,
+    allow_lossy_rebuild: bool = False, force_collapse_tabs: bool = False,
+) -> None:
+    """Refuse unsupported state before a rebuild; warn about rebuilt styles.
+
+    Drive comment anchors do not reliably identify their tab. Conservatively
+    protect anchored comments anywhere in the document for a tab replacement.
+    """
+    import sys
+
+    from gdoc.api.comments import list_comments
+
+    doc = get_document_with_tabs(doc_id) if document is None else document
+    scope = doc
+    if tab_id is not None:
+        def find(tabs):
+            for tab in tabs:
+                if tab.get("tabProperties", {}).get("tabId") == tab_id:
+                    return tab.get("documentTab", {})
+                found = find(tab.get("childTabs", []))
+                if found is not None:
+                    return found
+            return None
+
+        scope = find(doc.get("tabs", []))
+        if scope is None:
+            raise GdocError("tab not found during rebuild inspection", exit_code=3)
+    blockers, styles = classify_markdown_rebuild(scope)
+    if force_collapse_tabs and "multiple tabs" in blockers:
+        blockers.remove("multiple tabs")
+    comments = list_comments(doc_id, include_anchor=True)
+    if any(c.get("anchor") or c.get("quotedFileContent") for c in comments):
+        blockers.append("comment anchors")
+    if blockers and (not allow_lossy_rebuild or "multiple tabs" in blockers):
+        raise GdocError(
+            "Markdown rebuild would lose: " + ", ".join(sorted(blockers))
+            + ". Use edit/insert for surgical changes, or --allow-lossy-rebuild "
+            "for disposable documents."
+            + (" Multiple tabs also require --force-collapse-tabs."
+               if "multiple tabs" in blockers else ""),
+            exit_code=3,
+        )
+    if styles:
+        print("WARN: Markdown rebuild will rebuild: " + ", ".join(styles),
+              file=sys.stderr)
+
+
 def insert_markdown_into_tab(
     doc_id: str,
     tab_name: str,
     markdown: str,
     position: str = "start",
     replace: bool = False,
+    allow_lossy_rebuild: bool = False,
 ) -> dict:
     """Insert (or replace) markdown content in a tab via Docs API.
 
@@ -1426,8 +1546,10 @@ def insert_markdown_into_tab(
         markdown: Markdown source to insert (frontmatter should be
             stripped by the caller).
         position: "start" or "end". Ignored when replace=True.
-        replace: If True, delete the tab body first then insert at the
-            body start.
+        replace: If True, inspect for unsupported native state, then delete
+            the tab body and insert at the body start.
+        allow_lossy_rebuild: Permit loss of unsupported state on replacement.
+            Does not affect ordinary insertions.
 
     Returns:
         Dict with "tab_id", "tab_title", "insert_index".
@@ -1440,6 +1562,12 @@ def insert_markdown_into_tab(
     tab_match = resolve_tab(tabs, tab_name)
     tab_id = tab_match["id"]
     body = tab_match["body"]
+
+    if replace:
+        check_markdown_rebuild(
+            doc_id, document=doc, tab_id=tab_id,
+            allow_lossy_rebuild=allow_lossy_rebuild,
+        )
 
     body_start, body_end = _tab_body_range(body)
 

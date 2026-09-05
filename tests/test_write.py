@@ -38,7 +38,7 @@ def _make_args(**overrides):
 
 
 @pytest.fixture(autouse=True)
-def _stub_single_tab():
+def _stub_single_tab(mocker):
     """Default `count_document_tabs` to `1` for the whole test module.
 
     Keeps legacy success-path tests honest to the real CLI defaults
@@ -49,6 +49,9 @@ def _stub_single_tab():
     on top — unittest.mock.patch is LIFO so the inner patch wins for
     the duration of the test.
     """
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={})
+    mocker.patch("gdoc.api.comments.list_comments", return_value=[])
+    mocker.patch("gdoc.api.drive.export_doc", return_value="Remote notes")
     with patch("gdoc.api.docs.count_document_tabs", return_value=1):
         yield
 
@@ -897,3 +900,52 @@ def test_write_lossy_opt_in_preserves_drive_parameters(mocker, tmp_path):
     assert media.mimetype() == 'text/markdown'
     assert media.getbytes(0, media.size()) == b'Summary'
     assert media.resumable() is False
+
+
+@pytest.mark.parametrize('native,reason', [
+    ({'paragraphStyle': {'namedStyleType': 'HEADING_1'}}, 'headings'),
+    ({'bullet': {'listId': 'list'}}, 'lists'),
+    ({'textStyle': {'foregroundColor': {}}}, 'colour'),
+    ({'paragraphStyle': {'keepWithNext': True}}, 'layout'),
+])
+def test_write_styles_warn_and_proceed(mocker, tmp_path, capsys, native, reason):
+    f = tmp_path / 'notes.md'
+    f.write_text('Summary')
+    mocker.patch('gdoc.notify.pre_flight', return_value=ChangeInfo(
+        current_version=10, last_read_version=10))
+    mocker.patch('gdoc.api.docs.get_document_with_tabs', return_value=native)
+    mocker.patch('gdoc.state.update_state_after_command')
+    upload = mocker.patch('gdoc.api.drive.update_doc_content', return_value=11)
+    assert cmd_write(_make_args(file=str(f))) == 0
+    upload.assert_called_once_with('abc123', 'Summary')
+    assert capsys.readouterr().err == f'WARN: Markdown rebuild will rebuild: {reason}\n'
+
+
+def test_write_tab_lossy_flag_reaches_api(mocker, tmp_path):
+    f = tmp_path / 'notes.md'
+    f.write_text('Summary')
+    mocker.patch('gdoc.notify.pre_flight', return_value=ChangeInfo(
+        current_version=10, last_read_version=10))
+    mocker.patch('gdoc.state.update_state_after_command')
+    mocker.patch('gdoc.api.drive.get_file_version', return_value={'version': 11})
+    insert = mocker.patch('gdoc.api.docs.insert_markdown_into_tab', return_value={
+        'tab_id': 'notes', 'tab_title': 'Notes', 'insert_index': 1})
+    assert cmd_write(_make_args(file=str(f), tab='Notes', allow_lossy_rebuild=True)) == 0
+    insert.assert_called_once_with('abc123', 'Notes', 'Summary', replace=True,
+                                   allow_lossy_rebuild=True)
+
+
+def test_write_unchanged_without_conflict_skips_inspection(mocker, tmp_path):
+    f = tmp_path / 'notes.md'
+    f.write_text('Summary')
+    mocker.patch('gdoc.notify.pre_flight', return_value=ChangeInfo(
+        current_version=10, last_read_version=10))
+    matches = mocker.patch('gdoc.cli._doc_matches', return_value=True)
+    inspect = mocker.patch('gdoc.api.docs.get_document_with_tabs')
+    mocker.patch('gdoc.api.drive.get_file_version', return_value={'version': 10})
+    mocker.patch('gdoc.state.update_state_after_command')
+    upload = mocker.patch('gdoc.api.drive.update_doc_content')
+    assert cmd_write(_make_args(file=str(f))) == 0
+    matches.assert_called_once_with('abc123', 'Summary')
+    inspect.assert_not_called()
+    upload.assert_not_called()

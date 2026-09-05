@@ -30,7 +30,7 @@ FRONTMATTER = "---\ngdoc: abc123\ntitle: My Doc\n---\n"
 
 
 @pytest.fixture(autouse=True)
-def _stub_single_tab():
+def _stub_single_tab(mocker):
     """Default `count_document_tabs` to `1` for the whole test module.
 
     Mirrors the pattern from `test_write.py`: legacy push tests assume
@@ -39,6 +39,9 @@ def _stub_single_tab():
     count stack their own `@patch("gdoc.api.docs.count_document_tabs",
     ...)` on top.
     """
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={})
+    mocker.patch("gdoc.api.comments.list_comments", return_value=[])
+    mocker.patch("gdoc.api.drive.export_doc", return_value="Remote notes")
     with patch("gdoc.api.docs.count_document_tabs", return_value=1):
         yield
 
@@ -423,3 +426,25 @@ def test_push_unchanged_without_conflict_skips_upload(mocker, tmp_path):
     assert cmd_push(_make_args(file=str(f))) == 0
     matches.assert_called_once_with('abc123', 'Summary')
     upload.assert_not_called()
+
+
+@pytest.mark.parametrize('allow_lossy', [False, True])
+def test_push_rebuild_guard(mocker, tmp_path, allow_lossy):
+    f = tmp_path / 'notes.md'
+    f.write_text(FRONTMATTER + 'Summary')
+    mocker.patch('gdoc.notify.pre_flight', return_value=ChangeInfo(
+        current_version=10, last_read_version=10))
+    mocker.patch('gdoc.api.docs.get_document_with_tabs',
+                 return_value={'footnotes': {'note': {}}})
+    state = mocker.patch('gdoc.state.update_state_after_command')
+    upload = mocker.patch('gdoc.api.drive.update_doc_content', return_value=11)
+    args = _make_args(file=str(f), allow_lossy_rebuild=allow_lossy)
+    if allow_lossy:
+        assert cmd_push(args) == 0
+        upload.assert_called_once_with('abc123', 'Summary')
+    else:
+        with pytest.raises(GdocError, match='footnotes') as error:
+            cmd_push(args)
+        assert error.value.exit_code == 3
+        upload.assert_not_called()
+        state.assert_not_called()

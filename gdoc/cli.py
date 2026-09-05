@@ -1542,7 +1542,7 @@ def cmd_write(args) -> int:
     change_info, in_sync = _check_write_conflict(
         doc_id, quiet, force, body=None if tab_name else content,
     )
-    if in_sync:
+    if in_sync or (not tab_name and _doc_matches(doc_id, content)):
         return _finish_noop_write(doc_id, change_info, args, quiet, command="write")
 
     from gdoc.format import format_json, get_output_mode
@@ -1550,8 +1550,11 @@ def cmd_write(args) -> int:
 
     if tab_name:
         from gdoc.api.docs import insert_markdown_into_tab
+        rebuild_options = {}
+        if getattr(args, "allow_lossy_rebuild", False):
+            rebuild_options["allow_lossy_rebuild"] = True
         result = insert_markdown_into_tab(
-            doc_id, tab_name, content, replace=True,
+            doc_id, tab_name, content, replace=True, **rebuild_options,
         )
 
         from gdoc.api.drive import get_file_version
@@ -1575,6 +1578,11 @@ def cmd_write(args) -> int:
                     exit_code=3,
                 )
 
+        from gdoc.api.docs import check_markdown_rebuild
+        check_markdown_rebuild(
+            doc_id, force_collapse_tabs=force_collapse,
+            allow_lossy_rebuild=getattr(args, "allow_lossy_rebuild", False),
+        )
         from gdoc.api.drive import update_doc_content
         command_version = update_doc_content(doc_id, content)
 
@@ -1729,7 +1737,7 @@ def cmd_push(args) -> int:
 
     # Conflict detection (reuse shared helper)
     change_info, in_sync = _check_write_conflict(doc_id, quiet, force, body=body)
-    if in_sync:
+    if in_sync or _doc_matches(doc_id, body):
         return _finish_noop_write(doc_id, change_info, args, quiet, command="push")
 
     # Refuse destructive multi-tab collapse unless the user opts in.
@@ -1747,6 +1755,12 @@ def cmd_push(args) -> int:
                 "tab, or pass --force-collapse-tabs to confirm.",
                 exit_code=3,
             )
+
+    from gdoc.api.docs import check_markdown_rebuild
+    check_markdown_rebuild(
+        doc_id, force_collapse_tabs=force_collapse,
+        allow_lossy_rebuild=getattr(args, "allow_lossy_rebuild", False),
+    )
 
     # Upload body (frontmatter stripped)
     from gdoc.api.drive import update_doc_content
@@ -4144,6 +4158,14 @@ def build_parser() -> GdocArgumentParser:
     write_p.add_argument(
         "--quiet", action="store_true", help="Skip pre-flight checks"
     )
+    write_p.add_argument(
+        "--allow-lossy-rebuild", action="store_true",
+        help=("Allow loss of headers/footers, footnotes, tables, suggestions, "
+              "named ranges and comment anchors; intended for disposable docs. "
+              "Styles are rebuilt with a warning even without this flag. "
+              "Use edit/insert for surgical changes. Tab collapse still "
+              "requires --force-collapse-tabs."),
+    )
     write_p.set_defaults(func=cmd_write)
 
     # insert
@@ -4202,6 +4224,14 @@ def build_parser() -> GdocArgumentParser:
     )
     push_p.add_argument(
         "--quiet", action="store_true", help="Skip pre-flight checks"
+    )
+    push_p.add_argument(
+        "--allow-lossy-rebuild", action="store_true",
+        help=("Allow loss of headers/footers, footnotes, tables, suggestions, "
+              "named ranges and comment anchors; intended for disposable docs. "
+              "Styles are rebuilt with a warning even without this flag. "
+              "Use edit/insert for surgical changes. Tab collapse still "
+              "requires --force-collapse-tabs."),
     )
     push_p.set_defaults(func=cmd_push)
 

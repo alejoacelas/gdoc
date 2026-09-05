@@ -33,8 +33,8 @@ def list_comments(
             (used for first interaction per CONTEXT.md Decision #3).
         include_resolved: If False, resolved comments are filtered out
             client-side after fetching.
-        include_anchor: If True, includes quotedFileContent(value) in the
-            response fields (needed for cat --comments anchor mapping).
+        include_anchor: If True, includes anchor and quotedFileContent(value)
+            for anchor mapping and Markdown rebuild safety checks.
 
     Returns:
         List of comment dicts with id, content, author, resolved, modifiedTime, replies.
@@ -56,7 +56,7 @@ def list_comments(
                 comment_fields = (
                     "id, content, author(displayName, emailAddress), "
                     "resolved, createdTime, modifiedTime, "
-                    "quotedFileContent(value), "
+                    "anchor, quotedFileContent(value), "
                     "replies(author(displayName, emailAddress), createdTime, "
                     "modifiedTime, content, action)"
                 )

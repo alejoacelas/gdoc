@@ -722,6 +722,10 @@ class TestZeroWidthReplace:
 
 
 class TestInsertMarkdownIntoTab:
+    @pytest.fixture(autouse=True)
+    def _comments(self, mocker):
+        mocker.patch("gdoc.api.comments.list_comments", return_value=[])
+
     def _tabs_doc(self, body_content=None):
         return {
             "revisionId": "rev-xyz",
@@ -932,4 +936,50 @@ def test_rebuild_exact_tab_batch(mocker, allow_lossy):
             ],
             'writeControl': {'requiredRevisionId': 'revision'},
         },
+    )
+
+
+@pytest.mark.parametrize('anchor', [{'anchor': '{"region":"reference"}'},
+                                  {'quotedFileContent': {'value': 'Reference'}}])
+def test_rebuild_protects_comment_anchors(mocker, anchor):
+    from gdoc.api.docs import check_markdown_rebuild
+
+    comments = mocker.patch('gdoc.api.comments.list_comments', return_value=[anchor])
+    with pytest.raises(GdocError, match='comment anchors') as error:
+        check_markdown_rebuild('doc', document=_rebuild_doc())
+    assert error.value.exit_code == 3
+    comments.assert_called_once_with('doc', include_anchor=True)
+
+
+def test_rebuild_tab_scope_excludes_unsafe_sibling_and_child(mocker):
+    from gdoc.api.docs import check_markdown_rebuild
+
+    doc = _rebuild_doc()
+    unsafe = {'tabProperties': {'tabId': 'other', 'title': 'Other'},
+              'documentTab': {'footnotes': {'note': {}}}}
+    doc['tabs'][0]['childTabs'] = [unsafe]
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    check_markdown_rebuild('doc', document=doc, tab_id='notes')
+    with pytest.raises(GdocError, match='footnotes'):
+        check_markdown_rebuild('doc', document=doc, tab_id='other')
+    with pytest.raises(GdocError, match='multiple tabs'):
+        check_markdown_rebuild('doc', document=doc, allow_lossy_rebuild=True)
+    with pytest.raises(GdocError, match='footnotes'):
+        check_markdown_rebuild('doc', document=doc, force_collapse_tabs=True)
+    check_markdown_rebuild('doc', document=doc, force_collapse_tabs=True,
+                           allow_lossy_rebuild=True)
+
+
+def test_rebuild_styles_emit_one_warning(mocker, capsys):
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    check_markdown_rebuild('doc', document={
+        'paragraphStyle': {'namedStyleType': 'HEADING_1', 'alignment': 'END'},
+        'bullet': {'listId': 'list'},
+        'textStyle': {'foregroundColor': {}, 'backgroundColor': {}},
+    })
+    assert capsys.readouterr().err == (
+        'WARN: Markdown rebuild will rebuild: alignment, colour, headings, '
+        'highlight, lists\n'
     )

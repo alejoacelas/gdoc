@@ -1642,18 +1642,22 @@ def _inline_style_keys(style: dict) -> list[str]:
     return keys
 
 
-def _tab_text_round_trips(document_tab: dict) -> tuple[bool, bool]:
+def _tab_text_round_trips(document_tab: dict) -> tuple[bool, bool, set[str]]:
     """Does the tab survive `get_tab_text(markdown=True)` -> parse_markdown?
 
     Export the whole tab the way `write --tab` would and parse it back in
     one go, so multi-line constructs (adjacent paragraphs that read like a
     table or a code fence) are judged the way the rebuild will treat them.
-    Returns (text_ok, styles_ok): every paragraph must come back as the
-    same line, whitespace included (the exporter strips a heading's leading
-    indent, and literal `# x` loses its marker), with the same named style,
-    and every allowlisted inline style must come back on the same text, so
-    an exporter gap blocks instead of silently dropping formatting.
+    Returns (text_ok, styles_ok, warnings): every paragraph must come back
+    as the same line, whitespace included (the exporter strips a heading's
+    leading indent, and literal `# x` loses its marker), with the same
+    named style, bullet and nesting, and every allowlisted inline style
+    must come back on the same characters, so an exporter gap blocks
+    instead of silently dropping formatting. `warnings` names style-only
+    losses inherent to Markdown, such as styles on a run's surrounding
+    spaces, which the exporter must leave outside the markers.
     """
+    warnings: set[str] = set()
     from gdoc.mdparse import parse_markdown
 
     lists = document_tab.get("lists", {}) or {}
@@ -1664,7 +1668,7 @@ def _tab_text_round_trips(document_tab: dict) -> tuple[bool, bool]:
         if isinstance(element, dict) and element.get("paragraph") is not None
     ]
     if not paragraphs:
-        return True, True
+        return True, True, warnings
     exported = "".join(_paragraph_markdown(p, lists, counters) for p in paragraphs)
     parsed = parse_markdown(exported)
 
@@ -1698,7 +1702,18 @@ def _tab_text_round_trips(document_tab: dict) -> tuple[bool, bool]:
             if r.type == "paragraph_style" and "namedStyleType" in r.style:
                 line = bisect.bisect_right(line_starts, r.start) - 1
                 parsed_kinds[line] = r.style["namedStyleType"]
+        bullet_lines = {
+            bisect.bisect_right(line_starts, r.start) - 1
+            for r in parsed.styles if r.type == "bullets"
+        }
         for index, paragraph in enumerate(paragraphs):
+            bullet = paragraph.get("bullet")
+            line = actual_lines[index]
+            actual_nesting = len(line) - len(line.lstrip("\t"))
+            if (bullet is not None) != (index in bullet_lines) or (
+                    bullet is not None
+                    and actual_nesting != bullet.get("nestingLevel", 0)):
+                styles_ok = False  # e.g. an empty list item exports as a blank line
             kind = (paragraph.get("paragraphStyle") or {}).get(
                 "namedStyleType", "NORMAL_TEXT")
             if kind in ("TITLE", "SUBTITLE"):
@@ -1723,6 +1738,8 @@ def _tab_text_round_trips(document_tab: dict) -> tuple[bool, bool]:
                 keys = frozenset(_inline_style_keys(run.get("textStyle") or {}))
                 core_start = len(body) - len(body.lstrip(" "))
                 core_end = len(body.rstrip(" "))
+                if keys and body.strip() and (core_start or core_end < len(body)):
+                    warnings.add("styled spaces")
                 expected_vector.extend(
                     keys if core_start <= i < core_end else frozenset()
                     for i in range(len(body)))
@@ -1739,7 +1756,7 @@ def _tab_text_round_trips(document_tab: dict) -> tuple[bool, bool]:
             if expected_vector != actual_vector:
                 styles_ok = False
                 break
-    return text_ok, styles_ok
+    return text_ok, styles_ok, warnings
 
 
 def _named_style_directions(named_styles: dict | None) -> dict[str, str]:
@@ -1976,11 +1993,12 @@ def check_markdown_rebuild(
         retained_named_styles=retained.get("namedStyles") if tab_id else None,
     )
     if tab_id is not None:
-        text_ok, styles_ok = _tab_text_round_trips(scope)
+        text_ok, styles_ok, round_trip_warnings = _tab_text_round_trips(scope)
         if not text_ok:
             blockers.append("literal Markdown text")
         if not styles_ok:
-            blockers.append("inline formatting round-trip")
+            blockers.append("formatting round-trip")
+        styles = sorted(set(styles) | round_trip_warnings)
     if force_collapse_tabs and "multiple tabs" in blockers:
         blockers.remove("multiple tabs")
     comments = list_comments(doc_id, include_anchor=True)

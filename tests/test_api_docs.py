@@ -1555,7 +1555,7 @@ def test_tab_rebuild_blocks_when_exporter_drops_a_heading_level(mocker):
     doc['tabs'][0]['documentTab']['body']['content'].append({'paragraph': {
         'paragraphStyle': {'namedStyleType': 'HEADING_2'},
         'elements': [{'textRun': {'content': 'Heading\n'}}]}})
-    with pytest.raises(GdocError, match='inline formatting round-trip'):
+    with pytest.raises(GdocError, match='formatting round-trip'):
         check_markdown_rebuild('doc', document=doc, tab_id='notes')
 
 
@@ -1585,6 +1585,45 @@ def test_tab_rebuild_checks_formatting_at_its_offsets(mocker):
     check_markdown_rebuild('doc', document=doc, tab_id='notes')
 
 
+def test_tab_rebuild_blocks_empty_list_item(mocker):
+    """An empty list item exports as a blank line and loses its bullet."""
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    doc = _rebuild_doc()
+    doc['tabs'][0]['documentTab']['body'] = {'content': [
+        {'paragraph': {'bullet': {'listId': 'kix.l', 'nestingLevel': 0},
+                       'elements': [{'textRun': {'content': 'first\n'}}]}},
+        {'paragraph': {'bullet': {'listId': 'kix.l', 'nestingLevel': 0},
+                       'elements': [{'textRun': {'content': '\n'}}]}},
+        {'paragraph': {'elements': [{'textRun': {'content': 'after\n'}}]}},
+    ]}
+    with pytest.raises(GdocError, match='formatting round-trip'):
+        check_markdown_rebuild('doc', document=doc, tab_id='notes')
+    # Non-empty nested items keep their bullets and nesting.
+    doc['tabs'][0]['documentTab']['body']['content'][1] = {'paragraph': {
+        'bullet': {'listId': 'kix.l', 'nestingLevel': 1},
+        'elements': [{'textRun': {'content': 'nested\n'}}]}}
+    doc['tabs'][0]['documentTab']['lists'] = {'kix.l': {'listProperties': {
+        'nestingLevels': [{'glyphSymbol': '\u25cf'}, {'glyphSymbol': '\u25cb'}]}}}
+    check_markdown_rebuild('doc', document=doc, tab_id='notes')
+
+
+def test_tab_rebuild_warns_on_styled_surrounding_spaces(mocker, capsys):
+    """Markdown cannot style a run's leading or trailing space."""
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    doc = _styled_tab(('see ', {}), ('link ', {'link': {'url': 'https://e.com'}}),
+                      ('now\n', {}))
+    check_markdown_rebuild('doc', document=doc, tab_id='notes')
+    assert 'styled spaces' in capsys.readouterr().err
+    doc = _styled_tab(('see ', {}), ('link', {'link': {'url': 'https://e.com'}}),
+                      (' now\n', {}))
+    check_markdown_rebuild('doc', document=doc, tab_id='notes')
+    assert 'styled spaces' not in capsys.readouterr().err
+
+
 def test_tab_rebuild_blocks_when_exporter_drops_formatting(mocker):
     """Safety net: an exporter gap blocks instead of losing styles silently."""
     from gdoc.api.docs import check_markdown_rebuild
@@ -1593,7 +1632,7 @@ def test_tab_rebuild_blocks_when_exporter_drops_formatting(mocker):
     mocker.patch('gdoc.api.docs._style_run_markdown',
                  side_effect=lambda content, style: content)
     doc = _styled_tab(('plain ', {}), ('bold\n', {'bold': True}))
-    with pytest.raises(GdocError, match='inline formatting round-trip') as error:
+    with pytest.raises(GdocError, match='formatting round-trip') as error:
         check_markdown_rebuild('doc', document=doc, tab_id='notes')
     assert error.value.exit_code == 3
 

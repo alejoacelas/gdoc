@@ -1708,3 +1708,83 @@ class TestMcpExposure:
             {"old_file", "new_file"},
         )
         assert "suggest" in mcp._DESCRIPTION_NOTES
+
+
+def _styled_body(target_style):
+    left = _run("Styled ", 1, 8)
+    left["textRun"]["textStyle"] = {
+        "bold": True, "weightedFontFamily": {"fontFamily": "Courier New"},
+    }
+    target = _run("TOKEN", 8, 13)
+    target["textRun"]["textStyle"] = target_style
+    return _body(_para(left, target, _run(" plain\n", 13, 20)))
+
+
+@pytest.mark.parametrize("target_style", [
+    {},
+    {
+        "link": {"url": "https://example.test/reference"},
+        "strikethrough": True,
+        "foregroundColor": {"color": {"rgbColor": {"red": 0.4}}},
+        "backgroundColor": {"color": {"rgbColor": {"green": 0.7}}},
+    },
+])
+@pytest.mark.parametrize("replacement", ["REPLACED", "**REPLACED**", "R🌿"])
+def test_suggestion_target_baseline(mocker, target_style, replacement):
+    service = _service(_ok_response(created=("s.new",), updated=("s.old",)))
+    mocker.patch("gdoc.api.docs.get_docs_service", return_value=service)
+    readback = mocker.patch(
+        "gdoc.api.docs.get_document_structure",
+        return_value=_readback("s.new", "s.old"),
+    )
+    gate = mocker.patch("gdoc.api.docs.check_suggest_preview_access")
+    service.documents.return_value.batchUpdate.side_effect = (
+        lambda **kwargs: gate.assert_called_once_with("doc1")
+        or service.documents.return_value.batchUpdate.return_value
+    )
+    result = suggest_replacement(
+        "doc1", [{"startIndex": 8, "endIndex": 13}], replacement, "rev123",
+        tab_id="t.0", style_body=_styled_body(target_style),
+    )
+    plain = replacement.strip("*")
+    inserted_range = {
+        "startIndex": 8, "endIndex": 8 + len(plain.encode("utf-16-le")) // 2,
+        "tabId": "t.0",
+    }
+    requests = [
+        {"deleteContentRange": {"range": {
+            "startIndex": 8, "endIndex": 13, "tabId": "t.0",
+        }}},
+        {"insertText": {"location": {"index": 8, "tabId": "t.0"}, "text": plain}},
+        {"updateTextStyle": {
+            "range": inserted_range, "textStyle": target_style,
+            "fields": ",".join(sorted({"bold", "weightedFontFamily"} | target_style.keys())),
+        }},
+    ]
+    if replacement.startswith("**"):
+        requests.append({"updateTextStyle": {
+            "range": inserted_range, "textStyle": {"bold": True}, "fields": "bold",
+        }})
+    service.documents.return_value.batchUpdate.assert_called_once_with(
+        documentId="doc1", body={
+            "requests": requests,
+            "writeControl": {"requiredRevisionId": "rev123", "writeMode": "SUGGEST"},
+        },
+    )
+    assert result.created_suggestion_ids == ["s.new"]
+    assert result.updated_suggestion_ids == ["s.old"]
+    readback.assert_called_once_with("doc1", suggestions_view_mode=SUGGESTIONS_INLINE)
+
+
+def test_cli_passes_target_style_context(mocker, capsys):
+    body = _styled_body({})
+    mocker.patch("gdoc.notify.pre_flight", return_value=None)
+    mocker.patch("gdoc.api.docs.get_document_structure", return_value=_structure(
+        tabs=[("t.first", "Tab 1", body)],
+    ))
+    suggest = mocker.patch("gdoc.api.docs.suggest_replacement", return_value=_result())
+    mocker.patch("gdoc.api.drive.get_file_version", return_value=_VERSION)
+    mocker.patch("gdoc.state.update_state_after_command")
+    assert cmd_suggest(_args(old_text="TOKEN", new_text="REPLACED")) == 0
+    assert suggest.call_args.kwargs["style_body"] == body
+    assert capsys.readouterr().out == "OK suggested 1 occurrence (#suggest.abc)\n"

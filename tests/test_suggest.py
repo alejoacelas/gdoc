@@ -148,6 +148,7 @@ class TestSuggestRequestShape:
 
         result = suggest_replacement("doc1", MATCH, "world", "rev123", tab_id="t.0")
 
+        service.documents.return_value.batchUpdate.return_value.execute.assert_called_once_with()
         call = _batch_call(service)
         assert call.kwargs["documentId"] == "doc1"
         body = call.kwargs["body"]

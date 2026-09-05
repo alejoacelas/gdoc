@@ -738,3 +738,21 @@ class TestEditStdin:
         with pytest.raises(GdocError, match="only one argument") as exc:
             cmd_edit(args)
         assert exc.value.exit_code == 3
+
+
+def test_edit_passes_body_context(mocker, capsys):
+    body = {"content": [{"paragraph": {"elements": [{
+        "startIndex": 1, "endIndex": 7,
+        "textRun": {"content": "hello\n", "textStyle": {"bold": True}},
+    }]}}]}
+    mocker.patch("gdoc.notify.pre_flight", return_value=None)
+    mocker.patch("gdoc.api.docs.get_document", return_value={
+        "revisionId": "rev-a", "body": body,
+    })
+    replace = mocker.patch("gdoc.api.docs.replace_formatted", return_value=1)
+    mocker.patch("gdoc.api.drive.get_file_version", return_value=_version_data())
+    mocker.patch("gdoc.state.update_state_after_command")
+    assert cmd_edit(_make_args()) == 0
+    replace.assert_called_once_with("abc123", _single_match(), "world", "rev-a",
+                                    tab_id=None, body=body)
+    assert capsys.readouterr().out == "OK replaced 1 occurrence\n"

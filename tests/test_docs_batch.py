@@ -222,3 +222,76 @@ class TestReplaceFormatted:
         matches = [{"startIndex": 5, "endIndex": 10}]
         with pytest.raises(GdocError, match="Permission denied"):
             replace_formatted("d1", matches, "text", "r1")
+
+
+def _styled_body(prefix="Status: ", text="2. Archive the sample", left=None):
+    start = 1 + len(prefix)
+    elements = []
+    if prefix:
+        elements.append({"startIndex": 1, "endIndex": start,
+                         "textRun": {"content": prefix, "textStyle": left or {}}})
+    elements.append({"startIndex": start, "endIndex": start + len(text) + 1,
+                     "textRun": {"content": text + "\n", "textStyle": {}}})
+    return {"content": [{"startIndex": 1, "endIndex": start + len(text) + 1,
+                         "paragraph": {"elements": elements, "paragraphStyle": {
+                             "namedStyleType": "HEADING_2", "alignment": "END",
+                         }}}]}
+
+
+@pytest.mark.parametrize("replacement,inserted,baseline,extra", [
+    ("closed", "closed", True, []),
+    ("1. Archive the sample", "1. Archive the sample", False, []),
+    ("# label", "# label", False, []),
+    ("- note", "- note", False, []),
+    ("**closed**", "closed", True, [{"bold": True}]),
+])
+def test_inline_exact_batch(mocker, replacement, inserted, baseline, extra):
+    svc = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    chain = svc.documents.return_value
+    body = _styled_body(left={"bold": True} if baseline else {})
+    match = {"startIndex": 9, "endIndex": 30}
+    target = {"startIndex": 9, "endIndex": 9 + len(inserted), "tabId": "tab-a"}
+    requests = [
+        {"deleteContentRange": {"range": {**match, "tabId": "tab-a"}}},
+        {"insertText": {"location": {"index": 9, "tabId": "tab-a"}, "text": inserted}},
+    ]
+    if baseline:
+        requests.append({"updateTextStyle": {
+            "range": target, "textStyle": {}, "fields": "bold",
+        }})
+    requests.extend({"updateTextStyle": {
+        "range": target, "textStyle": style, "fields": "bold",
+    }} for style in extra)
+    assert replace_formatted("sample-doc", [match], replacement, "rev-a",
+                             tab_id="tab-a", body=body) == 1
+    chain.batchUpdate.assert_called_once_with(documentId="sample-doc", body={
+        "requests": requests, "writeControl": {"requiredRevisionId": "rev-a"},
+    })
+
+
+@pytest.mark.parametrize("replacement,inserted,structural", [
+    ("New label", "New label", False),
+    ("1. Archive the sample", "Archive the sample", True),
+])
+def test_complete_heading_exact_batch(mocker, replacement, inserted, structural):
+    chain = mocker.patch("gdoc.api.docs.get_docs_service").return_value.documents.return_value
+    chain.get.return_value.execute.return_value = {"body": {"content": []}}
+    body = _styled_body(prefix="", text="Old label")
+    target = {"startIndex": 1, "endIndex": 1 + len(inserted)}
+    requests = [
+        {"deleteContentRange": {"range": {"startIndex": 1, "endIndex": 10}}},
+        {"insertText": {"location": {"index": 1}, "text": inserted}},
+    ]
+    if structural:
+        requests.extend([
+            {"updateParagraphStyle": {"range": target,
+                                      "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
+                                      "fields": "namedStyleType"}},
+            {"createParagraphBullets": {"range": target,
+                                        "bulletPreset": "NUMBERED_DECIMAL_ALPHA_ROMAN"}},
+        ])
+    replace_formatted("sample-doc", [{"startIndex": 1, "endIndex": 10}],
+                      replacement, "rev-a", body=body)
+    chain.batchUpdate.assert_called_once_with(documentId="sample-doc", body={
+        "requests": requests, "writeControl": {"requiredRevisionId": "rev-a"},
+    })

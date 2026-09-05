@@ -1702,13 +1702,26 @@ def _tab_text_round_trips(document_tab: dict) -> tuple[bool, bool]:
     return text_ok, expected_styles == actual_styles
 
 
+def _named_style_directions(named_styles: dict | None) -> dict[str, str]:
+    """namedStyleType -> paragraph direction defined by the document."""
+    return {
+        style.get("namedStyleType"): (style.get("paragraphStyle") or {})
+        .get("direction", "LEFT_TO_RIGHT")
+        for style in (named_styles or {}).get("styles") or []
+    }
+
+
 def classify_markdown_rebuild(
     native: dict, *, tab_scope: bool = False,
+    retained_named_styles: dict | None = None,
 ) -> tuple[list[str], list[str]]:
     """Deny-by-default inspection of raw native state.
 
     `tab_scope` selects the rebuild path whose output is the allowlist: a tab
     replacement (parse_markdown presets) or a whole-document import.
+    `retained_named_styles` are the tab's named styles a tab replacement
+    leaves in place; a paragraph's explicit direction is judged against
+    them, since the rebuilt paragraph inherits theirs.
 
     Return sorted (blockers, styles_to_rebuild). Every key the walk reaches
     must be allowlisted: structure Markdown cannot carry blocks under its
@@ -1721,9 +1734,15 @@ def classify_markdown_rebuild(
     blockers: set[str] = set()
     styles: set[str] = set()
 
+    named_directions = _named_style_directions(retained_named_styles)
+
     def text_style(style: dict) -> None:
         for name, value in style.items():
             if name in _ALLOWED_TEXT_STYLE:
+                # Markdown encodes only enabled emphasis; an explicit False
+                # overriding a named style's default cannot come back.
+                if value is False:
+                    styles.add("emphasis overrides")
                 continue
             if name == "link":
                 if set(value or {}) - {"url"}:
@@ -1743,8 +1762,14 @@ def classify_markdown_rebuild(
             if name in _ALLOWED_PARAGRAPH_STYLE:
                 continue
             if name == "direction":
-                # The rebuild emits no direction, so only the default survives.
-                if style[name] != "LEFT_TO_RIGHT":
+                # The rebuild emits no direction: the paragraph inherits the
+                # named style's, which the import resets to left-to-right and
+                # a tab replacement keeps as defined.
+                inherited = "LEFT_TO_RIGHT"
+                if tab_scope:
+                    kind = style.get("namedStyleType", "NORMAL_TEXT")
+                    inherited = named_directions.get(kind, "LEFT_TO_RIGHT")
+                if style[name] != inherited:
                     styles.add("direction")
             elif name == "headingId":
                 # Recreated headings get new ids; #heading= deep links break.
@@ -1817,7 +1842,11 @@ def classify_markdown_rebuild(
                 visit(item, (bullet or {}).get("nestingLevel", 0)
                       if bullet is not None else nesting)
             elif key == "bullet":
-                visit(item, (item or {}).get("nestingLevel", 0))
+                # A paragraph-specific marker style is not a text run and no
+                # rebuild path recreates it.
+                if _list_level_text_style_customized(
+                        (item or {}).get("textStyle") or {}):
+                    styles.add("list style")
             elif key == "textStyle":
                 text_style(item or {})
             elif key == "paragraphStyle":
@@ -1887,9 +1916,13 @@ def check_markdown_rebuild(
         scope = find(doc.get("tabs", []))
         if scope is None:
             raise GdocError("tab not found during rebuild inspection", exit_code=3)
+        retained = scope
         scope = {k: v for k, v in scope.items()
                  if k not in _TAB_BODY_UNAFFECTED}
-    blockers, styles = classify_markdown_rebuild(scope, tab_scope=tab_id is not None)
+    blockers, styles = classify_markdown_rebuild(
+        scope, tab_scope=tab_id is not None,
+        retained_named_styles=retained.get("namedStyles") if tab_id else None,
+    )
     if tab_id is not None:
         text_ok, styles_ok = _tab_text_round_trips(scope)
         if not text_ok:

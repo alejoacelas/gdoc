@@ -1120,6 +1120,43 @@ def test_rebuild_warns_on_customized_named_styles(kind, patch):
     assert classify_markdown_rebuild({'namedStyles': named}) == ([], ['named styles'])
 
 
+def test_tab_direction_is_judged_against_retained_named_style():
+    """A tab replacement keeps the named styles; explicit LTR under an RTL
+    named style is an override the rebuild cannot recreate."""
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    rtl_normal = {'styles': [{'namedStyleType': 'NORMAL_TEXT',
+                              'paragraphStyle': {'direction': 'RIGHT_TO_LEFT'}}]}
+    ltr_paragraph = {'paragraphStyle': {'namedStyleType': 'NORMAL_TEXT',
+                                        'direction': 'LEFT_TO_RIGHT'}}
+    rtl_paragraph = {'paragraphStyle': {'namedStyleType': 'NORMAL_TEXT',
+                                        'direction': 'RIGHT_TO_LEFT'}}
+    assert classify_markdown_rebuild(
+        ltr_paragraph, tab_scope=True, retained_named_styles=rtl_normal,
+    ) == ([], ['direction'])
+    assert classify_markdown_rebuild(
+        rtl_paragraph, tab_scope=True, retained_named_styles=rtl_normal,
+    ) == ([], [])
+    # A whole-document import resets named styles to left-to-right.
+    assert classify_markdown_rebuild(rtl_paragraph) == ([], ['direction'])
+    assert classify_markdown_rebuild(ltr_paragraph) == ([], [])
+
+
+def test_check_passes_retained_named_styles_for_tabs(mocker, capsys):
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    doc = _rebuild_doc()
+    tab = doc['tabs'][0]['documentTab']
+    tab['namedStyles'] = {'styles': [{
+        'namedStyleType': 'NORMAL_TEXT',
+        'paragraphStyle': {'direction': 'RIGHT_TO_LEFT'}}]}
+    tab['body']['content'][0]['paragraph']['paragraphStyle'] = {
+        'namedStyleType': 'NORMAL_TEXT', 'direction': 'LEFT_TO_RIGHT'}
+    check_markdown_rebuild('doc', document=doc, tab_id='notes')
+    assert 'direction' in capsys.readouterr().err
+
+
 def test_named_styles_warning_is_whole_document_only(mocker, capsys):
     from gdoc.api.docs import check_markdown_rebuild
 
@@ -1187,6 +1224,11 @@ def test_rebuild_allowlist_passes_silently():
     ({'textStyle': {'baselineOffset': 'SUPERSCRIPT'}}, 'baseline'),
     ({'paragraphStyle': {'alignment': 'END'}}, 'alignment'),
     ({'paragraphStyle': {'direction': 'RIGHT_TO_LEFT'}}, 'direction'),
+    ({'textStyle': {'bold': False}}, 'emphasis overrides'),
+    ({'textStyle': {'italic': False}}, 'emphasis overrides'),
+    ({'body': {'content': [{'paragraph': {
+        'bullet': {'listId': 'l', 'nestingLevel': 0, 'textStyle': {'bold': True}},
+        'elements': [{'textRun': {'content': 'x\n'}}]}}]}}, 'list style'),
     ({'paragraphStyle': {'namedStyleType': 'HEADING_2', 'headingId': 'h.x'}},
      'heading links'),
     ({'paragraphStyle': {'spaceAbove': {'magnitude': 8}}}, 'spacing'),

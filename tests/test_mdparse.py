@@ -1,6 +1,7 @@
 """Tests for the markdown parser and Docs API request builder."""
 
 import pytest
+
 from gdoc.mdparse import parse_inline, parse_markdown, to_docs_requests
 
 

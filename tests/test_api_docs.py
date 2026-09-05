@@ -856,6 +856,8 @@ class TestInsertMarkdownIntoTab:
     ({'body': {'content': [{'tableOfContents': {'content': []}}]}},
      'table of contents'),
     ({'elements': [{'equation': {}}]}, 'equations'),
+    ({'elements': [{'pageBreak': {}}]}, 'page/column breaks'),
+    ({'elements': [{'columnBreak': {}}]}, 'page/column breaks'),
     ({'inlineObjects': {'kix.d': {'inlineObjectProperties': {'embeddedObject': {
         'embeddedDrawingProperties': {}}}}}}, 'drawings'),
     ({'positionedObjects': {'kix.c': {'positionedObjectProperties': {
@@ -901,6 +903,52 @@ def test_rebuild_normal_text_and_generated_defaults_are_safe():
                                      'textStyle': {'bold': True}}}],
         }}]},
     }) == ([], [])
+
+
+_IMPORT_STYLE = {
+    'documentFormat': {'documentMode': 'PAGES'},
+    'pageSize': {'width': {'magnitude': 612, 'unit': 'PT'},
+                 'height': {'magnitude': 792, 'unit': 'PT'}},
+    'marginTop': {'magnitude': 72, 'unit': 'PT'},
+    'marginBottom': {'magnitude': 72, 'unit': 'PT'},
+    'marginLeft': {'magnitude': 72, 'unit': 'PT'},
+    'marginRight': {'magnitude': 72, 'unit': 'PT'},
+    'background': {'color': {}},
+}
+
+
+@pytest.mark.parametrize('override', [
+    {'documentFormat': {'documentMode': 'PAGELESS'}},
+    {'flipPageOrientation': True},
+    {'background': {'color': {'color': {'rgbColor': {'red': 1}}}}},
+    {'pageSize': {'width': {'magnitude': 595.28, 'unit': 'PT'},
+                  'height': {'magnitude': 841.89, 'unit': 'PT'}}},
+    {'marginTop': {'magnitude': 144, 'unit': 'PT'}},
+])
+def test_rebuild_warns_on_explicit_page_setup(override):
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    style = {**_IMPORT_STYLE, **override}
+    assert classify_markdown_rebuild({'documentStyle': style}) == ([], ['page setup'])
+
+
+def test_rebuild_silent_on_import_default_page_setup():
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    assert classify_markdown_rebuild({'documentStyle': _IMPORT_STYLE}) == ([], [])
+
+
+def test_page_setup_warning_is_whole_document_only(mocker, capsys):
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    doc = _rebuild_doc()
+    doc['tabs'][0]['documentTab']['documentStyle'] = {
+        **_IMPORT_STYLE, 'documentFormat': {'documentMode': 'PAGELESS'}}
+    check_markdown_rebuild('doc', document=doc, tab_id='notes')
+    assert capsys.readouterr().err == ''
+    check_markdown_rebuild('doc', document=doc)
+    assert 'reset page setup' in capsys.readouterr().err
 
 
 def _rebuild_doc(unsafe=False):

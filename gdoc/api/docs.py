@@ -1408,6 +1408,36 @@ def _strip_trailing_newline_unless_hr(parsed) -> None:
                 s.end = old_len - 1
 
 
+# What Drive's Markdown import leaves behind (verified live on 2026-09-05):
+# paged mode, US Letter, one-inch margins, no background, no flipped
+# orientation. Anything else in documentStyle is reset by a rebuild.
+_IMPORT_PAGE_SIZE = (612.0, 792.0)
+_IMPORT_MARGIN_PT = 72.0
+
+
+def _page_setup_differs_from_import(document_style: dict) -> bool:
+    """True if a rebuild would visibly reset this documentStyle."""
+    def magnitude(value, default):
+        return float((value or {}).get("magnitude", default))
+
+    fmt = document_style.get("documentFormat", {}) or {}
+    if fmt.get("documentMode", "PAGES") != "PAGES":
+        return True
+    if document_style.get("flipPageOrientation"):
+        return True
+    if (document_style.get("background", {}) or {}).get("color", {}).get("color"):
+        return True
+    size = document_style.get("pageSize", {}) or {}
+    width = magnitude(size.get("width"), _IMPORT_PAGE_SIZE[0])
+    height = magnitude(size.get("height"), _IMPORT_PAGE_SIZE[1])
+    if abs(width - _IMPORT_PAGE_SIZE[0]) > 1 or abs(height - _IMPORT_PAGE_SIZE[1]) > 1:
+        return True
+    margins = (document_style.get(side) for side in
+               ("marginTop", "marginBottom", "marginLeft", "marginRight"))
+    return any(abs(magnitude(m, _IMPORT_MARGIN_PT) - _IMPORT_MARGIN_PT) > 1
+               for m in margins)
+
+
 def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
     """Classify raw native state; ignore effective named-style defaults.
 
@@ -1429,6 +1459,8 @@ def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
                     blockers.add("tables" if key == "table" else "footnotes")
                 if key == "tableOfContents":
                     blockers.add("table of contents")
+                if key in {"pageBreak", "columnBreak"}:
+                    blockers.add("page/column breaks")
                 if key == "equation":
                     blockers.add("equations")
                 if key == "embeddedDrawingProperties":
@@ -1479,6 +1511,8 @@ def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
                 if key != "documentStyle":
                     visit(item)
                 elif isinstance(item, dict):
+                    if _page_setup_differs_from_import(item):
+                        styles.add("page setup")
                     visit({k: v for k, v in item.items() if k.endswith("Id")})
 
     visit(native)
@@ -1549,6 +1583,10 @@ def check_markdown_rebuild(
                if "multiple tabs" in blockers else ""),
             exit_code=3,
         )
+    if "page setup" in styles:
+        styles.remove("page setup")
+        print("WARN: Markdown rebuild will reset page setup to import defaults "
+              "(paged, US Letter, 1in margins, no background)", file=sys.stderr)
     if styles:
         print("WARN: Markdown rebuild will rebuild: " + ", ".join(styles),
               file=sys.stderr)

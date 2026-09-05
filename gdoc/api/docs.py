@@ -256,7 +256,7 @@ def get_document_tabs(doc_id: str) -> list[dict]:
         doc = (
             service.documents()
             .get(documentId=doc_id, includeTabsContent=True)
-            .execute()
+            .execute(num_retries=2)
         )
         return flatten_tabs(doc.get("tabs", []))
     except HttpError as e:
@@ -526,7 +526,7 @@ def get_document(doc_id: str) -> dict:
     """
     try:
         service = get_docs_service()
-        return service.documents().get(documentId=doc_id).execute()
+        return service.documents().get(documentId=doc_id).execute(num_retries=2)
     except HttpError as e:
         _translate_http_error(e, doc_id)
 
@@ -1007,7 +1007,7 @@ class _StagedWrite:
         kwargs = {"documentId": self.doc_id}
         if tab_id:
             kwargs["includeTabsContent"] = True
-        return get_docs_service().documents().get(**kwargs).execute()
+        return get_docs_service().documents().get(**kwargs).execute(num_retries=2)
 
     def batch(self, stage, requests, revision_id, recompute=None):
         self.stage, self.sent = stage, False
@@ -1612,7 +1612,7 @@ def get_document_with_tabs(doc_id: str) -> dict:
         return (
             service.documents()
             .get(documentId=doc_id, includeTabsContent=True)
-            .execute()
+            .execute(num_retries=2)
         )
     except HttpError as e:
         _translate_http_error(e, doc_id)
@@ -1643,7 +1643,7 @@ def get_document_structure(
         kwargs["suggestionsViewMode"] = suggestions_view_mode
     try:
         service = get_docs_service()
-        return service.documents().get(**kwargs).execute()
+        return service.documents().get(**kwargs).execute(num_retries=2)
     except HttpError as e:
         _translate_http_error(e, doc_id)
 

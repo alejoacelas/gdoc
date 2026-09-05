@@ -384,3 +384,30 @@ def test_segment_sort_descends_only_inside_each_container():
         ("body", 10), ("body", 1), ("header", 20), ("header", 1),
         ("footnote", 1),
     ]
+
+
+@pytest.mark.parametrize("mode", ["edit", "suggest"])
+def test_overlapping_matches_inside_one_segment_still_rejected(mocker, mode):
+    from gdoc.api.docs import suggest_replacement
+
+    service = mocker.patch("gdoc.api.docs.get_docs_service")
+    match = _mixed_matches()[1]
+    matches = [match, {**match, "startIndex": 3, "endIndex": 8}]
+    replace = replace_formatted if mode == "edit" else suggest_replacement
+    with pytest.raises(GdocError, match="overlap each other") as error:
+        replace("doc-one", matches, "R", "revision-one")
+    assert error.value.exit_code == 3
+    service.assert_not_called()
+
+
+def test_non_body_only_edit_does_not_read_for_cleanup(mocker):
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    tabs = mocker.patch("gdoc.api.docs.get_document_with_tabs")
+    cleanup = mocker.patch("gdoc.api.docs._build_cleanup_requests")
+    assert replace_formatted(
+        "doc-one", [_mixed_matches()[1]], "REPLACED", "revision-one",
+        tab_id="tab-one",
+    ) == 1
+    tabs.assert_not_called()
+    service.documents.return_value.get.assert_not_called()
+    cleanup.assert_not_called()

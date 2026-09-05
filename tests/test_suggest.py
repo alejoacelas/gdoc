@@ -1731,3 +1731,58 @@ def test_suggest_segments_exact_batch(mocker, _preview_gate_passes):
     )
     _preview_gate_passes.assert_called_once_with("doc-one")
     readback.assert_called_once_with("doc-one", suggestions_view_mode=SUGGESTIONS_INLINE)
+
+
+@pytest.mark.parametrize("target", ["body", "headers", "footnotes"])
+@pytest.mark.parametrize("suggested_container", ["body", "headers", "footnotes"])
+def test_suggest_overlap_checks_only_the_matched_container(
+    mocker, target, suggested_container,
+):
+    def content(text, suggested=False):
+        run = _run(text, 1, 1 + len(text))
+        if suggested:
+            run["textRun"]["suggestedInsertionIds"] = ["suggest-existing"]
+        return _body(_para(run))
+
+    document_tab = {}
+    for key in ("body", "headers", "footnotes"):
+        value = content("TOKEN" if key == target else "Other",
+                        key == suggested_container)
+        document_tab[key] = value if key == "body" else {key + "-one": value}
+    document = {"revisionId": "revision-one", "tabs": [{
+        "tabProperties": {"tabId": "tab-one", "title": "First"},
+        "documentTab": document_tab,
+    }]}
+    mocker.patch("gdoc.notify.pre_flight", return_value=None)
+    mocker.patch("gdoc.api.docs.get_document_structure", return_value=document)
+    mocker.patch("gdoc.api.docs._token_identity", return_value=("client", "token"))
+    mocker.patch("gdoc.api.drive.get_file_version", return_value=_VERSION)
+    mocker.patch("gdoc.state.update_state_after_command")
+    suggest = mocker.patch("gdoc.api.docs.suggest_replacement", return_value=_result())
+    args = _args(old_text="TOKEN", new_text="REPLACED")
+    if target == suggested_container:
+        with pytest.raises(GdocError, match="overlaps existing") as error:
+            cmd_suggest(args)
+        assert error.value.exit_code == 3
+        suggest.assert_not_called()
+    else:
+        assert cmd_suggest(args) == 0
+        match = {"startIndex": 1, "endIndex": 6, "tabId": "tab-one",
+                 "container": "body" if target == "body" else target[:-1]}
+        if target != "body":
+            match["segmentId"] = target + "-one"
+        suggest.assert_called_once_with(
+            "abc123", [match], "REPLACED", "revision-one", tab_id="tab-one",
+            expected_token_identity=("client", "token"),
+        )
+
+
+def test_suggest_segment_readback_must_contain_reported_ids(mocker):
+    from test_docs_batch import _mixed_matches
+
+    service = _service(_ok_response())
+    mocker.patch("gdoc.api.docs.get_docs_service", return_value=service)
+    mocker.patch("gdoc.api.docs.get_document_structure", return_value=_readback())
+    with pytest.raises(GdocError, match="read-back"):
+        suggest_replacement("doc-one", _mixed_matches(), "REPLACED", "revision-one")
+    assert service.documents.return_value.batchUpdate.call_count == 1

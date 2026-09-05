@@ -830,3 +830,42 @@ class TestInsertMarkdownIntoTab:
 
         with pytest.raises(GdocError, match="tab not found"):
             insert_markdown_into_tab("doc1", "Not A Real Tab", "hi")
+
+
+@pytest.mark.parametrize("collection", ["headers", "footers", "footnotes"])
+def test_segment_search_preserves_matching_options_and_cell_boundaries(collection):
+    from gdoc.api.docs import find_text_in_document
+
+    def paragraph(start, text):
+        return {"paragraph": {"elements": [
+            {"startIndex": start, "textRun": {"content": text}},
+        ]}}
+
+    scope = {"id": "tab-one", "body": {}, collection: {"segment-one": {
+        "content": [paragraph(0, "A\u2019s TOKEN\n"), {"table": {"tableRows": [{
+            "tableCells": [
+                {"content": [paragraph(20, "Left")]},
+                {"content": [paragraph(30, "Right")]},
+            ],
+        }]}}],
+    }}}
+    assert find_text_in_document(scope, "A's") == []
+    assert find_text_in_document(scope, "token", match_case=True) == []
+    assert find_text_in_document(scope, "LeftRight") == []
+    assert find_text_in_document(scope, "Left\nRight") == []
+    assert find_text_in_document(scope, "a's token", normalize=True) == [{
+        "startIndex": 0, "endIndex": 9, "tabId": "tab-one",
+        "segmentId": "segment-one", "container": collection[:-1],
+    }]
+
+
+def test_segments_are_ordered_by_id_not_map_insertion_order():
+    from gdoc.api.docs import find_text_in_document
+
+    content = {"content": [{"paragraph": {"elements": [
+        {"startIndex": 0, "textRun": {"content": "TOKEN"}},
+    ]}}]}
+    matches = find_text_in_document({"headers": {
+        "header-z": content, "header-a": content,
+    }}, "TOKEN")
+    assert [m["segmentId"] for m in matches] == ["header-a", "header-z"]

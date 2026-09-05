@@ -59,11 +59,12 @@ _LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 # verbatim, so no emphasis, code or link syntax inside them is consumed. A run
 # of 3+ backticks or tildes (the delimiters _FENCE_RE accepts at block level)
 # that ends its line opens a block-style fence, which closes only on a run of
-# at least the same length alone on its own line, exactly like the block
-# parser; a delimiter run inside the fenced content therefore stays inside.
+# at least the same length alone on its own line, or else runs to the end of
+# the input, exactly like the block parser; a delimiter run inside the fenced
+# content therefore stays inside, and an unclosed fence stays literal.
 _FENCE_BLOCK_SPAN_RES = [
-    re.compile(r"(`{3,})[^\n`]*\n[\s\S]*?\n {0,3}\1`*[ \t]*(?=\n|$)"),
-    re.compile(r"(~{3,})[^\n]*\n[\s\S]*?\n {0,3}\1~*[ \t]*(?=\n|$)"),
+    re.compile(r"(`{3,})[^\n`]*\n[\s\S]*?(?:\n {0,3}\1`*[ \t]*(?=\n|$)|$)"),
+    re.compile(r"(~{3,})[^\n]*\n[\s\S]*?(?:\n {0,3}\1~*[ \t]*(?=\n|$)|$)"),
 ]
 # Any other closed run (a mid-line ```code``` span) closes at the next run of
 # the same length, as a CommonMark code span would.

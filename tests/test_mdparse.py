@@ -599,9 +599,14 @@ class TestBackslashEscapes:
         assert parse_inline(nested) == (nested, [])
         nested = "~~~\nfirst ~~~ literal\n**second**\n~~~"
         assert parse_inline(nested) == (nested, [])
-        # Without a fence-only closer the opening run closes like a code span.
-        text, styles = parse_inline("```\nfirst ``` literal **b**")
-        assert text == "```\nfirst ``` literal b"
+        # An unclosed block-style fence runs to the end of the input, as in
+        # the block parser, so its content stays literal.
+        for unclosed in ("```\nfirst ``` literal **b**", "~~~\n**code**", "```\n"):
+            assert parse_inline(unclosed) == (unclosed, [])
+        # A mid-line run without a closer is not a fence; it stays literal
+        # while the text around it is parsed normally.
+        text, styles = parse_inline("x ``` then **b**")
+        assert text == "x ``` then b"
         assert [text[s.start:s.end] for s in styles] == ["b"]
         # Tilde fences are literal too, and still beat strikethrough.
         tilde = "~~~\n**code** ~~gone~~\n~~~"

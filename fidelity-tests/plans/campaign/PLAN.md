@@ -104,6 +104,36 @@ fallback only where a documented comparison shows the two agree; images are capt
 disposable document exists and stored with the run. `gallery.html` is a static page generated
 from the ledger, sorted by rank, with filters; no write-back until phase two.
 
+The gallery must make the requested edit and the recorded result clear at first glance:
+
+- Lead each entry with a short task title and **Expected / Observed** columns. Describe
+  exact replacements or suggestions from the assertions, and whether formatting must stay.
+  Keep raw commands, document IDs, repeated per-character findings and full audits in the
+  linked evidence report. Show at most three distinct observed changes, with a link for more.
+- Put **Before / After** images directly in the gallery. Prefer verified crops that include
+  collateral changes; if coordinates are missing, label the first full captured view and
+  link to every page. Say when captures are missing. Render comment/suggestion state in the
+  full report when page images cannot show the change.
+- Group errors into useful, reader-facing categories derived from that run's findings,
+  with selectable buttons and counts at the top, outside collapsed filters. Do not hardcode
+  this run's category names or taxonomy into the next viewer. Group recorded unallowed
+  findings, not case names or requested constructs. A case can belong to several groups;
+  these describe symptoms, not proven common causes.
+- Keep **Result not established** and **No loss reported** distinct from error categories.
+  Missing/invalid/incomplete verdicts never imply success. Show confirmation and synthetic
+  status separately; a category never promotes a provisional observation to a finding.
+- Default to one representative run per case: strongest evidence first, newest on ties.
+  Offer search, **All categories**, and **Show every run**; put technical filters behind
+  **More filters**. Category counts follow search, technical filters and case/run mode,
+  count each entry once per category, and may overlap. Preserve access to every execution.
+- Verify desktop and phone layouts, loaded images, keyboard-operable category buttons,
+  selected state, counts, combined filters, and empty results in a browser. Test category
+  assignment, overlap, exclusion of allowed edits, deduplication, and missing evidence.
+
+Reference implementation: `campaign-private` worktree, `campaign/camp/cards.py` and
+`campaign/runs/gallery.html`. These requirements carry its viewer improvements into the
+next run; they do not change the runner, judge, sampling or confirmation rules.
+
 ### 6. Ledger, classification and the fix list
 
 `ledger.jsonl`: one line per run (case id, seed hash, gdoc version, the three outcome fields,

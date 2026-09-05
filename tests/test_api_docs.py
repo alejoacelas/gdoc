@@ -1486,6 +1486,28 @@ def test_tab_rebuild_ignores_objects_only_in_headers(mocker):
         check_markdown_rebuild('doc', document=doc, tab_id='notes')
 
 
+def test_tab_rebuild_ignores_lists_only_in_headers(mocker, capsys):
+    """A header's list survives a body replacement; a body list is inspected."""
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    doc = _rebuild_doc()
+    tab = doc['tabs'][0]['documentTab']
+    tab['headers'] = {'h': {'content': [{'paragraph': {
+        'bullet': {'listId': 'kix.hdr', 'nestingLevel': 0},
+        'elements': [{'textRun': {'content': 'x\n'}}]}}]}}
+    tab['lists'] = {'kix.hdr': {
+        'listProperties': {'nestingLevels': [{'glyphSymbol': '\u27a2'}]},
+        'suggestedListPropertiesChanges': {'s': {}}}}
+    check_markdown_rebuild('doc', document=doc, tab_id='notes')
+    assert capsys.readouterr().err == ''
+    tab['body']['content'].append({'paragraph': {
+        'bullet': {'listId': 'kix.hdr', 'nestingLevel': 0},
+        'elements': [{'textRun': {'content': 'y\n'}}]}})
+    with pytest.raises(GdocError, match='suggestedListPropertiesChanges'):
+        check_markdown_rebuild('doc', document=doc, tab_id='notes')
+
+
 def test_whole_document_rebuild_blocks_images_too(mocker):
     """Nothing proves Drive's import keeps images, so deny by default."""
     from gdoc.api.docs import check_markdown_rebuild

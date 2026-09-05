@@ -1978,6 +1978,25 @@ def _body_object_ids(body: dict) -> set[str]:
     return ids
 
 
+def _body_list_ids(body: dict) -> set[str]:
+    """Ids of the lists whose items appear in a body."""
+    ids: set[str] = set()
+
+    def visit(value):
+        if isinstance(value, list):
+            for item in value:
+                visit(item)
+        elif isinstance(value, dict):
+            bullet = value.get("bullet")
+            if isinstance(bullet, dict) and bullet.get("listId"):
+                ids.add(bullet["listId"])
+            for item in value.values():
+                visit(item)
+
+    visit(body.get("content", []))
+    return ids
+
+
 # documentTab keys a body-range deletion never mutates.
 _TAB_BODY_UNAFFECTED = frozenset({"headers", "footers", "documentStyle",
                                   "namedStyles"})
@@ -2025,6 +2044,9 @@ def check_markdown_rebuild(
         for key in ("inlineObjects", "positionedObjects"):
             if isinstance(scope.get(key), dict):
                 scope[key] = {k: v for k, v in scope[key].items() if k in body_ids}
+        if isinstance(scope.get("lists"), dict):
+            list_ids = _body_list_ids(scope.get("body") or {})
+            scope["lists"] = {k: v for k, v in scope["lists"].items() if k in list_ids}
     blockers, styles = classify_markdown_rebuild(
         scope, tab_scope=tab_id is not None,
         retained_named_styles=retained.get("namedStyles") if tab_id else None,

@@ -1629,6 +1629,9 @@ def test_tab_rebuild_warns_on_styled_surrounding_spaces(mocker, capsys):
     doc = _styled_tab((' \n', _CODE))
     check_markdown_rebuild('doc', document=doc, tab_id='notes')
     assert 'styled spaces' in capsys.readouterr().err
+    doc = _styled_tab(('\n', {'bold': True}))  # styled paragraph mark alone
+    check_markdown_rebuild('doc', document=doc, tab_id='notes')
+    assert 'styled spaces' in capsys.readouterr().err
 
 
 def test_tab_rebuild_blocks_when_exporter_drops_formatting(mocker):

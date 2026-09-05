@@ -1190,6 +1190,20 @@ def _prepare_text_replacement(
         revision_id = document.get("revisionId", "")
         search_body = document.get("body", {})
         search_scope = document
+        if cell is None and any(document.get(key) for key in (
+            "headers", "footers", "footnotes",
+        )):
+            # Legacy reads omit tab IDs. Refresh the first tab and revision
+            # together so non-body ranges carry explicit tab coordinates.
+            from gdoc.api.docs import flatten_tabs, get_document_with_tabs
+            doc = get_document_with_tabs(doc_id)
+            tabs = flatten_tabs(doc.get("tabs", []))
+            if not tabs:
+                raise GdocError(f"document has no tabs: {doc_id}")
+            search_scope = tabs[0]
+            search_body = search_scope["body"]
+            tab_id = search_scope["id"]
+            revision_id = doc.get("revisionId", "")
 
     if cell is not None:
         from gdoc.api.docs import resolve_cell_range

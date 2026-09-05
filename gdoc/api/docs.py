@@ -540,8 +540,9 @@ def find_text_in_document(
             before matching. The fold is length-preserving, so returned
             indices stay correct.
 
-    Returns list of {"startIndex": int, "endIndex": int} in document
-    coordinates, ordered by startIndex.
+    Returns ranges with startIndex/endIndex, plus container, segmentId,
+    and tabId where available. Containers are ordered body, headers,
+    footers, footnotes; matches ascend by startIndex within each container.
     """
     if body is None:
         if document is None:
@@ -1561,8 +1562,8 @@ def check_segment_replacement(parsed, markdown: str, matches: list[dict]) -> Non
             "headers, footers, and footnotes support only plain or inline "
             "Markdown replacements", exit_code=3,
         ) from None
-    if ("\n" in parsed.plain_text.rstrip("\n")
-            or re.search(r"(?m)^ {0,3}(?:`{3,}|~{3,})", markdown)):
+    if ("\n" in parsed.plain_text.removesuffix("\n")
+            or re.search(r"(?m)^\s*(?:`{3,}|~{3,})", markdown)):
         raise GdocError(
             "headers, footers, and footnotes support only plain or inline "
             "Markdown replacements", exit_code=3,
@@ -1672,6 +1673,7 @@ def replace_formatted(
         sorted_matches = [m for m in sorted_matches if not m.get("segmentId")]
         if not sorted_matches:
             return occurrences
+        tab_id = sorted_matches[0].get("tabId", tab_id)
 
         # Clean up leftover heading paragraphs (before table insertion
         # so indices haven't shifted from table expansion).

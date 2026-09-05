@@ -1541,10 +1541,8 @@ def _list_level_text_style_customized(style: dict) -> bool:
         elif name == "fontSize":
             if value and abs(float(value.get("magnitude", size)) - size) > 0.5:
                 return True
-        elif name == "link":
-            continue
         elif value:
-            return True
+            return True  # a marker link, or a field this code does not know
     return False
 
 

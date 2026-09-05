@@ -1065,6 +1065,8 @@ def test_rebuild_warns_on_ruler_moved_list_paragraph():
     {'glyphSymbol': '-', 'textStyle': {'foregroundColor': {'color': {
         'rgbColor': {'red': 1}}}}},
     {'glyphSymbol': '-', 'levelFieldAddedNextYear': True},
+    {'glyphSymbol': '-', 'textStyle': {'link': {'url': 'https://e.com'}}},
+    {'glyphSymbol': '-', 'textStyle': {'link': {'headingId': 'h.x'}}},
     {'glyphType': 'ALPHA'},  # the UI preset puts alpha at level 1, not 0
     {'glyphSymbol': '\u25a0'},  # square bullets belong to level 2
     {'glyphSymbol': '-', 'textStyle': {'weightedFontFamily': {

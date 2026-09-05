@@ -68,9 +68,9 @@ def pre_flight(doc_id: str, quiet: bool = False) -> ChangeInfo | None:
     if quiet:
         return None
 
-    from gdoc.state import load_state
-    from gdoc.api.drive import get_file_version
     from gdoc.api.comments import list_comments
+    from gdoc.api.drive import get_file_version
+    from gdoc.state import load_state
 
     state = load_state(doc_id)
 
@@ -214,7 +214,11 @@ def _print_banner(info: ChangeInfo, state) -> None:
 
     # Build change lines
     time_ago = _format_time_ago(state.last_seen if state else "")
-    header = f"--- since last interaction ({time_ago}) ---" if time_ago else "--- since last interaction ---"
+    header = (
+        f"--- since last interaction ({time_ago}) ---"
+        if time_ago
+        else "--- since last interaction ---"
+    )
     print(header, file=sys.stderr)
 
     if info.doc_edited:
@@ -242,7 +246,9 @@ def _print_banner(info: ChangeInfo, state) -> None:
             content = last_reply.get("content", "")
             if len(content) > 60:
                 content = content[:57] + "..."
-            print(f' \u21a9 new reply on #{cid} by {name}: "{content}"', file=sys.stderr)
+            print(
+                f' \u21a9 new reply on #{cid} by {name}: "{content}"', file=sys.stderr
+            )
 
     for c in info.newly_resolved:
         cid = c.get("id", "")
@@ -279,13 +285,17 @@ def _print_first_interaction_banner(info: ChangeInfo) -> None:
 
     modified_date = info.doc_modified[:10] if info.doc_modified else ""
     print(
-        f' \U0001f4c4 "{info.doc_title}" by {info.doc_owner}, last edited {modified_date}',
+        f' \U0001f4c4 "{info.doc_title}" by {info.doc_owner}, '
+        f"last edited {modified_date}",
         file=sys.stderr,
     )
 
     parts = []
     if info.open_comment_count > 0:
-        parts.append(f"{info.open_comment_count} open comment{'s' if info.open_comment_count != 1 else ''}")
+        parts.append(
+            f"{info.open_comment_count} open comment"
+            f"{'s' if info.open_comment_count != 1 else ''}"
+        )
     if info.resolved_comment_count > 0:
         parts.append(f"{info.resolved_comment_count} resolved")
     if parts:

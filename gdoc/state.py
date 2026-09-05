@@ -3,7 +3,7 @@
 import json
 import os
 import tempfile
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from gdoc.util import STATE_DIR
@@ -26,14 +26,16 @@ def _state_path(doc_id: str) -> Path:
 
 
 def load_state(doc_id: str) -> DocState | None:
-    """Load state for a document. Returns None if no state exists (first interaction)."""
+    """Load document state; return None on the first interaction."""
     path = _state_path(doc_id)
     if not path.exists():
         return None
     try:
         with open(path) as f:
             data = json.load(f)
-        return DocState(**{k: v for k, v in data.items() if k in DocState.__dataclass_fields__})
+        return DocState(
+            **{k: v for k, v in data.items() if k in DocState.__dataclass_fields__}
+        )
     except (json.JSONDecodeError, TypeError, KeyError):
         return None
 

@@ -1730,7 +1730,9 @@ def test_suggest_segments_exact_batch(mocker, _preview_gate_passes):
         },
     )
     _preview_gate_passes.assert_called_once_with("doc-one")
-    readback.assert_called_once_with("doc-one", suggestions_view_mode=SUGGESTIONS_INLINE)
+    readback.assert_called_once_with(
+        "doc-one", suggestions_view_mode=SUGGESTIONS_INLINE
+    )
 
 
 @pytest.mark.parametrize("target", ["body", "headers", "footnotes"])

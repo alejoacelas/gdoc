@@ -2,9 +2,7 @@
 
 from unittest.mock import patch
 
-import pytest
-
-from gdoc.notify import pre_flight, ChangeInfo, _format_time_ago, _print_banner
+from gdoc.notify import ChangeInfo, _format_time_ago, pre_flight
 from gdoc.state import DocState
 
 
@@ -63,10 +61,22 @@ class TestPreFlightQuiet:
         assert result is None
 
     @patch("gdoc.api.comments.list_comments", return_value=[])
-    @patch("gdoc.api.drive.get_file_version", return_value={"version": 1, "modifiedTime": "2025-01-20T00:00:00Z"})
-    @patch("gdoc.api.drive.get_file_info", return_value={"name": "Test", "owners": [], "modifiedTime": "2025-01-20T00:00:00Z"})
+    @patch(
+        "gdoc.api.drive.get_file_version",
+        return_value={"version": 1, "modifiedTime": "2025-01-20T00:00:00Z"},
+    )
+    @patch(
+        "gdoc.api.drive.get_file_info",
+        return_value={
+            "name": "Test",
+            "owners": [],
+            "modifiedTime": "2025-01-20T00:00:00Z",
+        },
+    )
     @patch("gdoc.state.load_state", return_value=None)
-    def test_quiet_makes_no_api_calls(self, mock_load, mock_info, mock_ver, mock_comments):
+    def test_quiet_makes_no_api_calls(
+        self, mock_load, mock_info, mock_ver, mock_comments
+    ):
         """Verify --quiet doesn't call any API functions."""
         pre_flight("doc1", quiet=True)
         mock_ver.assert_not_called()
@@ -79,8 +89,14 @@ class TestPreFlightFirstInteraction:
     @patch("gdoc.api.drive.get_file_version")
     @patch("gdoc.api.drive.get_file_info")
     @patch("gdoc.state.load_state", return_value=None)
-    def test_first_interaction_banner(self, mock_load, mock_info, mock_ver, mock_comments, capsys):
-        mock_ver.return_value = {"version": 10, "modifiedTime": "2025-01-20T14:30:00Z", "lastModifyingUser": {}}
+    def test_first_interaction_banner(
+        self, mock_load, mock_info, mock_ver, mock_comments, capsys
+    ):
+        mock_ver.return_value = {
+            "version": 10,
+            "modifiedTime": "2025-01-20T14:30:00Z",
+            "lastModifyingUser": {},
+        }
         mock_info.return_value = {
             "name": "Q3 Planning Doc",
             "owners": [{"emailAddress": "alice@co.com"}],
@@ -110,12 +126,22 @@ class TestPreFlightFirstInteraction:
     @patch("gdoc.api.drive.get_file_version")
     @patch("gdoc.api.drive.get_file_info")
     @patch("gdoc.state.load_state", return_value=None)
-    def test_first_interaction_no_comments(self, mock_load, mock_info, mock_ver, mock_comments, capsys):
-        mock_ver.return_value = {"version": 5, "modifiedTime": "2025-01-20T00:00:00Z", "lastModifyingUser": {}}
-        mock_info.return_value = {"name": "Empty Doc", "owners": [{"emailAddress": "bob@co.com"}], "modifiedTime": "2025-01-20T00:00:00Z"}
+    def test_first_interaction_no_comments(
+        self, mock_load, mock_info, mock_ver, mock_comments, capsys
+    ):
+        mock_ver.return_value = {
+            "version": 5,
+            "modifiedTime": "2025-01-20T00:00:00Z",
+            "lastModifyingUser": {},
+        }
+        mock_info.return_value = {
+            "name": "Empty Doc",
+            "owners": [{"emailAddress": "bob@co.com"}],
+            "modifiedTime": "2025-01-20T00:00:00Z",
+        }
         mock_comments.return_value = []
 
-        result = pre_flight("doc1")
+        pre_flight("doc1")
         err = capsys.readouterr().err
         assert "first interaction" in err
         assert "Empty Doc" in err
@@ -125,9 +151,19 @@ class TestPreFlightFirstInteraction:
     @patch("gdoc.api.drive.get_file_version")
     @patch("gdoc.api.drive.get_file_info")
     @patch("gdoc.state.load_state", return_value=None)
-    def test_first_interaction_initializes_comment_ids(self, mock_load, mock_info, mock_ver, mock_comments):
-        mock_ver.return_value = {"version": 5, "modifiedTime": "2025-01-20T00:00:00Z", "lastModifyingUser": {}}
-        mock_info.return_value = {"name": "Doc", "owners": [], "modifiedTime": "2025-01-20T00:00:00Z"}
+    def test_first_interaction_initializes_comment_ids(
+        self, mock_load, mock_info, mock_ver, mock_comments
+    ):
+        mock_ver.return_value = {
+            "version": 5,
+            "modifiedTime": "2025-01-20T00:00:00Z",
+            "lastModifyingUser": {},
+        }
+        mock_info.return_value = {
+            "name": "Doc",
+            "owners": [],
+            "modifiedTime": "2025-01-20T00:00:00Z",
+        }
         mock_comments.return_value = [
             {"id": "c1", "resolved": False},
             {"id": "c2", "resolved": True},
@@ -157,7 +193,11 @@ class TestPreFlightChanges:
     @patch("gdoc.state.load_state")
     def test_no_changes_banner(self, mock_load, mock_ver, mock_comments, capsys):
         mock_load.return_value = self._make_state()
-        mock_ver.return_value = {"version": 847, "modifiedTime": "2025-01-20T14:30:00Z", "lastModifyingUser": {}}
+        mock_ver.return_value = {
+            "version": 847,
+            "modifiedTime": "2025-01-20T14:30:00Z",
+            "lastModifyingUser": {},
+        }
 
         result = pre_flight("doc1")
         assert not result.has_changes
@@ -193,7 +233,11 @@ class TestPreFlightChanges:
     @patch("gdoc.state.load_state")
     def test_new_comment_detection(self, mock_load, mock_ver, mock_comments, capsys):
         mock_load.return_value = self._make_state(known_comment_ids=["c1"])
-        mock_ver.return_value = {"version": 847, "modifiedTime": "2025-01-20T14:30:00Z", "lastModifyingUser": {}}
+        mock_ver.return_value = {
+            "version": 847,
+            "modifiedTime": "2025-01-20T14:30:00Z",
+            "lastModifyingUser": {},
+        }
         mock_comments.return_value = [
             {"id": "c2", "content": "New comment here", "resolved": False,
              "author": {"emailAddress": "carol@co.com"}},
@@ -208,9 +252,17 @@ class TestPreFlightChanges:
     @patch("gdoc.api.comments.list_comments")
     @patch("gdoc.api.drive.get_file_version")
     @patch("gdoc.state.load_state")
-    def test_resolved_comment_detection(self, mock_load, mock_ver, mock_comments, capsys):
-        mock_load.return_value = self._make_state(known_comment_ids=["c1"], known_resolved_ids=[])
-        mock_ver.return_value = {"version": 847, "modifiedTime": "2025-01-20T14:30:00Z", "lastModifyingUser": {}}
+    def test_resolved_comment_detection(
+        self, mock_load, mock_ver, mock_comments, capsys
+    ):
+        mock_load.return_value = self._make_state(
+            known_comment_ids=["c1"], known_resolved_ids=[]
+        )
+        mock_ver.return_value = {
+            "version": 847,
+            "modifiedTime": "2025-01-20T14:30:00Z",
+            "lastModifyingUser": {},
+        }
         mock_comments.return_value = [
             {"id": "c1", "resolved": True, "replies": [
                 {"action": "resolve", "author": {"emailAddress": "alice@co.com"}}
@@ -226,9 +278,17 @@ class TestPreFlightChanges:
     @patch("gdoc.api.comments.list_comments")
     @patch("gdoc.api.drive.get_file_version")
     @patch("gdoc.state.load_state")
-    def test_reopened_comment_detection(self, mock_load, mock_ver, mock_comments, capsys):
-        mock_load.return_value = self._make_state(known_comment_ids=["c1"], known_resolved_ids=["c1"])
-        mock_ver.return_value = {"version": 847, "modifiedTime": "2025-01-20T14:30:00Z", "lastModifyingUser": {}}
+    def test_reopened_comment_detection(
+        self, mock_load, mock_ver, mock_comments, capsys
+    ):
+        mock_load.return_value = self._make_state(
+            known_comment_ids=["c1"], known_resolved_ids=["c1"]
+        )
+        mock_ver.return_value = {
+            "version": 847,
+            "modifiedTime": "2025-01-20T14:30:00Z",
+            "lastModifyingUser": {},
+        }
         mock_comments.return_value = [
             {"id": "c1", "resolved": False, "replies": [
                 {"action": "reopen", "author": {"emailAddress": "bob@co.com"}}
@@ -245,7 +305,11 @@ class TestPreFlightChanges:
     @patch("gdoc.state.load_state")
     def test_new_reply_detection(self, mock_load, mock_ver, mock_comments, capsys):
         mock_load.return_value = self._make_state(known_comment_ids=["c1"])
-        mock_ver.return_value = {"version": 847, "modifiedTime": "2025-01-20T14:30:00Z", "lastModifyingUser": {}}
+        mock_ver.return_value = {
+            "version": 847,
+            "modifiedTime": "2025-01-20T14:30:00Z",
+            "lastModifyingUser": {},
+        }
         mock_comments.return_value = [
             {"id": "c1", "resolved": False, "replies": [
                 {"author": {"emailAddress": "bob@co.com"}, "content": "Done",
@@ -261,10 +325,18 @@ class TestPreFlightChanges:
     @patch("gdoc.api.comments.list_comments")
     @patch("gdoc.api.drive.get_file_version")
     @patch("gdoc.state.load_state")
-    def test_resolve_action_does_not_trigger_new_reply(self, mock_load, mock_ver, mock_comments, capsys):
+    def test_resolve_action_does_not_trigger_new_reply(
+        self, mock_load, mock_ver, mock_comments, capsys
+    ):
         """Resolve action-only replies should not appear as new replies."""
-        mock_load.return_value = self._make_state(known_comment_ids=["c1"], known_resolved_ids=[])
-        mock_ver.return_value = {"version": 847, "modifiedTime": "2025-01-20T14:30:00Z", "lastModifyingUser": {}}
+        mock_load.return_value = self._make_state(
+            known_comment_ids=["c1"], known_resolved_ids=[]
+        )
+        mock_ver.return_value = {
+            "version": 847,
+            "modifiedTime": "2025-01-20T14:30:00Z",
+            "lastModifyingUser": {},
+        }
         mock_comments.return_value = [
             {"id": "c1", "resolved": True, "replies": [
                 {"action": "resolve", "author": {"emailAddress": "alice@co.com"},
@@ -279,10 +351,18 @@ class TestPreFlightChanges:
     @patch("gdoc.api.comments.list_comments")
     @patch("gdoc.api.drive.get_file_version")
     @patch("gdoc.state.load_state")
-    def test_old_replies_not_flagged_as_new(self, mock_load, mock_ver, mock_comments, capsys):
+    def test_old_replies_not_flagged_as_new(
+        self, mock_load, mock_ver, mock_comments, capsys
+    ):
         """Old content replies on a modified comment should not be flagged as new."""
-        mock_load.return_value = self._make_state(known_comment_ids=["c1"], known_resolved_ids=[])
-        mock_ver.return_value = {"version": 847, "modifiedTime": "2025-01-20T14:30:00Z", "lastModifyingUser": {}}
+        mock_load.return_value = self._make_state(
+            known_comment_ids=["c1"], known_resolved_ids=[]
+        )
+        mock_ver.return_value = {
+            "version": 847,
+            "modifiedTime": "2025-01-20T14:30:00Z",
+            "lastModifyingUser": {},
+        }
         mock_comments.return_value = [
             {"id": "c1", "resolved": True, "replies": [
                 # Old content reply (before last_comment_check)
@@ -303,7 +383,11 @@ class TestPreFlightChanges:
     @patch("gdoc.state.load_state")
     def test_preflight_timestamp_captured(self, mock_load, mock_ver, mock_comments):
         mock_load.return_value = self._make_state()
-        mock_ver.return_value = {"version": 847, "modifiedTime": "2025-01-20T14:30:00Z", "lastModifyingUser": {}}
+        mock_ver.return_value = {
+            "version": 847,
+            "modifiedTime": "2025-01-20T14:30:00Z",
+            "lastModifyingUser": {},
+        }
 
         result = pre_flight("doc1")
         assert result.preflight_timestamp != ""
@@ -315,7 +399,11 @@ class TestPreFlightChanges:
     def test_comment_ids_accumulated(self, mock_load, mock_ver, mock_comments):
         """Comment IDs from both state and new API results are merged."""
         mock_load.return_value = self._make_state(known_comment_ids=["c1", "c2"])
-        mock_ver.return_value = {"version": 847, "modifiedTime": "2025-01-20T14:30:00Z", "lastModifyingUser": {}}
+        mock_ver.return_value = {
+            "version": 847,
+            "modifiedTime": "2025-01-20T14:30:00Z",
+            "lastModifyingUser": {},
+        }
         mock_comments.return_value = [
             {"id": "c3", "resolved": False},
         ]

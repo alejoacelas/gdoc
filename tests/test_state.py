@@ -1,12 +1,15 @@
 """Tests for per-doc state persistence."""
 
 import json
-from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
-from gdoc.state import DocState, load_state, save_state, update_state_after_command, _state_path
+from gdoc.state import (
+    DocState,
+    _state_path,
+    load_state,
+    save_state,
+    update_state_after_command,
+)
 
 
 class TestDocState:

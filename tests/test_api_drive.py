@@ -1,9 +1,9 @@
 """Tests for gdoc.api.drive: Drive API wrapper functions with mocked service."""
 
-import pytest
 from unittest.mock import MagicMock, patch
 
 import httplib2
+import pytest
 from googleapiclient.errors import HttpError
 
 from gdoc.api.drive import (
@@ -52,7 +52,9 @@ class TestTranslateHttpError:
 
     def test_500_raises_gdoc_error(self):
         err = _make_http_error(500, reason="Internal Server Error")
-        with pytest.raises(GdocError, match=r"API error \(500\): Internal Server Error"):
+        with pytest.raises(
+            GdocError, match=r"API error \(500\): Internal Server Error"
+        ):
             _translate_http_error(err, "abc123")
 
 

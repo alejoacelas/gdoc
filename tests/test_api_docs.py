@@ -1,9 +1,9 @@
 """Tests for gdoc.api.docs: Docs API v1 wrapper functions with mocked service."""
 
-import pytest
 from unittest.mock import MagicMock, patch
 
 import httplib2
+import pytest
 from googleapiclient.errors import HttpError
 
 from gdoc.api.docs import _translate_http_error, replace_all_text
@@ -36,7 +36,9 @@ class TestTranslateHttpError:
 
     def test_500_raises_gdoc_error(self):
         err = _make_http_error(500, reason="Internal Server Error")
-        with pytest.raises(GdocError, match=r"API error \(500\): Internal Server Error"):
+        with pytest.raises(
+            GdocError, match=r"API error \(500\): Internal Server Error"
+        ):
             _translate_http_error(err, "abc123")
 
 
@@ -127,7 +129,9 @@ class TestReplaceAllText:
     def test_http_error_401(self, mock_get_service):
         mock_service = MagicMock()
         mock_get_service.return_value = mock_service
-        mock_service.documents().batchUpdate().execute.side_effect = _make_http_error(401)
+        mock_service.documents().batchUpdate().execute.side_effect = _make_http_error(
+            401
+        )
 
         with pytest.raises(AuthError, match="Authentication expired"):
             replace_all_text("abc123", "old", "new")
@@ -145,7 +149,9 @@ class TestReplaceAllText:
     def test_http_error_404(self, mock_get_service):
         mock_service = MagicMock()
         mock_get_service.return_value = mock_service
-        mock_service.documents().batchUpdate().execute.side_effect = _make_http_error(404)
+        mock_service.documents().batchUpdate().execute.side_effect = _make_http_error(
+            404
+        )
 
         with pytest.raises(GdocError, match="Document not found: abc123"):
             replace_all_text("abc123", "old", "new")
@@ -552,7 +558,9 @@ class TestDiagnoseNoMatch:
     def test_suggests_normalize_on_quote_mismatch(self):
         from gdoc.api.docs import diagnose_no_match
 
-        reason = diagnose_no_match(None, "JP's job", body=self._para_body("JP\u2019s job\n"))
+        reason = diagnose_no_match(
+            None, "JP's job", body=self._para_body("JP\u2019s job\n")
+        )
         assert reason is not None and "--normalize" in reason
 
     def test_reports_whitespace_difference(self):
@@ -637,7 +645,7 @@ def _capture_batch_updates(mock_svc):
     """
     captured: list = []
 
-    def _bu(documentId, body):
+    def _bu(body, **_kwargs):
         captured.append(body)
         inner = MagicMock()
         inner.execute.return_value = {}

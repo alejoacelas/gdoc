@@ -1,9 +1,8 @@
 """Tests for the `gdoc write` command handler."""
 
 import json
-import os
 from types import SimpleNamespace
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 

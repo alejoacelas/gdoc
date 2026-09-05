@@ -402,10 +402,13 @@ def cmd_cat(args) -> int:
         )
 
         from gdoc.annotate import annotate_markdown
-        annotated = annotate_markdown(markdown, comments, show_resolved=include_resolved)
+
+        annotated = annotate_markdown(
+            markdown, comments, show_resolved=include_resolved
+        )
         annotated = _truncate_bytes(annotated, max_bytes)
 
-        from gdoc.format import get_output_mode, format_json
+        from gdoc.format import format_json, get_output_mode
         mode = get_output_mode(args)
         if mode == "json":
             print(format_json(content=annotated))
@@ -427,7 +430,7 @@ def cmd_cat(args) -> int:
         content = strip_images(content)
     content = _truncate_bytes(content, max_bytes)
 
-    from gdoc.format import get_output_mode, format_json
+    from gdoc.format import format_json, get_output_mode
 
     mode = get_output_mode(args)
     if mode == "json":
@@ -484,7 +487,7 @@ def cmd_tabs(args) -> int:
 
     tabs = get_document_tabs(doc_id)
 
-    from gdoc.format import get_output_mode, format_json
+    from gdoc.format import format_json, get_output_mode
 
     mode = get_output_mode(args)
     if mode == "json":
@@ -828,8 +831,8 @@ def cmd_info(args) -> int:
     from gdoc.notify import pre_flight
     change_info = pre_flight(doc_id, quiet=quiet)
 
-    from gdoc.api.drive import get_file_info, export_doc
-    from gdoc.format import get_output_mode, format_json
+    from gdoc.api.drive import export_doc, get_file_info
+    from gdoc.format import format_json, get_output_mode
 
     metadata = get_file_info(doc_id)
 
@@ -1666,7 +1669,7 @@ def cmd_pull(args) -> int:
         raise GdocError(f"cannot write file: {e}", exit_code=3)
 
     # Output
-    from gdoc.format import get_output_mode, format_json
+    from gdoc.format import format_json, get_output_mode
 
     rev_label = f" @ rev {rev['id']}" if rev is not None else ""
     mode = get_output_mode(args)
@@ -1780,7 +1783,7 @@ def cmd_push(args) -> int:
         print(format_json(pushed=True, file=file_path, version=command_version))
     elif mode == "plain":
         print(f"id\t{doc_id}")
-        print(f"status\tupdated")
+        print("status\tupdated")
     else:
         print(f"OK pushed {file_path}")
 
@@ -2191,7 +2194,7 @@ def cmd_diff(args) -> int:
     ))
 
     # Output
-    from gdoc.format import get_output_mode, format_json
+    from gdoc.format import format_json, get_output_mode
 
     mode = get_output_mode(args)
 
@@ -2203,8 +2206,8 @@ def cmd_diff(args) -> int:
         print("OK identical")
 
     # Update state
-    from gdoc.state import update_state_after_command
     from gdoc.api.drive import get_file_version
+    from gdoc.state import update_state_after_command
 
     command_version = get_file_version(doc_id).get("version")
     update_state_after_command(
@@ -2231,7 +2234,7 @@ def cmd_comments(args) -> int:
         doc_id, include_resolved=include_resolved, include_anchor=True,
     )
 
-    from gdoc.format import get_output_mode, format_json
+    from gdoc.format import format_json, get_output_mode
 
     mode = get_output_mode(args)
     if mode == "json":
@@ -2242,7 +2245,9 @@ def cmd_comments(args) -> int:
             resolved = c.get("resolved", False)
             status = "resolved" if resolved else "open"
             author = c.get("author", {})
-            author_str = author.get("emailAddress") or author.get("displayName", "unknown")
+            author_str = author.get("emailAddress") or author.get(
+                "displayName", "unknown"
+            )
             content = c.get("content", "")
             quoted = c.get("quotedFileContent", {}).get("value", "").replace("\t", " ")
             print(f"{cid}\t{status}\t{author_str}\t{content}\t{quoted}")
@@ -2254,7 +2259,9 @@ def cmd_comments(args) -> int:
             resolved = c.get("resolved", False)
             status = "resolved" if resolved else "open"
             author = c.get("author", {})
-            author_str = author.get("emailAddress") or author.get("displayName", "unknown")
+            author_str = author.get("emailAddress") or author.get(
+                "displayName", "unknown"
+            )
             created = c.get("createdTime", "")
             if mode == "verbose":
                 date_str = created
@@ -2271,7 +2278,9 @@ def cmd_comments(args) -> int:
                 if not reply_content:
                     continue  # Skip action-only replies
                 r_author = r.get("author", {})
-                r_author_str = r_author.get("emailAddress") or r_author.get("displayName", "unknown")
+                r_author_str = r_author.get("emailAddress") or r_author.get(
+                    "displayName", "unknown"
+                )
                 print(f'  -> {r_author_str}: "{reply_content}"')
 
     # Update state
@@ -2344,7 +2353,7 @@ def cmd_comment(args) -> int:
     from gdoc.api.drive import get_file_version
     command_version = get_file_version(doc_id).get("version")
 
-    from gdoc.format import get_output_mode, format_json
+    from gdoc.format import format_json, get_output_mode
     mode = get_output_mode(args)
     if mode == "json":
         extra = {"anchored": anchored} if quote else {}
@@ -2383,7 +2392,7 @@ def cmd_reply(args) -> int:
     from gdoc.api.drive import get_file_version
     command_version = get_file_version(doc_id).get("version")
 
-    from gdoc.format import get_output_mode, format_json
+    from gdoc.format import format_json, get_output_mode
     mode = get_output_mode(args)
     if mode == "json":
         print(format_json(commentId=comment_id, replyId=reply_id, status="created"))
@@ -2419,21 +2428,27 @@ def cmd_resolve(args) -> int:
     from gdoc.api.drive import get_file_version
     command_version = get_file_version(doc_id).get("version")
 
-    from gdoc.format import get_output_mode, format_json
+    from gdoc.format import format_json, get_output_mode
     mode = get_output_mode(args)
     if mode == "json":
         print(format_json(id=comment_id, status="resolved"))
     elif mode == "plain":
         print(f"id\t{comment_id}")
-        print(f"status\tresolved")
+        print("status\tresolved")
     else:
         print(f"OK resolved comment #{comment_id}")
 
     from gdoc.state import update_state_after_command
     update_state_after_command(
-        doc_id, change_info, command="resolve", quiet=quiet,
+        doc_id,
+        change_info,
+        command="resolve",
+        quiet=quiet,
         command_version=command_version,
-        comment_state_patch={"add_comment_id": comment_id, "add_resolved_id": comment_id},
+        comment_state_patch={
+            "add_comment_id": comment_id,
+            "add_resolved_id": comment_id,
+        },
     )
 
     return 0
@@ -2454,21 +2469,27 @@ def cmd_reopen(args) -> int:
     from gdoc.api.drive import get_file_version
     command_version = get_file_version(doc_id).get("version")
 
-    from gdoc.format import get_output_mode, format_json
+    from gdoc.format import format_json, get_output_mode
     mode = get_output_mode(args)
     if mode == "json":
         print(format_json(id=comment_id, status="reopened"))
     elif mode == "plain":
         print(f"id\t{comment_id}")
-        print(f"status\treopened")
+        print("status\treopened")
     else:
         print(f"OK reopened comment #{comment_id}")
 
     from gdoc.state import update_state_after_command
     update_state_after_command(
-        doc_id, change_info, command="reopen", quiet=quiet,
+        doc_id,
+        change_info,
+        command="reopen",
+        quiet=quiet,
         command_version=command_version,
-        comment_state_patch={"add_comment_id": comment_id, "remove_resolved_id": comment_id},
+        comment_state_patch={
+            "add_comment_id": comment_id,
+            "remove_resolved_id": comment_id,
+        },
     )
 
     return 0
@@ -2493,13 +2514,13 @@ def cmd_delete_comment(args) -> int:
     from gdoc.api.drive import get_file_version
     command_version = get_file_version(doc_id).get("version")
 
-    from gdoc.format import get_output_mode, format_json
+    from gdoc.format import format_json, get_output_mode
     mode = get_output_mode(args)
     if mode == "json":
         print(format_json(id=comment_id, status="deleted"))
     elif mode == "plain":
         print(f"id\t{comment_id}")
-        print(f"status\tdeleted")
+        print("status\tdeleted")
     else:
         print(f"OK deleted comment #{comment_id}")
 
@@ -2525,7 +2546,7 @@ def cmd_comment_info(args) -> int:
     from gdoc.api.comments import get_comment
     comment = get_comment(doc_id, comment_id)
 
-    from gdoc.format import get_output_mode, format_json
+    from gdoc.format import format_json, get_output_mode
     mode = get_output_mode(args)
 
     resolved = comment.get("resolved", False)
@@ -2557,7 +2578,9 @@ def cmd_comment_info(args) -> int:
         print(f"  Modified: {modified}")
         for r in replies:
             r_author = r.get("author", {})
-            r_author_str = r_author.get("emailAddress") or r_author.get("displayName", "unknown")
+            r_author_str = r_author.get("emailAddress") or r_author.get(
+                "displayName", "unknown"
+            )
             r_content = r.get("content", "")
             r_action = r.get("action", "")
             r_created = r.get("createdTime", "")
@@ -2567,7 +2590,9 @@ def cmd_comment_info(args) -> int:
                 print(f"  -> {r_author_str} {r_created}: [{r_action}]")
     else:
         # terse
-        print(f"#{comment_id} [{status}] {author_str} {created[:10] if created else ''}")
+        print(
+            f"#{comment_id} [{status}] {author_str} {created[:10] if created else ''}"
+        )
         print(f'  "{content}"')
         if replies:
             label = "reply" if len(replies) == 1 else "replies"
@@ -3123,7 +3148,9 @@ def cmd_auth(args) -> int:
         from gdoc.auth import list_accounts
         accounts = list_accounts()
         if not accounts:
-            print("No accounts found. Run `gdoc auth` to authenticate.", file=sys.stderr)
+            print(
+                "No accounts found. Run `gdoc auth` to authenticate.", file=sys.stderr
+            )
             return 0
         for acct in accounts:
             print(acct)
@@ -3390,7 +3417,7 @@ def cmd_new(args) -> int:
     if new_version is not None:
         version = new_version
 
-    from gdoc.format import get_output_mode, format_json
+    from gdoc.format import format_json, get_output_mode
 
     mode = get_output_mode(args)
     if mode == "json":
@@ -3433,7 +3460,7 @@ def cmd_cp(args) -> int:
     version = result.get("version")
     url = result.get("webViewLink", "")
 
-    from gdoc.format import get_output_mode, format_json
+    from gdoc.format import format_json, get_output_mode
 
     mode = get_output_mode(args)
     if mode == "json":
@@ -3504,7 +3531,7 @@ def cmd_share(args) -> int:
     else:
         share_type, target = "anyone", "anyone with the link"
 
-    from gdoc.format import get_output_mode, format_json
+    from gdoc.format import format_json, get_output_mode
 
     mode = get_output_mode(args)
     if mode == "json":
@@ -3718,7 +3745,8 @@ def build_parser() -> GdocArgumentParser:
     output_parent.add_argument(
         "--account",
         default=os.environ.get("GDOC_ACCOUNT"),
-        help="Google account name for multi-account support (e.g. work, personal, or an email)",
+        help=("Google account name for multi-account support "
+              "(e.g. work, personal, or an email)"),
     )
 
     # Also add to the top-level parser for `gdoc --json <cmd>` form
@@ -3773,7 +3801,9 @@ def build_parser() -> GdocArgumentParser:
     mcp_p.set_defaults(func=cmd_mcp)
 
     # auth
-    auth_p = sub.add_parser("auth", parents=[output_parent], help="Authenticate with Google")
+    auth_p = sub.add_parser(
+        "auth", parents=[output_parent], help="Authenticate with Google"
+    )
     auth_p.add_argument(
         "--no-browser",
         action="store_true",
@@ -3837,7 +3867,9 @@ def build_parser() -> GdocArgumentParser:
     ls_p.set_defaults(func=cmd_ls)
 
     # find
-    find_p = sub.add_parser("find", parents=[output_parent], help="Search files by name/content")
+    find_p = sub.add_parser(
+        "find", parents=[output_parent], help="Search files by name/content"
+    )
     find_p.add_argument("query", help="Search query")
     find_p.add_argument("--title", action="store_true", help="Search title only")
     find_p.add_argument(
@@ -4195,7 +4227,9 @@ def build_parser() -> GdocArgumentParser:
     insert_p.set_defaults(func=cmd_insert)
 
     # pull
-    pull_p = sub.add_parser("pull", parents=[output_parent], help="Download doc as local markdown")
+    pull_p = sub.add_parser(
+        "pull", parents=[output_parent], help="Download doc as local markdown"
+    )
     pull_p.add_argument("doc", help="Document ID or URL")
     pull_p.add_argument("file", help="Local file to write")
     pull_p.add_argument(
@@ -4210,7 +4244,9 @@ def build_parser() -> GdocArgumentParser:
     pull_p.set_defaults(func=cmd_pull)
 
     # push
-    push_p = sub.add_parser("push", parents=[output_parent], help="Upload local markdown to doc")
+    push_p = sub.add_parser(
+        "push", parents=[output_parent], help="Upload local markdown to doc"
+    )
     push_p.add_argument("file", help="Local file with gdoc frontmatter")
     push_p.add_argument(
         "--force", action="store_true", help="Force overwrite even if doc changed"
@@ -4233,7 +4269,9 @@ def build_parser() -> GdocArgumentParser:
     pull_hook_p.set_defaults(func=cmd_pull_hook)
 
     # comments
-    comments_p = sub.add_parser("comments", parents=[output_parent], help="List comments on a doc")
+    comments_p = sub.add_parser(
+        "comments", parents=[output_parent], help="List comments on a doc"
+    )
     comments_p.add_argument("doc", help="Document ID or URL")
     comments_p.add_argument(
         "--all", action="store_true", help="Include resolved comments"
@@ -4244,7 +4282,9 @@ def build_parser() -> GdocArgumentParser:
     comments_p.set_defaults(func=cmd_comments)
 
     # comment
-    comment_p = sub.add_parser("comment", parents=[output_parent], help="Add a comment to a doc")
+    comment_p = sub.add_parser(
+        "comment", parents=[output_parent], help="Add a comment to a doc"
+    )
     comment_p.add_argument("doc", help="Document ID or URL")
     comment_p.add_argument("text", help="Comment text")
     comment_p.add_argument(
@@ -4261,7 +4301,9 @@ def build_parser() -> GdocArgumentParser:
     comment_p.set_defaults(func=cmd_comment)
 
     # reply
-    reply_p = sub.add_parser("reply", parents=[output_parent], help="Reply to a comment")
+    reply_p = sub.add_parser(
+        "reply", parents=[output_parent], help="Reply to a comment"
+    )
     reply_p.add_argument("doc", help="Document ID or URL")
     reply_p.add_argument("comment_id", help="Comment ID to reply to")
     reply_p.add_argument("text", help="Reply text")
@@ -4271,7 +4313,9 @@ def build_parser() -> GdocArgumentParser:
     reply_p.set_defaults(func=cmd_reply)
 
     # resolve
-    resolve_p = sub.add_parser("resolve", parents=[output_parent], help="Resolve a comment")
+    resolve_p = sub.add_parser(
+        "resolve", parents=[output_parent], help="Resolve a comment"
+    )
     resolve_p.add_argument("doc", help="Document ID or URL")
     resolve_p.add_argument("comment_id", help="Comment ID to resolve")
     resolve_p.add_argument(
@@ -4283,7 +4327,9 @@ def build_parser() -> GdocArgumentParser:
     resolve_p.set_defaults(func=cmd_resolve)
 
     # reopen
-    reopen_p = sub.add_parser("reopen", parents=[output_parent], help="Reopen a resolved comment")
+    reopen_p = sub.add_parser(
+        "reopen", parents=[output_parent], help="Reopen a resolved comment"
+    )
     reopen_p.add_argument("doc", help="Document ID or URL")
     reopen_p.add_argument("comment_id", help="Comment ID to reopen")
     reopen_p.add_argument(
@@ -4458,7 +4504,9 @@ def build_parser() -> GdocArgumentParser:
     structure_p.set_defaults(func=cmd_structure)
 
     # info
-    info_p = sub.add_parser("info", parents=[output_parent], help="Show document metadata")
+    info_p = sub.add_parser(
+        "info", parents=[output_parent], help="Show document metadata"
+    )
     info_p.add_argument("doc", help="Document ID or URL")
     info_p.add_argument(
         "--quiet", action="store_true", help="Skip pre-flight checks"
@@ -4538,7 +4586,9 @@ def build_parser() -> GdocArgumentParser:
     drives_p.set_defaults(func=cmd_drives)
 
     # new
-    new_p = sub.add_parser("new", parents=[output_parent], help="Create a blank document")
+    new_p = sub.add_parser(
+        "new", parents=[output_parent], help="Create a blank document"
+    )
     new_p.add_argument("title", help="Document title")
     new_p.add_argument("--folder", help="Folder ID to place doc in")
     new_p.add_argument(

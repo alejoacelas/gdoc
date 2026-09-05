@@ -54,7 +54,9 @@ class TestInfoTerse:
     @patch("gdoc.api.drive.get_drive_service")
     @patch("gdoc.api.drive.export_doc", return_value="Hello world content")
     @patch("gdoc.api.drive.get_file_info", return_value=MOCK_METADATA)
-    def test_info_terse_output(self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update, capsys):
+    def test_info_terse_output(
+        self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update, capsys
+    ):
         args = _make_args()
         rc = cmd_info(args)
         assert rc == 0
@@ -69,7 +71,9 @@ class TestInfoTerse:
     @patch("gdoc.api.drive.get_drive_service")
     @patch("gdoc.api.drive.export_doc", return_value="Hello world content")
     @patch("gdoc.api.drive.get_file_info", return_value=MOCK_METADATA)
-    def test_info_terse_date_truncated(self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update, capsys):
+    def test_info_terse_date_truncated(
+        self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update, capsys
+    ):
         args = _make_args()
         cmd_info(args)
         out = capsys.readouterr().out
@@ -88,7 +92,9 @@ class TestInfoVerbose:
     @patch("gdoc.api.drive.get_drive_service")
     @patch("gdoc.api.drive.export_doc", return_value="Hello world content")
     @patch("gdoc.api.drive.get_file_info", return_value=MOCK_METADATA)
-    def test_info_verbose_output(self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update, capsys):
+    def test_info_verbose_output(
+        self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update, capsys
+    ):
         args = _make_args(verbose=True)
         rc = cmd_info(args)
         assert rc == 0
@@ -106,7 +112,9 @@ class TestInfoVerbose:
     @patch("gdoc.api.drive.get_drive_service")
     @patch("gdoc.api.drive.export_doc", return_value="some words")
     @patch("gdoc.api.drive.get_file_info")
-    def test_info_verbose_missing_size(self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update, capsys):
+    def test_info_verbose_missing_size(
+        self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update, capsys
+    ):
         meta = {k: v for k, v in MOCK_METADATA.items() if k != "size"}
         mock_info.return_value = meta
         args = _make_args(verbose=True)
@@ -121,7 +129,9 @@ class TestInfoJson:
     @patch("gdoc.api.drive.get_drive_service")
     @patch("gdoc.api.drive.export_doc", return_value="Hello world content")
     @patch("gdoc.api.drive.get_file_info", return_value=MOCK_METADATA)
-    def test_info_json_output(self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update, capsys):
+    def test_info_json_output(
+        self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update, capsys
+    ):
         args = _make_args(json=True)
         rc = cmd_info(args)
         assert rc == 0
@@ -138,7 +148,9 @@ class TestInfoJson:
     @patch("gdoc.api.drive.get_drive_service")
     @patch("gdoc.api.drive.export_doc", return_value="Hello world content")
     @patch("gdoc.api.drive.get_file_info", return_value=MOCK_METADATA)
-    def test_info_json_word_count_type(self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update, capsys):
+    def test_info_json_word_count_type(
+        self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update, capsys
+    ):
         args = _make_args(json=True)
         cmd_info(args)
         data = json.loads(capsys.readouterr().out)
@@ -151,7 +163,9 @@ class TestInfoOwnerFallback:
     @patch("gdoc.api.drive.get_drive_service")
     @patch("gdoc.api.drive.export_doc", return_value="word")
     @patch("gdoc.api.drive.get_file_info")
-    def test_info_owner_email_fallback(self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update, capsys):
+    def test_info_owner_email_fallback(
+        self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update, capsys
+    ):
         meta = dict(MOCK_METADATA)
         meta["owners"] = [{"emailAddress": "alice@example.com"}]
         mock_info.return_value = meta
@@ -165,7 +179,9 @@ class TestInfoOwnerFallback:
     @patch("gdoc.api.drive.get_drive_service")
     @patch("gdoc.api.drive.export_doc", return_value="word")
     @patch("gdoc.api.drive.get_file_info")
-    def test_info_owner_unknown(self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update, capsys):
+    def test_info_owner_unknown(
+        self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update, capsys
+    ):
         meta = dict(MOCK_METADATA)
         meta["owners"] = []
         mock_info.return_value = meta
@@ -186,7 +202,9 @@ class TestInfoNonExportable:
         ),
     )
     @patch("gdoc.api.drive.get_file_info", return_value=MOCK_METADATA)
-    def test_info_non_exportable_shows_na(self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update, capsys):
+    def test_info_non_exportable_shows_na(
+        self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update, capsys
+    ):
         args = _make_args()
         rc = cmd_info(args)
         assert rc == 0
@@ -204,7 +222,9 @@ class TestInfoNonExportable:
         ),
     )
     @patch("gdoc.api.drive.get_file_info", return_value=MOCK_METADATA)
-    def test_info_non_exportable_json(self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update, capsys):
+    def test_info_non_exportable_json(
+        self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update, capsys
+    ):
         args = _make_args(json=True)
         rc = cmd_info(args)
         assert rc == 0
@@ -240,7 +260,9 @@ class TestInfoErrors:
         side_effect=GdocError("Permission denied: abc123"),
     )
     @patch("gdoc.api.drive.get_file_info", return_value=MOCK_METADATA)
-    def test_info_export_permission_error_propagates(self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update):
+    def test_info_export_permission_error_propagates(
+        self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update
+    ):
         """Permission errors from export_doc should NOT be silently suppressed."""
         args = _make_args()
         with pytest.raises(GdocError, match="Permission denied"):
@@ -254,7 +276,9 @@ class TestInfoErrors:
         side_effect=AuthError("Authentication expired. Run `gdoc auth`."),
     )
     @patch("gdoc.api.drive.get_file_info", return_value=MOCK_METADATA)
-    def test_info_export_auth_error_propagates(self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update):
+    def test_info_export_auth_error_propagates(
+        self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update
+    ):
         """Auth errors from export_doc should NOT be silently suppressed."""
         args = _make_args()
         with pytest.raises(AuthError, match="Authentication expired"):
@@ -268,7 +292,9 @@ class TestInfoErrors:
         side_effect=GdocError("API error (500): Internal Server Error"),
     )
     @patch("gdoc.api.drive.get_file_info", return_value=MOCK_METADATA)
-    def test_info_export_api_error_propagates(self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update):
+    def test_info_export_api_error_propagates(
+        self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update
+    ):
         """Generic API errors from export_doc should NOT be silently suppressed."""
         args = _make_args()
         with pytest.raises(GdocError, match="API error"):
@@ -281,7 +307,9 @@ class TestInfoPlain:
     @patch("gdoc.api.drive.get_drive_service")
     @patch("gdoc.api.drive.export_doc", return_value="Hello world content")
     @patch("gdoc.api.drive.get_file_info", return_value=MOCK_METADATA)
-    def test_info_plain_output(self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update, capsys):
+    def test_info_plain_output(
+        self, mock_info, mock_export, _mock_svc, _mock_pf, _mock_update, capsys
+    ):
         args = _make_args(plain=True)
         rc = cmd_info(args)
         assert rc == 0
@@ -310,7 +338,9 @@ class TestInfoAwareness:
     @patch("gdoc.api.drive.get_drive_service")
     @patch("gdoc.api.drive.export_doc", return_value="hello world")
     @patch("gdoc.api.drive.get_file_info")
-    def test_quiet_passes_through(self, mock_info, mock_export, _svc, mock_pf, mock_update):
+    def test_quiet_passes_through(
+        self, mock_info, mock_export, _svc, mock_pf, mock_update
+    ):
         mock_info.return_value = _sample_metadata()
         args = _make_args(quiet=True)
         cmd_info(args)
@@ -321,7 +351,9 @@ class TestInfoAwareness:
     @patch("gdoc.api.drive.get_drive_service")
     @patch("gdoc.api.drive.export_doc", return_value="hello world")
     @patch("gdoc.api.drive.get_file_info")
-    def test_state_updated_with_version(self, mock_info, mock_export, _svc, mock_pf, mock_update):
+    def test_state_updated_with_version(
+        self, mock_info, mock_export, _svc, mock_pf, mock_update
+    ):
         """State update receives version from get_file_info response."""
         mock_info.return_value = {**_sample_metadata(), "version": 42}
         change_info = ChangeInfo()
@@ -338,8 +370,10 @@ class TestInfoAwareness:
     @patch("gdoc.api.drive.get_drive_service")
     @patch("gdoc.api.drive.export_doc", return_value="hello world")
     @patch("gdoc.api.drive.get_file_info")
-    def test_quiet_info_still_gets_version(self, mock_info, mock_export, _svc, mock_pf, mock_update):
-        """--quiet info still passes command_version from get_file_info (Decision #14)."""
+    def test_quiet_info_still_gets_version(
+        self, mock_info, mock_export, _svc, mock_pf, mock_update
+    ):
+        """--quiet info still passes the version from get_file_info."""
         mock_info.return_value = {**_sample_metadata(), "version": 99}
         args = _make_args(quiet=True)
         cmd_info(args)

@@ -91,7 +91,8 @@ def annotate_markdown(
         lines = lines[:-1]
 
     # Classify comments: anchored vs unanchored
-    # line_annotations: line_index (0-based) -> list of (comment, anchor_text, fallback_note)
+    # line_annotations maps each zero-based line index to
+    # (comment, anchor_text, fallback_note) tuples.
     line_annotations: dict[int, list[tuple[dict, str, str]]] = {}
     unanchored: list[tuple[dict, str]] = []  # (comment, fallback_note)
 

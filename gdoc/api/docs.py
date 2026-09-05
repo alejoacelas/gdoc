@@ -1442,8 +1442,9 @@ MARKDOWN_ROUNDTRIP_ALLOWLIST = (
 # Keys that carry positions, identity or structure Markdown does not need.
 _IGNORED_KEYS = frozenset({
     "startIndex", "endIndex", "documentId", "title", "revisionId",
-    "suggestionsViewMode", "tabProperties", "listId", "nestingLevel",
+    "suggestionsViewMode", "listId", "nestingLevel",
 })
+_DEFAULT_TAB_TITLE = "Tab 1"
 # List glyphs the rebuild reproduces at a given nesting level: the Docs UI
 # presets cycle filled/hollow/square bullets and decimal/alpha/roman
 # numbering per level; the import itself emits a hyphen bullet and decimal
@@ -1920,6 +1921,13 @@ def classify_markdown_rebuild(
                 text_style(item or {})
             elif key == "paragraphStyle":
                 paragraph_style(item or {}, nesting)
+            elif key == "tabProperties":
+                # A whole-document import recreates the tab without its
+                # name or emoji; identity and position fields do not matter.
+                props = item or {}
+                if (props.get("title", _DEFAULT_TAB_TITLE) != _DEFAULT_TAB_TITLE
+                        or props.get("iconEmoji")):
+                    styles.add("tab properties")
             elif key == "lists":
                 if isinstance(item, dict):
                     _inspect_lists(item, blockers, styles, tab_scope)

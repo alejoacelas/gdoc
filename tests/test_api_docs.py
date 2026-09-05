@@ -1125,6 +1125,19 @@ def test_rebuild_warns_on_customized_named_styles(kind, patch):
     assert classify_markdown_rebuild({'namedStyles': named}) == ([], ['named styles'])
 
 
+@pytest.mark.parametrize('props,expected', [
+    ({'tabId': 't', 'title': 'Tab 1', 'index': 0}, ([], [])),
+    ({'tabId': 't', 'title': 'Notes'}, ([], ['tab properties'])),
+    ({'tabId': 't', 'title': 'Tab 1', 'iconEmoji': '\U0001f4dd'},
+     ([], ['tab properties'])),
+])
+def test_rebuild_warns_on_custom_tab_properties(props, expected):
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    native = {'tabs': [{'tabProperties': props, 'documentTab': {}}]}
+    assert classify_markdown_rebuild(native) == expected
+
+
 def test_tab_direction_is_judged_against_retained_named_style():
     """A tab replacement keeps the named styles; explicit LTR under an RTL
     named style is an override the rebuild cannot recreate."""

@@ -1997,6 +1997,22 @@ def _body_list_ids(body: dict) -> set[str]:
     return ids
 
 
+def _body_named_ranges(named_ranges: dict) -> dict:
+    """Named-range entries with at least one range in the body.
+
+    A range inside a header, footer or footnote carries that segment's id;
+    body ranges have none. Segment-only entries survive a body deletion.
+    """
+    def in_body(entry) -> bool:
+        for named_range in (entry or {}).get("namedRanges") or []:
+            for rng in named_range.get("ranges") or []:
+                if not rng.get("segmentId"):
+                    return True
+        return False
+
+    return {name: entry for name, entry in named_ranges.items() if in_body(entry)}
+
+
 # documentTab keys a body-range deletion never mutates.
 _TAB_BODY_UNAFFECTED = frozenset({"headers", "footers", "documentStyle",
                                   "namedStyles"})
@@ -2047,6 +2063,8 @@ def check_markdown_rebuild(
         if isinstance(scope.get("lists"), dict):
             list_ids = _body_list_ids(scope.get("body") or {})
             scope["lists"] = {k: v for k, v in scope["lists"].items() if k in list_ids}
+        if isinstance(scope.get("namedRanges"), dict):
+            scope["namedRanges"] = _body_named_ranges(scope["namedRanges"])
     blockers, styles = classify_markdown_rebuild(
         scope, tab_scope=tab_id is not None,
         retained_named_styles=retained.get("namedStyles") if tab_id else None,

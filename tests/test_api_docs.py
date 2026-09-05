@@ -1395,7 +1395,8 @@ def _rebuild_doc(unsafe=False):
         }},
     ]}}
     if unsafe:
-        native['namedRanges'] = {'Reference': {'namedRanges': []}}
+        native['namedRanges'] = {'Reference': {'namedRanges': [
+            {'namedRangeId': 'r', 'ranges': [{'startIndex': 1, 'endIndex': 5}]}]}}
     return {'revisionId': 'revision', 'tabs': [{
         'tabProperties': {'tabId': 'notes', 'title': 'Notes'},
         'documentTab': native,
@@ -1505,6 +1506,22 @@ def test_tab_rebuild_ignores_lists_only_in_headers(mocker, capsys):
         'bullet': {'listId': 'kix.hdr', 'nestingLevel': 0},
         'elements': [{'textRun': {'content': 'y\n'}}]}})
     with pytest.raises(GdocError, match='suggestedListPropertiesChanges'):
+        check_markdown_rebuild('doc', document=doc, tab_id='notes')
+
+
+def test_tab_rebuild_ignores_named_ranges_only_in_headers(mocker):
+    """A header-scoped named range survives a body deletion; a body one blocks."""
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    doc = _rebuild_doc()
+    tab = doc['tabs'][0]['documentTab']
+    tab['namedRanges'] = {'Logo': {'namedRanges': [{'namedRangeId': 'n', 'ranges': [
+        {'startIndex': 0, 'endIndex': 4, 'segmentId': 'kix.header'}]}]}}
+    check_markdown_rebuild('doc', document=doc, tab_id='notes')
+    tab['namedRanges']['Body'] = {'namedRanges': [{'namedRangeId': 'm', 'ranges': [
+        {'startIndex': 1, 'endIndex': 5}]}]}
+    with pytest.raises(GdocError, match='namedRanges'):
         check_markdown_rebuild('doc', document=doc, tab_id='notes')
 
 

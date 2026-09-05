@@ -245,6 +245,7 @@ def _styled_body(prefix="Status: ", text="2. Archive the sample", left=None):
     ("- note", "- note", False, []),
     ("**closed**", "closed", True, [{"bold": True}]),
     ("```\ncode\n```", "```\ncode\n```", False, []),
+    ("```\n**code**\n```", "```\n**code**\n```", False, []),
 ])
 def test_inline_exact_batch(mocker, replacement, inserted, baseline, extra):
     svc = mocker.patch("gdoc.api.docs.get_docs_service").return_value
@@ -299,6 +300,30 @@ def test_complete_heading_exact_batch(mocker, replacement, inserted, structural)
     chain.batchUpdate.assert_called_once_with(documentId="sample-doc", body={
         "requests": requests, "writeControl": {"requiredRevisionId": "rev-a"},
     })
+
+
+def test_inline_reapplies_link_shared_with_neighbour(mocker):
+    # Docs does not guarantee inserted text inherits a neighbour's link, so a
+    # homogeneously linked target must get its link restored explicitly.
+    link = {"link": {"url": "https://example.com/spec"}}
+    body = _styled_body(left=dict(link))
+    body["content"][0]["paragraph"]["elements"][1]["textRun"]["textStyle"] = dict(link)
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    match = {"startIndex": 9, "endIndex": 30}
+    replace_formatted("sample-doc", [match], "done", "rev-a", body=body)
+    service.documents.return_value.batchUpdate.assert_called_once_with(
+        documentId="sample-doc", body={
+            "requests": [
+                {"deleteContentRange": {"range": match}},
+                {"insertText": {"location": {"index": 9}, "text": "done"}},
+                {"updateTextStyle": {
+                    "range": {"startIndex": 9, "endIndex": 13},
+                    "textStyle": link, "fields": "link",
+                }},
+            ],
+            "writeControl": {"requiredRevisionId": "rev-a"},
+        },
+    )
 
 
 @pytest.mark.parametrize("in_cell", [False, True])

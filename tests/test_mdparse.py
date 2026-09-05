@@ -587,6 +587,12 @@ class TestBackslashEscapes:
         text, styles = parse_inline("see ```python\nx = 1\n``` and `ok`")
         assert text == "see ```python\nx = 1\n``` and ok"
         assert [text[s.start:s.end] for s in styles] == ["ok"]
+        # Markdown inside the fence is literal too, backslashes included.
+        fenced = "```\n**bold** `code` [l](u) \\*\n```"
+        assert parse_inline(fenced) == (fenced, [])
+        text, styles = parse_inline("**b** " + fenced + " *i*")
+        assert text == "b " + fenced + " i"
+        assert [text[s.start:s.end] for s in styles] == ["b", "i"]
 
     def test_code_span_keeps_backslashes(self):
         # Code spans are literal — backslashes must NOT be stripped inside

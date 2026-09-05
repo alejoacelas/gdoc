@@ -1501,19 +1501,77 @@ def _named_styles_differ_from_import(named_styles: dict) -> bool:
     return False
 
 
-def _list_styles_differ(lists: dict) -> bool:
-    for definition in lists.values():
-        levels = (definition or {}).get("listProperties", {}).get("nestingLevels", [])
-        for level in levels:
-            glyph_type = level.get("glyphType")
-            if glyph_type and glyph_type not in _ALLOWED_GLYPH_TYPES:
+_GLYPH_FORMAT_RE = re.compile(r"^%\d+\.?$")  # "%0", "%1." as the import emits
+# Nesting-level fields the import regenerates on its own terms.
+_LIST_LEVEL_GENERATED = frozenset({"indentFirstLine", "indentStart"})
+
+
+def _list_level_text_style_customized(style: dict) -> bool:
+    """True if a list level's glyph text style sets anything visible.
+
+    Font family and size follow normal text, which the named-style check
+    already covers, so only explicit emphasis, colours and offsets count.
+    """
+    for name, value in style.items():
+        if name in {"bold", "italic", "underline", "strikethrough", "smallCaps"}:
+            if value:
                 return True
-            symbol = level.get("glyphSymbol")
-            if symbol and symbol not in _ALLOWED_GLYPH_SYMBOLS:
+        elif name in {"foregroundColor", "backgroundColor"}:
+            if (value or {}).get("color"):
                 return True
-            if level.get("startNumber", 1) != 1:
+        elif name == "baselineOffset":
+            if value not in (None, "NONE", "BASELINE_OFFSET_UNSPECIFIED"):
                 return True
+        elif name in {"fontSize", "weightedFontFamily", "link"}:
+            continue
+        elif value:
+            return True
     return False
+
+
+def _list_level_customized(level: dict) -> bool:
+    for name, value in level.items():
+        if name in _LIST_LEVEL_GENERATED:
+            continue
+        if name == "glyphType":
+            if value and value not in _ALLOWED_GLYPH_TYPES:
+                return True
+        elif name == "glyphSymbol":
+            if value and value not in _ALLOWED_GLYPH_SYMBOLS:
+                return True
+        elif name == "glyphFormat":
+            if value and not _GLYPH_FORMAT_RE.match(value):
+                return True
+        elif name == "startNumber":
+            if value not in (None, 1):
+                return True
+        elif name == "bulletAlignment":
+            if value not in (None, "START", "BULLET_ALIGNMENT_UNSPECIFIED"):
+                return True
+        elif name == "textStyle":
+            if _list_level_text_style_customized(value or {}):
+                return True
+        elif value:
+            return True  # a level field this code does not know
+    return False
+
+
+def _inspect_lists(lists: dict, blockers: set, styles: set) -> None:
+    """Deny-by-default over list definitions.
+
+    `listProperties.nestingLevels` is allowed structure whose glyphs and
+    formatting the import regenerates, so deviations warn as "list style".
+    Any other key on a definition (pending suggestions today, whatever the
+    API adds later) blocks under its name.
+    """
+    for definition in lists.values():
+        for name, value in (definition or {}).items():
+            if name == "listProperties":
+                for level in (value or {}).get("nestingLevels", []):
+                    if _list_level_customized(level or {}):
+                        styles.add("list style")
+            elif value:
+                blockers.add(name)
 # Containers whose children are inspected one key at a time.
 _RECURSE_KEYS = frozenset({"tabs", "childTabs", "documentTab", "body",
                            "elements", "textRun"})
@@ -1628,8 +1686,8 @@ def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
             elif key == "paragraphStyle":
                 paragraph_style(item or {}, listed)
             elif key == "lists":
-                if isinstance(item, dict) and _list_styles_differ(item):
-                    styles.add("list style")
+                if isinstance(item, dict):
+                    _inspect_lists(item, blockers, styles)
             elif key == "namedStyles":
                 if isinstance(item, dict) and _named_styles_differ_from_import(item):
                     styles.add("named styles")

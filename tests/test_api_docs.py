@@ -972,14 +972,50 @@ def test_rebuild_accepts_preset_list_glyphs(lists):
     assert classify_markdown_rebuild({'lists': lists}) == ([], [])
 
 
+_IMPORT_LEVEL = {
+    'glyphSymbol': '-', 'glyphFormat': '%0', 'startNumber': 1,
+    'bulletAlignment': 'START',
+    'indentFirstLine': {'magnitude': 18, 'unit': 'PT'},
+    'indentStart': {'magnitude': 36, 'unit': 'PT'},
+    'textStyle': {
+        'bold': False, 'italic': False, 'underline': False,
+        'strikethrough': False, 'smallCaps': False, 'baselineOffset': 'NONE',
+        'backgroundColor': {'color': {}}, 'foregroundColor': {'color': {}},
+        'fontSize': {'magnitude': 11, 'unit': 'PT'},
+        'weightedFontFamily': {'fontFamily': 'Arial', 'weight': 400},
+    },
+}
+
+
+def test_rebuild_accepts_import_generated_list_level():
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    assert classify_markdown_rebuild({'lists': _lists(_IMPORT_LEVEL)}) == ([], [])
+
+
 @pytest.mark.parametrize('level', [
     {'glyphType': 'UPPER_ROMAN'}, {'glyphType': 'ZERO_DECIMAL'},
     {'glyphSymbol': '\u27a2'}, {'glyphType': 'DECIMAL', 'startNumber': 4},
+    {'glyphType': 'DECIMAL', 'glyphFormat': '(%0)'},
+    {'glyphSymbol': '-', 'bulletAlignment': 'END'},
+    {'glyphSymbol': '-', 'textStyle': {'bold': True}},
+    {'glyphSymbol': '-', 'textStyle': {'foregroundColor': {'color': {
+        'rgbColor': {'red': 1}}}}},
+    {'glyphSymbol': '-', 'levelFieldAddedNextYear': True},
 ])
-def test_rebuild_warns_on_custom_list_glyphs(level):
+def test_rebuild_warns_on_custom_list_formatting(level):
     from gdoc.api.docs import classify_markdown_rebuild
 
     assert classify_markdown_rebuild({'lists': _lists(level)}) == ([], ['list style'])
+
+
+def test_rebuild_blocks_pending_list_suggestions():
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    lists = {'kix.l': {'listProperties': {'nestingLevels': [{'glyphSymbol': '-'}]},
+                       'suggestedListPropertiesChanges': {'s': {}}}}
+    assert classify_markdown_rebuild({'lists': lists}) == (
+        ['suggestedListPropertiesChanges'], [])
 
 
 def test_rebuild_accepts_import_default_named_styles():

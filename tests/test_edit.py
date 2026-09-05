@@ -807,3 +807,19 @@ def test_edit_does_not_search_sibling_footnotes(segment_edit):
     with pytest.raises(GdocError, match="no match found"):
         cmd_edit(_make_args(tab="First", old_text="Only sibling"))
     segment_edit.assert_not_called()
+
+
+def test_default_tab_segment_edit_carries_explicit_tab_and_fresh_revision(
+    segment_edit, mocker,
+):
+    mocker.patch("gdoc.api.docs.get_document", return_value={
+        "revisionId": "older-revision", "body": {},
+        "headers": {"header-one": {"content": []}},
+    })
+    assert cmd_edit(_make_args(old_text="TOKEN", new_text="REPLACED",
+                              **{"all": True})) == 0
+    call = segment_edit.call_args
+    assert len(call.args[1]) == 3
+    assert all(m["tabId"] == "tab-one" for m in call.args[1])
+    assert call.args[3] == "revision-one"
+    assert call.kwargs == {"tab_id": "tab-one"}

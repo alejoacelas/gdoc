@@ -766,20 +766,26 @@ def test_edit_passes_body_context(mocker, capsys):
 
 @pytest.mark.parametrize("route", ["all", "tab", "cell"])
 def test_edit_routes_context_and_keeps_conflict_warning(mocker, capsys, route):
-    body = {"content": [{"paragraph": {"elements": [{
+    # Distinct root and tab bodies so the assertion catches root-body forwarding.
+    root_body = {"content": [{"paragraph": {"elements": [{
         "startIndex": 1, "endIndex": 7,
         "textRun": {"content": "hello\n", "textStyle": {"bold": True}},
     }]}}]}
+    tab_body = {"content": [{"paragraph": {"elements": [{
+        "startIndex": 1, "endIndex": 7,
+        "textRun": {"content": "hello\n", "textStyle": {"italic": True}},
+    }]}}]}
+    body = tab_body if route == "tab" else root_body
     matches = _multi_match(2) if route == "all" else _single_match()
     change = ChangeInfo(current_version=2, last_read_version=1)
     mocker.patch("gdoc.notify.pre_flight", return_value=change)
     mocker.patch("gdoc.api.docs.get_document", return_value={
-        "revisionId": "rev-a", "body": body,
+        "revisionId": "rev-a", "body": root_body,
     })
     mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
         "revisionId": "rev-a", "tabs": [{
             "tabProperties": {"tabId": "tab-a", "title": "Notes", "index": 0},
-            "documentTab": {"body": body},
+            "documentTab": {"body": tab_body},
         }],
     })
     mocker.patch("gdoc.api.docs.find_text_in_document", return_value=matches)

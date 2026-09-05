@@ -1621,6 +1621,19 @@ def _build_replacement_requests(
             requests.insert(1, {"updateTextStyle": {
                 "range": target, "textStyle": baseline[0], "fields": baseline[1],
             }})
+            # Setting a link resets colour and underline to the link defaults,
+            # so a Markdown link in the replacement would undo the restored
+            # decorations. Reapply them after the parsed style requests.
+            decor = {key: baseline[0][key]
+                     for key in ("foregroundColor", "underline") if key in baseline[0]}
+            if decor and any(
+                "link" in req.get("updateTextStyle", {}).get("fields", "").split(",")
+                for req in requests[2:]
+            ):
+                requests.append({"updateTextStyle": {
+                    "range": target, "textStyle": decor,
+                    "fields": ",".join(sorted(decor)),
+                }})
         all_requests.extend(requests)
     return sorted_matches, all_requests
 

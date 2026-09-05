@@ -334,6 +334,45 @@ def test_inline_reapplies_link_shared_with_neighbour(mocker, decor, fields):
     )
 
 
+def test_inline_reapplies_link_decorations_after_replacement_link(mocker):
+    # A Markdown link in the replacement sets only `link`, which resets colour
+    # and underline to the link defaults, so the restored decorations must be
+    # applied again after the parsed style requests.
+    decor = {"underline": False,
+             "foregroundColor": {"color": {"rgbColor": {"red": 1}}}}
+    style = {"link": {"url": "https://example.com/old"}, **decor}
+    body = _styled_body(left=dict(style))
+    body["content"][0]["paragraph"]["elements"][1]["textRun"]["textStyle"] = dict(style)
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    match = {"startIndex": 9, "endIndex": 30}
+    whole = {"startIndex": 9, "endIndex": 17, "tabId": "tab-a"}
+    replace_formatted("sample-doc", [match], "[new](https://x.example) done",
+                      "rev-a", tab_id="tab-a", body=body)
+    service.documents.return_value.batchUpdate.assert_called_once_with(
+        documentId="sample-doc", body={
+            "requests": [
+                {"deleteContentRange": {"range": {**match, "tabId": "tab-a"}}},
+                {"insertText": {"location": {"index": 9, "tabId": "tab-a"},
+                                "text": "new done"}},
+                {"updateTextStyle": {
+                    "range": whole, "textStyle": style,
+                    "fields": "foregroundColor,link,underline",
+                }},
+                {"updateTextStyle": {
+                    "range": {"startIndex": 9, "endIndex": 12, "tabId": "tab-a"},
+                    "textStyle": {"link": {"url": "https://x.example"}},
+                    "fields": "link",
+                }},
+                {"updateTextStyle": {
+                    "range": whole, "textStyle": decor,
+                    "fields": "foregroundColor,underline",
+                }},
+            ],
+            "writeControl": {"requiredRevisionId": "rev-a"},
+        },
+    )
+
+
 @pytest.mark.parametrize("in_cell", [False, True])
 def test_inline_restores_direct_fields_with_utf16_range(mocker, in_cell):
     body = _styled_body(left={"bold": True, "italic": True})

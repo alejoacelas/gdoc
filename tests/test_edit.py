@@ -74,6 +74,7 @@ class TestEditBasic:
         cmd_edit(args)
         mock_replace.assert_called_once_with(
             "abc123", _single_match(), "world", "rev123", tab_id=None,
+            body=_mock_doc()["body"],
         )
 
     @patch("gdoc.state.update_state_after_command")
@@ -422,6 +423,7 @@ class TestEditFileInput:
         assert rc == 0
         mock_replace.assert_called_once_with(
             "abc123", _single_match(), "world", "rev123", tab_id=None,
+            body=_mock_doc()["body"],
         )
 
     @patch("gdoc.state.update_state_after_command")
@@ -444,6 +446,7 @@ class TestEditFileInput:
         cmd_edit(args)
         mock_replace.assert_called_once_with(
             "abc123", _single_match(), "world", "rev123", tab_id=None,
+            body=_mock_doc()["body"],
         )
 
     @patch("gdoc.state.update_state_after_command")
@@ -467,6 +470,7 @@ class TestEditFileInput:
         cmd_edit(args)
         mock_replace.assert_called_once_with(
             "abc123", _single_match(), "world", "rev123", tab_id=None,
+            body=_mock_doc()["body"],
         )
 
     @patch("gdoc.state.update_state_after_command")
@@ -489,6 +493,7 @@ class TestEditFileInput:
         # new_text defaults to empty string for a pure delete.
         mock_replace.assert_called_once_with(
             "abc123", _single_match(), "", "rev123", tab_id=None,
+            body=_mock_doc()["body"],
         )
 
     def test_missing_old_file_flag(self, tmp_path):
@@ -578,6 +583,7 @@ class TestEditFormatted:
         cmd_edit(args)
         mock_replace.assert_called_once_with(
             "abc123", _single_match(), "**bold** replacement", "rev123", tab_id=None,
+            body=_mock_doc()["body"],
         )
 
     @patch("gdoc.state.update_state_after_command")

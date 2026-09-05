@@ -1243,6 +1243,7 @@ def cmd_edit(args) -> int:
 
     occurrences = replace_formatted(
         doc_id, matches, new_text, plan.revision_id, tab_id=plan.tab_id,
+        body=plan.search_body,
     )
 
     # Get post-edit version for state tracking (Decision #12)

@@ -274,7 +274,8 @@ def test_inline_exact_batch(mocker, replacement, inserted, baseline, extra):
     ("1. Archive the sample", "Archive the sample", True),
 ])
 def test_complete_heading_exact_batch(mocker, replacement, inserted, structural):
-    chain = mocker.patch("gdoc.api.docs.get_docs_service").return_value.documents.return_value
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    chain = service.documents.return_value
     chain.get.return_value.execute.return_value = {"body": {"content": []}}
     body = _styled_body(prefix="", text="Old label")
     target = {"startIndex": 1, "endIndex": 1 + len(inserted)}
@@ -285,10 +286,12 @@ def test_complete_heading_exact_batch(mocker, replacement, inserted, structural)
     if structural:
         requests.extend([
             {"updateParagraphStyle": {"range": target,
-                                      "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
+                                      "paragraphStyle": {
+                                          "namedStyleType": "NORMAL_TEXT"},
                                       "fields": "namedStyleType"}},
             {"createParagraphBullets": {"range": target,
-                                        "bulletPreset": "NUMBERED_DECIMAL_ALPHA_ROMAN"}},
+                                        "bulletPreset":
+                                            "NUMBERED_DECIMAL_ALPHA_ROMAN"}},
         ])
     replace_formatted("sample-doc", [{"startIndex": 1, "endIndex": 10}],
                       replacement, "rev-a", body=body)

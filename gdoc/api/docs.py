@@ -1501,8 +1501,71 @@ def insert_markdown_into_tab(
     }
 
 
+def _replacement_paragraph(content: list[dict], match: dict):
+    """Find a containing paragraph, including paragraphs inside table cells."""
+    for element in content:
+        paragraph = element.get("paragraph")
+        if paragraph:
+            elements = paragraph.get("elements", [])
+            if elements:
+                start = elements[0].get("startIndex", 0)
+                end = elements[-1].get("endIndex", start)
+                if start <= match["startIndex"] and match["endIndex"] <= end - 1:
+                    return paragraph, start, end - 1
+        for row in element.get("table", {}).get("tableRows", []):
+            for cell in row.get("tableCells", []):
+                found = _replacement_paragraph(cell.get("content", []), match)
+                if found:
+                    return found
+    return None
+
+
+def _inline_baseline(paragraph: dict, match: dict) -> tuple[dict, str]:
+    """Restore only direct style fields that differ from the insertion neighbour.
+
+    Missing fields are reset through the mask, never materialized as defaults.
+    Mixed-style targets retain the existing insertion behavior.
+    """
+    start, end = match["startIndex"], match["endIndex"]
+    runs = [el for el in paragraph.get("elements", []) if "textRun" in el]
+    targets = [el["textRun"].get("textStyle", {}) for el in runs
+               if el.get("startIndex", 0) < end and el.get("endIndex", 0) > start]
+    if not targets or any(style != targets[0] for style in targets):
+        return {}, ""
+    target = targets[0]
+    neighbour = next(
+        (el["textRun"].get("textStyle", {}) for el in runs
+         if el.get("startIndex", 0) < start <= el.get("endIndex", 0)), target,
+    )
+    fields = sorted(key for key in target.keys() | neighbour.keys()
+                    if target.get(key) != neighbour.get(key))
+    return {key: target[key] for key in fields if key in target}, ",".join(fields)
+
+
+def _contextual_replacement(parsed, markdown: str, match: dict, body: dict):
+    """Use block Markdown only outside a paragraph or for an explicit full block."""
+    from gdoc.mdparse import ParsedMarkdown, parse_inline
+
+    found = _replacement_paragraph(body.get("content", []), match)
+    if not found:
+        return parsed, None
+    paragraph, start, end = found
+    text, styles = parse_inline(markdown)
+    explicit_block = (
+        bool(parsed.tables) or "\n" in markdown
+        or parsed.plain_text != text
+        or any(s.type != "text_style" and s.style != {"namedStyleType": "NORMAL_TEXT"}
+               for s in parsed.styles)
+    )
+    if match["startIndex"] == start and match["endIndex"] == end and explicit_block:
+        return parsed, None
+    return (ParsedMarkdown(plain_text=text, styles=styles),
+            _inline_baseline(paragraph, match))
+
+
 def _build_replacement_requests(
     parsed, matches: list[dict], tab_id: str | None = None,
+    *, contexts: dict | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """Build the delete+insert requests for a find/replace, last-to-first.
 
@@ -1533,9 +1596,19 @@ def _build_replacement_requests(
             all_requests.append({
                 "deleteContentRange": {"range": delete_range}
             })
-        all_requests.extend(
-            to_docs_requests(parsed, match["startIndex"], tab_id=tab_id)
-        )
+        selected, baseline = (contexts[match["startIndex"]] if contexts is not None
+                              else (parsed, None))
+        requests = to_docs_requests(selected, match["startIndex"], tab_id=tab_id)
+        if requests and baseline and baseline[1]:
+            from gdoc.mdparse import utf16_len
+            target = {"startIndex": match["startIndex"],
+                      "endIndex": match["startIndex"] + utf16_len(selected.plain_text)}
+            if tab_id:
+                target["tabId"] = tab_id
+            requests.insert(1, {"updateTextStyle": {
+                "range": target, "textStyle": baseline[0], "fields": baseline[1],
+            }})
+        all_requests.extend(requests)
     return sorted_matches, all_requests
 
 
@@ -1545,6 +1618,7 @@ def replace_formatted(
     new_markdown: str,
     revision_id: str,
     tab_id: str | None = None,
+    *, body: dict | None = None,
 ) -> int:
     """Replace matched text ranges with formatted content.
 
@@ -1558,6 +1632,7 @@ def replace_formatted(
         new_markdown: Replacement text (may contain markdown).
         revision_id: The document revision ID for concurrency control.
         tab_id: Optional tab ID for targeting a specific tab.
+        body: Original body with paragraph and direct run styles for inline edits.
 
     Returns:
         Number of replacements made.
@@ -1573,8 +1648,13 @@ def replace_formatted(
 
     _strip_trailing_newline_unless_hr(parsed)
 
+    contexts = {
+        match["startIndex"]: _contextual_replacement(parsed, new_markdown, match, body)
+        if body is not None else (parsed, None)
+        for match in matches
+    }
     sorted_matches, all_requests = _build_replacement_requests(
-        parsed, matches, tab_id=tab_id,
+        parsed, matches, tab_id=tab_id, contexts=contexts,
     )
 
     if not all_requests:
@@ -1590,6 +1670,9 @@ def replace_formatted(
             documentId=doc_id, body=body,
         ).execute()
 
+        if all(baseline is not None for _, baseline in contexts.values()):
+            return len(sorted_matches)
+
         # Clean up leftover heading paragraphs (before table insertion
         # so indices haven't shifted from table expansion).
         # Fetch document once, compute all cleanup requests, then
@@ -1604,30 +1687,22 @@ def replace_formatted(
             fetch_body = doc.get("body", {})
 
         all_cleanup: list[dict] = []
-        n = len(sorted_matches)
-        match_len = (
-            sorted_matches[0]["endIndex"] - sorted_matches[0]["startIndex"]
-            if sorted_matches else 0
-        )
-        # createParagraphBullets removes the nested-list indent tabs during
-        # the main batch, so each match grows the doc by the post-removal
-        # length, not len(plain_text).
-        # Lengths in UTF-16 units: an emoji in the replacement grows the
-        # doc by 2, not 1.
-        effective_len = utf16_len(parsed.plain_text) - parsed.removed_tabs
-        delta = effective_len - match_len
-        # Matches are sorted descending by startIndex; iterate in
-        # that same order so higher positions are cleaned first.
-        # Within one batchUpdate, deletions at higher indices
-        # don't affect lower indices, so no cross-cleanup shift.
-        for j, match in enumerate(sorted_matches):
-            # (n-1-j) matches below this one each shifted content
-            # by `delta` chars during the main replacement.
-            adjusted_pos = (
-                match["startIndex"]
-                + effective_len
-                + (n - 1 - j) * delta
-            )
+        # Each lower replacement may have a different rendered length when
+        # --all includes both partial and complete paragraph matches.
+        shifts = {}
+        shift = 0
+        for match in reversed(sorted_matches):
+            pos = match["startIndex"]
+            selected, _ = contexts[pos]
+            shifts[pos] = shift
+            shift += (utf16_len(selected.plain_text) - selected.removed_tabs
+                      - (match["endIndex"] - pos))
+        for match in sorted_matches:
+            selected, baseline = contexts[match["startIndex"]]
+            if baseline is not None:
+                continue
+            adjusted_pos = (match["startIndex"] + shifts[match["startIndex"]]
+                            + utf16_len(selected.plain_text) - selected.removed_tabs)
             reqs = _build_cleanup_requests(fetch_body, adjusted_pos, tab_id)
             all_cleanup.extend(reqs)
 
@@ -1644,8 +1719,10 @@ def replace_formatted(
                 offset16 = utf16_len(
                     parsed.plain_text[:table.plain_text_offset],
                 )
-                for j, match in enumerate(sorted_matches):
-                    shift = (n - 1 - j) * delta
+                for match in sorted_matches:
+                    if contexts[match["startIndex"]][1] is not None:
+                        continue
+                    shift = shifts[match["startIndex"]]
                     idx = (
                         match["startIndex"] + offset16
                         - table.removed_tabs_before + shift

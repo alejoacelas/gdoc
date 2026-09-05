@@ -114,11 +114,12 @@ The gallery must make the requested edit and the recorded result clear at first 
   collateral changes; if coordinates are missing, label the first full captured view and
   link to every page. Say when captures are missing. Render comment/suggestion state in the
   full report when page images cannot show the change.
-- Group errors into useful, reader-facing categories derived from that run's findings,
-  with selectable buttons and counts at the top, outside collapsed filters. Do not hardcode
-  this run's category names or taxonomy into the next viewer. Group recorded unallowed
-  findings, not case names or requested constructs. A case can belong to several groups;
-  these describe symptoms, not proven common causes.
+- Decide and record the fix families in `FIXES.md` first, then generate or update the
+  gallery's tags and top-level filters from those same families. Use their exact names and
+  case assignments; do not invent a separate viewer taxonomy or hardcode today's families.
+  A case can carry several family tags. Link each tag to its entry in `FIXES.md`, preserve
+  that entry's uncertainty, and leave unassigned findings explicitly unclassified.
+  When family names or assignments change, update `FIXES.md` before rebuilding the gallery.
 - Keep **Result not established** and **No loss reported** distinct from error categories.
   Missing/invalid/incomplete verdicts never imply success. Show confirmation and synthetic
   status separately; a category never promotes a provisional observation to a finding.
@@ -128,7 +129,8 @@ The gallery must make the requested edit and the recorded result clear at first 
   count each entry once per category, and may overlap. Preserve access to every execution.
 - Verify desktop and phone layouts, loaded images, keyboard-operable category buttons,
   selected state, counts, combined filters, and empty results in a browser. Test category
-  assignment, overlap, exclusion of allowed edits, deduplication, and missing evidence.
+  assignment against `FIXES.md`, overlap, exclusion of allowed edits, deduplication, and
+  missing evidence.
 
 Reference implementation: `campaign-private` worktree, `campaign/camp/cards.py` and
 `campaign/runs/gallery.html`. These requirements carry its viewer improvements into the

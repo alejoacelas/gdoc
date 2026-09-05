@@ -1196,7 +1196,7 @@ def test_rebuild_allowlist_passes_silently():
     code = {'weightedFontFamily': {'fontFamily': 'Courier New', 'weight': 400}}
     native = {'documentId': 'd', 'title': 'T', 'revisionId': 'r',
               'suggestionsViewMode': 'DEFAULT_FOR_CURRENT_ACCESS', 'tabs': [{
-        'tabProperties': {'tabId': 't', 'title': 'Tab'}, 'childTabs': [],
+        'tabProperties': {'tabId': 't', 'title': 'Tab 1'}, 'childTabs': [],
         'documentTab': {
             'lists': _lists({'glyphSymbol': '-'}, {'glyphSymbol': '-'}),
             'namedStyles': _import_named_styles(),

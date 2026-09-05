@@ -762,3 +762,42 @@ def test_edit_passes_body_context(mocker, capsys):
     replace.assert_called_once_with("abc123", _single_match(), "world", "rev-a",
                                     tab_id=None, body=body)
     assert capsys.readouterr().out == "OK replaced 1 occurrence\n"
+
+
+@pytest.mark.parametrize("route", ["all", "tab", "cell"])
+def test_edit_routes_context_and_keeps_conflict_warning(mocker, capsys, route):
+    body = {"content": [{"paragraph": {"elements": [{
+        "startIndex": 1, "endIndex": 7,
+        "textRun": {"content": "hello\n", "textStyle": {"bold": True}},
+    }]}}]}
+    matches = _multi_match(2) if route == "all" else _single_match()
+    change = ChangeInfo(current_version=2, last_read_version=1)
+    mocker.patch("gdoc.notify.pre_flight", return_value=change)
+    mocker.patch("gdoc.api.docs.get_document", return_value={
+        "revisionId": "rev-a", "body": body,
+    })
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "revisionId": "rev-a", "tabs": [{
+            "tabProperties": {"tabId": "tab-a", "title": "Notes", "index": 0},
+            "documentTab": {"body": body},
+        }],
+    })
+    mocker.patch("gdoc.api.docs.find_text_in_document", return_value=matches)
+    cell = mocker.patch("gdoc.api.docs.resolve_cell_range", return_value=matches[0])
+    replace = mocker.patch("gdoc.api.docs.replace_formatted", return_value=len(matches))
+    mocker.patch("gdoc.api.drive.get_file_version", return_value=_version_data())
+    mocker.patch("gdoc.state.update_state_after_command")
+    args = _make_args(all=route == "all", tab="Notes" if route == "tab" else None)
+    if route == "cell":
+        args.cell, args.col, args.table = "0,1", 1, 0
+    assert cmd_edit(args) == 0
+    replace.assert_called_once_with(
+        "abc123", matches, "world", "rev-a",
+        tab_id="tab-a" if route == "tab" else None, body=body,
+    )
+    if route == "cell":
+        cell.assert_called_once_with(body, "0,1", col=1, table_index=0, normalize=False)
+    captured = capsys.readouterr()
+    assert "WARN: doc changed since last read" in captured.err
+    assert captured.out == ("OK replaced 2 occurrences\n" if route == "all"
+                            else "OK replaced 1 occurrence\n")

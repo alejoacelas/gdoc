@@ -1533,9 +1533,13 @@ def _inline_baseline(paragraph: dict, match: dict) -> tuple[dict, str]:
     if not targets or any(style != targets[0] for style in targets):
         return {}, ""
     target = targets[0]
+    # At paragraph start there is no left neighbour; deletion exposes the
+    # first surviving run (possibly just the paragraph's newline).
+    following = next((el["textRun"].get("textStyle", {}) for el in runs
+                      if el.get("endIndex", 0) > end), target)
     neighbour = next(
         (el["textRun"].get("textStyle", {}) for el in runs
-         if el.get("startIndex", 0) < start <= el.get("endIndex", 0)), target,
+         if el.get("startIndex", 0) < start <= el.get("endIndex", 0)), following,
     )
     fields = sorted(key for key in target.keys() | neighbour.keys()
                     if target.get(key) != neighbour.get(key))

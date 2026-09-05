@@ -298,3 +298,85 @@ def test_complete_heading_exact_batch(mocker, replacement, inserted, structural)
     chain.batchUpdate.assert_called_once_with(documentId="sample-doc", body={
         "requests": requests, "writeControl": {"requiredRevisionId": "rev-a"},
     })
+
+
+@pytest.mark.parametrize("in_cell", [False, True])
+def test_inline_restores_direct_fields_with_utf16_range(mocker, in_cell):
+    body = _styled_body(left={"bold": True, "italic": True})
+    body["content"][0]["paragraph"]["elements"][1]["textRun"]["textStyle"] = {
+        "italic": True, "fontSize": {"magnitude": 22, "unit": "PT"},
+    }
+    if in_cell:
+        body = {"content": [{"table": {"tableRows": [{"tableCells": [body]}]}}]}
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    match = {"startIndex": 9, "endIndex": 30}
+    replace_formatted("sample-doc", [match], "😀done", "rev-a", body=body)
+    service.documents.return_value.batchUpdate.assert_called_once_with(
+        documentId="sample-doc", body={
+            "requests": [
+                {"deleteContentRange": {"range": match}},
+                {"insertText": {"location": {"index": 9}, "text": "😀done"}},
+                {"updateTextStyle": {
+                    "range": {"startIndex": 9, "endIndex": 15},
+                    "textStyle": {"fontSize": {"magnitude": 22, "unit": "PT"}},
+                    "fields": "bold,fontSize",
+                }},
+            ],
+            "writeControl": {"requiredRevisionId": "rev-a"},
+        },
+    )
+
+
+def test_all_can_mix_inline_and_complete_paragraphs(mocker):
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    chain = service.documents.return_value
+    chain.get.return_value.execute.return_value = {"body": {"content": []}}
+    body = _styled_body(prefix="Status: ", text="old")
+    body["content"].append({"paragraph": {"elements": [{
+        "startIndex": 13, "endIndex": 17,
+        "textRun": {"content": "old\n", "textStyle": {}},
+    }]}})
+    matches = [{"startIndex": 9, "endIndex": 12},
+               {"startIndex": 13, "endIndex": 16}]
+    replace_formatted("sample-doc", matches, "1. item", "rev-a", body=body)
+    chain.batchUpdate.assert_called_once_with(documentId="sample-doc", body={
+        "requests": [
+            {"deleteContentRange": {"range": matches[1]}},
+            {"insertText": {"location": {"index": 13}, "text": "item"}},
+            {"updateParagraphStyle": {
+                "range": {"startIndex": 13, "endIndex": 17},
+                "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
+                "fields": "namedStyleType",
+            }},
+            {"createParagraphBullets": {
+                "range": {"startIndex": 13, "endIndex": 17},
+                "bulletPreset": "NUMBERED_DECIMAL_ALPHA_ROMAN",
+            }},
+            {"deleteContentRange": {"range": matches[0]}},
+            {"insertText": {"location": {"index": 9}, "text": "1. item"}},
+        ],
+        "writeControl": {"requiredRevisionId": "rev-a"},
+    })
+
+
+def test_paragraph_start_restores_style_from_deleted_run(mocker):
+    body = {"content": [{"paragraph": {"elements": [
+        {"startIndex": 1, "endIndex": 4,
+         "textRun": {"content": "Old", "textStyle": {"bold": True}}},
+        {"startIndex": 4, "endIndex": 11,
+         "textRun": {"content": " label\n", "textStyle": {}}},
+    ]}}]}
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    match = {"startIndex": 1, "endIndex": 4}
+    replace_formatted("sample-doc", [match], "New", "rev-a", body=body)
+    service.documents.return_value.batchUpdate.assert_called_once_with(
+        documentId="sample-doc", body={
+            "requests": [
+                {"deleteContentRange": {"range": match}},
+                {"insertText": {"location": {"index": 1}, "text": "New"}},
+                {"updateTextStyle": {"range": match, "textStyle": {"bold": True},
+                                     "fields": "bold"}},
+            ],
+            "writeControl": {"requiredRevisionId": "rev-a"},
+        },
+    )

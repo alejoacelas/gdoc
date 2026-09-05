@@ -1438,89 +1438,128 @@ def _page_setup_differs_from_import(document_style: dict) -> bool:
                for m in margins)
 
 
-def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
-    """Classify raw native state; ignore effective named-style defaults.
+# Constructs the Markdown rebuild demonstrably round-trips (Drive's
+# importer for whole documents, parse_markdown for tabs). Everything the
+# classifier reaches that is not covered here blocks under its field name.
+MARKDOWN_ROUNDTRIP_ALLOWLIST = (
+    "paragraphs with a named style (normal text, title, subtitle, headings)",
+    "bullet and numbered lists",
+    "bold, italic, strikethrough, inline code (Courier New) and URL links",
+)
 
-    Return sorted (blockers, styles_to_rebuild). This is a loss warning,
-    not a guarantee of full-fidelity Markdown round-tripping.
+# Keys that carry positions, identity or structure Markdown does not need.
+_IGNORED_KEYS = frozenset({
+    "startIndex", "endIndex", "documentId", "title", "revisionId",
+    "suggestionsViewMode", "tabProperties", "namedStyles", "lists",
+    "listId", "nestingLevel",
+})
+# Containers whose children are inspected one key at a time.
+_RECURSE_KEYS = frozenset({"tabs", "childTabs", "documentTab", "body",
+                           "elements", "textRun"})
+# Maps of native state that only matter when non-empty.
+_NATIVE_MAPS = frozenset({"headers", "footers", "footnotes", "namedRanges",
+                          "inlineObjects", "positionedObjects"})
+_ALLOWED_TEXT_STYLE = frozenset({"bold", "italic", "strikethrough"})
+_TEXT_STYLE_WARNINGS = {
+    "foregroundColor": "colour", "backgroundColor": "highlight",
+    "underline": "underline", "smallCaps": "small caps", "fontSize": "font",
+    "baselineOffset": "baseline",
+}
+_ALLOWED_PARAGRAPH_STYLE = frozenset({"namedStyleType", "headingId", "direction"})
+
+
+def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
+    """Deny-by-default inspection of raw native state.
+
+    Return sorted (blockers, styles_to_rebuild). Every key the walk reaches
+    must be allowlisted: structure Markdown cannot carry blocks under its
+    own field name, so element kinds this code has never seen still refuse.
+    Style overrides outside the allowlist only warn. Effective named-style
+    defaults are ignored. This is a loss check, not a guarantee of
+    full-fidelity Markdown round-tripping.
     """
     blockers: set[str] = set()
     styles: set[str] = set()
 
-    def visit(value):
+    def text_style(style: dict) -> None:
+        for name, value in style.items():
+            if name in _ALLOWED_TEXT_STYLE:
+                continue
+            if name == "link":
+                if set(value or {}) - {"url"}:
+                    styles.add("internal links")
+            elif name == "weightedFontFamily":
+                family = (value or {}).get("fontFamily")
+                if family != "Courier New" or (value or {}).get("weight", 400) != 400:
+                    styles.add("font")
+            else:
+                styles.add(_TEXT_STYLE_WARNINGS.get(name, "text style"))
+
+    def paragraph_style(style: dict, listed: bool) -> None:
+        for name in style:
+            if name in _ALLOWED_PARAGRAPH_STYLE:
+                continue
+            if name == "alignment":
+                styles.add("alignment")
+            elif name in {"lineSpacing", "spaceAbove", "spaceBelow"}:
+                styles.add("spacing")
+            elif name.startswith("indent"):
+                if not listed:  # list items carry importer-generated indents
+                    styles.add("indents")
+            else:
+                styles.add("layout")
+
+    def structural_elements(content: list, listed: bool) -> None:
+        for index, element in enumerate(content):
+            if not isinstance(element, dict):
+                continue
+            if "sectionBreak" in element:
+                # Every body opens with one section break; more mean sections.
+                if index > 0:
+                    blockers.add("sectionBreak")
+                section = (element.get("sectionBreak") or {}).get("sectionStyle") or {}
+                if len(section.get("columnProperties") or []) > 1:
+                    blockers.add("columnProperties")
+                element = {k: v for k, v in element.items() if k != "sectionBreak"}
+            visit(element, listed)
+
+    def visit(value, listed: bool = False) -> None:
         if isinstance(value, list):
             for item in value:
-                visit(item)
-        elif isinstance(value, dict):
-            for key, item in value.items():
-                if key == "namedStyles":
-                    continue
-                if key in {"table", "footnoteReference"}:
-                    blockers.add("tables" if key == "table" else "footnotes")
-                if key == "tableOfContents":
-                    blockers.add("table of contents")
-                if key in {"pageBreak", "columnBreak"}:
-                    blockers.add("page/column breaks")
-                if key in {"person", "richLink"}:
-                    blockers.add("smart chips")
-                # Every body opens with one section break; more mean sections.
-                if key == "body" and isinstance(item, dict) and sum(
-                    "sectionBreak" in el for el in item.get("content", [])
-                ) > 1:
-                    blockers.add("section breaks")
-                if key == "equation":
-                    blockers.add("equations")
-                if key == "embeddedDrawingProperties":
-                    blockers.add("drawings")
-                if key == "sheetsChartReference":
-                    blockers.add("linked charts")
-                if item:
-                    if key in {"headers", "footers", "defaultHeaderId",
-                               "defaultFooterId", "firstPageHeaderId",
-                               "firstPageFooterId", "evenPageHeaderId",
-                               "evenPageFooterId"}:
-                        blockers.add("headers/footers")
-                    elif key == "footnotes":
-                        blockers.add("footnotes")
-                    elif key == "namedRanges":
-                        blockers.add("named ranges")
-                    elif key.startswith("suggested"):
-                        blockers.add("pending suggestions")
-                    elif key in {"bullet", "lists"}:
-                        styles.add("lists")
-                if key == "textStyle" and isinstance(item, dict):
-                    for field, reason in {
-                        "foregroundColor": "colour", "backgroundColor": "highlight",
-                        "underline": "underline", "weightedFontFamily": "font",
-                        "fontSize": "font", "baselineOffset": "baseline",
-                    }.items():
-                        if field in item:
-                            styles.add(reason)
-                    link = item.get("link", {})
-                    if any(k in link for k in ("headingId", "bookmarkId",
-                                              "heading", "bookmark", "tabId")):
-                        styles.add("internal links")
-                if key == "paragraphStyle" and isinstance(item, dict):
-                    if item.get("namedStyleType", "NORMAL_TEXT") != "NORMAL_TEXT":
-                        styles.add("headings")
-                    for field in item:
-                        if field in {"namedStyleType", "headingId"}:
-                            continue
-                        if field == "alignment":
-                            styles.add("alignment")
-                        elif field in {"lineSpacing", "spaceAbove", "spaceBelow"}:
-                            styles.add("spacing")
-                        elif field.startswith("indent"):
-                            styles.add("indents")
-                        else:
-                            styles.add("layout")
-                # Document-wide defaults are not paragraph/run overrides.
-                if key != "documentStyle":
-                    visit(item)
-                elif isinstance(item, dict):
+                visit(item, listed)
+            return
+        if not isinstance(value, dict):
+            return
+        for key, item in value.items():
+            if key in _IGNORED_KEYS:
+                continue
+            if key in _RECURSE_KEYS:
+                visit(item, listed)
+            elif key == "content":
+                if isinstance(item, list):
+                    structural_elements(item, listed)
+            elif key == "paragraph":
+                visit(item, listed="bullet" in (item or {}))
+            elif key == "bullet":
+                visit(item, listed=True)
+            elif key == "textStyle":
+                text_style(item or {})
+            elif key == "paragraphStyle":
+                paragraph_style(item or {}, listed)
+            elif key == "documentStyle":
+                if isinstance(item, dict):
                     if _page_setup_differs_from_import(item):
                         styles.add("page setup")
-                    visit({k: v for k, v in item.items() if k.endswith("Id")})
+                    for name, ref in item.items():
+                        if name.endswith("Id") and ref:
+                            blockers.add(name)
+            elif key in _NATIVE_MAPS:
+                if item:
+                    blockers.add(key)
+            else:
+                # Deny by default: tables, footnotes, breaks, chips, objects,
+                # suggestions and any element kind added to the API later.
+                blockers.add(key)
 
     visit(native)
     if len(flatten_tabs(native.get("tabs", []))) > 1:
@@ -1540,10 +1579,8 @@ def check_markdown_rebuild(
 
     A tab replacement deletes only the tab's body range, so that tab's
     headers, footers and header/footer document-style ids are left alone
-    and are not inspected. It rebuilds through parse_markdown, which has
-    no image syntax, so any inline or positioned object blocks it. A
-    whole-document rebuild replaces everything through Drive's Markdown
-    import, which can carry images but never drawings or linked charts.
+    and are not inspected. Everything else follows the deny-by-default
+    classifier: only MARKDOWN_ROUNDTRIP_ALLOWLIST constructs pass.
 
     Drive comment anchors do not reliably identify their tab. Conservatively
     protect anchored comments anywhere in the document for a tab replacement.
@@ -1570,10 +1607,6 @@ def check_markdown_rebuild(
         scope = {k: v for k, v in scope.items()
                  if k not in _TAB_BODY_UNAFFECTED}
     blockers, styles = classify_markdown_rebuild(scope)
-    if tab_id is not None and (scope.get("inlineObjects")
-                               or scope.get("positionedObjects")):
-        # parse_markdown has no image syntax, so a tab rebuild drops them.
-        blockers.append("images")
     if force_collapse_tabs and "multiple tabs" in blockers:
         blockers.remove("multiple tabs")
     comments = list_comments(doc_id, include_anchor=True)
@@ -1584,8 +1617,9 @@ def check_markdown_rebuild(
     if blockers and (not allow_lossy_rebuild or "multiple tabs" in blockers):
         raise GdocError(
             "Markdown rebuild would lose: " + ", ".join(sorted(blockers))
-            + ". Use edit/insert for surgical changes, or --allow-lossy-rebuild "
-            "for disposable documents."
+            + ". Only " + "; ".join(MARKDOWN_ROUNDTRIP_ALLOWLIST)
+            + " survive a rebuild. Use edit/insert for surgical changes, or "
+            "--allow-lossy-rebuild for disposable documents."
             + (" Multiple tabs also require --force-collapse-tabs."
                if "multiple tabs" in blockers else ""),
             exit_code=3,

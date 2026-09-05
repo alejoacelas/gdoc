@@ -853,11 +853,13 @@ class TestWriteTabScoped:
 @pytest.mark.parametrize('override', [{}, {'force': True},
                                      {'force_collapse_tabs': True}])
 @pytest.mark.parametrize('native,reason', [
-    ({'footers': {'footer': {}}}, 'headers/footers'),
+    ({'footers': {'footer': {}}}, 'footers'),
     ({'footnotes': {'note': {}}}, 'footnotes'),
-    ({'table': {}}, 'tables'),
-    ({'suggestedDeletionIds': ['suggestion']}, 'pending suggestions'),
-    ({'namedRanges': {'Reference': {}}}, 'named ranges'),
+    ({'table': {}}, 'table'),
+    ({'suggestedDeletionIds': ['suggestion']}, 'suggestedDeletionIds'),
+    ({'namedRanges': {'Reference': {}}}, 'namedRanges'),
+    ({'body': {'content': [{'paragraph': {'elements': [
+        {'newKindOfElement': {}}]}}]}}, 'newKindOfElement'),
 ])
 def test_write_refuses_unsupported_state(mocker, tmp_path, override, native, reason):
     f = tmp_path / 'notes.md'
@@ -938,8 +940,6 @@ def test_write_lossy_opt_in_preserves_drive_parameters(mocker, tmp_path):
 
 
 @pytest.mark.parametrize('native,reason', [
-    ({'paragraphStyle': {'namedStyleType': 'HEADING_1'}}, 'headings'),
-    ({'bullet': {'listId': 'list'}}, 'lists'),
     ({'textStyle': {'foregroundColor': {}}}, 'colour'),
     ({'paragraphStyle': {'keepWithNext': True}}, 'layout'),
 ])

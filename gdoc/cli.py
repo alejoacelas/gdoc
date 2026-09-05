@@ -4206,11 +4206,16 @@ def build_parser() -> GdocArgumentParser:
     )
     write_p.add_argument(
         "--allow-lossy-rebuild", action="store_true",
-        help=("Allow loss of headers/footers, footnotes, tables, suggestions, "
-              "named ranges and comment anchors; intended for disposable docs. "
-              "Styles are rebuilt with a warning even without this flag. "
-              "Use edit/insert for surgical changes. Tab collapse still "
-              "requires --force-collapse-tabs."),
+        help=("Allow a Markdown rebuild to drop native structure. Only "
+              "paragraphs with a named style (normal text, title, subtitle, "
+              "headings), bullet and numbered lists, and bold, italic, "
+              "strikethrough, inline code and URL links survive a rebuild; "
+              "anything else (tables, footnotes, headers/footers, images, "
+              "drawings, breaks, smart chips, suggestions, named ranges, "
+              "comment anchors, unknown elements) refuses without this flag. "
+              "Other styles are rebuilt with a warning. Intended for "
+              "disposable docs; use edit/insert for surgical changes. Tab "
+              "collapse still requires --force-collapse-tabs."),
     )
     write_p.set_defaults(func=cmd_write)
 
@@ -4277,11 +4282,16 @@ def build_parser() -> GdocArgumentParser:
     )
     push_p.add_argument(
         "--allow-lossy-rebuild", action="store_true",
-        help=("Allow loss of headers/footers, footnotes, tables, suggestions, "
-              "named ranges and comment anchors; intended for disposable docs. "
-              "Styles are rebuilt with a warning even without this flag. "
-              "Use edit/insert for surgical changes. Tab collapse still "
-              "requires --force-collapse-tabs."),
+        help=("Allow a Markdown rebuild to drop native structure. Only "
+              "paragraphs with a named style (normal text, title, subtitle, "
+              "headings), bullet and numbered lists, and bold, italic, "
+              "strikethrough, inline code and URL links survive a rebuild; "
+              "anything else (tables, footnotes, headers/footers, images, "
+              "drawings, breaks, smart chips, suggestions, named ranges, "
+              "comment anchors, unknown elements) refuses without this flag. "
+              "Other styles are rebuilt with a warning. Intended for "
+              "disposable docs; use edit/insert for surgical changes. Tab "
+              "collapse still requires --force-collapse-tabs."),
     )
     push_p.set_defaults(func=cmd_push)
 

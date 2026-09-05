@@ -844,42 +844,133 @@ class TestInsertMarkdownIntoTab:
             insert_markdown_into_tab("doc1", "Not A Real Tab", "hi")
 
 
-@pytest.mark.parametrize(('native', 'reason'), [
-    ({'footnotes': {'f': {}}}, 'footnotes'),
-    ({'headers': {'h': {}}}, 'headers/footers'),
-    ({'footers': {'f': {}}}, 'headers/footers'),
-    ({'table': {}}, 'tables'),
-    ({'suggestedInsertionIds': ['s']}, 'pending suggestions'),
-    ({'suggestedTextStyleChanges': {'s': {}}}, 'pending suggestions'),
-    ({'namedRanges': {'Reference': {}}}, 'named ranges'),
-    ({'footnoteReference': {'footnoteId': 'f'}}, 'footnotes'),
-    ({'body': {'content': [{'tableOfContents': {'content': []}}]}},
-     'table of contents'),
-    ({'elements': [{'equation': {}}]}, 'equations'),
-    ({'elements': [{'pageBreak': {}}]}, 'page/column breaks'),
-    ({'elements': [{'columnBreak': {}}]}, 'page/column breaks'),
-    ({'elements': [{'person': {'personId': 'p'}}]}, 'smart chips'),
-    ({'elements': [{'richLink': {'richLinkId': 'r'}}]}, 'smart chips'),
+def _element(kind):
+    """A paragraph holding one ParagraphElement of the given kind."""
+    return {'body': {'content': [{'paragraph': {'elements': [
+        {'startIndex': 1, 'endIndex': 2, kind: {}}]}}]}}
+
+
+def _tab_map(kind):
+    return {kind: {'id': {'content': []}}}
+
+
+# Every structural, paragraph-element and tab-level kind in the Docs API
+# schema other than the allowlist, plus one kind the API does not have yet.
+_SCHEMA_BLOCKERS = [
     ({'body': {'content': [{'sectionBreak': {}}, {'paragraph': {}},
-                           {'sectionBreak': {'sectionStyle': {}}}]}},
-     'section breaks'),
-    ({'inlineObjects': {'kix.d': {'inlineObjectProperties': {'embeddedObject': {
-        'embeddedDrawingProperties': {}}}}}}, 'drawings'),
-    ({'positionedObjects': {'kix.c': {'positionedObjectProperties': {
-        'embeddedObject': {'linkedContentReference': {
-            'sheetsChartReference': {'spreadsheetId': 's', 'chartId': 1}}}}}}},
-     'linked charts'),
-])
-def test_rebuild_blocker_classes(native, reason):
+                           {'sectionBreak': {}}]}}, 'sectionBreak'),
+    ({'body': {'content': [{'sectionBreak': {'sectionStyle': {
+        'columnProperties': [{}, {}]}}}]}}, 'columnProperties'),
+    ({'body': {'content': [{'tableOfContents': {'content': []}}]}},
+     'tableOfContents'),
+    ({'body': {'content': [{'table': {'rows': 1, 'columns': 1}}]}}, 'table'),
+    (_element('pageBreak'), 'pageBreak'),
+    (_element('columnBreak'), 'columnBreak'),
+    (_element('inlineObjectElement'), 'inlineObjectElement'),
+    (_element('richLink'), 'richLink'),
+    (_element('person'), 'person'),
+    (_element('horizontalRule'), 'horizontalRule'),
+    (_element('footnoteReference'), 'footnoteReference'),
+    (_element('equation'), 'equation'),
+    (_element('autoText'), 'autoText'),
+    (_element('dateElement'), 'dateElement'),
+    (_element('elementAddedNextYear'), 'elementAddedNextYear'),
+    ({'body': {'content': [{'paragraph': {
+        'positionedObjectIds': ['kix.p']}}]}}, 'positionedObjectIds'),
+    ({'body': {'content': [{'paragraph': {'elements': [{'textRun': {
+        'content': 'x', 'suggestedInsertionIds': ['s']}}]}}]}},
+     'suggestedInsertionIds'),
+    ({'body': {'content': [{'paragraph': {'elements': [{'textRun': {
+        'content': 'x', 'suggestedTextStyleChanges': {'s': {}}}}]}}]}},
+     'suggestedTextStyleChanges'),
+    ({'body': {'content': [{'paragraph': {
+        'suggestedBulletChanges': {'s': {}}}}]}}, 'suggestedBulletChanges'),
+    (_tab_map('headers'), 'headers'),
+    (_tab_map('footers'), 'footers'),
+    (_tab_map('footnotes'), 'footnotes'),
+    ({'namedRanges': {'Reference': {'namedRanges': []}}}, 'namedRanges'),
+    (_tab_map('inlineObjects'), 'inlineObjects'),
+    (_tab_map('positionedObjects'), 'positionedObjects'),
+    ({'suggestedDocumentStyleChanges': {'s': {}}},
+     'suggestedDocumentStyleChanges'),
+    ({'documentStyle': {'defaultHeaderId': 'h'}}, 'defaultHeaderId'),
+    ({'documentStyle': {'firstPageFooterId': 'f'}}, 'firstPageFooterId'),
+]
+
+
+@pytest.mark.parametrize(('native', 'reason'), _SCHEMA_BLOCKERS)
+def test_rebuild_blocks_every_kind_outside_the_allowlist(native, reason):
     from gdoc.api.docs import classify_markdown_rebuild
 
     assert classify_markdown_rebuild(native) == ([reason], [])
 
 
+def test_rebuild_reports_each_blocked_field_name():
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    native = {'body': {'content': [
+        {'paragraph': {'elements': [{'footnoteReference': {}},
+                                    {'inlineObjectElement': {}}]}},
+        {'table': {}},
+    ]}}
+    assert classify_markdown_rebuild(native)[0] == [
+        'footnoteReference', 'inlineObjectElement', 'table']
+
+
+def test_rebuild_ignores_empty_native_maps():
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    assert classify_markdown_rebuild({'headers': {}, 'footnotes': {},
+                                      'inlineObjects': {}}) == ([], [])
+
+
+def test_rebuild_allowlist_passes_silently():
+    """Everything the importer round-trips: named styles, lists, inline styles."""
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    code = {'weightedFontFamily': {'fontFamily': 'Courier New', 'weight': 400}}
+    native = {'documentId': 'd', 'title': 'T', 'revisionId': 'r',
+              'suggestionsViewMode': 'DEFAULT_FOR_CURRENT_ACCESS', 'tabs': [{
+        'tabProperties': {'tabId': 't', 'title': 'Tab'}, 'childTabs': [],
+        'documentTab': {
+            'lists': {'l': {'listProperties': {}}},
+            'namedStyles': {'styles': [{'namedStyleType': 'NORMAL_TEXT'}]},
+            'body': {'content': [
+                {'sectionBreak': {'sectionStyle': {'columnProperties': [{}]}}},
+                {'startIndex': 1, 'endIndex': 9, 'paragraph': {
+                    'paragraphStyle': {'namedStyleType': 'HEADING_1',
+                                       'headingId': 'h.1',
+                                       'direction': 'LEFT_TO_RIGHT'},
+                    'elements': [{'startIndex': 1, 'endIndex': 9, 'textRun': {
+                        'content': 'Heading\n', 'textStyle': {}}}]}},
+                {'paragraph': {
+                    'paragraphStyle': {'namedStyleType': 'NORMAL_TEXT',
+                                       'indentFirstLine': {'magnitude': 18},
+                                       'indentStart': {'magnitude': 36}},
+                    'bullet': {'listId': 'l', 'nestingLevel': 0,
+                               'textStyle': {}},
+                    'elements': [
+                        {'textRun': {'content': 'bold ',
+                                     'textStyle': {'bold': True}}},
+                        {'textRun': {'content': 'italic ',
+                                     'textStyle': {'italic': True}}},
+                        {'textRun': {'content': 'gone ',
+                                     'textStyle': {'strikethrough': True}}},
+                        {'textRun': {'content': 'code ', 'textStyle': code}},
+                        {'textRun': {'content': 'link\n', 'textStyle': {
+                            'link': {'url': 'https://example.com'}}}},
+                    ]}},
+            ]},
+        }}]}
+    assert classify_markdown_rebuild(native) == ([], [])
+
+
 @pytest.mark.parametrize(('native', 'reason'), [
-    ({'paragraphStyle': {'namedStyleType': 'HEADING_1'}}, 'headings'),
-    ({'bullet': {'listId': 'l'}}, 'lists'),
     ({'textStyle': {'foregroundColor': {'color': {}}}}, 'colour'),
+    ({'textStyle': {'smallCaps': True}}, 'small caps'),
+    ({'textStyle': {'styleAddedNextYear': True}}, 'text style'),
+    ({'textStyle': {'weightedFontFamily': {'fontFamily': 'Courier New',
+                                           'weight': 700}}}, 'font'),
     ({'textStyle': {'backgroundColor': {'color': {}}}}, 'highlight'),
     ({'textStyle': {'underline': True}}, 'underline'),
     ({'textStyle': {'weightedFontFamily': {'fontFamily': 'Arial'}}}, 'font'),
@@ -985,7 +1076,7 @@ def test_rebuild_unsafe_tab_never_batches(mocker):
     )
     mocker.patch('gdoc.api.comments.list_comments', return_value=[])
     service = mocker.patch('gdoc.api.docs.get_docs_service').return_value
-    with pytest.raises(GdocError, match='named ranges') as error:
+    with pytest.raises(GdocError, match='namedRanges') as error:
         insert_markdown_into_tab('doc', 'Notes', 'Summary', replace=True)
     assert error.value.exit_code == 3
     service.documents.return_value.batchUpdate.assert_not_called()
@@ -1034,23 +1125,25 @@ def test_tab_rebuild_blocks_images(mocker):
     from gdoc.api.docs import check_markdown_rebuild
 
     mocker.patch('gdoc.api.comments.list_comments', return_value=[])
-    with pytest.raises(GdocError, match='images') as error:
+    with pytest.raises(GdocError, match='inlineObjects') as error:
         check_markdown_rebuild('doc', document=_image_doc(), tab_id='notes')
     assert error.value.exit_code == 3
 
 
-def test_whole_document_rebuild_keeps_plain_images(mocker):
+def test_whole_document_rebuild_blocks_images_too(mocker):
+    """Nothing proves Drive's import keeps images, so deny by default."""
     from gdoc.api.docs import check_markdown_rebuild
 
     mocker.patch('gdoc.api.comments.list_comments', return_value=[])
-    check_markdown_rebuild('doc', document=_image_doc())
+    with pytest.raises(GdocError, match='inlineObjects'):
+        check_markdown_rebuild('doc', document=_image_doc())
 
 
 def test_whole_document_rebuild_still_blocks_headers_and_footers(mocker):
     from gdoc.api.docs import check_markdown_rebuild
 
     mocker.patch('gdoc.api.comments.list_comments', return_value=[])
-    with pytest.raises(GdocError, match='headers/footers') as error:
+    with pytest.raises(GdocError, match='defaultFooterId.*footers.*headers') as error:
         check_markdown_rebuild('doc', document=_headed_doc())
     assert error.value.exit_code == 3
 
@@ -1124,6 +1217,5 @@ def test_rebuild_styles_emit_one_warning(mocker, capsys):
         'textStyle': {'foregroundColor': {}, 'backgroundColor': {}},
     })
     assert capsys.readouterr().err == (
-        'WARN: Markdown rebuild will rebuild: alignment, colour, headings, '
-        'highlight, lists\n'
+        'WARN: Markdown rebuild will rebuild: alignment, colour, highlight\n'
     )

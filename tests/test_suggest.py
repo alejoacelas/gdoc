@@ -1708,3 +1708,26 @@ class TestMcpExposure:
             {"old_file", "new_file"},
         )
         assert "suggest" in mcp._DESCRIPTION_NOTES
+
+
+def test_suggest_segments_exact_batch(mocker, _preview_gate_passes):
+    from test_docs_batch import _expected_mixed_requests, _mixed_matches
+
+    service = _service(_ok_response())
+    mocker.patch("gdoc.api.docs.get_docs_service", return_value=service)
+    readback = mocker.patch("gdoc.api.docs.get_document_structure",
+                            return_value=_readback("suggest.abc"))
+    result = suggest_replacement(
+        "doc-one", _mixed_matches(), "***REPLACED***", "revision-one",
+        tab_id="tab-one",
+    )
+    assert result.occurrences == 3
+    service.documents.return_value.batchUpdate.assert_called_once_with(
+        documentId="doc-one", body={
+            "requests": _expected_mixed_requests(),
+            "writeControl": {"requiredRevisionId": "revision-one",
+                             "writeMode": "SUGGEST"},
+        },
+    )
+    _preview_gate_passes.assert_called_once_with("doc-one")
+    readback.assert_called_once_with("doc-one", suggestions_view_mode=SUGGESTIONS_INLINE)

@@ -222,3 +222,165 @@ class TestReplaceFormatted:
         matches = [{"startIndex": 5, "endIndex": 10}]
         with pytest.raises(GdocError, match="Permission denied"):
             replace_formatted("d1", matches, "text", "r1")
+
+
+def _segment_scope():
+    return {
+        "tabProperties": {"tabId": "tab-one", "title": "First"},
+        "documentTab": {
+            "body": _mock_document([(1, "Body TOKEN\n")])["body"],
+            "headers": {"header-one": {
+                "headerId": "header-one",
+                **_mock_document([(0, "Header TOKEN\n")])["body"],
+            }},
+            "footers": {"footer-one": {
+                "footerId": "footer-one",
+                **_mock_document([(0, "Footer TOKEN\n")])["body"],
+            }},
+            "footnotes": {"note-one": {
+                "footnoteId": "note-one",
+                **_mock_document([(0, "Footnote TOKEN\n")])["body"],
+            }},
+        },
+    }
+
+
+def test_find_all_selected_tab_containers():
+    from gdoc.api.docs import flatten_tabs
+
+    raw = _segment_scope()
+    tab = flatten_tabs([raw])[0]
+    for kind in ("headers", "footers", "footnotes"):
+        assert tab[kind] == raw["documentTab"][kind]
+    assert find_text_in_document(tab, "TOKEN") == [
+        {"startIndex": 6, "endIndex": 11, "tabId": "tab-one",
+         "container": "body"},
+        {"startIndex": 7, "endIndex": 12, "tabId": "tab-one",
+         "container": "header", "segmentId": "header-one"},
+        {"startIndex": 7, "endIndex": 12, "tabId": "tab-one",
+         "container": "footer", "segmentId": "footer-one"},
+        {"startIndex": 9, "endIndex": 14, "tabId": "tab-one",
+         "container": "footnote", "segmentId": "note-one"},
+    ]
+
+
+def test_find_raw_document_uses_only_first_tab():
+    first = _segment_scope()
+    sibling = _segment_scope()
+    sibling["tabProperties"]["tabId"] = "tab-two"
+    expected = find_text_in_document(
+        {"id": "tab-one", **first["documentTab"]}, "TOKEN",
+    )
+    assert len(expected) == 4
+    assert find_text_in_document({"tabs": [first, sibling]}, "TOKEN") == expected
+
+
+def test_legacy_body_range_shape_is_unchanged():
+    assert find_text_in_document(_mock_document([(1, "TOKEN")]), "TOKEN") == [
+        {"startIndex": 1, "endIndex": 6},
+    ]
+
+
+def _mixed_matches():
+    # Identical numerical ranges are independent across containers.
+    return [
+        {"startIndex": 1, "endIndex": 6, "tabId": "tab-one",
+         "container": "footnote", "segmentId": "note-one"},
+        {"startIndex": 1, "endIndex": 6, "tabId": "tab-one",
+         "container": "header", "segmentId": "header-one"},
+        {"startIndex": 1, "endIndex": 6, "tabId": "tab-one",
+         "container": "body"},
+    ]
+
+
+def _expected_mixed_requests(body_paragraph=False):
+    requests = []
+    for segment in (None, "header-one", "note-one"):
+        coordinates = {"tabId": "tab-one"}
+        if segment:
+            coordinates["segmentId"] = segment
+        requests.extend([
+            {"deleteContentRange": {"range": {
+                "startIndex": 1, "endIndex": 6, **coordinates,
+            }}},
+            {"insertText": {"location": {"index": 1, **coordinates},
+                            "text": "REPLACED"}},
+        ])
+        if body_paragraph and segment is None:
+            requests.append({"updateParagraphStyle": {
+                "range": {"startIndex": 1, "endIndex": 9, **coordinates},
+                "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
+                "fields": "namedStyleType",
+            }})
+        requests.extend([
+            {"updateTextStyle": {
+                "range": {"startIndex": 1, "endIndex": 9, **coordinates},
+                "textStyle": {"bold": True}, "fields": "bold",
+            }},
+            {"updateTextStyle": {
+                "range": {"startIndex": 1, "endIndex": 9, **coordinates},
+                "textStyle": {"italic": True}, "fields": "italic",
+            }},
+        ])
+    return requests
+
+
+def test_segment_replacement_builder_exact_requests():
+    from gdoc.api.docs import _build_replacement_requests
+    from gdoc.mdparse import ParsedMarkdown, StyleRange
+
+    parsed = ParsedMarkdown("REPLACED", styles=[
+        StyleRange(0, 8, {"bold": True}, "text_style"),
+        StyleRange(0, 8, {"italic": True}, "text_style"),
+    ])
+    ordered, requests = _build_replacement_requests(parsed, _mixed_matches())
+    assert [m["container"] for m in ordered] == ["body", "header", "footnote"]
+    assert requests == _expected_mixed_requests()
+
+
+def test_segment_edit_exact_batch_and_body_only_cleanup(mocker):
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    chain = service.documents.return_value
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "tabs": [_segment_scope()],
+    })
+    cleanup = mocker.patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
+    assert replace_formatted(
+        "doc-one", _mixed_matches(), "***REPLACED***", "revision-one",
+        tab_id="tab-one",
+    ) == 3
+    chain.batchUpdate.assert_called_once_with(documentId="doc-one", body={
+        "requests": _expected_mixed_requests(body_paragraph=True),
+        "writeControl": {"requiredRevisionId": "revision-one"},
+    })
+    cleanup.assert_called_once_with(
+        _segment_scope()["documentTab"]["body"], 9, "tab-one",
+    )
+
+
+@pytest.mark.parametrize("markdown", [
+    "# Heading", "- Item", "1. Item", "> Quote", "---",
+    "| A |\n| --- |\n| B |", "```\ncode\n```", "First\n\nSecond",
+])
+def test_segment_structural_markdown_rejected_before_batch(mocker, markdown):
+    service = mocker.patch("gdoc.api.docs.get_docs_service")
+    with pytest.raises(GdocError) as error:
+        replace_formatted("doc-one", [_mixed_matches()[0]], markdown, "revision-one")
+    assert error.value.exit_code == 3
+    service.assert_not_called()
+
+
+def test_segment_sort_descends_only_inside_each_container():
+    from gdoc.api.docs import _build_replacement_requests
+    from gdoc.mdparse import ParsedMarkdown
+
+    matches = _mixed_matches()
+    matches.extend([
+        {**matches[1], "startIndex": 20, "endIndex": 25},
+        {**matches[2], "startIndex": 10, "endIndex": 15},
+    ])
+    ordered, _ = _build_replacement_requests(ParsedMarkdown("R"), matches)
+    assert [(m["container"], m["startIndex"]) for m in ordered] == [
+        ("body", 10), ("body", 1), ("header", 20), ("header", 1),
+        ("footnote", 1),
+    ]

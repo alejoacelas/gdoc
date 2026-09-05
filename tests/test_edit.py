@@ -738,3 +738,72 @@ class TestEditStdin:
         with pytest.raises(GdocError, match="only one argument") as exc:
             cmd_edit(args)
         assert exc.value.exit_code == 3
+
+
+@pytest.fixture
+def segment_edit(mocker):
+    def content(text):
+        return {"content": [{"paragraph": {"elements": [
+            {"startIndex": 1, "textRun": {"content": text}},
+        ]}}]}
+
+    selected = {
+        "tabProperties": {"tabId": "tab-one", "title": "First"},
+        "documentTab": {
+            "body": content("Body TOKEN\n"),
+            "headers": {"header-one": content("Header TOKEN\n")},
+            "footnotes": {"note-one": content("Footnote TOKEN\n")},
+        },
+    }
+    document = {"revisionId": "revision-one", "tabs": [selected, {
+        "tabProperties": {"tabId": "tab-two", "title": "Second"},
+        "documentTab": {"body": content("Sibling TOKEN\n"),
+                        "footnotes": {"note-two": content("Only sibling\n")}},
+    }]}
+    mocker.patch("gdoc.notify.pre_flight", return_value=None)
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value=document)
+    mocker.patch("gdoc.api.docs.get_document", return_value={
+        "revisionId": "revision-one", **selected["documentTab"],
+    })
+    mocker.patch("gdoc.api.drive.get_file_version", return_value=_version_data())
+    mocker.patch("gdoc.state.update_state_after_command")
+    return mocker.patch("gdoc.api.docs.replace_formatted", return_value=3)
+
+
+def test_edit_all_includes_selected_segments(segment_edit, capsys):
+    assert cmd_edit(_make_args(
+        tab="First", old_text="TOKEN", new_text="REPLACED", **{"all": True},
+    )) == 0
+    segment_edit.assert_called_once_with("abc123", [
+        {"startIndex": 6, "endIndex": 11, "tabId": "tab-one",
+         "container": "body"},
+        {"startIndex": 8, "endIndex": 13, "tabId": "tab-one",
+         "container": "header", "segmentId": "header-one"},
+        {"startIndex": 10, "endIndex": 15, "tabId": "tab-one",
+         "container": "footnote", "segmentId": "note-one"},
+    ], "REPLACED", "revision-one", tab_id="tab-one")
+    assert "OK replaced 3 occurrences" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("tab", [None, "First"])
+def test_edit_cross_container_ambiguity_never_writes(segment_edit, tab):
+    with pytest.raises(GdocError, match="multiple matches") as error:
+        cmd_edit(_make_args(tab=tab, old_text="TOKEN"))
+    assert error.value.exit_code == 3
+    segment_edit.assert_not_called()
+
+
+@pytest.mark.parametrize("markdown", ["# Heading", "- Item", "```\ncode\n```",
+                                      "| A |\n| --- |\n| B |"])
+def test_edit_segment_structure_never_calls_replacement(segment_edit, markdown):
+    with pytest.raises(GdocError) as error:
+        cmd_edit(_make_args(tab="First", old_text="TOKEN", new_text=markdown,
+                            **{"all": True}))
+    assert error.value.exit_code == 3
+    segment_edit.assert_not_called()
+
+
+def test_edit_does_not_search_sibling_footnotes(segment_edit):
+    with pytest.raises(GdocError, match="no match found"):
+        cmd_edit(_make_args(tab="First", old_text="Only sibling"))
+    segment_edit.assert_not_called()

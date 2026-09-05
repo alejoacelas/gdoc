@@ -1003,6 +1003,29 @@ def _list_paragraph(nesting, first, start):
         'elements': [{'textRun': {'content': 'item\n'}}]}}]}}
 
 
+def _list_items(*list_ids):
+    return {'body': {'content': [
+        {'paragraph': {'bullet': {'listId': lid, 'nestingLevel': 0},
+                       'elements': [{'textRun': {'content': 'item\n'}}]}}
+        if lid else {'paragraph': {'elements': [{'textRun': {'content': 'p\n'}}]}}
+        for lid in list_ids]}}
+
+
+def test_rebuild_accepts_one_list_and_separated_lists():
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    assert classify_markdown_rebuild(_list_items('kix.a', 'kix.a')) == ([], [])
+    assert classify_markdown_rebuild(_list_items('kix.a', None, 'kix.b')) == ([], [])
+
+
+def test_rebuild_warns_on_adjacent_lists():
+    """Two lists back to back come back as one continuous list."""
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    assert classify_markdown_rebuild(_list_items('kix.a', 'kix.b')) == (
+        [], ['list boundaries'])
+
+
 def test_rebuild_accepts_generated_list_paragraph_indents():
     from gdoc.api.docs import classify_markdown_rebuild
 

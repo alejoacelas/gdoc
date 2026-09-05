@@ -308,7 +308,8 @@ def _style_run_markdown(content: str, style: dict) -> str:
 
     link = (style.get("link") or {}).get("url")
     if link:
-        core = f"[{core}]({link})"
+        # mdparse stops a destination at the first unescaped ")".
+        core = f"[{core}]({link.replace(')', chr(92) + ')')})"
     else:
         if style.get("bold") and style.get("italic"):
             core = f"***{core}***"
@@ -1675,9 +1676,17 @@ def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
                 styles.add("section layout")
 
     def structural_elements(content: list, nesting: int | None) -> None:
+        previous_list = None
         for index, element in enumerate(content):
             if not isinstance(element, dict):
                 continue
+            # Markdown has no list boundary: two lists back to back rebuild
+            # as one continuous list (numbering runs on).
+            bullet = (element.get("paragraph") or {}).get("bullet")
+            list_id = (bullet or {}).get("listId") if bullet is not None else None
+            if list_id and previous_list and list_id != previous_list:
+                styles.add("list boundaries")
+            previous_list = list_id
             if "sectionBreak" in element:
                 # Every body opens with one section break; more mean sections.
                 if index > 0:

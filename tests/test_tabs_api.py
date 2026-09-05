@@ -334,6 +334,21 @@ class TestGetTabTextInlineMarkdown:
         tab = {"body": {"content": [_para(run)]}}
         assert get_tab_text(tab, markdown=True) == "[site](https://e.com)\n"
 
+
+    def test_link_with_parenthesis_round_trips(self):
+        """A ")" in a destination is escaped so mdparse reads the whole URL."""
+        from gdoc.api.docs import _style_run_markdown
+        from gdoc.mdparse import parse_markdown
+
+        url = "https://en.wikipedia.org/wiki/Foo_(bar)"
+        md = _style_run_markdown("Foo", {"link": {"url": url}})
+        assert md == "[Foo](https://en.wikipedia.org/wiki/Foo_(bar\\))"
+        parsed = parse_markdown(f"see {md} now")
+        links = [r.style["link"]["url"] for r in parsed.styles
+                 if "link" in r.style]
+        assert links == [url]
+        assert parsed.plain_text == "see Foo now\n"
+
     def test_spaces_kept_outside_markers(self):
         tab = {"body": {"content": [_para(_run(" b \n", bold=True))]}}
         assert get_tab_text(tab, markdown=True) == " **b** \n"

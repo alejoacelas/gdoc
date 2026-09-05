@@ -243,13 +243,12 @@ def _styled_body(prefix="Status: ", text="2. Archive the sample", left=None):
     ("1. Archive the sample", "1. Archive the sample", False, []),
     ("# label", "# label", False, []),
     ("- note", "- note", False, []),
-    ("**closed**", "closed", True, [{"bold": True}]),
-    ("```\ncode\n```", "```\ncode\n```", False, []),
-    ("```\n**code**\n```", "```\n**code**\n```", False, []),
-    ("~~~\n**code**\n~~~", "~~~\n**code**\n~~~", False, []),
-    ("```\nfirst ``` literal\n**second**\n```",
-     "```\nfirst ``` literal\n**second**\n```", False, []),
-    ("```\n**code**", "```\n**code**", False, []),
+    ("**closed**", "closed", True, [({"bold": True}, "bold")]),
+    # Partial replacements are inline Markdown only: a fence is a CommonMark
+    # code span when closed by an equal backtick string, literal otherwise.
+    ("``closed``", "closed", False,
+     [({"weightedFontFamily": {"fontFamily": "Courier New"}}, "weightedFontFamily")]),
+    ("``` closed", "``` closed", False, []),
 ])
 def test_inline_exact_batch(mocker, replacement, inserted, baseline, extra):
     svc = mocker.patch("gdoc.api.docs.get_docs_service").return_value
@@ -266,8 +265,8 @@ def test_inline_exact_batch(mocker, replacement, inserted, baseline, extra):
             "range": target, "textStyle": {}, "fields": "bold",
         }})
     requests.extend({"updateTextStyle": {
-        "range": target, "textStyle": style, "fields": "bold",
-    }} for style in extra)
+        "range": target, "textStyle": style, "fields": fields,
+    }} for style, fields in extra)
     assert replace_formatted("sample-doc", [match], replacement, "rev-a",
                              tab_id="tab-a", body=body) == 1
     chain.batchUpdate.assert_called_once_with(documentId="sample-doc", body={

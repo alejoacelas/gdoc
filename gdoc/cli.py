@@ -3977,7 +3977,14 @@ def build_parser() -> GdocArgumentParser:
         epilog="Note: edit operates on raw document text. "
                "Use `gdoc cat --plain DOC` to see matchable text. "
                "Replacement text supports markdown formatting "
-               "(bold, italic, headings, bullets, links).",
+               "(bold, italic, headings, bullets, links). When the match is "
+               "only part of a paragraph, the replacement is inline markdown "
+               "only: bold, italic, strikethrough, links, and CommonMark code "
+               "spans (a backtick string opens a span that only an equal-length "
+               "backtick string closes; an unmatched one is literal). Block "
+               "syntax (headings, list markers, fences, blockquotes, rules) is "
+               "inserted literally there and only applies when the match is a "
+               "whole paragraph.",
     )
     edit_p.add_argument("doc", help="Document ID or URL")
     edit_p.add_argument("old_text", nargs="?", default=None, help="Text to find")

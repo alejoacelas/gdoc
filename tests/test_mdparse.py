@@ -1,5 +1,6 @@
 """Tests for the markdown parser and Docs API request builder."""
 
+import pytest
 from gdoc.mdparse import parse_inline, parse_markdown, to_docs_requests
 
 
@@ -579,42 +580,6 @@ class TestBackslashEscapes:
         code = [s for s in result.styles if "weightedFontFamily" in s.style]
         assert code == []
 
-    def test_backtick_runs_stay_literal_inline(self):
-        # A ``` fence that reaches the inline parser (partial paragraph edit)
-        # must not be read as a single-backtick span minus one delimiter.
-        text, styles = parse_inline("```\ncode\n```")
-        assert (text, styles) == ("```\ncode\n```", [])
-        text, styles = parse_inline("see ```python\nx = 1\n``` and `ok`")
-        assert text == "see ```python\nx = 1\n``` and ok"
-        assert [text[s.start:s.end] for s in styles] == ["ok"]
-        # Markdown inside the fence is literal too, backslashes included.
-        fenced = "```\n**bold** `code` [l](u) \\*\n```"
-        assert parse_inline(fenced) == (fenced, [])
-        text, styles = parse_inline("**b** " + fenced + " *i*")
-        assert text == "b " + fenced + " i"
-        assert [text[s.start:s.end] for s in styles] == ["b", "i"]
-        # A delimiter run inside the fenced content does not close the fence;
-        # like the block parser, only a fence-only line does.
-        nested = "```\nfirst ``` literal\n**second**\n```"
-        assert parse_inline(nested) == (nested, [])
-        nested = "~~~\nfirst ~~~ literal\n**second**\n~~~"
-        assert parse_inline(nested) == (nested, [])
-        # An unclosed block-style fence runs to the end of the input, as in
-        # the block parser, so its content stays literal.
-        for unclosed in ("```\nfirst ``` literal **b**", "~~~\n**code**", "```\n"):
-            assert parse_inline(unclosed) == (unclosed, [])
-        # A mid-line run without a closer is not a fence; it stays literal
-        # while the text around it is parsed normally.
-        text, styles = parse_inline("x ``` then **b**")
-        assert text == "x ``` then b"
-        assert [text[s.start:s.end] for s in styles] == ["b"]
-        # Tilde fences are literal too, and still beat strikethrough.
-        tilde = "~~~\n**code** ~~gone~~\n~~~"
-        assert parse_inline(tilde) == (tilde, [])
-        text, styles = parse_inline("~~s~~ " + tilde)
-        assert text == "s " + tilde
-        assert [text[s.start:s.end] for s in styles] == ["s"]
-
     def test_code_span_keeps_backslashes(self):
         # Code spans are literal — backslashes must NOT be stripped inside
         # them (e.g. a regex). Outside code, escapes still resolve.
@@ -855,3 +820,47 @@ class TestTableTabAdjustment:
     def test_total_removed_tabs_zero_without_nesting(self):
         result = parse_markdown("- a\n- b\nplain")
         assert result.removed_tabs == 0
+
+
+_CODE = {"weightedFontFamily": {"fontFamily": "Courier New"}}
+_BOLD = {"bold": True}
+_STRIKE = {"strikethrough": True}
+
+
+@pytest.mark.parametrize("source,text,ranges", [
+    # Single, double and triple backtick strings are all code-span delimiters;
+    # content is verbatim and only an equal-length string closes the span.
+    ("`code`", "code", [(0, 4, _CODE)]),
+    ("``co`de``", "co`de", [(0, 5, _CODE)]),
+    ("`` `x` ``", " `x` ", [(0, 5, _CODE)]),
+    ("```\ncode\n```", "\ncode\n", [(0, 6, _CODE)]),
+    ("```python\nx = 1\n```", "python\nx = 1\n", [(0, 13, _CODE)]),
+    ("```\n**code** `x`\n```", "\n**code** `x`\n", [(0, 14, _CODE)]),
+    ("`a` and ``b`` and ```c```", "a and b and c",
+     [(0, 1, _CODE), (6, 7, _CODE), (12, 13, _CODE)]),
+    # An unmatched backtick string is literal; the text around it still parses.
+    ("``` **b**", "``` b", [(4, 5, _BOLD)]),
+    ("```\n**code**", "```\ncode", [(4, 8, _BOLD)]),
+    ("``x`", "``x`", []),
+    ("`x``", "`x``", []),
+    ("``", "``", []),
+    # Equal-length strings match wherever they sit, so a mid-line run closes
+    # a span opened at the start; what follows parses normally.
+    ("```\nfirst ``` literal\n**second**", "\nfirst  literal\nsecond",
+     [(0, 7, _CODE), (16, 22, _BOLD)]),
+    # Tildes are strikethrough only in pairs (GFM); longer runs are literal.
+    ("~~s~~", "s", [(0, 1, _STRIKE)]),
+    ("~~~s~~~", "~~~s~~~", []),
+    ("~~~\n**code**\n~~~", "~~~\ncode\n~~~", [(4, 8, _BOLD)]),
+    # Block-level syntax is literal inline: inline content cannot start a block.
+    ("# heading", "# heading", []),
+    ("- item", "- item", []),
+    ("1. item", "1. item", []),
+    ("> quote", "> quote", []),
+    ("---", "---", []),
+])
+def test_inline_code_spans_and_literal_blocks(source, text, ranges):
+    got_text, got_styles = parse_inline(source)
+    assert got_text == text
+    assert [(s.start, s.end, s.style) for s in got_styles] == ranges
+    assert all(s.type == "text_style" for s in got_styles)

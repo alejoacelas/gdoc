@@ -1556,7 +1556,13 @@ def _inline_baseline(paragraph: dict, match: dict) -> tuple[dict, str]:
 
 
 def _contextual_replacement(parsed, markdown: str, match: dict, body: dict):
-    """Use block Markdown only outside a paragraph or for an explicit full block."""
+    """Use block Markdown only outside a paragraph or for an explicit full block.
+
+    A partial-paragraph replacement is inline Markdown only (see
+    ``parse_inline``): code spans follow CommonMark backtick-string matching
+    and every block-level construct is literal text, because a partial
+    replacement cannot start a block.
+    """
     from gdoc.mdparse import ParsedMarkdown, parse_inline
 
     found = _replacement_paragraph(body.get("content", []), match)

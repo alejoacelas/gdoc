@@ -49,33 +49,20 @@ _ITALIC_RE = re.compile(
     r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)"
     r"|(?<!_)_(?!_)(.+?)(?<!_)_(?!_)"
 )
-_STRIKE_RE = re.compile(r"~~(.+?)~~")
-# Single-backtick code spans only. A backtick that abuts another backtick is
-# part of a longer run (a ``` fence reaching the inline parser via a partial
-# paragraph edit) and must stay literal instead of losing one delimiter.
-_CODE_RE = re.compile(r"(?<!`)`([^`]+)`(?!`)")
+# Strikethrough is one or two tildes (GFM); a run of three or more is literal.
+_STRIKE_RE = re.compile(r"(?<!~)~~(?!~)(.+?)(?<!~)~~(?!~)")
+# Code spans follow CommonMark: a backtick string of length N (a run neither
+# preceded nor followed by a backtick) opens a span that only a backtick string
+# of the same length N closes; an unmatched backtick string is literal text.
+# Content is inserted verbatim. This is the whole rule for fences on the inline
+# path: ```code``` is a code span, and a fence that is never closed by an equal
+# run is literal text.
+_CODE_RE = re.compile(r"(?<!`)(`+)(?!`)([\s\S]*?)(?<!`)\1(?!`)")
 _LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
-# Fences that reach the inline parser via a partial paragraph edit are emitted
-# verbatim, so no emphasis, code or link syntax inside them is consumed. A run
-# of 3+ backticks or tildes (the delimiters _FENCE_RE accepts at block level)
-# that ends its line opens a block-style fence, which closes only on a run of
-# at least the same length alone on its own line, or else runs to the end of
-# the input, exactly like the block parser; a delimiter run inside the fenced
-# content therefore stays inside, and an unclosed fence stays literal.
-_FENCE_BLOCK_SPAN_RES = [
-    re.compile(r"(`{3,})[^\n`]*\n[\s\S]*?(?:\n {0,3}\1`*[ \t]*(?=\n|$)|$)"),
-    re.compile(r"(~{3,})[^\n]*\n[\s\S]*?(?:\n {0,3}\1~*[ \t]*(?=\n|$)|$)"),
-]
-# Any other closed run (a mid-line ```code``` span) closes at the next run of
-# the same length, as a CommonMark code span would.
-_FENCE_SPAN_RE = re.compile(r"(`{3,}|~{3,})[\s\S]*?\1")
 
 # Inline patterns in precedence order. Each entry: (regex, kind). On a tie at
-# the same position, the earlier entry wins, so ***x*** beats **x**/*x* and a
-# block-style fence beats the same-line reading of its opening run.
+# the same position, the earlier entry wins, so ***x*** beats **x**/*x*.
 _INLINE_PATTERNS = [
-    *((pat, "fence") for pat in _FENCE_BLOCK_SPAN_RES),
-    (_FENCE_SPAN_RE, "fence"),
     (_BOLD_ITALIC_RE, "bolditalic"),
     (_BOLD_RE, "bold"),
     (_ITALIC_RE, "italic"),
@@ -166,9 +153,13 @@ def _strip_escapes(s: str) -> str:
 def parse_inline(text: str) -> tuple[str, list[StyleRange]]:
     """Public: parse inline formatting from a single string.
 
-    For callers (e.g. table-cell rendering) that need inline parsing without
-    the block-level handling of `parse_markdown`. Returns (plain_text,
-    style_ranges) with offsets relative to plain_text.
+    For callers (e.g. table-cell rendering and partial-paragraph edits) that
+    need inline parsing without the block-level handling of `parse_markdown`.
+    Only inline Markdown applies: bold, italic, strikethrough, CommonMark code
+    spans and links. Every block-level construct (fences, list markers,
+    headings, blockquotes, thematic breaks) is literal text, because inline
+    content cannot start a block. Returns (plain_text, style_ranges) with
+    offsets relative to plain_text.
     """
     return _parse_inline(text)
 
@@ -226,14 +217,9 @@ def _scan(text: str, masked: str) -> tuple[str, list[StyleRange]]:
             return pos + m.start(group), pos + m.end(group)
 
         seg_start = offset
-        if kind == "fence":
-            # Fenced region: emitted verbatim, backslashes included, unstyled.
-            a, b = m_start, pos + m.end()
-            plain_parts.append(text[a:b])
-            offset += b - a
-        elif kind == "code":
+        if kind == "code":
             # Code spans are literal — content kept verbatim (backslashes too).
-            a, b = _grp(1)
+            a, b = _grp(2)
             inner = text[a:b]
             plain_parts.append(inner)
             offset += len(inner)

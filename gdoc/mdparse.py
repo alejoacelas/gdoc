@@ -55,10 +55,11 @@ _STRIKE_RE = re.compile(r"~~(.+?)~~")
 # paragraph edit) and must stay literal instead of losing one delimiter.
 _CODE_RE = re.compile(r"(?<!`)`([^`]+)`(?!`)")
 _LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
-# A closed run of 3+ backticks is a fence that reached the inline parser via a
-# partial paragraph edit. Everything through the closing run is literal, so no
+# A closed run of 3+ backticks or tildes (the same delimiters _FENCE_RE accepts
+# at block level) is a fence that reached the inline parser via a partial
+# paragraph edit. Everything through the closing run is literal, so no
 # emphasis, code or link syntax inside it is consumed.
-_FENCE_SPAN_RE = re.compile(r"(`{3,})[\s\S]*?\1")
+_FENCE_SPAN_RE = re.compile(r"(`{3,}|~{3,})[\s\S]*?\1")
 
 # Inline patterns in precedence order. Each entry: (regex, kind). On a tie at
 # the same position, the earlier entry wins, so ***x*** beats **x**/*x*.

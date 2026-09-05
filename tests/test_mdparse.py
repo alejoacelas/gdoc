@@ -593,6 +593,12 @@ class TestBackslashEscapes:
         text, styles = parse_inline("**b** " + fenced + " *i*")
         assert text == "b " + fenced + " i"
         assert [text[s.start:s.end] for s in styles] == ["b", "i"]
+        # Tilde fences are literal too, and still beat strikethrough.
+        tilde = "~~~\n**code** ~~gone~~\n~~~"
+        assert parse_inline(tilde) == (tilde, [])
+        text, styles = parse_inline("~~s~~ " + tilde)
+        assert text == "s " + tilde
+        assert [text[s.start:s.end] for s in styles] == ["s"]
 
     def test_code_span_keeps_backslashes(self):
         # Code spans are literal — backslashes must NOT be stripped inside

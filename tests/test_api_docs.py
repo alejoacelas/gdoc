@@ -838,7 +838,8 @@ class TestInsertMarkdownIntoTab:
     ("get_document_with_tabs", {}, {"includeTabsContent": True}),
     ("get_document_structure", {}, {"includeTabsContent": True}),
     ("get_document_structure", {
-        "fields": "documentId,revisionId", "suggestions_view_mode": "SUGGESTIONS_INLINE",
+        "fields": "documentId,revisionId",
+        "suggestions_view_mode": "SUGGESTIONS_INLINE",
     }, {
         "includeTabsContent": True, "fields": "documentId,revisionId",
         "suggestionsViewMode": "SUGGESTIONS_INLINE",
@@ -860,8 +861,10 @@ def test_document_reads_retry(mocker, name, options, expected_kwargs):
     resource.batchUpdate.assert_not_called()
 
 
-@pytest.mark.parametrize("disconnects", [1, 3])
-def test_document_read_transport_disconnect(mocker, disconnects):
+@pytest.mark.parametrize(
+    "disconnects, through_cli", [(1, False), (3, False), (3, True)],
+)
+def test_document_read_transport_disconnect(mocker, capsys, disconnects, through_cli):
     import json
     from http.client import RemoteDisconnected
 
@@ -883,7 +886,21 @@ def test_document_read_transport_disconnect(mocker, disconnects):
     resource = service.documents.return_value
     resource.get.return_value = request
 
-    if disconnects == 3:
+    if through_cli:
+        from gdoc.cli import run_argv
+        from gdoc.util import account_context
+
+        mocker.patch("gdoc.notify.pre_flight", return_value=None)
+        with account_context("sample-account"):
+            assert run_argv([
+                "edit", "sample-doc", "apple", "pear", "--quiet",
+                "--account", "sample-account",
+            ], check_updates=False) == 1
+        assert capsys.readouterr().err == (
+            "ERR: unexpected error: connection closed\n"
+        )
+        assert transport.request.call_count == 3
+    elif disconnects == 3:
         # The API preserves transport errors for the CLI's unexpected-error handler.
         with pytest.raises(RemoteDisconnected, match="connection closed"):
             get_document("sample-doc")

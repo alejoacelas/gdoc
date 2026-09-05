@@ -254,7 +254,7 @@ def get_document_tabs(doc_id: str) -> list[dict]:
         doc = (
             service.documents()
             .get(documentId=doc_id, includeTabsContent=True)
-            .execute()
+            .execute(num_retries=2)
         )
         return flatten_tabs(doc.get("tabs", []))
     except HttpError as e:
@@ -444,7 +444,7 @@ def get_document(doc_id: str) -> dict:
     """
     try:
         service = get_docs_service()
-        return service.documents().get(documentId=doc_id).execute()
+        return service.documents().get(documentId=doc_id).execute(num_retries=2)
     except HttpError as e:
         _translate_http_error(e, doc_id)
 
@@ -795,18 +795,14 @@ def _insert_table(
 
         # Step 2: Read back document to find cell positions
         if tab_id:
-            doc = service.documents().get(
-                documentId=doc_id, includeTabsContent=True,
-            ).execute()
+            doc = get_document_with_tabs(doc_id)
             tabs = flatten_tabs(doc.get("tabs", []))
             tab_match = resolve_tab(tabs, tab_id)
             cell_indices = _find_table_cell_indices(
                 None, index, body=tab_match["body"],
             )
         else:
-            document = service.documents().get(
-                documentId=doc_id
-            ).execute()
+            document = get_document(doc_id)
             cell_indices = _find_table_cell_indices(document, index)
 
         if not cell_indices:
@@ -1212,7 +1208,7 @@ def get_document_with_tabs(doc_id: str) -> dict:
         return (
             service.documents()
             .get(documentId=doc_id, includeTabsContent=True)
-            .execute()
+            .execute(num_retries=2)
         )
     except HttpError as e:
         _translate_http_error(e, doc_id)
@@ -1243,7 +1239,7 @@ def get_document_structure(
         kwargs["suggestionsViewMode"] = suggestions_view_mode
     try:
         service = get_docs_service()
-        return service.documents().get(**kwargs).execute()
+        return service.documents().get(**kwargs).execute(num_retries=2)
     except HttpError as e:
         _translate_http_error(e, doc_id)
 
@@ -1600,7 +1596,7 @@ def replace_formatted(
             tab_match = resolve_tab(tabs, tab_id)
             fetch_body = tab_match["body"]
         else:
-            doc = service.documents().get(documentId=doc_id).execute()
+            doc = get_document(doc_id)
             fetch_body = doc.get("body", {})
 
         all_cleanup: list[dict] = []

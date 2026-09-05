@@ -149,21 +149,23 @@ class TestSuggestRequestShape:
         result = suggest_replacement("doc1", MATCH, "world", "rev123", tab_id="t.0")
 
         service.documents.return_value.batchUpdate.return_value.execute.assert_called_once_with()
-        call = _batch_call(service)
-        assert call.kwargs["documentId"] == "doc1"
-        body = call.kwargs["body"]
-        assert body["writeControl"] == {
-            "requiredRevisionId": "rev123",
-            "writeMode": "SUGGEST",
-        }
-        assert body["requests"] == [
-            {"deleteContentRange": {"range": {
-                "startIndex": 1, "endIndex": 6, "tabId": "t.0",
-            }}},
-            {"insertText": {
-                "location": {"index": 1, "tabId": "t.0"}, "text": "world",
-            }},
-        ]
+        service.documents.return_value.batchUpdate.assert_called_once_with(
+            documentId="doc1",
+            body={
+                "writeControl": {
+                    "requiredRevisionId": "rev123",
+                    "writeMode": "SUGGEST",
+                },
+                "requests": [
+                    {"deleteContentRange": {"range": {
+                        "startIndex": 1, "endIndex": 6, "tabId": "t.0",
+                    }}},
+                    {"insertText": {
+                        "location": {"index": 1, "tabId": "t.0"}, "text": "world",
+                    }},
+                ],
+            },
+        )
         assert result.occurrences == 1
         assert result.suggestion_ids == ["suggest.abc"]
 

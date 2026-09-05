@@ -1738,7 +1738,9 @@ def _tab_text_round_trips(document_tab: dict) -> tuple[bool, bool, set[str]]:
                 keys = frozenset(_inline_style_keys(run.get("textStyle") or {}))
                 core_start = len(body) - len(body.lstrip(" "))
                 core_end = len(body.rstrip(" "))
-                if keys and body.strip() and (core_start or core_end < len(body)):
+                # A styled run's surrounding spaces (or a run that is only
+                # spaces) cannot carry the style through Markdown.
+                if keys and (core_start or core_end < len(body)):
                     warnings.add("styled spaces")
                 expected_vector.extend(
                     keys if core_start <= i < core_end else frozenset()

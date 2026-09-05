@@ -1371,6 +1371,7 @@ class TestCmdSuggest:
             "abc123", [{"startIndex": 1, "endIndex": 6}], "world", "rev123",
             tab_id="t.first",
             expected_token_identity=("cid.apps", "rt1"),
+            style_body=_structure()["tabs"][0]["documentTab"]["body"],
         )
 
     @patch("gdoc.state.update_state_after_command")
@@ -1758,7 +1759,9 @@ def test_suggestion_target_baseline(mocker, target_style, replacement):
         {"insertText": {"location": {"index": 8, "tabId": "t.0"}, "text": plain}},
         {"updateTextStyle": {
             "range": inserted_range, "textStyle": target_style,
-            "fields": ",".join(sorted({"bold", "weightedFontFamily"} | target_style.keys())),
+            "fields": ",".join(sorted(
+                {"bold", "weightedFontFamily"} | target_style.keys()
+            )),
         }},
     ]
     if replacement.startswith("**"):

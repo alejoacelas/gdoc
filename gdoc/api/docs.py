@@ -1501,8 +1501,47 @@ def insert_markdown_into_tab(
     }
 
 
+def _replacement_text_style(body: dict, start: int, end: int) -> dict | None:
+    """Preserve a homogeneous target's direct style and reset neighbour fields.
+
+    Mixed-style and zero-width targets retain the existing insertion behaviour.
+    Only inspect the selected body's paragraphs, including those in table cells.
+    """
+    runs = []
+
+    def collect(content):
+        for element in content:
+            if "paragraph" in element:
+                runs.extend(
+                    run for run in element["paragraph"].get("elements", [])
+                    if "textRun" in run
+                )
+            for row in element.get("table", {}).get("tableRows", []):
+                for cell in row.get("tableCells", []):
+                    collect(cell.get("content", []))
+
+    collect(body.get("content", []))
+    targets = [r for r in runs if r["startIndex"] < end and r["endIndex"] > start]
+    if start == end or not targets:
+        return None
+    style = targets[0]["textRun"].get("textStyle", {})
+    if any(r["textRun"].get("textStyle", {}) != style for r in targets):
+        return None
+    fields = set(style)
+    for run in runs:
+        if run["startIndex"] <= start - 1 < run["endIndex"] or (
+            run["startIndex"] <= end < run["endIndex"]
+        ):
+            neighbour = run["textRun"].get("textStyle", {})
+            fields.update(key for key in neighbour if neighbour[key] != style.get(key))
+    if not fields:
+        return None
+    return {"textStyle": dict(style), "fields": ",".join(sorted(fields))}
+
+
 def _build_replacement_requests(
     parsed, matches: list[dict], tab_id: str | None = None,
+    style_body: dict | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """Build the delete+insert requests for a find/replace, last-to-first.
 
@@ -1533,9 +1572,22 @@ def _build_replacement_requests(
             all_requests.append({
                 "deleteContentRange": {"range": delete_range}
             })
-        all_requests.extend(
-            to_docs_requests(parsed, match["startIndex"], tab_id=tab_id)
-        )
+        replacement = to_docs_requests(parsed, match["startIndex"], tab_id=tab_id)
+        if style_body is not None and replacement:
+            baseline = _replacement_text_style(
+                style_body, match["startIndex"], match["endIndex"],
+            )
+            if baseline:
+                from gdoc.mdparse import utf16_len
+
+                baseline["range"] = {
+                    "startIndex": match["startIndex"],
+                    "endIndex": match["startIndex"] + utf16_len(parsed.plain_text),
+                }
+                if tab_id:
+                    baseline["range"]["tabId"] = tab_id
+                replacement.insert(1, {"updateTextStyle": baseline})
+        all_requests.extend(replacement)
     return sorted_matches, all_requests
 
 
@@ -2039,6 +2091,7 @@ def suggest_replacement(
     revision_id: str,
     tab_id: str | None = None,
     expected_token_identity: tuple[str | None, str | None] | None = None,
+    style_body: dict | None = None,
 ) -> SuggestionResult:
     """Replace matched ranges as *suggested* edits (writeMode=SUGGEST).
 
@@ -2061,6 +2114,8 @@ def suggest_replacement(
             (see ``check_inline_only_markdown``).
         revision_id: Non-empty revision the ranges were read at.
         tab_id: Tab holding the ranges (omitted → first tab).
+        style_body: Selected body from the same read as the matches; supplies
+            direct text styles for homogeneous replacement targets.
         expected_token_identity: ``_token_identity()`` captured before the
             document read; when given, the pre-write identity check uses it
             as the baseline, extending the re-auth guard across the read
@@ -2085,7 +2140,7 @@ def suggest_replacement(
     _reject_overlapping_matches(matches)
     _strip_trailing_newline_unless_hr(parsed)
     sorted_matches, requests = _build_replacement_requests(
-        _inline_only(parsed), matches, tab_id=tab_id,
+        _inline_only(parsed), matches, tab_id=tab_id, style_body=style_body,
     )
     if not requests:
         return SuggestionResult(occurrences=0)

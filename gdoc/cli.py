@@ -1330,7 +1330,7 @@ def cmd_suggest(args) -> int:
 
     result = suggest_replacement(
         doc_id, plan.matches, new_text, plan.revision_id, tab_id=plan.tab_id,
-        expected_token_identity=read_identity,
+        expected_token_identity=read_identity, style_body=plan.search_body,
     )
 
     # The suggestion is saved and verified at this point. A failure of the

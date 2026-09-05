@@ -1058,6 +1058,8 @@ def test_rebuild_warns_on_ruler_moved_list_paragraph():
     {'glyphType': 'UPPER_ROMAN'}, {'glyphType': 'ZERO_DECIMAL'},
     {'glyphSymbol': '\u27a2'}, {'glyphType': 'DECIMAL', 'startNumber': 4},
     {'glyphType': 'DECIMAL', 'glyphFormat': '(%0)'},
+    {'glyphType': 'DECIMAL', 'glyphFormat': '%0'},  # numbering needs "%0."
+    {'glyphSymbol': '-', 'glyphFormat': '%1'},  # level 0 uses "%0"
     {'glyphSymbol': '-', 'bulletAlignment': 'END'},
     {'glyphSymbol': '-', 'textStyle': {'bold': True}},
     {'glyphSymbol': '-', 'textStyle': {'foregroundColor': {'color': {

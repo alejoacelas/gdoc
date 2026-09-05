@@ -1572,7 +1572,16 @@ def _list_level_customized(level: dict, nesting: int, tab_scope: bool) -> bool:
             if value and value != glyph_symbol:
                 return True
         elif name == "glyphFormat":
-            if value and not _GLYPH_FORMAT_RE.match(value):
+            # Both paths generate "%N." for numbering and "%N" for bullets
+            # at nesting level N.
+            if level.get("glyphType"):
+                expected_format = f"%{nesting}."
+            elif level.get("glyphSymbol"):
+                expected_format = f"%{nesting}"
+            else:
+                expected_format = None
+            if value and (value != expected_format if expected_format
+                          else not _GLYPH_FORMAT_RE.match(value)):
                 return True
         elif name == "startNumber":
             if value not in (None, 1):

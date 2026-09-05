@@ -1415,34 +1415,19 @@ def _strip_trailing_newline_unless_hr(parsed) -> None:
                 s.end = old_len - 1
 
 
-# What Drive's Markdown import leaves behind (verified live on 2026-09-05):
-# paged mode, US Letter, one-inch margins, no background, no flipped
-# orientation. Anything else in documentStyle is reset by a rebuild.
-_IMPORT_PAGE_SIZE = (612.0, 792.0)
-_IMPORT_MARGIN_PT = 72.0
-
-
 def _page_setup_differs_from_import(document_style: dict) -> bool:
-    """True if a rebuild would visibly reset this documentStyle."""
-    def magnitude(value, default):
-        return float((value or {}).get("magnitude", default))
+    """True if a rebuild would visibly reset this documentStyle.
 
-    fmt = document_style.get("documentFormat", {}) or {}
-    if fmt.get("documentMode", "PAGES") != "PAGES":
-        return True
-    if document_style.get("flipPageOrientation"):
-        return True
-    if (document_style.get("background", {}) or {}).get("color", {}).get("color"):
-        return True
-    size = document_style.get("pageSize", {}) or {}
-    width = magnitude(size.get("width"), _IMPORT_PAGE_SIZE[0])
-    height = magnitude(size.get("height"), _IMPORT_PAGE_SIZE[1])
-    if abs(width - _IMPORT_PAGE_SIZE[0]) > 1 or abs(height - _IMPORT_PAGE_SIZE[1]) > 1:
-        return True
-    margins = (document_style.get(side) for side in
-               ("marginTop", "marginBottom", "marginLeft", "marginRight"))
-    return any(abs(magnitude(m, _IMPORT_MARGIN_PT) - _IMPORT_MARGIN_PT) > 1
-               for m in margins)
+    Every field except header/footer ids (blocked separately) is compared
+    with the documentStyle the import leaves behind, so page mode, size,
+    margins, header/footer margins, page numbering, orientation, background
+    and any field the API adds later all count.
+    """
+    from gdoc.api.import_defaults import IMPORT_DOCUMENT_STYLE
+
+    actual = _normalize_style(
+        {k: v for k, v in document_style.items() if not k.endswith("Id")})
+    return actual != IMPORT_DOCUMENT_STYLE
 
 
 # Constructs the Markdown rebuild demonstrably round-trips (Drive's

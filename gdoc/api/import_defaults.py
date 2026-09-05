@@ -346,3 +346,50 @@ IMPORT_NAMED_STYLES = {
         }
     }
 }
+
+# The documentStyle Drive's Markdown import leaves behind (header/footer
+# ids excluded; captured live on 2026-09-05). A rebuild resets a
+# document's page setup to exactly this.
+IMPORT_DOCUMENT_STYLE = {
+    "background": {
+        "color": {}
+    },
+    "documentFormat": {
+        "documentMode": "PAGES"
+    },
+    "marginBottom": {
+        "magnitude": 72,
+        "unit": "PT"
+    },
+    "marginFooter": {
+        "magnitude": 36,
+        "unit": "PT"
+    },
+    "marginHeader": {
+        "magnitude": 36,
+        "unit": "PT"
+    },
+    "marginLeft": {
+        "magnitude": 72,
+        "unit": "PT"
+    },
+    "marginRight": {
+        "magnitude": 72,
+        "unit": "PT"
+    },
+    "marginTop": {
+        "magnitude": 72,
+        "unit": "PT"
+    },
+    "pageNumberStart": 1,
+    "pageSize": {
+        "height": {
+            "magnitude": 792,
+            "unit": "PT"
+        },
+        "width": {
+            "magnitude": 612,
+            "unit": "PT"
+        }
+    }
+}

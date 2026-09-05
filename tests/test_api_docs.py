@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
+from gdoc.api.import_defaults import IMPORT_DOCUMENT_STYLE
 import httplib2
 import pytest
 from googleapiclient.errors import HttpError
@@ -893,8 +894,10 @@ _SCHEMA_BLOCKERS = [
     (_tab_map('positionedObjects'), 'positionedObjects'),
     ({'suggestedDocumentStyleChanges': {'s': {}}},
      'suggestedDocumentStyleChanges'),
-    ({'documentStyle': {'defaultHeaderId': 'h'}}, 'defaultHeaderId'),
-    ({'documentStyle': {'firstPageFooterId': 'f'}}, 'firstPageFooterId'),
+    ({'documentStyle': {**IMPORT_DOCUMENT_STYLE, 'defaultHeaderId': 'h'}},
+     'defaultHeaderId'),
+    ({'documentStyle': {**IMPORT_DOCUMENT_STYLE, 'firstPageFooterId': 'f'}},
+     'firstPageFooterId'),
 ]
 
 
@@ -1259,16 +1262,16 @@ def test_rebuild_normal_text_and_generated_defaults_are_safe():
     }) == ([], [])
 
 
-_IMPORT_STYLE = {
-    'documentFormat': {'documentMode': 'PAGES'},
-    'pageSize': {'width': {'magnitude': 612, 'unit': 'PT'},
-                 'height': {'magnitude': 792, 'unit': 'PT'}},
-    'marginTop': {'magnitude': 72, 'unit': 'PT'},
-    'marginBottom': {'magnitude': 72, 'unit': 'PT'},
-    'marginLeft': {'magnitude': 72, 'unit': 'PT'},
-    'marginRight': {'magnitude': 72, 'unit': 'PT'},
-    'background': {'color': {}},
-}
+def _import_style():
+    import copy
+
+    from gdoc.api.import_defaults import IMPORT_DOCUMENT_STYLE
+
+    return copy.deepcopy(IMPORT_DOCUMENT_STYLE)
+
+
+_IMPORT_STYLE = _import_style()
+
 
 
 @pytest.mark.parametrize('override', [
@@ -1278,6 +1281,10 @@ _IMPORT_STYLE = {
     {'pageSize': {'width': {'magnitude': 595.28, 'unit': 'PT'},
                   'height': {'magnitude': 841.89, 'unit': 'PT'}}},
     {'marginTop': {'magnitude': 144, 'unit': 'PT'}},
+    {'pageNumberStart': 3},
+    {'marginHeader': {'magnitude': 50, 'unit': 'PT'}},
+    {'useCustomHeaderFooterMargins': True},
+    {'fieldAddedNextYear': True},
 ])
 def test_rebuild_warns_on_explicit_page_setup(override):
     from gdoc.api.docs import classify_markdown_rebuild

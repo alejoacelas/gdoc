@@ -247,6 +247,8 @@ def _styled_body(prefix="Status: ", text="2. Archive the sample", left=None):
     ("```\ncode\n```", "```\ncode\n```", False, []),
     ("```\n**code**\n```", "```\n**code**\n```", False, []),
     ("~~~\n**code**\n~~~", "~~~\n**code**\n~~~", False, []),
+    ("```\nfirst ``` literal\n**second**\n```",
+     "```\nfirst ``` literal\n**second**\n```", False, []),
 ])
 def test_inline_exact_batch(mocker, replacement, inserted, baseline, extra):
     svc = mocker.patch("gdoc.api.docs.get_docs_service").return_value

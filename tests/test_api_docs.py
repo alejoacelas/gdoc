@@ -941,12 +941,14 @@ def _lists(*levels):
 
 @pytest.mark.parametrize('lists', [
     _lists({'glyphSymbol': '\u25cf'}, {'glyphSymbol': '\u25cb'},
-           {'glyphSymbol': '\u25a0'}),
+           {'glyphSymbol': '\u25a0'}, {'glyphSymbol': '\u25cf'}),
     _lists({'glyphType': 'DECIMAL', 'glyphFormat': '%0.'},
            {'glyphType': 'ALPHA', 'glyphFormat': '%1.'},
-           {'glyphType': 'ROMAN', 'glyphFormat': '%2.'}),
+           {'glyphType': 'ROMAN', 'glyphFormat': '%2.'},
+           {'glyphType': 'DECIMAL', 'glyphFormat': '%3.'}),
     _lists({'glyphSymbol': '-', 'glyphFormat': '%0', 'startNumber': 1,
-            'bulletAlignment': 'START'}),
+            'bulletAlignment': 'START'}, {'glyphSymbol': '-'},
+           {'glyphType': 'DECIMAL'}),
 ])
 def test_rebuild_accepts_preset_list_glyphs(lists):
     from gdoc.api.docs import classify_markdown_rebuild
@@ -962,7 +964,8 @@ _IMPORT_LEVEL = {
     'textStyle': {
         'bold': False, 'italic': False, 'underline': False,
         'strikethrough': False, 'smallCaps': False, 'baselineOffset': 'NONE',
-        'backgroundColor': {'color': {}}, 'foregroundColor': {'color': {}},
+        'backgroundColor': {'color': {}},
+        'foregroundColor': {'color': {'rgbColor': {}}},
         'fontSize': {'magnitude': 11, 'unit': 'PT'},
         'weightedFontFamily': {'fontFamily': 'Arial', 'weight': 400},
     },
@@ -1022,6 +1025,12 @@ def test_rebuild_warns_on_ruler_moved_list_paragraph():
     {'glyphSymbol': '-', 'textStyle': {'foregroundColor': {'color': {
         'rgbColor': {'red': 1}}}}},
     {'glyphSymbol': '-', 'levelFieldAddedNextYear': True},
+    {'glyphType': 'ALPHA'},  # the UI preset puts alpha at level 1, not 0
+    {'glyphSymbol': '\u25a0'},  # square bullets belong to level 2
+    {'glyphSymbol': '-', 'textStyle': {'weightedFontFamily': {
+        'fontFamily': 'Roboto', 'weight': 400}}},
+    {'glyphSymbol': '-', 'textStyle': {'fontSize': {'magnitude': 14,
+                                                    'unit': 'PT'}}},
 ])
 def test_rebuild_warns_on_custom_list_formatting(level):
     from gdoc.api.docs import classify_markdown_rebuild

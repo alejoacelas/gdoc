@@ -1452,11 +1452,14 @@ _IGNORED_KEYS = frozenset({
     "startIndex", "endIndex", "documentId", "title", "revisionId",
     "suggestionsViewMode", "tabProperties", "listId", "nestingLevel",
 })
-# List glyphs the rebuild reproduces: the Docs UI presets (filled/hollow/
-# square bullets; decimal, alpha, roman numbering) and what the import
-# itself emits (hyphen bullets, decimal numbering).
-_ALLOWED_GLYPH_TYPES = frozenset({"DECIMAL", "ALPHA", "ROMAN"})
-_ALLOWED_GLYPH_SYMBOLS = frozenset({"\u25cf", "\u25cb", "\u25a0", "-"})
+# List glyphs the rebuild reproduces at a given nesting level: the Docs UI
+# presets cycle filled/hollow/square bullets and decimal/alpha/roman
+# numbering per level; the import itself emits a hyphen bullet and decimal
+# numbering at every level (verified live on 2026-09-05), with Arial 11pt
+# markers.
+_UI_BULLET_CYCLE = ("\u25cf", "\u25cb", "\u25a0")
+_UI_ORDERED_CYCLE = ("DECIMAL", "ALPHA", "ROMAN")
+_IMPORT_MARKER_FONT = ("Arial", 11)
 def _normalize_style(value):
     """Sort keys and round floats so two style definitions compare exactly."""
     if isinstance(value, dict):
@@ -1507,22 +1510,31 @@ def _list_indents_customized(fields: dict, nesting: int) -> bool:
 
 
 def _list_level_text_style_customized(style: dict) -> bool:
-    """True if a list level's glyph text style sets anything visible.
+    """True if a list level's marker text style differs from the import's.
 
-    Font family and size follow normal text, which the named-style check
-    already covers, so only explicit emphasis, colours and offsets count.
+    The import gives markers Arial 11pt, no emphasis, default colours and
+    no baseline offset.
     """
+    family, size = _IMPORT_MARKER_FONT
     for name, value in style.items():
         if name in {"bold", "italic", "underline", "strikethrough", "smallCaps"}:
             if value:
                 return True
         elif name in {"foregroundColor", "backgroundColor"}:
-            if (value or {}).get("color"):
+            colour = (value or {}).get("color") or {}
+            if colour.get("rgbColor") or colour.get("themeColor"):
                 return True
         elif name == "baselineOffset":
             if value not in (None, "NONE", "BASELINE_OFFSET_UNSPECIFIED"):
                 return True
-        elif name in {"fontSize", "weightedFontFamily", "link"}:
+        elif name == "weightedFontFamily":
+            if value and (value.get("fontFamily", family) != family
+                          or value.get("weight", 400) != 400):
+                return True
+        elif name == "fontSize":
+            if value and abs(float(value.get("magnitude", size)) - size) > 0.5:
+                return True
+        elif name == "link":
             continue
         elif value:
             return True
@@ -1536,10 +1548,11 @@ def _list_level_customized(level: dict, nesting: int) -> bool:
         if name in {"indentFirstLine", "indentStart", "indentEnd"}:
             continue
         if name == "glyphType":
-            if value and value not in _ALLOWED_GLYPH_TYPES:
+            # Decimal everywhere (import) or the UI cycle for this level.
+            if value and value not in ("DECIMAL", _UI_ORDERED_CYCLE[nesting % 3]):
                 return True
         elif name == "glyphSymbol":
-            if value and value not in _ALLOWED_GLYPH_SYMBOLS:
+            if value and value not in ("-", _UI_BULLET_CYCLE[nesting % 3]):
                 return True
         elif name == "glyphFormat":
             if value and not _GLYPH_FORMAT_RE.match(value):

@@ -375,6 +375,34 @@ def test_inline_reapplies_link_decorations_after_replacement_link(mocker):
     )
 
 
+def test_empty_whole_paragraph_replacement_still_cleans_up_heading(mocker):
+    # Deleting all of a heading's text is not an inline edit: the block path
+    # runs so the leftover empty heading paragraph is removed as before.
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    chain = service.documents.return_value
+    chain.get.return_value.execute.return_value = {"body": {"content": [{
+        "startIndex": 1, "endIndex": 2, "paragraph": {
+            "elements": [{"startIndex": 1, "endIndex": 2,
+                          "textRun": {"content": "\n", "textStyle": {}}}],
+            "paragraphStyle": {"namedStyleType": "HEADING_2"},
+        },
+    }]}}
+    body = _styled_body(prefix="", text="Old label")
+    assert replace_formatted("sample-doc", [{"startIndex": 1, "endIndex": 10}],
+                             "", "rev-a", body=body) == 1
+    assert chain.batchUpdate.call_args_list == [
+        mocker.call(documentId="sample-doc", body={
+            "requests": [{"deleteContentRange": {
+                "range": {"startIndex": 1, "endIndex": 10}}}],
+            "writeControl": {"requiredRevisionId": "rev-a"},
+        }),
+        mocker.call(documentId="sample-doc", body={
+            "requests": [{"deleteContentRange": {
+                "range": {"startIndex": 1, "endIndex": 2}}}],
+        }),
+    ]
+
+
 @pytest.mark.parametrize("in_cell", [False, True])
 def test_inline_restores_direct_fields_with_utf16_range(mocker, in_cell):
     body = _styled_body(left={"bold": True, "italic": True})

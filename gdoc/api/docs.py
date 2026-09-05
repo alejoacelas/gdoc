@@ -1576,7 +1576,11 @@ def _contextual_replacement(parsed, markdown: str, match: dict, body: dict):
         or any(s.type != "text_style" and s.style != {"namedStyleType": "NORMAL_TEXT"}
                for s in parsed.styles)
     )
-    if match["startIndex"] == start and match["endIndex"] == end and explicit_block:
+    whole = match["startIndex"] == start and match["endIndex"] == end
+    # An explicit block, or an empty replacement that deletes the whole
+    # paragraph text, keeps the block path so a leftover empty heading is
+    # still cleaned up.
+    if whole and (explicit_block or not text):
         return parsed, None
     return (ParsedMarkdown(plain_text=text, styles=styles),
             _inline_baseline(paragraph, match))

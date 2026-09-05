@@ -1526,7 +1526,7 @@ _TEXT_STYLE_WARNINGS = {
     "underline": "underline", "smallCaps": "small caps", "fontSize": "font",
     "baselineOffset": "baseline",
 }
-_ALLOWED_PARAGRAPH_STYLE = frozenset({"namedStyleType", "headingId", "direction"})
+_ALLOWED_PARAGRAPH_STYLE = frozenset({"namedStyleType", "headingId"})
 # What the opening section break carries in a default document.
 _ALLOWED_SECTION_STYLE = frozenset({"columnSeparatorStyle", "contentDirection",
                                     "sectionType"})
@@ -1564,7 +1564,11 @@ def classify_markdown_rebuild(native: dict) -> tuple[list[str], list[str]]:
         for name in style:
             if name in _ALLOWED_PARAGRAPH_STYLE:
                 continue
-            if name == "alignment":
+            if name == "direction":
+                # The rebuild emits no direction, so only the default survives.
+                if style[name] != "LEFT_TO_RIGHT":
+                    styles.add("direction")
+            elif name == "alignment":
                 styles.add("alignment")
             elif name in {"lineSpacing", "spaceAbove", "spaceBelow"}:
                 styles.add("spacing")

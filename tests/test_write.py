@@ -936,6 +936,22 @@ def test_write_noop_baseline_is_the_compared_version(mocker, tmp_path):
     assert state.call_args.kwargs['command_version'] == 12
 
 
+@patch("gdoc.api.docs.count_document_tabs", return_value=2)
+def test_write_multi_tab_never_noops(mock_count, mocker, tmp_path):
+    """The export covers only the first tab, so a match proves nothing."""
+    f = tmp_path / 'notes.md'
+    f.write_text('Summary')
+    mocker.patch('gdoc.notify.pre_flight', return_value=ChangeInfo(
+        current_version=10, last_read_version=10))
+    mocker.patch('gdoc.api.drive.export_doc', return_value='Summary')
+    state = mocker.patch('gdoc.state.update_state_after_command')
+    upload = mocker.patch('gdoc.api.drive.update_doc_content')
+    with pytest.raises(GdocError, match='collapse 2 tabs'):
+        cmd_write(_make_args(file=str(f)))
+    upload.assert_not_called()
+    state.assert_not_called()
+
+
 def test_write_lossy_opt_in_preserves_drive_parameters(mocker, tmp_path):
     f = tmp_path / 'notes.md'
     f.write_text('Summary')

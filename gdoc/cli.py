@@ -1427,16 +1427,23 @@ def _doc_matches(doc_id: str, body: str, version: int | None = None) -> int | No
     it yet. Either way it predates the export, so a concurrent edit can
     only leave the recorded baseline behind (the next write then reports a
     conflict), never advance it past a revision nobody compared.
+
+    Drive's Markdown export covers only the first tab, so a multi-tab
+    document never matches: its other tabs were not compared and must not
+    be recorded as read.
     """
+    from gdoc.api.docs import count_document_tabs
     from gdoc.api.drive import export_doc, get_file_version
 
     try:
         if version is None:
             version = get_file_version(doc_id).get("version")
         current = export_doc(doc_id, mime_type="text/markdown")
+        if _comparable_markdown(current) != _comparable_markdown(body):
+            return None
+        if count_document_tabs(doc_id) > 1:
+            return None
     except GdocError:
-        return None
-    if _comparable_markdown(current) != _comparable_markdown(body):
         return None
     return version
 

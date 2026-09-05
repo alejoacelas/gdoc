@@ -1074,6 +1074,7 @@ def test_rebuild_allowlist_passes_silently():
     ({'textStyle': {'fontSize': {'magnitude': 16, 'unit': 'PT'}}}, 'font'),
     ({'textStyle': {'baselineOffset': 'SUPERSCRIPT'}}, 'baseline'),
     ({'paragraphStyle': {'alignment': 'END'}}, 'alignment'),
+    ({'paragraphStyle': {'direction': 'RIGHT_TO_LEFT'}}, 'direction'),
     ({'paragraphStyle': {'spaceAbove': {'magnitude': 8}}}, 'spacing'),
     ({'paragraphStyle': {'indentStart': {'magnitude': 8}}}, 'indents'),
     ({'paragraphStyle': {'keepWithNext': True}}, 'layout'),

@@ -1392,6 +1392,35 @@ def test_tab_rebuild_blocks_literal_markdown(mocker, literal):
     check_markdown_rebuild('doc', document=doc)
 
 
+def test_tab_rebuild_blocks_paragraphs_that_parse_together(mocker):
+    """Judged per paragraph these are plain text; together they are a table."""
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    doc = _tab_with_paragraphs('| Header |', '| --- |', '| value |')
+    with pytest.raises(GdocError, match='literal Markdown text'):
+        check_markdown_rebuild('doc', document=doc, tab_id='notes')
+    doc = _tab_with_paragraphs('```', 'code', '```')
+    with pytest.raises(GdocError, match='literal Markdown text'):
+        check_markdown_rebuild('doc', document=doc, tab_id='notes')
+
+
+def test_tab_rebuild_blocks_when_leading_whitespace_is_dropped(mocker):
+    """The exporter strips a heading's leading indent; that is a change."""
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    doc = _tab_with_paragraphs('Plain')
+    doc['tabs'][0]['documentTab']['body']['content'].append({'paragraph': {
+        'paragraphStyle': {'namedStyleType': 'HEADING_1'},
+        'elements': [{'textRun': {'content': '  Indented heading\n'}}]}})
+    with pytest.raises(GdocError, match='literal Markdown text'):
+        check_markdown_rebuild('doc', document=doc, tab_id='notes')
+    # Leading and trailing spaces on ordinary paragraphs are preserved.
+    check_markdown_rebuild('doc', document=_tab_with_paragraphs('  lead', 'trail  '),
+                           tab_id='notes')
+
+
 def test_tab_rebuild_accepts_text_that_round_trips(mocker):
     from gdoc.api.docs import check_markdown_rebuild
 

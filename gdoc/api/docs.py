@@ -1635,47 +1635,62 @@ def _inline_style_keys(style: dict) -> list[str]:
 
 
 def _tab_text_round_trips(document_tab: dict) -> tuple[bool, bool]:
-    """Does every paragraph survive `get_tab_text(markdown=True)` -> parse?
+    """Does the tab survive `get_tab_text(markdown=True)` -> parse_markdown?
 
-    Export each paragraph the way `write --tab` would and parse it back.
-    Returns (text_ok, styles_ok): the tab exporter does not escape literal
-    Markdown, so `# literal` comes back as a heading with the marker gone
-    (text_ok False); and every allowlisted inline style must come back on
-    the same text (styles_ok False otherwise), so an exporter gap blocks
-    instead of silently dropping formatting.
+    Export the whole tab the way `write --tab` would and parse it back in
+    one go, so multi-line constructs (adjacent paragraphs that read like a
+    table or a code fence) are judged the way the rebuild will treat them.
+    Returns (text_ok, styles_ok): every paragraph must come back as the
+    same line, whitespace included (the exporter strips a heading's leading
+    indent, and literal `# x` loses its marker), and every allowlisted
+    inline style must come back on the same text, so an exporter gap
+    blocks instead of silently dropping formatting.
     """
     from gdoc.mdparse import parse_markdown
 
     lists = document_tab.get("lists", {}) or {}
     counters: dict = {}
-    text_ok = styles_ok = True
-    for element in (document_tab.get("body") or {}).get("content", []) or []:
-        paragraph = element.get("paragraph") if isinstance(element, dict) else None
-        if paragraph is None:
-            continue
-        plain = " ".join(_extract_paragraphs_text([element]).split())
-        exported = _paragraph_markdown(paragraph, lists, counters)
-        if not exported.strip():
-            continue
-        parsed = parse_markdown(exported)
-        if " ".join(parsed.plain_text.split()) != plain:
-            text_ok = False
-            continue
-        expected = sorted(
-            (run["content"].strip(" \n"), key)
-            for pe in paragraph.get("elements", [])
-            for run in [pe.get("textRun") or {}]
-            if run.get("content", "").strip()
-            for key in _inline_style_keys(run.get("textStyle") or {})
-        )
-        actual = sorted(
-            (parsed.plain_text[r.start:r.end], key)
-            for r in parsed.styles if r.type == "text_style"
-            for key in _inline_style_keys(r.style)
-        )
-        if expected != actual:
-            styles_ok = False
-    return text_ok, styles_ok
+    paragraphs = [
+        element["paragraph"]
+        for element in (document_tab.get("body") or {}).get("content", []) or []
+        if isinstance(element, dict) and element.get("paragraph") is not None
+    ]
+    if not paragraphs:
+        return True, True
+    exported = "".join(_paragraph_markdown(p, lists, counters) for p in paragraphs)
+    parsed = parse_markdown(exported)
+
+    expected_lines = []
+    for paragraph in paragraphs:
+        text = _extract_paragraphs_text([{"paragraph": paragraph}])
+        expected_lines.append(text[:-1] if text.endswith("\n") else text)
+    actual_lines = parsed.plain_text.split("\n")
+    while len(actual_lines) > len(expected_lines) and actual_lines[-1] == "":
+        actual_lines.pop()  # the parser ends with one extra newline
+    text_ok = not parsed.tables and len(actual_lines) == len(expected_lines)
+    if text_ok:
+        for paragraph, expected, actual in zip(
+                paragraphs, expected_lines, actual_lines):
+            if paragraph.get("bullet") is not None:
+                actual = actual.lstrip("\t")  # list nesting is encoded as tabs
+            if actual != expected:
+                text_ok = False
+                break
+
+    expected_styles = sorted(
+        (run["content"].strip(" \n"), key)
+        for paragraph in paragraphs
+        for pe in paragraph.get("elements", [])
+        for run in [pe.get("textRun") or {}]
+        if run.get("content", "").strip()
+        for key in _inline_style_keys(run.get("textStyle") or {})
+    )
+    actual_styles = sorted(
+        (parsed.plain_text[r.start:r.end], key)
+        for r in parsed.styles if r.type == "text_style"
+        for key in _inline_style_keys(r.style)
+    )
+    return text_ok, expected_styles == actual_styles
 
 
 def classify_markdown_rebuild(

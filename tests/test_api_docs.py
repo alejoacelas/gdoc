@@ -1100,7 +1100,6 @@ def test_rebuild_allowlist_passes_silently():
                 {'sectionBreak': {'sectionStyle': {'columnProperties': [{}]}}},
                 {'startIndex': 1, 'endIndex': 9, 'paragraph': {
                     'paragraphStyle': {'namedStyleType': 'HEADING_1',
-                                       'headingId': 'h.1',
                                        'direction': 'LEFT_TO_RIGHT'},
                     'elements': [{'startIndex': 1, 'endIndex': 9, 'textRun': {
                         'content': 'Heading\n', 'textStyle': {}}}]}},
@@ -1139,6 +1138,8 @@ def test_rebuild_allowlist_passes_silently():
     ({'textStyle': {'baselineOffset': 'SUPERSCRIPT'}}, 'baseline'),
     ({'paragraphStyle': {'alignment': 'END'}}, 'alignment'),
     ({'paragraphStyle': {'direction': 'RIGHT_TO_LEFT'}}, 'direction'),
+    ({'paragraphStyle': {'namedStyleType': 'HEADING_2', 'headingId': 'h.x'}},
+     'heading links'),
     ({'paragraphStyle': {'spaceAbove': {'magnitude': 8}}}, 'spacing'),
     ({'paragraphStyle': {'indentStart': {'magnitude': 8}}}, 'indents'),
     ({'paragraphStyle': {'keepWithNext': True}}, 'layout'),

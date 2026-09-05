@@ -846,3 +846,54 @@ class TestWriteTabScoped:
         uploaded = mock_insert.call_args.args[2]
         assert "---" not in uploaded
         assert uploaded.startswith("# Real body")
+
+
+@pytest.mark.parametrize('override', [{}, {'force': True},
+                                     {'force_collapse_tabs': True}])
+@pytest.mark.parametrize('native,reason', [
+    ({'footers': {'footer': {}}}, 'headers/footers'),
+    ({'footnotes': {'note': {}}}, 'footnotes'),
+    ({'table': {}}, 'tables'),
+    ({'suggestedDeletionIds': ['suggestion']}, 'pending suggestions'),
+    ({'namedRanges': {'Reference': {}}}, 'named ranges'),
+])
+def test_write_refuses_unsupported_state(mocker, tmp_path, override, native, reason):
+    f = tmp_path / 'notes.md'
+    f.write_text('Summary')
+    mocker.patch('gdoc.notify.pre_flight', return_value=ChangeInfo(
+        current_version=10, last_read_version=10))
+    mocker.patch('gdoc.api.drive.export_doc', return_value='Project notes')
+    mocker.patch('gdoc.api.docs.get_document_with_tabs', return_value=native)
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    upload = mocker.patch('gdoc.api.drive.update_doc_content')
+    insert = mocker.patch('gdoc.api.docs.insert_markdown_into_tab')
+    state = mocker.patch('gdoc.state.update_state_after_command')
+    with pytest.raises(GdocError, match=reason) as error:
+        cmd_write(_make_args(file=str(f), **override))
+    assert error.value.exit_code == 3
+    upload.assert_not_called()
+    insert.assert_not_called()
+    state.assert_not_called()
+
+
+def test_write_lossy_opt_in_preserves_drive_parameters(mocker, tmp_path):
+    f = tmp_path / 'notes.md'
+    f.write_text('Summary')
+    mocker.patch('gdoc.notify.pre_flight', return_value=ChangeInfo(
+        current_version=10, last_read_version=10))
+    mocker.patch('gdoc.api.drive.export_doc', return_value='Project notes')
+    mocker.patch('gdoc.api.docs.get_document_with_tabs',
+                 return_value={'footers': {'footer': {}}})
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    mocker.patch('gdoc.state.update_state_after_command')
+    service = mocker.patch('gdoc.api.drive.get_drive_service').return_value
+    service.files.return_value.update.return_value.execute.return_value = {'version': 11}
+    assert cmd_write(_make_args(file=str(f), allow_lossy_rebuild=True)) == 0
+    params = service.files.return_value.update.call_args.kwargs
+    media = params.pop('media_body')
+    assert params == {'fileId': 'abc123',
+                      'body': {'mimeType': 'application/vnd.google-apps.document'},
+                      'fields': 'version', 'supportsAllDrives': True}
+    assert media.mimetype() == 'text/markdown'
+    assert media.getbytes(0, media.size()) == b'Summary'
+    assert media.resumable() is False

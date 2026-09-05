@@ -409,3 +409,17 @@ class TestPushCollapseSafety:
         # With the opt-in flag, no count lookup happens at all.
         mock_count.assert_not_called()
         mock_update.assert_called_once()
+
+
+def test_push_unchanged_without_conflict_skips_upload(mocker, tmp_path):
+    f = tmp_path / 'notes.md'
+    f.write_text(FRONTMATTER + 'Summary')
+    mocker.patch('gdoc.notify.pre_flight', return_value=ChangeInfo(
+        current_version=10, last_read_version=10))
+    matches = mocker.patch('gdoc.cli._doc_matches', return_value=True)
+    mocker.patch('gdoc.api.drive.get_file_version', return_value={'version': 10})
+    mocker.patch('gdoc.state.update_state_after_command')
+    upload = mocker.patch('gdoc.api.drive.update_doc_content')
+    assert cmd_push(_make_args(file=str(f))) == 0
+    matches.assert_called_once_with('abc123', 'Summary')
+    upload.assert_not_called()

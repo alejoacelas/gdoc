@@ -694,3 +694,18 @@ def test_serve_protects_the_protocol_stream_from_stray_prints(mocker):
     # Every line on the protocol stream is still valid JSON-RPC.
     for line in stdout.getvalue().splitlines():
         assert json.loads(line)["jsonrpc"] == "2.0"
+
+
+@pytest.mark.parametrize('command', ['write', 'push'])
+def test_lossy_rebuild_boolean_flag(command):
+    params = {'file': 'notes.md', 'allow_lossy_rebuild': True}
+    if command == 'write':
+        params['doc'] = 'doc'
+    argv = mcp._argv_for(command, params, _subparser(command))
+    assert argv.count('--allow-lossy-rebuild') == 1
+    params['allow_lossy_rebuild'] = False
+    assert '--allow-lossy-rebuild' not in mcp._argv_for(
+        command, params, _subparser(command))
+    params['allow_lossy_rebuild'] = 'false'
+    with pytest.raises(ValueError, match='must be a boolean'):
+        mcp._argv_for(command, params, _subparser(command))

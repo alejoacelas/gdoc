@@ -830,3 +830,106 @@ class TestInsertMarkdownIntoTab:
 
         with pytest.raises(GdocError, match="tab not found"):
             insert_markdown_into_tab("doc1", "Not A Real Tab", "hi")
+
+
+@pytest.mark.parametrize(('native', 'reason'), [
+    ({'footnotes': {'f': {}}}, 'footnotes'),
+    ({'headers': {'h': {}}}, 'headers/footers'),
+    ({'footers': {'f': {}}}, 'headers/footers'),
+    ({'table': {}}, 'tables'),
+    ({'suggestedInsertionIds': ['s']}, 'pending suggestions'),
+    ({'suggestedTextStyleChanges': {'s': {}}}, 'pending suggestions'),
+    ({'namedRanges': {'Reference': {}}}, 'named ranges'),
+    ({'footnoteReference': {'footnoteId': 'f'}}, 'footnotes'),
+])
+def test_rebuild_blocker_classes(native, reason):
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    assert classify_markdown_rebuild(native) == ([reason], [])
+
+
+@pytest.mark.parametrize(('native', 'reason'), [
+    ({'paragraphStyle': {'namedStyleType': 'HEADING_1'}}, 'headings'),
+    ({'bullet': {'listId': 'l'}}, 'lists'),
+    ({'textStyle': {'foregroundColor': {'color': {}}}}, 'colour'),
+    ({'textStyle': {'backgroundColor': {'color': {}}}}, 'highlight'),
+    ({'textStyle': {'underline': True}}, 'underline'),
+    ({'textStyle': {'weightedFontFamily': {'fontFamily': 'Arial'}}}, 'font'),
+    ({'textStyle': {'fontSize': {'magnitude': 16, 'unit': 'PT'}}}, 'font'),
+    ({'textStyle': {'baselineOffset': 'SUPERSCRIPT'}}, 'baseline'),
+    ({'paragraphStyle': {'alignment': 'END'}}, 'alignment'),
+    ({'paragraphStyle': {'spaceAbove': {'magnitude': 8}}}, 'spacing'),
+    ({'paragraphStyle': {'indentStart': {'magnitude': 8}}}, 'indents'),
+    ({'paragraphStyle': {'keepWithNext': True}}, 'layout'),
+    ({'textStyle': {'link': {'headingId': 'h'}}}, 'internal links'),
+])
+def test_rebuild_style_classes_warn(native, reason):
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    assert classify_markdown_rebuild(native) == ([], [reason])
+
+
+def test_rebuild_normal_text_and_generated_defaults_are_safe():
+    from gdoc.api.docs import classify_markdown_rebuild
+
+    assert classify_markdown_rebuild({
+        'namedStyles': {'styles': [{'textStyle': {'fontSize': {}}}]},
+        'body': {'content': [{'paragraph': {
+            'paragraphStyle': {'namedStyleType': 'NORMAL_TEXT'},
+            'elements': [{'textRun': {'content': 'Project notes\n',
+                                     'textStyle': {'bold': True}}}],
+        }}]},
+    }) == ([], [])
+
+
+def _rebuild_doc(unsafe=False):
+    native = {'body': {'content': [
+        {'startIndex': 1, 'endIndex': 15, 'paragraph': {
+            'elements': [{'textRun': {'content': 'Project notes\n'}}],
+        }},
+    ]}}
+    if unsafe:
+        native['footers'] = {'footer': {'content': []}}
+    return {'revisionId': 'revision', 'tabs': [{
+        'tabProperties': {'tabId': 'notes', 'title': 'Notes'},
+        'documentTab': native,
+    }]}
+
+
+def test_rebuild_unsafe_tab_never_batches(mocker):
+    from gdoc.api.docs import insert_markdown_into_tab
+
+    mocker.patch('gdoc.api.docs.get_document_with_tabs', return_value=_rebuild_doc(True))
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    service = mocker.patch('gdoc.api.docs.get_docs_service').return_value
+    with pytest.raises(GdocError, match='headers/footers') as error:
+        insert_markdown_into_tab('doc', 'Notes', 'Summary', replace=True)
+    assert error.value.exit_code == 3
+    service.documents.return_value.batchUpdate.assert_not_called()
+
+
+@pytest.mark.parametrize('allow_lossy', [False, True])
+def test_rebuild_exact_tab_batch(mocker, allow_lossy):
+    from gdoc.api.docs import insert_markdown_into_tab
+
+    mocker.patch('gdoc.api.docs.get_document_with_tabs',
+                 return_value=_rebuild_doc(allow_lossy))
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    service = mocker.patch('gdoc.api.docs.get_docs_service').return_value
+    insert_markdown_into_tab('doc', 'Notes', 'Summary', replace=True,
+                             allow_lossy_rebuild=allow_lossy)
+    service.documents.return_value.batchUpdate.assert_called_once_with(
+        documentId='doc', body={
+            'requests': [
+                {'deleteContentRange': {'range': {
+                    'startIndex': 1, 'endIndex': 14, 'tabId': 'notes'}}},
+                {'insertText': {'location': {'index': 1, 'tabId': 'notes'},
+                                'text': 'Summary'}},
+                {'updateParagraphStyle': {
+                    'range': {'startIndex': 1, 'endIndex': 8, 'tabId': 'notes'},
+                    'paragraphStyle': {'namedStyleType': 'NORMAL_TEXT'},
+                    'fields': 'namedStyleType'}},
+            ],
+            'writeControl': {'requiredRevisionId': 'revision'},
+        },
+    )

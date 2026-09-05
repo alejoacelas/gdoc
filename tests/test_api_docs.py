@@ -1408,6 +1408,51 @@ def test_tab_rebuild_accepts_text_that_round_trips(mocker):
     check_markdown_rebuild('doc', document=doc, tab_id='notes')
 
 
+def _styled_tab(*runs):
+    """A tab with one paragraph made of (text, textStyle) runs."""
+    doc = _rebuild_doc()
+    doc['tabs'][0]['documentTab']['body'] = {'content': [{'paragraph': {
+        'paragraphStyle': {'namedStyleType': 'NORMAL_TEXT'},
+        'elements': [{'textRun': {'content': t, 'textStyle': st}}
+                     for t, st in runs]}}]}
+    return doc
+
+
+_CODE = {'weightedFontFamily': {'fontFamily': 'Courier New', 'weight': 400}}
+
+
+def test_tab_rebuild_round_trips_combined_inline_styles(mocker):
+    """Code spans, emphasis on links and code inside links all come back."""
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    doc = _styled_tab(
+        ('run ', _CODE),
+        ('bold link', {'bold': True, 'link': {'url': 'https://e.com'}}),
+        (' and ', {}),
+        ('struck italic link', {'italic': True, 'strikethrough': True,
+                                'link': {'url': 'https://e.com/2'}}),
+        (' ', {}),
+        ('code link', {**_CODE, 'link': {'url': 'https://e.com/3'}}),
+        (' ', {}),
+        ('bold code\n', {**_CODE, 'bold': True}),
+    )
+    check_markdown_rebuild('doc', document=doc, tab_id='notes')
+
+
+def test_tab_rebuild_blocks_when_exporter_drops_formatting(mocker):
+    """Safety net: an exporter gap blocks instead of losing styles silently."""
+    from gdoc.api.docs import check_markdown_rebuild
+
+    mocker.patch('gdoc.api.comments.list_comments', return_value=[])
+    mocker.patch('gdoc.api.docs._style_run_markdown',
+                 side_effect=lambda content, style: content)
+    doc = _styled_tab(('plain ', {}), ('bold\n', {'bold': True}))
+    with pytest.raises(GdocError, match='inline formatting round-trip') as error:
+        check_markdown_rebuild('doc', document=doc, tab_id='notes')
+    assert error.value.exit_code == 3
+
+
 def test_whole_document_rebuild_still_blocks_headers_and_footers(mocker):
     from gdoc.api.docs import check_markdown_rebuild
 

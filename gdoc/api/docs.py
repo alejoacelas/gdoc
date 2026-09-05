@@ -294,7 +294,8 @@ def _style_run_markdown(content: str, style: dict) -> str:
     Surrounding spaces and the trailing paragraph newline are kept outside
     the markers (``** bold **`` is not valid markdown), so only the visible
     core is wrapped. Emphasis nests as ``***bold italic***`` and
-    ``~~struck~~``; a link becomes ``[text](url)``.
+    ``~~struck~~``; a link becomes ``[text](url)``; a Courier New run
+    becomes a code span. Combinations nest, e.g. ``**[text](url)**``.
     """
     newline = ""
     text = content
@@ -306,19 +307,23 @@ def _style_run_markdown(content: str, style: dict) -> str:
     trail = text[len(text.rstrip(" ")):]
     core = text.strip(" ")
 
+    # Innermost to outermost: code span, link, emphasis. mdparse parses each
+    # of these nestings back to the combined style.
+    font = (style.get("weightedFontFamily") or {}).get("fontFamily")
+    if font == "Courier New" and "`" not in core:
+        core = f"`{core}`"
     link = (style.get("link") or {}).get("url")
     if link:
         # mdparse stops a destination at the first unescaped ")".
         core = f"[{core}]({link.replace(')', chr(92) + ')')})"
-    else:
-        if style.get("bold") and style.get("italic"):
-            core = f"***{core}***"
-        elif style.get("bold"):
-            core = f"**{core}**"
-        elif style.get("italic"):
-            core = f"*{core}*"
-        if style.get("strikethrough"):
-            core = f"~~{core}~~"
+    if style.get("bold") and style.get("italic"):
+        core = f"***{core}***"
+    elif style.get("bold"):
+        core = f"**{core}**"
+    elif style.get("italic"):
+        core = f"*{core}*"
+    if style.get("strikethrough"):
+        core = f"~~{core}~~"
     return f"{lead}{core}{trail}{newline}"
 
 
@@ -1618,18 +1623,32 @@ _ALLOWED_PARAGRAPH_STYLE = frozenset({"namedStyleType"})
 _ALLOWED_SECTION_STYLE = frozenset({"columnSeparatorStyle", "sectionType"})
 
 
-def _tab_text_round_trips(document_tab: dict) -> bool:
+def _inline_style_keys(style: dict) -> list[str]:
+    """Canonical names for the allowlisted inline styles a run carries."""
+    keys = [k for k in ("bold", "italic", "strikethrough") if style.get(k)]
+    url = (style.get("link") or {}).get("url")
+    if url:
+        keys.append(f"link:{url}")
+    if (style.get("weightedFontFamily") or {}).get("fontFamily") == "Courier New":
+        keys.append("code")
+    return keys
+
+
+def _tab_text_round_trips(document_tab: dict) -> tuple[bool, bool]:
     """Does every paragraph survive `get_tab_text(markdown=True)` -> parse?
 
-    The tab exporter does not escape literal Markdown, so a paragraph whose
-    text reads like `# literal` or `**literal**` comes back as a heading or
-    bold text with the markers gone. Export each paragraph the way the
-    rebuild would and compare the parsed plain text with the original.
+    Export each paragraph the way `write --tab` would and parse it back.
+    Returns (text_ok, styles_ok): the tab exporter does not escape literal
+    Markdown, so `# literal` comes back as a heading with the marker gone
+    (text_ok False); and every allowlisted inline style must come back on
+    the same text (styles_ok False otherwise), so an exporter gap blocks
+    instead of silently dropping formatting.
     """
     from gdoc.mdparse import parse_markdown
 
     lists = document_tab.get("lists", {}) or {}
     counters: dict = {}
+    text_ok = styles_ok = True
     for element in (document_tab.get("body") or {}).get("content", []) or []:
         paragraph = element.get("paragraph") if isinstance(element, dict) else None
         if paragraph is None:
@@ -1640,8 +1659,23 @@ def _tab_text_round_trips(document_tab: dict) -> bool:
             continue
         parsed = parse_markdown(exported)
         if " ".join(parsed.plain_text.split()) != plain:
-            return False
-    return True
+            text_ok = False
+            continue
+        expected = sorted(
+            (run["content"].strip(" \n"), key)
+            for pe in paragraph.get("elements", [])
+            for run in [pe.get("textRun") or {}]
+            if run.get("content", "").strip()
+            for key in _inline_style_keys(run.get("textStyle") or {})
+        )
+        actual = sorted(
+            (parsed.plain_text[r.start:r.end], key)
+            for r in parsed.styles if r.type == "text_style"
+            for key in _inline_style_keys(r.style)
+        )
+        if expected != actual:
+            styles_ok = False
+    return text_ok, styles_ok
 
 
 def classify_markdown_rebuild(
@@ -1832,8 +1866,12 @@ def check_markdown_rebuild(
         scope = {k: v for k, v in scope.items()
                  if k not in _TAB_BODY_UNAFFECTED}
     blockers, styles = classify_markdown_rebuild(scope, tab_scope=tab_id is not None)
-    if tab_id is not None and not _tab_text_round_trips(scope):
-        blockers.append("literal Markdown text")
+    if tab_id is not None:
+        text_ok, styles_ok = _tab_text_round_trips(scope)
+        if not text_ok:
+            blockers.append("literal Markdown text")
+        if not styles_ok:
+            blockers.append("inline formatting round-trip")
     if force_collapse_tabs and "multiple tabs" in blockers:
         blockers.remove("multiple tabs")
     comments = list_comments(doc_id, include_anchor=True)

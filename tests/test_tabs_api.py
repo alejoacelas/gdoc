@@ -335,6 +335,18 @@ class TestGetTabTextInlineMarkdown:
         assert get_tab_text(tab, markdown=True) == "[site](https://e.com)\n"
 
 
+    def test_code_font_and_emphasis_nest_around_links(self):
+        from gdoc.api.docs import _style_run_markdown
+
+        code = {"weightedFontFamily": {"fontFamily": "Courier New"}}
+        assert _style_run_markdown("x", code) == "`x`"
+        assert _style_run_markdown(
+            "x", {"bold": True, "link": {"url": "https://u"}}) == "**[x](https://u)**"
+        assert _style_run_markdown(
+            "x", {**code, "italic": True, "strikethrough": True}) == "~~*`x`*~~"
+        assert _style_run_markdown(
+            "x", {**code, "link": {"url": "https://u"}}) == "[`x`](https://u)"
+
     def test_link_with_parenthesis_round_trips(self):
         """A ")" in a destination is escaped so mdparse reads the whole URL."""
         from gdoc.api.docs import _style_run_markdown

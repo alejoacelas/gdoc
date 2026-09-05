@@ -168,12 +168,14 @@ class TestInsertTable:
 
 
 class TestEditTableRestriction:
-    @patch("gdoc.api.docs.replace_formatted")
+    # The guard lives in replace_formatted (it needs the per-match contexts),
+    # so run the real function against a mocked Docs service.
+    @patch("gdoc.api.docs.get_docs_service")
     @patch("gdoc.api.docs.find_text_in_document")
     @patch("gdoc.api.docs.get_document")
     @patch("gdoc.notify.pre_flight", return_value=None)
     def test_tables_blocked_with_all(
-        self, _pf, mock_get_doc, mock_find, mock_replace,
+        self, _pf, mock_get_doc, mock_find, mock_svc,
     ):
         mock_get_doc.return_value = {"revisionId": "rev1", "body": {}}
         mock_find.return_value = [
@@ -199,6 +201,7 @@ class TestEditTableRestriction:
 
         with pytest.raises(GdocError, match="tables not supported"):
             cmd_edit(args)
+        mock_svc.return_value.documents.return_value.batchUpdate.assert_not_called()
 
 
 class TestFindTableCellIndicesBody:

@@ -375,6 +375,39 @@ def test_inline_reapplies_link_decorations_after_replacement_link(mocker):
     )
 
 
+_TABLE_MD = "| H |\n|---|\n| x |"
+
+
+def test_table_replacement_into_partial_matches_is_literal(mocker):
+    # --all with partial-paragraph matches: the table source is inline text
+    # under the partial-replacement rule, so nothing reaches _insert_table and
+    # the multi-match table guard does not apply.
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    matches = [{"startIndex": 9, "endIndex": 11}, {"startIndex": 12, "endIndex": 19}]
+    assert replace_formatted("sample-doc", matches, _TABLE_MD, "rev-a",
+                             body=_styled_body()) == 2
+    service.documents.return_value.batchUpdate.assert_called_once_with(
+        documentId="sample-doc", body={
+            "requests": [
+                {"deleteContentRange": {"range": {"startIndex": 12, "endIndex": 19}}},
+                {"insertText": {"location": {"index": 12}, "text": _TABLE_MD}},
+                {"deleteContentRange": {"range": {"startIndex": 9, "endIndex": 11}}},
+                {"insertText": {"location": {"index": 9}, "text": _TABLE_MD}},
+            ],
+            "writeControl": {"requiredRevisionId": "rev-a"},
+        },
+    )
+
+
+def test_table_replacement_rejected_for_multiple_block_matches(mocker):
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    matches = [{"startIndex": 1, "endIndex": 4}, {"startIndex": 10, "endIndex": 14}]
+    with pytest.raises(GdocError, match="tables not supported with --all") as exc:
+        replace_formatted("sample-doc", matches, _TABLE_MD, "rev-a")
+    assert exc.value.exit_code == 3
+    service.documents.return_value.batchUpdate.assert_not_called()
+
+
 def test_empty_whole_paragraph_replacement_still_cleans_up_heading(mocker):
     # Deleting all of a heading's text is not an inline edit: the block path
     # runs so the leftover empty heading paragraph is removed as before.

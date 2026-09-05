@@ -1689,6 +1689,14 @@ def replace_formatted(
         if body is not None else (parsed, None)
         for match in matches
     }
+    # Table insertion after the main batch tracks index shifts for a single
+    # block-path match only. Inline matches insert the table source literally
+    # and never reach _insert_table, so they do not count.
+    block_paths = sum(1 for _, baseline in contexts.values() if baseline is None)
+    if parsed.tables and block_paths > 1:
+        raise GdocError(
+            "replacement with tables not supported with --all", exit_code=3,
+        )
     sorted_matches, all_requests = _build_replacement_requests(
         parsed, matches, tab_id=tab_id, contexts=contexts,
     )

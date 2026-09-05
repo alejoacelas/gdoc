@@ -1229,16 +1229,9 @@ def cmd_edit(args) -> int:
     plan = _prepare_text_replacement(args, doc_id, old_text)
     matches = plan.matches
 
-    # Check if replacement contains tables — not supported with --all
-    from gdoc.mdparse import parse_markdown as _parse_md
-    _parsed = _parse_md(new_text)
-    if _parsed.tables and len(matches) > 1:
-        raise GdocError(
-            "replacement with tables not supported with --all",
-            exit_code=3,
-        )
-
-    # Perform formatted replacement via Docs API batchUpdate
+    # Perform formatted replacement via Docs API batchUpdate. A table in the
+    # replacement is rejected there when more than one match takes the block
+    # path; partial-paragraph matches insert the table source literally.
     from gdoc.api.docs import replace_formatted
 
     occurrences = replace_formatted(

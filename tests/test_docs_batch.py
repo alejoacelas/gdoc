@@ -222,3 +222,36 @@ class TestReplaceFormatted:
         matches = [{"startIndex": 5, "endIndex": 10}]
         with pytest.raises(GdocError, match="Permission denied"):
             replace_formatted("d1", matches, "text", "r1")
+
+
+def test_post_write_read_retries_without_retrying_batch(mocker):
+    resource = mocker.patch(
+        "gdoc.api.docs.get_docs_service",
+    ).return_value.documents.return_value
+    resource.get.return_value.execute.return_value = {"body": {"content": []}}
+
+    assert replace_formatted(
+        "sample-doc", [{"startIndex": 1, "endIndex": 5}], "pear", "sample-revision",
+    ) == 1
+
+    resource.batchUpdate.assert_called_once_with(
+        documentId="sample-doc",
+        body={
+            "requests": [
+                {"deleteContentRange": {"range": {"startIndex": 1, "endIndex": 5}}},
+                {"insertText": {"location": {"index": 1}, "text": "pear"}},
+                {"updateParagraphStyle": {
+                    "range": {"startIndex": 1, "endIndex": 5},
+                    "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
+                    "fields": "namedStyleType",
+                }},
+            ],
+            "writeControl": {"requiredRevisionId": "sample-revision"},
+        },
+    )
+    resource.batchUpdate.return_value.execute.assert_called_once_with()
+    resource.get.assert_called_once_with(documentId="sample-doc")
+    resource.get.return_value.execute.assert_called_once_with(num_retries=2)
+    assert resource.mock_calls.index(mocker.call.batchUpdate().execute()) < (
+        resource.mock_calls.index(mocker.call.get(documentId="sample-doc"))
+    )

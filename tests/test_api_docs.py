@@ -830,3 +830,65 @@ class TestInsertMarkdownIntoTab:
 
         with pytest.raises(GdocError, match="tab not found"):
             insert_markdown_into_tab("doc1", "Not A Real Tab", "hi")
+
+
+@pytest.mark.parametrize("name, options, expected_kwargs", [
+    ("get_document", {}, {}),
+    ("get_document_tabs", {}, {"includeTabsContent": True}),
+    ("get_document_with_tabs", {}, {"includeTabsContent": True}),
+    ("get_document_structure", {}, {"includeTabsContent": True}),
+    ("get_document_structure", {
+        "fields": "documentId,revisionId", "suggestions_view_mode": "SUGGESTIONS_INLINE",
+    }, {
+        "includeTabsContent": True, "fields": "documentId,revisionId",
+        "suggestionsViewMode": "SUGGESTIONS_INLINE",
+    }),
+])
+def test_document_reads_retry(mocker, name, options, expected_kwargs):
+    from gdoc.api import docs
+
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    resource = service.documents.return_value
+    document = {"documentId": "sample-doc", "tabs": []}
+    resource.get.return_value.execute.return_value = document
+
+    result = getattr(docs, name)("sample-doc", **options)
+
+    assert result == ([] if name == "get_document_tabs" else document)
+    resource.get.assert_called_once_with(documentId="sample-doc", **expected_kwargs)
+    resource.get.return_value.execute.assert_called_once_with(num_retries=2)
+    resource.batchUpdate.assert_not_called()
+
+
+@pytest.mark.parametrize("disconnects", [1, 3])
+def test_document_read_transport_disconnect(mocker, disconnects):
+    import json
+    from http.client import RemoteDisconnected
+
+    from googleapiclient.http import HttpRequest
+
+    from gdoc.api.docs import get_document
+
+    document = {"documentId": "sample-doc", "body": {"content": []}}
+    transport = mocker.Mock()
+    transport.request.side_effect = [
+        RemoteDisconnected("connection closed") for _ in range(disconnects)
+    ] + [(httplib2.Response({"status": "200"}), json.dumps(document).encode())]
+    request = HttpRequest(
+        transport, lambda response, content: json.loads(content),
+        "https://docs.googleapis.com/v1/documents/sample-doc", method="GET",
+    )
+    mocker.patch.object(request, "_sleep")
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    resource = service.documents.return_value
+    resource.get.return_value = request
+
+    if disconnects == 3:
+        # The API preserves transport errors for the CLI's unexpected-error handler.
+        with pytest.raises(RemoteDisconnected, match="connection closed"):
+            get_document("sample-doc")
+        assert transport.request.call_count == 3
+    else:
+        assert get_document("sample-doc") == document
+        assert transport.request.call_count == 2
+    resource.batchUpdate.assert_not_called()

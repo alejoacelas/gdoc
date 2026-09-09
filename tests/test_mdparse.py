@@ -779,25 +779,63 @@ class TestNewToDocsRequests:
         # Ordered lists only number continuously when items are created
         # top-to-bottom, so bullets are emitted in ascending start order.
         reqs = to_docs_requests(
-            parse_markdown("- a\n  - b\n- c"), insert_index=1,
+            parse_markdown("- a\n\n- b\n\n- c"), insert_index=1,
         )
         bullets = [r for r in reqs if "createParagraphBullets" in r]
         starts = [
             b["createParagraphBullets"]["range"]["startIndex"] for b in bullets
         ]
+        assert len(starts) == 3
         assert starts == sorted(starts)
 
-    def test_nested_bullet_range_adjusted_for_removed_tabs(self):
-        # The level-1 item removes 1 tab; the following level-0 item's
-        # createParagraphBullets range is shifted left by that 1.
+    def test_nested_list_is_one_bullet_request_covering_the_block(self):
+        # createParagraphBullets sets nesting from leading tabs RELATIVE to the
+        # shallowest paragraph in its range, so a per-paragraph request would
+        # flatten every child to level 0. Parent and children share one range,
+        # which still contains the child's tab: "a\n" (2) + "\tb\n" (3) + "c\n" (2).
         reqs = to_docs_requests(
             parse_markdown("- a\n  - b\n- c"), insert_index=1,
         )
-        starts = [
-            r["createParagraphBullets"]["range"]["startIndex"]
+        bullets = [
+            r["createParagraphBullets"]
             for r in reqs if "createParagraphBullets" in r
         ]
-        assert starts == [1, 3, 5]
+        assert len(bullets) == 1
+        assert bullets[0]["range"] == {"startIndex": 1, "endIndex": 8}
+        assert bullets[0]["bulletPreset"] == "BULLET_DISC_CIRCLE_SQUARE"
+
+    def test_second_list_block_shifted_by_tabs_removed_in_first(self):
+        # The first block's child tab is removed when its bullets are created,
+        # so the block after the blank line starts one index earlier.
+        reqs = to_docs_requests(
+            parse_markdown("- a\n  - b\n\n- c"), insert_index=1,
+        )
+        ranges = [
+            r["createParagraphBullets"]["range"]
+            for r in reqs if "createParagraphBullets" in r
+        ]
+        # "a\n\tb\n\nc\n": blocks at [1,6) and [7,9) pre-removal; second -1.
+        assert ranges == [
+            {"startIndex": 1, "endIndex": 6},
+            {"startIndex": 6, "endIndex": 8},
+        ]
+
+    def test_nested_item_under_other_marker_joins_parent_block(self):
+        # The API cannot nest across two presets; a "-" child under a "1."
+        # parent stays nested by taking the parent's preset. A top-level item
+        # with a different marker still starts its own list.
+        reqs = to_docs_requests(
+            parse_markdown("1. a\n  - b\n- c"), insert_index=1,
+        )
+        bullets = [
+            r["createParagraphBullets"]
+            for r in reqs if "createParagraphBullets" in r
+        ]
+        assert [(b["range"]["startIndex"], b["range"]["endIndex"],
+                 b["bulletPreset"]) for b in bullets] == [
+            (1, 6, "NUMBERED_DECIMAL_ALPHA_ROMAN"),
+            (5, 7, "BULLET_DISC_CIRCLE_SQUARE"),
+        ]
 
 
 class TestTableTabAdjustment:

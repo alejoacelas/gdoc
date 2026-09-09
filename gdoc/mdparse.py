@@ -536,33 +536,71 @@ def to_docs_requests(
                 }
             })
 
-    # 4. Bullets last, in FORWARD document order. Two forces:
-    #    - createParagraphBullets counts and REMOVES the leading tabs that
-    #      encode nesting level, shifting all later indices left.
+    # 4. Bullets last, one request per contiguous list block, in FORWARD
+    #    document order. Three forces:
+    #    - createParagraphBullets sets each paragraph's nesting level from its
+    #      leading tabs RELATIVE to the shallowest paragraph in the request's
+    #      range, so a range covering a single paragraph is always level 0.
+    #      Parent and children must therefore share one request.
+    #    - createParagraphBullets REMOVES those leading tabs, shifting all
+    #      later indices left.
     #    - ordered lists only number continuously (1, 2, 3) when each item is
     #      created after the one above it — reverse order makes each item start
     #      its own list at 1 (and can drop bullets entirely).
-    #    So process top-to-bottom and subtract the tabs that earlier items in
+    #    So process top-to-bottom and subtract the tabs that earlier blocks in
     #    this same batch have already removed.
     text = parsed.plain_text
     removed = 0
     bullet_ranges = [sr for sr in parsed.styles if sr.type == "bullets"]
-    for sr in sorted(bullet_ranges, key=lambda s: s.start):
-        leading = 0
-        while sr.start + leading < len(text) and text[sr.start + leading] == "\t":
-            leading += 1
+    for block in _list_blocks(sorted(bullet_ranges, key=lambda s: s.start), text):
         requests.append({
             "createParagraphBullets": {
                 "range": _range(
-                    utf16[sr.start] + insert_index - removed,
-                    utf16[sr.end] + insert_index - removed,
+                    utf16[block[0].start] + insert_index - removed,
+                    utf16[block[-1].end] + insert_index - removed,
                 ),
-                "bulletPreset": sr.style["bulletPreset"],
+                "bulletPreset": block[0].style["bulletPreset"],
             }
         })
-        removed += leading
+        removed += sum(_leading_tabs(text, sr.start) for sr in block)
 
     return requests
+
+
+def _leading_tabs(text: str, start: int) -> int:
+    """Number of list-indent tabs at the start of the paragraph at *start*."""
+    n = 0
+    while start + n < len(text) and text[start + n] == "\t":
+        n += 1
+    return n
+
+
+def _list_blocks(
+    bullet_ranges: list[StyleRange], text: str,
+) -> list[list[StyleRange]]:
+    """Group sorted bullet paragraph ranges into contiguous list blocks.
+
+    A block is the range one createParagraphBullets request must cover for the
+    Docs API to nest its items: adjacent list paragraphs where every nested
+    item (leading tabs > 0) joins the block above it, whatever its marker, and
+    a top-level item continues the block only when its preset matches. A
+    nested item under a parent with a different marker therefore takes the
+    parent's preset (``1.`` over ``-`` renders the child as ``a.``); that keeps
+    the nesting, which the API cannot express across two presets.
+    """
+    blocks: list[list[StyleRange]] = []
+    for sr in bullet_ranges:
+        if blocks:
+            block = blocks[-1]
+            adjacent = sr.start == block[-1].end
+            same_preset = (
+                sr.style["bulletPreset"] == block[0].style["bulletPreset"]
+            )
+            if adjacent and (same_preset or _leading_tabs(text, sr.start) > 0):
+                block.append(sr)
+                continue
+        blocks.append([sr])
+    return blocks
 
 
 def utf16_len(text: str) -> int:

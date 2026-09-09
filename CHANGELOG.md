@@ -4,6 +4,19 @@ All notable changes to `gdoc` are documented here. This project follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **`write --tab` / `insert --tab` / `edit` flattened nested lists.** Every
+  list paragraph got its own `createParagraphBullets` request, but the Docs
+  API sets a paragraph's nesting level from its leading tabs *relative to the
+  shallowest paragraph in the request's range*, so each single-paragraph
+  request came back at level 0 with the indent tabs stripped. One request now
+  covers each contiguous list block (parent and children), and children land
+  at the right `nestingLevel` with the glyph cycling by depth. A child nested
+  under a parent with a different marker (`-` under `1.`) joins the parent's
+  block and takes its preset, since a range carries one preset.
+
 ## [0.21.0] — 2026-08-26
 
 ### Added

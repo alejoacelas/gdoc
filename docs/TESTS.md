@@ -10,9 +10,9 @@ describe what a group guarantees, not how it is written; open the file when you 
 | | pytest (`tests/`) | fidelity (`fidelity-tests/`) |
 |---|---|---|
 | What it exercises | every CLI command, API wrapper and helper, with Google mocked | a fresh agent holding only `gdoc`, editing a copy of a hand-built messy doc |
-| Size | 55 files, 334 classes, 1563 tests | 5 built fixtures, 47 tasks, 98 judged runs |
+| Size | 57 files, 337 classes, 1569 tests | 5 built fixtures, 47 tasks, 98 judged runs |
 | Runtime | 31 s, no network | one run is minutes of agent time plus a browser for screenshots |
-| Passes today | 1563/1563 | agent track: completion 46/92, safety 57/92 (see below) |
+| Passes today | 1568/1569 (the one failure is the pinned LucaDeLeo/gdoc#59 repro) | agent track: completion 46/92, safety 57/92 (see below) |
 | Run it | `uv run pytest tests/ -v` | `fidelity-tests/bin/gdt …` from the `gdoc-fidelity-test` skill |
 
 There is no CI configuration in the repo. The only automated gate besides pytest is
@@ -377,6 +377,10 @@ Mocking: `get_docs_service` supplies mocked Docs resources and responses; shared
 Mocking: Patches `get_document_with_tabs` with a tab body whose terminal empty paragraph carries a bullet, and `get_docs_service` to capture the batch.
 - **TestReplaceTabWithBulletedTerminalParagraph** (2) — `write --tab` must clear the bullet on the surviving terminal paragraph before inserting (fails until LucaDeLeo/gdoc#59 is fixed), and must add no such request when the terminal paragraph is plain.
 
+#### `tests/test_write_tab_nested_list.py` — `gdoc/api/docs.py` (`insert_markdown_into_tab`, nested lists)
+Mocking: Patches `get_document_with_tabs` with a plain tab body and `get_docs_service` to capture the batch.
+- **TestNestedListOnTabWrite** (2) — the inserted text keeps the child's leading tab and a single `createParagraphBullets` spans parent and child at the tab's indices, so the API nests the child; a numbered parent with a bullet child is one numbered range.
+
 #### `tests/test_api_drive.py` — `gdoc/api/drive.py` (Drive wrappers and error translation)
 Mocking: `get_drive_service` or `list_files` is patched with chained `MagicMock` requests; `_make_http_error` constructs status-specific Google API failures.
 - **TestTranslateHttpError** (5) — HTTP 401 becomes `AuthError`; 403, 404, and 500 become specific `GdocError` messages, including the non-exportable Docs case.
@@ -521,7 +525,7 @@ Mocking: No external boundary is patched; tests directly inspect parsed text, st
 - **TestHorizontalRule** (4) — valid dash, asterisk, and underscore rules emit a bottom-border paragraph, while emphasized text is not misclassified.
 - **TestFencedCode** (4) — fenced blocks remove fences and language labels, preserve lines and indentation, apply code fonts, and suppress inline Markdown parsing.
 - **TestNestedLists** (4) — nested list depth becomes leading tabs with correct bullet metadata and character-style offsets.
-- **TestNewToDocsRequests** (5) — generated requests include blockquote, rule, and strikethrough fields while ordering and reindexing nested bullets correctly.
+- **TestNewToDocsRequests** (7) — generated requests include blockquote, rule, and strikethrough fields; each contiguous list block is one `createParagraphBullets` range (so the API nests children), later blocks are reindexed for removed tabs, and a child under a different marker joins the parent's block.
 - **TestTableTabAdjustment** (4) — parser metadata tracks tabs removed by nested-list bullet conversion, both globally and before each table.
 
 #### `tests/test_mdimport.py` — `gdoc/mdimport.py`

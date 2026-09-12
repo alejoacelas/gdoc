@@ -196,7 +196,9 @@ def test_empty_heading_does_not_mutate_neighbor(mocker, neighbor, last):
     if last and neighbor == "table":
         service = mocker.patch("gdoc.api.docs.get_docs_service")
         with pytest.raises(GdocError, match="mandatory final paragraph after a table"):
-            _requests(mocker, body, "Heading", "")
+            matches = find_text_in_document(None, "Heading", body=body)
+            replace_formatted("synthetic-doc", matches, "", "synthetic-rev",
+                              tab_id="synthetic-tab", body=body)
         service.assert_not_called()
         return
     requests = _requests(mocker, body, "Heading", "")

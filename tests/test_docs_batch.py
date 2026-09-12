@@ -680,13 +680,9 @@ def test_segment_replacement_builder_exact_requests():
     assert requests == _expected_mixed_requests()
 
 
-def test_segment_edit_exact_batch_and_body_only_cleanup(mocker):
+def test_segment_edit_exact_batch(mocker):
     service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
     chain = service.documents.return_value
-    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
-        "tabs": [_segment_scope()],
-    })
-    cleanup = mocker.patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
     assert replace_formatted(
         "doc-one", _mixed_matches(), "***REPLACED***", "revision-one",
         tab_id="tab-one",
@@ -695,7 +691,6 @@ def test_segment_edit_exact_batch_and_body_only_cleanup(mocker):
         "requests": _expected_mixed_requests(body_paragraph=True),
         "writeControl": {"requiredRevisionId": "revision-one"},
     })
-    cleanup.assert_not_called()
 
 
 @pytest.mark.parametrize("markdown", [
@@ -743,14 +738,12 @@ def test_overlapping_matches_inside_one_segment_still_rejected(mocker, mode):
 def test_non_body_only_edit_does_not_read_for_cleanup(mocker):
     service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
     tabs = mocker.patch("gdoc.api.docs.get_document_with_tabs")
-    cleanup = mocker.patch("gdoc.api.docs._build_cleanup_requests")
     assert replace_formatted(
         "doc-one", [_mixed_matches()[1]], "REPLACED", "revision-one",
         tab_id="tab-one",
     ) == 1
     tabs.assert_not_called()
     service.documents.return_value.get.assert_not_called()
-    cleanup.assert_not_called()
 
 
 @pytest.mark.parametrize("markdown", [
@@ -780,10 +773,6 @@ def test_non_body_accepts_single_line_backtick_strings(
     mocker, markdown, inserted, code_font,
 ):
     service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
-    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
-        "tabs": [_segment_scope()],
-    })
-    mocker.patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
     assert replace_formatted(
         "doc-one", [_mixed_matches()[1]], markdown, "revision-one",
     ) == 1
@@ -797,15 +786,9 @@ def test_non_body_accepts_single_line_backtick_strings(
     assert ({"fontFamily": "Courier New"} in fonts) is code_font
 
 
-def test_cleanup_uses_match_tab_when_no_fallback_tab_is_given(mocker):
+def test_edit_uses_match_tab_when_no_fallback_tab_is_given(mocker):
     service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
-    tabs = mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
-        "tabs": [_segment_scope()],
-    })
-    cleanup = mocker.patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
     assert replace_formatted(
         "doc-one", _mixed_matches(), "REPLACED", "revision-one",
     ) == 3
-    tabs.assert_not_called()
     service.documents.return_value.get.assert_not_called()
-    cleanup.assert_not_called()

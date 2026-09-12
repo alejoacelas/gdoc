@@ -336,6 +336,36 @@ def test_inline_reapplies_link_shared_with_neighbour(mocker, decor, fields):
     )
 
 
+@pytest.mark.parametrize("replacement,link", [
+    ("[new](https://x.example) done", True),
+    ("new done", False),
+])
+def test_shared_decorations_survive_replacement_link(mocker, replacement, link):
+    # Decorations the target shares with its neighbour need no restore, but
+    # a Markdown link in the replacement resets colour and underline, so the
+    # target's values are reapplied after the link; without a link nothing
+    # is sent.
+    decor = {"underline": True,
+             "foregroundColor": {"color": {"rgbColor": {"red": 0.5}}}}
+    body = _styled_body(left=dict(decor))
+    body["content"][0]["paragraph"]["elements"][1]["textRun"]["textStyle"] = dict(decor)
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    match = {"startIndex": 9, "endIndex": 30}
+    replace_formatted("sample-doc", [match], replacement, "rev-a", body=body)
+    requests = service.documents.return_value.batchUpdate.call_args.kwargs[
+        "body"]["requests"]
+    styles = [r["updateTextStyle"] for r in requests if "updateTextStyle" in r]
+    if link:
+        assert styles == [
+            {"range": {"startIndex": 9, "endIndex": 12},
+             "textStyle": {"link": {"url": "https://x.example"}}, "fields": "link"},
+            {"range": {"startIndex": 9, "endIndex": 17}, "textStyle": decor,
+             "fields": "foregroundColor,underline"},
+        ]
+    else:
+        assert styles == []
+
+
 def test_suggest_keeps_link_baseline_of_homogeneous_target(mocker):
     # Suggested text does not inherit the target's link either, so the
     # suggestion carries the same baseline restore as the edit path.

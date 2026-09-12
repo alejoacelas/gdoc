@@ -1684,7 +1684,13 @@ def _inline_baseline(paragraph: dict, match: dict) -> tuple[dict, str]:
         fields.update(key for key in ("link", "foregroundColor", "underline")
                       if key in target)
     fields = sorted(fields)
-    return {key: target[key] for key in fields if key in target}, ",".join(fields)
+    style = {key: target[key] for key in fields if key in target}
+    # Decorations shared with the neighbour need no restore, but a Markdown
+    # link in the replacement resets them, so they ride along for that case.
+    for key in ("foregroundColor", "underline"):
+        if key in target:
+            style.setdefault(key, target[key])
+    return style, ",".join(fields)
 
 
 def _contextual_replacement(parsed, markdown: str, match: dict, body: dict):
@@ -1774,23 +1780,30 @@ def _build_replacement_requests(
                     "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
                     "fields": "namedStyleType,indentStart,indentEnd,indentFirstLine",
                 }})
-        if requests and baseline and baseline[1]:
+        if requests and baseline:
             from gdoc.mdparse import utf16_len
+            style, mask = baseline
             target = {"startIndex": match["startIndex"],
                       "endIndex": match["startIndex"] + utf16_len(selected.plain_text)}
             if tab_id:
                 target["tabId"] = tab_id
-            requests.insert(1, {"updateTextStyle": {
-                "range": target, "textStyle": baseline[0], "fields": baseline[1],
-            }})
+            parsed_styles = requests[1:]
+            if mask:
+                requests.insert(1, {"updateTextStyle": {
+                    "range": target,
+                    "textStyle": {key: style[key] for key in mask.split(",")
+                                  if key in style},
+                    "fields": mask,
+                }})
             # Setting a link resets colour and underline to the link defaults,
-            # so a Markdown link in the replacement would undo the restored
-            # decorations. Reapply them after the parsed style requests.
-            decor = {key: baseline[0][key]
-                     for key in ("foregroundColor", "underline") if key in baseline[0]}
+            # so a Markdown link in the replacement would undo the target's
+            # decorations, restored or shared with the neighbour. Reapply
+            # them after the parsed style requests.
+            decor = {key: style[key]
+                     for key in ("foregroundColor", "underline") if key in style}
             if decor and any(
                 "link" in req.get("updateTextStyle", {}).get("fields", "").split(",")
-                for req in requests[2:]
+                for req in parsed_styles
             ):
                 requests.append({"updateTextStyle": {
                     "range": target, "textStyle": decor,

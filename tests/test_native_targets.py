@@ -267,3 +267,73 @@ def test_cross_table_edit_refuses_before_mutation(mocker):
         cmd_edit(edit_args(cell=None, old_text="Left\nRight", new_text="Joined"))
     assert exc.value.exit_code == 3
     replace.assert_not_called()
+
+
+@pytest.mark.parametrize("normalize", [False, True])
+@pytest.mark.parametrize("prefix", ["İ", "İİ", "İ😀"])
+def test_lowercase_expansion_does_not_shift_paragraph_end(prefix, normalize):
+    text = prefix + " PLAN\n"
+    first = paragraph(text, 1)
+    document = {"body": {"content": [first, paragraph("Next\n", first["endIndex"])]}}
+    start = 2 + len(prefix.encode("utf-16-le")) // 2
+    assert docs.find_text_in_document(document, "plan", normalize=normalize) == [
+        {"startIndex": start, "endIndex": start + 4},
+    ]
+    # The native range contains only PLAN, never the final paragraph mark.
+    native = text.encode("utf-16-le")
+    assert native[(start - 1) * 2:(start + 3) * 2].decode("utf-16-le") == "PLAN"
+
+
+@pytest.mark.parametrize(("needle", "expected"), [
+    ("İ", [{"startIndex": 1, "endIndex": 2}]),
+    ("i\u0307", [{"startIndex": 1, "endIndex": 2}]),
+    ("i", [{"startIndex": 3, "endIndex": 4}]),
+    ("\u0307", []),
+    ("\u0307 i", []),
+])
+def test_lowercase_matches_must_cover_whole_original_characters(needle, expected):
+    document = {"body": {"content": [paragraph("İ i\n", 1)]}}
+    assert docs.find_text_in_document(document, needle) == expected
+
+
+def test_case_sensitive_matches_keep_original_codepoints():
+    document = {"body": {"content": [paragraph("İ PLAN\n", 1)]}}
+    assert docs.find_text_in_document(document, "PLAN", match_case=True) == [
+        {"startIndex": 3, "endIndex": 7},
+    ]
+    assert docs.find_text_in_document(document, "i", match_case=True) == []
+
+
+def test_lowercase_mapping_preserves_contextual_greek_sigma():
+    document = {"body": {"content": [paragraph("İ ΟΣ\n", 1)]}}
+    assert docs.find_text_in_document(document, "ος") == [
+        {"startIndex": 3, "endIndex": 5},
+    ]
+
+
+def test_typography_folding_and_lowercase_expansion_share_native_offsets():
+    document = {"body": {"content": [paragraph("İ ‘PLAN’\n", 1)]}}
+    assert docs.find_text_in_document(document, "'plan'", normalize=True) == [
+        {"startIndex": 3, "endIndex": 9},
+    ]
+
+
+def test_unicode_cell_search_uses_native_range():
+    grid = table([["Label\n", "İ PLAN\n"]])
+    document = {"body": {"content": [grid]}}
+    assert docs.find_text_in_document(document, "plan") == [
+        {"startIndex": 13, "endIndex": 17},
+    ]
+
+
+def test_unicode_edit_does_not_delete_paragraph_mark(mocker):
+    document = {"body": {"content": [paragraph("İ PLAN\n", 1),
+                                       paragraph("Keep\n", 8)]}}
+    mocker.patch("gdoc.notify.pre_flight", return_value=None)
+    mocker.patch.object(docs, "get_document", return_value=document)
+    replace = mocker.patch.object(docs, "replace_formatted", return_value=1)
+    mocker.patch("gdoc.api.drive.get_file_version", return_value={"version": 1})
+    mocker.patch("gdoc.state.update_state_after_command")
+    assert cmd_edit(edit_args(cell=None, old_text="plan", new_text="TASK")) == 0
+    assert replace.call_args.args[1] == [{"startIndex": 3, "endIndex": 7}]
+    assert replace.call_args.args[2] == "TASK"

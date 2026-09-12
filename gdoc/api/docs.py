@@ -665,15 +665,21 @@ def find_text_in_document(
         body.get("content", []), allow_native_gaps=allow_native_gaps,
     ):
         concat = "".join(ch for _, ch in chars)
-        doc_indices = [idx for idx, _ in chars]
 
         search_text = text
         search_in = concat
         if normalize:
             search_text = fold_typography(search_text)
             search_in = fold_typography(search_in)
+        # Map each transformed code point back to its original character.
+        # Lowercasing can expand a character (İ -> i + combining dot).
+        source_indices = [
+            i for i, ch in enumerate(search_in)
+            for _ in (ch if match_case else ch.lower())
+        ]
         if not match_case:
             search_text = search_text.lower()
+            # Lower the whole string to preserve contextual forms such as sigma.
             search_in = search_in.lower()
         if not search_text:
             continue
@@ -684,12 +690,17 @@ def find_text_in_document(
             if pos == -1:
                 break
             end_pos = pos + len(search_text)
-            matches.append({
-                "startIndex": doc_indices[pos],
-                "endIndex": doc_indices[end_pos - 1]
-                + _utf16_len(chars[end_pos - 1][1]),
-            })
             start = pos + 1
+            first, last = source_indices[pos], source_indices[end_pos - 1]
+            # A match inside an expansion cannot select part of a native character.
+            if ((pos > 0 and source_indices[pos - 1] == first)
+                    or (end_pos < len(source_indices)
+                        and source_indices[end_pos] == last)):
+                continue
+            matches.append({
+                "startIndex": chars[first][0],
+                "endIndex": chars[last][0] + _utf16_len(chars[last][1]),
+            })
 
     matches.sort(key=lambda m: m["startIndex"])
     return matches

@@ -3,7 +3,7 @@
 import json
 import os
 from types import SimpleNamespace
-from unittest.mock import patch, MagicMock
+from unittest.mock import ANY, patch, MagicMock
 
 import pytest
 
@@ -755,7 +755,8 @@ class TestWriteTabScoped:
     """--tab NAME writes only to that tab via Docs API."""
 
     @patch("gdoc.state.update_state_after_command")
-    @patch("gdoc.api.drive.get_file_version", return_value={"version": 11})
+    @patch("gdoc.api.drive.get_file_version",
+           side_effect=[{"version": 10}, {"version": 11}])
     @patch("gdoc.api.docs.insert_markdown_into_tab")
     @patch("gdoc.notify.pre_flight")
     def test_forced_tab_write_does_not_claim_full_read(
@@ -777,7 +778,8 @@ class TestWriteTabScoped:
         assert mock_state.call_args.kwargs["full_doc_write"] is False
 
     @patch("gdoc.state.update_state_after_command")
-    @patch("gdoc.api.drive.get_file_version", return_value={"version": 11})
+    @patch("gdoc.api.drive.get_file_version",
+           side_effect=[{"version": 10}, {"version": 11}])
     @patch("gdoc.api.docs.insert_markdown_into_tab")
     @patch("gdoc.notify.pre_flight")
     def test_tab_scoped_uses_docs_api(
@@ -797,11 +799,12 @@ class TestWriteTabScoped:
         rc = cmd_write(args)
         assert rc == 0
         mock_insert.assert_called_once_with(
-            "abc123", "TODO for Mark", "# New body\n", replace=True, allow_lossy=False,
+            "abc123", "TODO for Mark", "# New body\n", replace=True, allow_lossy=False, document=ANY,
         )
 
     @patch("gdoc.state.update_state_after_command")
-    @patch("gdoc.api.drive.get_file_version", return_value={"version": 11})
+    @patch("gdoc.api.drive.get_file_version",
+           side_effect=[{"version": 10}, {"version": 11}])
     @patch("gdoc.api.drive.update_doc_content")
     @patch("gdoc.api.docs.get_document_with_tabs")
     @patch("gdoc.api.docs.insert_markdown_into_tab")
@@ -826,7 +829,8 @@ class TestWriteTabScoped:
         mock_tabs.assert_not_called()
 
     @patch("gdoc.state.update_state_after_command")
-    @patch("gdoc.api.drive.get_file_version", return_value={"version": 11})
+    @patch("gdoc.api.drive.get_file_version",
+           side_effect=[{"version": 10}, {"version": 11}])
     @patch("gdoc.api.docs.insert_markdown_into_tab")
     @patch("gdoc.notify.pre_flight")
     def test_tab_scoped_strips_frontmatter(

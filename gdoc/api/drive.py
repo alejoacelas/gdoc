@@ -194,7 +194,7 @@ def update_doc_content(
         raise GdocError("cannot identify document tabs before writing", exit_code=3)
 
     if len(tabs) == 1:
-        _require_write_version(doc_id, expected_version)
+        require_write_version(doc_id, expected_version)
         insert_markdown_into_tab(
             doc_id, tabs[0]["id"], content, replace=True, document=document,
         )
@@ -218,7 +218,7 @@ def update_doc_content(
             supportsAllDrives=True,
         )
         # Keep this last: preparation and guard reads must precede the check.
-        _require_write_version(doc_id, expected_version)
+        require_write_version(doc_id, expected_version)
         from gdoc.api.comment_transport import execute_mutation_request
         result = execute_mutation_request(request, on_send=progress.mark_sent)
         progress.sent = False
@@ -227,7 +227,7 @@ def update_doc_content(
         return int(result["version"])
 
 
-def _require_write_version(doc_id: str, expected_version: int) -> None:
+def require_write_version(doc_id: str, expected_version: int) -> None:
     current = get_file_version(doc_id).get("version")
     if current is None or current != expected_version:
         raise GdocError(

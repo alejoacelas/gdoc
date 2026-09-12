@@ -753,3 +753,55 @@ def test_replacement_ignores_bullet_on_deleted_first_paragraph(api, mocker):
     requests = batches(api)[0]["requests"]
     assert not any("deleteParagraphBullets" in r for r in requests)
 
+
+def tab_write_args(path, **overrides):
+    args = dict(
+        doc="synthetic", file=str(path), quiet=False, force=False, tab="Notes",
+        force_collapse_tabs=False, json=False, plain=False, verbose=False,
+    )
+    args.update(overrides)
+    return SimpleNamespace(**args)
+
+
+@pytest.mark.parametrize(
+    "quiet,force", [(False, False), (False, True), (True, False), (True, True)]
+)
+def test_tab_write_refuses_editor_between_preflight_and_snapshot(
+    api, drive_api, mocker, tmp_path, quiet, force
+):
+    """A collaborator edit made during the command is refused, not adopted."""
+    _, version, read = drive_api
+    mocker.patch(
+        "gdoc.notify.pre_flight",
+        return_value=ChangeInfo(current_version=10, last_read_version=10),
+    )
+    mocker.patch(
+        "gdoc.state.load_state", return_value=SimpleNamespace(last_read_version=10)
+    )
+    update_state = mocker.patch("gdoc.state.update_state_after_command")
+    version.side_effect = ([{"version": 10}] if quiet else []) + [{"version": 11}]
+    path = tmp_path / "body.md"
+    path.write_text("New body")
+    with pytest.raises(GdocError, match="document changed") as caught:
+        cmd_write(tab_write_args(path, quiet=quiet, force=force))
+    assert caught.value.exit_code == 3
+    read.assert_called_once_with("synthetic")
+    api.batchUpdate.assert_not_called()
+    update_state.assert_not_called()
+
+
+def test_tab_write_pins_the_guarded_snapshot(api, drive_api, mocker, tmp_path):
+    """The checked snapshot is the one the replacement is pinned to."""
+    _, version, read = drive_api
+    mocker.patch(
+        "gdoc.notify.pre_flight",
+        return_value=ChangeInfo(current_version=10, last_read_version=10),
+    )
+    mocker.patch("gdoc.state.update_state_after_command")
+    version.side_effect = [{"version": 10}, {"version": 11}]
+    path = tmp_path / "body.md"
+    path.write_text("New body")
+    assert cmd_write(tab_write_args(path)) == 0
+    read.assert_called_once_with("synthetic")
+    assert batches(api)[0]["writeControl"] == {"requiredRevisionId": "r1"}
+

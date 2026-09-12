@@ -1662,10 +1662,16 @@ def cmd_write(args) -> int:
     mode = get_output_mode(args)
 
     if tab_name:
-        from gdoc.api.docs import insert_markdown_into_tab
+        from gdoc.api.docs import get_document_with_tabs, insert_markdown_into_tab
+        from gdoc.api.drive import require_write_version
+
+        document = get_document_with_tabs(doc_id)
+        # Keep this last: the guard read must precede the version check so a
+        # collaborator edit made during the command is refused, not adopted.
+        require_write_version(doc_id, change_info.current_version)
         result = insert_markdown_into_tab(
             doc_id, tab_name, content, replace=True,
-            allow_lossy=getattr(args, "allow_lossy", False),
+            allow_lossy=getattr(args, "allow_lossy", False), document=document,
         )
 
         from gdoc.api.drive import get_file_version

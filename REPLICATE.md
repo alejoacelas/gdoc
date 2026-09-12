@@ -586,3 +586,5 @@ The human wanted PR #66's adversarial cleanup findings and the recorded value-co
 - No live document writes or push were performed; live harness replay remains with the coordinator.
 
 Agent session 01a0970f-266f-7581-8402-a834760ace1d · Commits e7f2070
+
+- Replacement and deletion matching stop at inline objects, footnote references, tables, and unexplained native-index gaps; only non-destructive anchor matching may opt into spanning native gaps. Whole-cell replacement refuses native content; the existing non-destructive inline-anchor behavior and synthetic API fixtures remain covered.

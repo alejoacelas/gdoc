@@ -378,25 +378,14 @@ def test_inline_reapplies_link_decorations_after_replacement_link(mocker):
 _TABLE_MD = "| H |\n|---|\n| x |"
 
 
-def test_table_replacement_into_partial_matches_is_literal(mocker):
-    # --all with partial-paragraph matches: the table source is inline text
-    # under the partial-replacement rule, so nothing reaches _insert_table and
-    # the multi-match table guard does not apply.
-    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+def test_multiline_table_source_cannot_add_paragraphs_to_partial_matches(mocker):
+    # Literal block syntax still cannot bypass native paragraph-count checks.
+    service = mocker.patch("gdoc.api.docs.get_docs_service")
     matches = [{"startIndex": 9, "endIndex": 11}, {"startIndex": 12, "endIndex": 19}]
-    assert replace_formatted("sample-doc", matches, _TABLE_MD, "rev-a",
-                             body=_styled_body()) == 2
-    service.documents.return_value.batchUpdate.assert_called_once_with(
-        documentId="sample-doc", body={
-            "requests": [
-                {"deleteContentRange": {"range": {"startIndex": 12, "endIndex": 19}}},
-                {"insertText": {"location": {"index": 12}, "text": _TABLE_MD}},
-                {"deleteContentRange": {"range": {"startIndex": 9, "endIndex": 11}}},
-                {"insertText": {"location": {"index": 9}, "text": _TABLE_MD}},
-            ],
-            "writeControl": {"requiredRevisionId": "rev-a"},
-        },
-    )
+    with pytest.raises(GdocError, match="paragraph count mismatch"):
+        replace_formatted("sample-doc", matches, _TABLE_MD, "rev-a",
+                          body=_styled_body())
+    service.assert_not_called()
 
 
 def test_table_replacement_rejected_for_multiple_block_matches(mocker):

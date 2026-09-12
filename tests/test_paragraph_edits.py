@@ -161,13 +161,13 @@ def test_multiline_count_mismatch_refuses_before_service_access(mocker):
 
 
 @pytest.mark.parametrize("new", ["Plain", "## Heading", "", "- item"])
-def test_explicit_cell_replacement_clears_previous_list(mocker, new):
-    """Whole-cell intent removes inherited list membership before restyling."""
+def test_cell_replacement_changes_list_only_for_explicit_markdown(mocker, new):
+    """Cell wording preserves lists; explicit structural Markdown can restyle."""
     body = _body(("Old", "NORMAL_TEXT", True))
     body = {"content": [{"table": {"tableRows": [{"tableCells": [body]}]}}]}
     requests = _requests(mocker, body, "Old", new, replace_paragraphs=True)
     resets = [req for req in requests if "deleteParagraphBullets" in req]
-    assert len(resets) == 1
+    assert len(resets) == (1 if new in ("## Heading", "- item") else 0)
     if new == "- item":
         assert any("createParagraphBullets" in req for req in requests)
     else:
@@ -194,9 +194,16 @@ def test_empty_heading_does_not_mutate_neighbor(mocker, neighbor, last):
         following["startIndex"], following["endIndex"] = 18, 28
         following["paragraph"]["elements"][0].update(startIndex=18, endIndex=28)
         body["content"].append(following)
+    if last and neighbor == "table":
+        service = mocker.patch("gdoc.api.docs.get_docs_service")
+        with pytest.raises(GdocError, match="mandatory final paragraph after a table"):
+            _requests(mocker, body, "Heading", "")
+        service.assert_not_called()
+        return
     requests = _requests(mocker, body, "Heading", "")
     assert requests == [{"deleteContentRange": {"range": {
-        "startIndex": 10, "endIndex": 17, "tabId": "synthetic-tab",
+        "startIndex": 9 if last else 10,
+        "endIndex": 17 if last else 18, "tabId": "synthetic-tab",
     }}}]
 
 
@@ -256,7 +263,6 @@ def test_code_span_closer_ignores_backslash_inside_span():
 @pytest.mark.parametrize("markdown,expected", [
     ("```unclosed", "```unclosed"),
     ("```code```", "code"),
-    ("| H |\n|---|\n| x |", "| H |\n|---|\n| x |"),
 ])
 def test_single_paragraph_never_uses_block_renderer(mocker, markdown, expected):
     """Whole-paragraph code spans and table source stay on the inline path."""
@@ -279,34 +285,25 @@ def test_multiple_multiline_matches_keep_reverse_order_and_occurrence_count(mock
     assert not any("updateParagraphStyle" in req for req in requests)
 
 
-def test_empty_multiline_replacement_keeps_each_mark(mocker):
-    """Deleting wording from several paragraphs does not delete their marks."""
+def test_empty_multiline_replacement_retains_only_mandatory_mark(mocker):
+    """Deleting complete paragraphs leaves the segment's mandatory final LF."""
     body = _body(("Alpha", "TITLE", False), ("Beta", "HEADING_1", True))
     requests = _requests(mocker, body, "Alpha\nBeta", "")
-    assert requests == [
-        {"deleteContentRange": {"range": {
-            "startIndex": 7, "endIndex": 11, "tabId": "synthetic-tab",
-        }}},
-        {"deleteContentRange": {"range": {
-            "startIndex": 1, "endIndex": 6, "tabId": "synthetic-tab",
-        }}},
-    ]
+    assert requests == [{"deleteContentRange": {"range": {
+        "startIndex": 1, "endIndex": 11, "tabId": "synthetic-tab",
+    }}}]
 
 
 def test_explicit_multiline_cell_can_remove_paragraphs(mocker):
-    """An explicit whole-cell target can replace several list items with prose."""
+    """Whole-cell wording can collapse list items while inheriting their style."""
     body = _body(("Alpha", "NORMAL_TEXT", True), ("Beta", "NORMAL_TEXT", True))
     body = {"content": [{"table": {"tableRows": [{"tableCells": [body]}]}}]}
     requests = _requests(mocker, body, "Alpha\nBeta", "Prose", replace_paragraphs=True)
     assert requests[0]["deleteContentRange"]["range"] == {
         "startIndex": 1, "endIndex": 11, "tabId": "synthetic-tab",
     }
-    assert requests[2]["deleteParagraphBullets"]["range"] == {
-        "startIndex": 1, "endIndex": 6, "tabId": "synthetic-tab",
-    }
-    style = requests[3]["updateParagraphStyle"]["paragraphStyle"]
-    assert style["namedStyleType"] == "NORMAL_TEXT"
-    assert style["indentStart"] == {"magnitude": 0, "unit": "PT"}
+    assert len(requests) == 2
+    assert requests[1]["insertText"]["text"] == "Prose"
 
 
 def test_cell_blockquote_keeps_explicit_indent(mocker):
@@ -316,3 +313,254 @@ def test_cell_blockquote_keeps_explicit_indent(mocker):
     style = next(req["updateParagraphStyle"]["paragraphStyle"] for req in requests
                  if "updateParagraphStyle" in req)
     assert style["indentStart"] == {"magnitude": 36, "unit": "PT"}
+
+
+def _apply_text_requests(body, requests):
+    """Replay UTF-16 text operations, rejecting out-of-range deletions."""
+    text = ''.join(e['textRun']['content'] for p in body['content']
+                   for e in p['paragraph']['elements']).encode('utf-16-le')
+    for request in requests:
+        if 'deleteContentRange' in request:
+            r = request['deleteContentRange']['range']
+            start, end = (r['startIndex'] - 1) * 2, (r['endIndex'] - 1) * 2
+            assert 0 <= start < end <= len(text) - 2
+            text = text[:start] + text[end:]
+        elif 'insertText' in request:
+            insert = request['insertText']
+            start = (insert['location']['index'] - 1) * 2
+            text = text[:start] + insert['text'].encode('utf-16-le') + text[start:]
+    return text.decode('utf-16-le')
+
+
+def _suggest_requests(mocker, body, old, new):
+    from gdoc.api.docs import suggest_replacement
+
+    service = mocker.patch('gdoc.api.docs.get_docs_service').return_value
+    mocker.patch('gdoc.api.docs.check_suggest_preview_access')
+    mocker.patch('gdoc.api.docs._token_identity', return_value=('client', 'token'))
+    service.documents.return_value.batchUpdate.return_value.execute.return_value = {
+        'commentUpdateState': 'ALL_SAVED',
+        'suggestionResponses': [{'createdSuggestionIds': ['suggest.synthetic']}],
+    }
+    mocker.patch('gdoc.api.docs.get_document_structure', return_value={})
+    mocker.patch('gdoc.api.docs.collect_suggestion_ids',
+                 return_value={'suggest.synthetic'})
+    matches = find_text_in_document(None, old, body=body)
+    suggest_replacement('synthetic-doc', matches, new, 'rev', body=body)
+    batch = service.documents.return_value.batchUpdate.call_args.kwargs['body']
+    return batch['requests']
+
+
+@pytest.mark.parametrize('command', ['edit', 'suggest'])
+@pytest.mark.parametrize('source', ['positional', 'old-stdin', 'new-stdin', 'files'])
+@pytest.mark.parametrize('terminators', [1, 2])
+@pytest.mark.parametrize('count', [1, 2])
+def test_transport_through_planner_retains_exact_boundaries(
+    mocker, tmp_path, command, source, terminators, count,
+):
+    old = '\n'.join(['Alpha', 'Beta'][:count]) + '\n' * terminators
+    new = '\n'.join(['Revised', 'Changed'][:count]) + '\n' * terminators
+    args = SimpleNamespace(old_text=old, new_text=new)
+    if source == 'old-stdin':
+        args.old_text = '-'
+        mocker.patch('sys.stdin', StringIO(old))
+    elif source == 'new-stdin':
+        args.new_text = '-'
+        mocker.patch('sys.stdin', StringIO(new))
+    elif source == 'files':
+        old_file, new_file = tmp_path / 'old.md', tmp_path / 'new.md'
+        old_file.write_text(old)
+        new_file.write_text(new)
+        args.old_file, args.new_file = str(old_file), str(new_file)
+    old, new = _resolve_replacement_text(args, None)
+    body = _body(*[(text, 'HEADING_2', False)
+                   for text in ['Alpha', 'Beta'][:count]],
+                 ('Neighbor', 'NORMAL_TEXT', False))
+    planner = _requests if command == 'edit' else _suggest_requests
+    requests = planner(mocker, body, old, new)
+    assert _apply_text_requests(body, requests) == (
+        '\n'.join(['Revised', 'Changed'][:count]) + '\nNeighbor\n'
+    )
+    assert not any('updateParagraphStyle' in r for r in requests)
+
+
+@pytest.mark.parametrize('command', ['edit', 'suggest'])
+@pytest.mark.parametrize('code', ['**literal**', '[literal](https://example.org)'])
+def test_fenced_code_rendering_is_shared_and_literal(mocker, command, code):
+    body = _body(('Alpha', 'TITLE', False), ('Beta', 'SUBTITLE', False))
+    planner = _requests if command == 'edit' else _suggest_requests
+    requests = planner(mocker, body, 'Alpha\nBeta', f'```\n{code}\nsecond\n```')
+    assert _apply_text_requests(body, requests) == code + '\nsecond\n'
+    styles = [r['updateTextStyle']['textStyle'] for r in requests
+              if 'updateTextStyle' in r]
+    assert styles == [{'weightedFontFamily': {'fontFamily': 'Courier New'}}] * 2
+    assert not any('updateParagraphStyle' in r for r in requests)
+
+
+@pytest.mark.parametrize('command', ['edit', 'suggest'])
+def test_fence_source_line_count_cannot_hide_rendered_count_mismatch(mocker, command):
+    from gdoc.api.docs import suggest_replacement
+
+    body = _body(('Alpha', 'TITLE', False), ('Beta', 'SUBTITLE', False),
+                 ('Gamma', 'NORMAL_TEXT', False))
+    service = mocker.patch('gdoc.api.docs.get_docs_service')
+    gate = mocker.patch('gdoc.api.docs.check_suggest_preview_access')
+    matches = find_text_in_document(None, 'Alpha\nBeta\nGamma', body=body)
+    planner = replace_formatted if command == 'edit' else suggest_replacement
+    with pytest.raises(GdocError, match='paragraph count mismatch'):
+        planner('doc', matches, '```\n**literal**\n```', 'rev', body=body)
+    service.assert_not_called()
+    gate.assert_not_called()
+
+
+@pytest.mark.parametrize('command', ['edit', 'suggest'])
+def test_single_line_triple_backtick_span_has_edit_suggest_parity(mocker, command):
+    body = _body(('Alpha', 'HEADING_2', False))
+    planner = _requests if command == 'edit' else _suggest_requests
+    requests = planner(mocker, body, 'Alpha', '```code```')
+    assert _apply_text_requests(body, requests) == 'code\n'
+    assert not any('updateParagraphStyle' in r for r in requests)
+
+
+@pytest.mark.parametrize('multiline', [False, True])
+def test_thematic_break_styles_retained_mark_without_inserting_mark(mocker, multiline):
+    body = _body(('Alpha', 'HEADING_2', False))
+    old, new = 'Alpha', '---'
+    if multiline:
+        body = _body(('Alpha', 'HEADING_2', False), ('Beta', 'HEADING_1', False))
+        old, new = 'Alpha\nBeta', '---\nBeta'
+    requests = _requests(mocker, body, old, new)
+    assert _apply_text_requests(body, requests) == ('\nBeta\n' if multiline else '\n')
+    border = next(r['updateParagraphStyle'] for r in requests
+                  if 'borderBottom' in r.get('updateParagraphStyle', {}).get(
+                      'paragraphStyle', {}))
+    assert border['range']['startIndex'] == 1
+    assert border['range']['endIndex'] == 2
+
+
+@pytest.mark.parametrize('run,terminator', [
+    ('20260912T191944-85b094d905', '\n'),
+    ('20260912T192053-7725ed4778', '\n\n'),
+])
+def test_replay_rename_changes_only_target(mocker, run, terminator):
+    body = _body(('Intro witness', 'NORMAL_TEXT', False),
+                 ('Interim findings', 'HEADING_2', False),
+                 ('Neighbor witness', 'NORMAL_TEXT', False))
+    args = SimpleNamespace(old_text='Interim findings' + terminator,
+                           new_text='Final findings')
+    old, new = _resolve_replacement_text(args, None)
+    requests = _requests(mocker, body, old, new)
+    assert _apply_text_requests(body, requests) == (
+        'Intro witness\nFinal findings\nNeighbor witness\n'
+    ), run
+
+
+def test_replay_192037_removes_final_heading_using_preceding_newline(mocker):
+    body = _body(('Intro', 'NORMAL_TEXT', False), ('Body', 'NORMAL_TEXT', False),
+                 ('Obsolete section', 'HEADING_2', False))
+    requests = _requests(mocker, body, 'Obsolete section', '')
+    assert _apply_text_requests(body, requests) == 'Intro\nBody\n'
+    assert len(requests) == 1
+    assert requests[0]['deleteContentRange']['range']['endIndex'] == (
+        body['content'][-1]['endIndex'] - 1
+    )
+
+
+@pytest.mark.parametrize('position', ['start', 'end'])
+@pytest.mark.parametrize('markdown', ['Update', '\nUpdate\n'])
+def test_replay_insert_preserves_heading_and_avoids_unneeded_indents(
+    mocker, position, markdown,
+):
+    body = _body(('Open questions', 'HEADING_2', False))
+    mocker.patch('gdoc.api.docs.get_document_with_tabs', return_value={
+        'revisionId': 'rev', 'tabs': [{
+            'tabProperties': {'tabId': 'tab', 'title': 'Notes'},
+            'documentTab': {'body': body},
+        }],
+    })
+    service = mocker.patch('gdoc.api.docs.get_docs_service').return_value
+    insert_markdown_into_tab('doc', 'Notes', markdown, position=position)
+    batch = service.documents.return_value.batchUpdate.call_args.kwargs['body']
+    requests = batch['requests']
+    inserted = markdown.removesuffix('\n') + '\n'
+    expected = (inserted + 'Open questions\n' if position == 'start'
+                else 'Open questions\n' + inserted)
+    assert _apply_text_requests(body, requests) == expected
+    assert not any('deleteParagraphBullets' in r for r in requests)
+    for request in requests:
+        style = request.get('updateParagraphStyle', {}).get('paragraphStyle', {})
+        assert 'indentStart' not in style
+        assert 'indentFirstLine' not in style
+
+
+@pytest.mark.parametrize('count', [1, 2])
+@pytest.mark.parametrize('bullet', [False, True])
+def test_replay_191840_cell_wording_retains_custom_paragraph_properties(
+    mocker, count, bullet,
+):
+    cell = _body(*[('Pending confirmation', 'NORMAL_TEXT', bullet)] * count)
+    for paragraph in cell['content']:
+        paragraph['paragraph']['paragraphStyle'].update(
+            lineSpacing=100, indentStart={'magnitude': 36, 'unit': 'PT'},
+            indentFirstLine={'magnitude': 18, 'unit': 'PT'},
+        )
+    body = {'content': [{'table': {'tableRows': [{'tableCells': [cell]}]}}]}
+    requests = _requests(mocker, body, '\n'.join(['Pending confirmation'] * count),
+                         'Confirmed', replace_paragraphs=True)
+    assert _apply_text_requests(cell, requests) == 'Confirmed\n'
+    assert not any('updateParagraphStyle' in r or 'deleteParagraphBullets' in r
+                   for r in requests)
+
+
+def test_replay_192156_title_subtitle_keep_existing_heading_ids_and_marks(mocker):
+    body = _body(('Launch window plan', 'TITLE', False),
+                 ('Q4 planning memo', 'SUBTITLE', False),
+                 ('Body witness', 'NORMAL_TEXT', False))
+    for index, paragraph in enumerate(body['content'][:2]):
+        paragraph['paragraph']['paragraphStyle']['headingId'] = f'h.existing{index}'
+    original = deepcopy(body)
+    requests = _requests(mocker, body, 'Launch window plan\nQ4 planning memo',
+                         'Release window plan\nQ4 planning memo')
+    assert _apply_text_requests(body, requests) == (
+        'Release window plan\nQ4 planning memo\nBody witness\n'
+    )
+    assert body == original
+    assert not any('updateParagraphStyle' in r for r in requests)
+    marks = [p['endIndex'] - 1 for p in body['content']]
+    for request in requests:
+        if 'deleteContentRange' in request:
+            r = request['deleteContentRange']['range']
+            assert not any(r['startIndex'] <= mark < r['endIndex'] for mark in marks)
+
+
+@pytest.mark.parametrize('old', ['Gone', 'Gone\nGone'])
+def test_adjacent_complete_paragraph_removals_delete_shared_mark_once(mocker, old):
+    body = _body(('Keep', 'NORMAL_TEXT', False), ('Gone', 'HEADING_2', False),
+                 ('Gone', 'HEADING_2', False))
+    requests = _requests(mocker, body, old, '')
+    assert _apply_text_requests(body, requests) == 'Keep\n'
+    assert len(requests) == 1
+
+
+def test_partial_multiline_deletion_removes_fully_covered_final_paragraph(mocker):
+    body = _body(('Keep tail', 'NORMAL_TEXT', False), ('Gone', 'HEADING_2', False))
+    requests = _requests(mocker, body, ' tail\nGone', '')
+    assert _apply_text_requests(body, requests) == 'Keep\n'
+
+
+@pytest.mark.parametrize('command', ['edit', 'suggest'])
+def test_fenced_code_keeps_real_empty_last_line(mocker, command):
+    body = _body(('Alpha', 'TITLE', False), ('Beta', 'SUBTITLE', False))
+    planner = _requests if command == 'edit' else _suggest_requests
+    requests = planner(mocker, body, 'Alpha\nBeta\n', '```\n**code**\n\n```')
+    assert _apply_text_requests(body, requests) == '**code**\n\n'
+
+
+@pytest.mark.parametrize('new', ['Revised\n', 'Revised\n\n'])
+def test_single_paragraph_cannot_bypass_unmatched_newline_check(mocker, new):
+    body = _body(('Alpha', 'TITLE', False), ('Neighbor', 'NORMAL_TEXT', False))
+    service = mocker.patch('gdoc.api.docs.get_docs_service')
+    matches = find_text_in_document(None, 'Alpha', body=body)
+    with pytest.raises(GdocError, match='paragraph count mismatch'):
+        replace_formatted('doc', matches, new, 'rev', body=body)
+    service.assert_not_called()

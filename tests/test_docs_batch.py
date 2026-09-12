@@ -753,8 +753,13 @@ def test_non_body_only_edit_does_not_read_for_cleanup(mocker):
     cleanup.assert_not_called()
 
 
-@pytest.mark.parametrize("markdown", ["Text\n\n", "\n", "    ```"])
-def test_non_body_rejects_trailing_paragraph_breaks_and_indented_fences(
+@pytest.mark.parametrize("markdown", [
+    "Text\n\n", "\n", "a\nb",
+    # A fence delimiter pair on one line renders to nothing; accepting it
+    # would empty the segment instead of replacing the match.
+    "```code```", "~~~code~~~",
+])
+def test_non_body_rejects_paragraph_breaks_and_empty_renderings(
     mocker, markdown,
 ):
     service = mocker.patch("gdoc.api.docs.get_docs_service")
@@ -762,6 +767,34 @@ def test_non_body_rejects_trailing_paragraph_breaks_and_indented_fences(
         replace_formatted("doc-one", [_mixed_matches()[1]], markdown, "revision-one")
     assert error.value.exit_code == 3
     service.assert_not_called()
+
+
+@pytest.mark.parametrize("markdown,inserted,code_font", [
+    # A single line can never be a fenced block: a closed backtick string is
+    # an inline code span and an unmatched or indented one stays literal.
+    ("```code``` after", "code after", True),
+    ("``` not closed", "``` not closed", False),
+    ("    ```", "    ```", False),
+])
+def test_non_body_accepts_single_line_backtick_strings(
+    mocker, markdown, inserted, code_font,
+):
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "tabs": [_segment_scope()],
+    })
+    mocker.patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
+    assert replace_formatted(
+        "doc-one", [_mixed_matches()[1]], markdown, "revision-one",
+    ) == 1
+    requests = service.documents.return_value.batchUpdate.call_args.kwargs[
+        "body"]["requests"]
+    assert [r["insertText"]["text"] for r in requests if "insertText" in r] == [
+        inserted,
+    ]
+    fonts = [r["updateTextStyle"]["textStyle"].get("weightedFontFamily")
+             for r in requests if "updateTextStyle" in r]
+    assert ({"fontFamily": "Courier New"} in fonts) is code_font
 
 
 def test_cleanup_uses_match_tab_when_no_fallback_tab_is_given(mocker):

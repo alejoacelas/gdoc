@@ -1796,8 +1796,14 @@ def check_segment_replacement(parsed, markdown: str, matches: list[dict]) -> Non
             "headers, footers, and footnotes support only plain or inline "
             "Markdown replacements", exit_code=3,
         ) from None
-    if ("\n" in parsed.plain_text.removesuffix("\n")
-            or re.search(r"(?m)^\s*(?:`{3,}|~{3,})", markdown)):
+    # A fence needs its own closing line, so a single-line replacement is
+    # inline Markdown: an unmatched backtick string stays literal and a
+    # closed one is a code span. Reject a source newline (paragraph break or
+    # fenced block) and a non-empty line the parser renders to nothing, such
+    # as a fence delimiter pair, which would otherwise empty the segment.
+    plain = parsed.plain_text.removesuffix("\n")
+    if ("\n" in plain or "\n" in markdown.removesuffix("\n")
+            or (markdown.strip() and not plain.strip())):
         raise GdocError(
             "headers, footers, and footnotes support only plain or inline "
             "Markdown replacements", exit_code=3,

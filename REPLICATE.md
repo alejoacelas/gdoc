@@ -646,21 +646,40 @@ The user wanted PR #66 restacked on #64 `0f56d7c`: preserved both log sides and 
 
 The user wanted PR #66 restacked on #64 `144f18b`: preserved both log histories and all code/tests; 2,874 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_098f9adc04f1 · Commits 3c2d0b626546d07d6b4710fa1131de8548f8680e.
 
-## Forward full-document native anchor gaps
 
-The human wanted PR #66's empty-write and full-document anchor findings fixed and the three affected review threads settled.
+# Comment anchor outcomes
 
-- Thirteen regressions failed before the fix: standalone triple-backtick spans lost their text, empty fences silently deleted existing content, and full-document anchors could not span images or footnote references.
-- The standalone-fence portion was superseded by PR #70; its duplicate parser changes, empty-replacement guards, and associated tests were removed during restacking. Legacy, raw-tab, and flattened-tab searches retain the non-destructive native-gap forwarding fix and its six regressions, with strict defaults unchanged.
-- Updated two older refusal cases that encoded the parser bug and added a successful non-body code-span case. All 2,890 tests pass with network connections blocked; no live Google API calls occurred, no-stubs passes, and normalized Ruff findings match origin/main exactly at 196 each, with zero additions or removals.
+The human wanted quoted comments to anchor uniquely or report why they could not, without silently creating a second comment.
 
-Agent session ctx_5a3ab7345292 · Commits 711729d, 736e9d9
+- Worktree: `/Users/alejo/best/tools/active/gdoc/pr-comment-anchors`; branch: `alejoacelas/fix-comment-anchor-outcomes`, based on `origin/main` at `dbfa4c34`.
+- Added typed outcomes for anchored success, ambiguity, normalized no-match, revision conflict and preview unavailability. Ambiguity and no-match refuse with exit 3; the successful output retains its existing fields and first line, adding the anchored tab.
+- Added `--tab` scope and header/footer/footnote coordinates. Unicode space separators fold identically in the quote and document without changing the shared matching/offset implementation.
+- Revision rejection triggers one fresh read and resolution. Only definite preview/capability rejection permits Drive fallback; uncertain responses, partial save states, missing comment IDs and transport failures refuse further writes. Fallback explicitly says `unanchored` and returns `anchored:false` in JSON.
+- Validation: **1,613 tests passed**, including **74 comment tests** (50 added cases). The baseline had 1,563 passing tests. Full Ruff still reports **196 pre-existing findings**, with identical file/code/message counts and zero additions; the coordinator accepted baseline equivalence. The comment test file passes Ruff; `git diff --check` passes.
+- Left untouched: shared tab ID/title ambiguity, Unicode case-expansion/native-offset mapping and structural-gap matching (the separate target-resolution PR); general thread APIs and suggestion formatting. No live API replay, push or PR edit was performed; those remain with the coordinator.
 
-The user wanted PR #64 restacked on #70 `52a8ad8`: preserved both log histories and all code/tests; 2,890 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_d7e4f02b9a08 · Commits 62e11f306fec5eb379bd08c4267dced728d1f217.
+All fixtures use synthetic API-shaped documents. Existing cases still cover successful native requests, typography folding, UTF-16 emoji offsets, no-quote Drive comments and state updates; changed expectations distinguish revision rejection and uncertain saves from preview unavailability.
 
-The user wanted PR #66 restacked on #64 `bb68329`: split `711729d` and `736e9d9` to retain only the native-gap regression and forwarding fix, dropped their duplicate fence/empty-guard portions (no whole commits dropped), preserved earlier commits and both log histories, and marked the fence record superseded by #70; 2,904 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_d7e4f02b9a08 · Commits 2cace51, 5e09c63, 3f2edea35fba57abc1ecfc37e8175473ca34478d.
 
-The user wanted PR #70 restacked on #65 `116efd0`: preserved both log histories and all code/tests; 2,855 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_d7e4f02b9a08 · Commits 5a335477f87f0e9123dceb683f89e37f1ef28f7e.
+| New regression test | What it proves |
+| --- | --- |
+| `test_unicode_spaces_fold_on_both_sides` | NBSP, narrow NBSP, thin and figure spaces match in either the quote or document, preserving the native range. |
+| `test_all_equivalent_matches_count_before_writing` | Same-tab, cross-tab and exact/typographic duplicate matches refuse with a count and locations before either write path. |
+| `test_explicit_tab_limits_search_and_is_reported` | A selected tab disambiguates matching text and its ID appears in the request and JSON. |
+| `test_tab_miss_does_not_search_elsewhere_or_fallback` | A missing tab or quote confined to another tab refuses without either write. |
+| `test_omitted_tab_searches_nested_tabs` | An omitted scope includes child tabs and reports the anchored tab. |
+| `test_segment_quote_keeps_segment_id_and_zero_start` | Headers, footers and footnotes retain their segment ID and implicit-zero start. |
+| `test_body_and_header_matches_are_ambiguous` | A matching header and body refuse with both locations. |
+| `test_legacy_document_without_tabs_can_anchor` | Legacy body-only responses still produce a pinned native anchor. |
+| `test_missing_revision_refuses_an_unpinned_write` | Missing revision metadata never permits an unpinned write or fallback. |
+| `test_conflict_rereads_once_and_uses_fresh_coordinates` | A rejected revision leads to a fresh revision and shifted coordinates on the second attempt. |
+| `test_second_conflict_refuses_without_fallback` | Two revision rejections stop with exit 3 after exactly two reads/writes. |
+| `test_conflict_reresolves_instead_of_replaying` | A quote duplicated or deleted by a collaborator prevents a second write. |
+| `test_uncertain_success_response_never_creates_second_comment` | Missing IDs, incomplete save states and empty responses never cause Drive fallback or replay. |
+| `test_uncertain_write_never_retries_or_falls_back` | Simulated writes saved before timeout, reset, incomplete HTTP response, transport error or HTTP 503 produce exactly one comment. |
+| `test_definite_preview_rejection_creates_one_honest_fallback` | Definite unsupported-request/capability rejection creates one Drive comment with honest terse/plain/JSON output. |
+| `test_other_api_rejections_do_not_fallback` | Unrelated schema errors, invalid ranges, authentication failures, missing documents and quota failures cannot become unanchored success. |
+| `test_comment_parser_accepts_tab_scope` | The public command parser accepts `--tab`. |
 
 # Guard table headings and paragraph rules
 
@@ -696,3 +715,4 @@ The user wanted PR #64 restacked on #70 `4eeab26`: preserved both log histories 
 The user wanted PR #66 restacked on #64 `0313169`: preserved both log histories and all code/tests; 2,929 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_8027a7d4ae60 · Commits fe876c0b2eb8228c2fc3b69f175ccec0f67bd7fb.
 
 The user wanted PR #66 restacked on #64 `aa7a3ac`: preserved both log histories and all code/tests; 2,989 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_187d4d2013d6 · Commits c80db29f1af62273bccab8354b467c5aa70f2edf.
+Agent session 01a0970d-b3d9-73b2-ad08-adf9a49bb3ae · Commits 486b57e (Make comment anchor resolution and fallback outcomes explicit)

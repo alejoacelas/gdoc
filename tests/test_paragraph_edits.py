@@ -448,7 +448,13 @@ def test_fence_lines_inside_partial_paragraphs_are_literal(mocker, command):
     assert _apply_text_requests(body, requests) == 'Al```\nx\n```ma\n'
     styles = [r['updateTextStyle']['textStyle'] for r in requests
               if 'updateTextStyle' in r]
-    assert styles == [{'bold': True}]
+    assert styles == ([{'bold': True}, {}] if command == 'edit'
+                      else [{'bold': True}])
+    if command == 'edit':
+        reset = [r['updateTextStyle'] for r in requests if 'updateTextStyle' in r][-1]
+        assert reset['range'] == {'startIndex': 8, 'endIndex': 9,
+                                  'tabId': 'synthetic-tab'}
+        assert reset['fields'] == 'bold'
     assert not any('updateParagraphStyle' in r for r in requests)
 
 
@@ -492,7 +498,11 @@ def test_closed_backtick_span_line_does_not_open_fence_branch(mocker, command):
     styles = [r['updateTextStyle'] for r in requests if 'updateTextStyle' in r]
     assert [(s['range']['startIndex'], s['range']['endIndex'], s['textStyle'])
             for s in styles] == [
-        (1, 5, {'weightedFontFamily': {'fontFamily': 'Courier New'}})]
+        (1, 5, {'weightedFontFamily': {'fontFamily': 'Courier New'}}),
+        *([(5, 6, {})] if command == 'edit' else []),
+    ]
+    if command == 'edit':
+        assert styles[-1]['fields'] == 'weightedFontFamily'
     assert not any('updateParagraphStyle' in r for r in requests)
 
 

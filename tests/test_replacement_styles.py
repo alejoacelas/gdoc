@@ -265,12 +265,12 @@ def test_duplicate_retained_label_does_not_guess_which_link_to_restore(mocker, c
 
 
 @pytest.mark.parametrize("command", ["edit", "suggest"])
-def test_fenced_inline_text_uses_target_style_before_explicit_code_font(
+def test_whole_paragraph_fence_uses_target_style_before_explicit_code_font(
     mocker, command,
 ):
-    body = _body(("A ", {"bold": True}), ("TOKEN", RED), (" Z\n", {}))
+    body = _body(("TOKEN", RED), ("\n", {}))
     requests = _batch(mocker, body, "TOKEN", "```\nRevised\n```", command)
-    inherited = RED if command == "suggest" else {"bold": True}
+    inherited = RED if command == "suggest" else {}
     assert _replacement_styles(requests, inherited) == [{
         **RED, "weightedFontFamily": {"fontFamily": "Courier New"},
     }] * len("Revised")
@@ -453,3 +453,12 @@ def test_mixed_suggestion_refuses_when_neither_boundary_has_required_style(
     right = ((" suffix\n", {}),) if position in ("start", "middle") else (("\n", {}),)
     runs = left + (("Styled", style), (" plain", {}), (" tail", style)) + right
     _refused(mocker, _body(*runs), "Styled plain tail", "Revised")
+
+
+@pytest.mark.parametrize("command", ["edit", "suggest"])
+def test_partial_paragraph_fence_refuses_before_write(mocker, command):
+    body = _body(("A ", {"bold": True}), ("TOKEN", RED), (" Z\n", {}))
+    with pytest.raises(GdocError, match="paragraph count mismatch"):
+        _batch(mocker, body, "TOKEN", "```\nRevised\n```", command)
+    from gdoc.api.docs import get_docs_service
+    get_docs_service.return_value.documents().batchUpdate.assert_not_called()

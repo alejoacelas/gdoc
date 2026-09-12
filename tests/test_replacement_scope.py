@@ -260,11 +260,10 @@ def test_unique_match_in_later_tab_does_not_require_all(services, command):
 
 
 def test_suggest_preserves_each_containers_direct_style(services):
-    _, batch = services
+    document, batch = services
     assert cmd_suggest(_args()) == 0
     requests = batch.call_args.kwargs["body"]["requests"]
-    assert {_address(r): r["updateTextStyle"]["textStyle"]
-            for r in requests if "updateTextStyle" in r} == {
+    expected = {
         ("first", None): {"bold": True},
         ("first", "shared-header"): {"italic": True},
         ("first", "footer"): {"underline": True},
@@ -272,6 +271,28 @@ def test_suggest_preserves_each_containers_direct_style(services):
         ("second", None): {"underline": True},
         ("second", "shared-header"): {"bold": True},
     }
+    assert len(requests) == 12
+    assert {_address(r) for r in requests} == set(expected)
+    first = document["tabs"][0]
+    tabs = {"first": first["documentTab"],
+            "second": first["childTabs"][0]["documentTab"]}
+    for insertion, deletion in zip(requests[::2], requests[1::2]):
+        address = _address(insertion)
+        assert _address(deletion) == address
+        insert = insertion["insertText"]
+        deleted = deletion["deleteContentRange"]["range"]
+        assert insert["text"] == "REPLACED"
+        # Insert at the target end before deleting it, inheriting its direct style.
+        assert insert["location"]["index"] == deleted["endIndex"]
+        tab, segment = address
+        scope = tabs[tab]
+        content = (scope["body"] if segment is None else next(
+            scope[k][segment] for k in ("headers", "footers", "footnotes")
+            if segment in scope.get(k, {})))
+        run = content["content"][0]["paragraph"]["elements"][0]
+        assert deleted["startIndex"] == run.get("startIndex", 0)
+        assert deleted["endIndex"] == run["endIndex"]
+        assert run["textRun"]["textStyle"] == expected[address]
 
 
 @pytest.mark.parametrize("tab_id", ["first", "second"])

@@ -360,43 +360,28 @@ def test_shared_decorations_survive_replacement_link(mocker, replacement, link):
         assert styles == [
             {"range": {"startIndex": 9, "endIndex": 12},
              "textStyle": {"link": {"url": "https://x.example"}}, "fields": "link"},
-            {"range": {"startIndex": 9, "endIndex": 17}, "textStyle": decor,
+            {"range": {"startIndex": 9, "endIndex": 12}, "textStyle": decor,
              "fields": "foregroundColor,underline"},
         ]
     else:
         assert styles == []
 
 
-def test_suggest_keeps_link_baseline_of_homogeneous_target(mocker):
-    # Suggested text does not inherit the target's link either, so the
-    # suggestion carries the same baseline restore as the edit path.
+def test_suggest_refuses_linked_homogeneous_target_before_service_access(mocker):
+    # A proposed link reset cannot preserve the native pending insertion style.
     from gdoc.api.docs import suggest_replacement
 
     link = {"link": {"url": "https://example.com/spec"}}
     body = _styled_body(left=dict(link))
     body["content"][0]["paragraph"]["elements"][1]["textRun"]["textStyle"] = dict(link)
-    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
-    mocker.patch("gdoc.api.docs.check_suggest_preview_access")
-    mocker.patch("gdoc.api.docs._token_identity", return_value=("client", "token"))
-    service.documents.return_value.batchUpdate.return_value.execute.return_value = {
-        "commentUpdateState": "ALL_SAVED",
-        "suggestionResponses": [{"createdSuggestionIds": ["suggest.synthetic"]}],
-    }
-    mocker.patch("gdoc.api.docs.get_document_structure", return_value={})
-    mocker.patch("gdoc.api.docs.collect_suggestion_ids",
-                 return_value={"suggest.synthetic"})
+    service = mocker.patch("gdoc.api.docs.get_docs_service")
+    gate = mocker.patch("gdoc.api.docs.check_suggest_preview_access")
     match = {"startIndex": 9, "endIndex": 30}
-    suggest_replacement("sample-doc", [match], "done", "rev-a", body=body)
-    requests = service.documents.return_value.batchUpdate.call_args.kwargs[
-        "body"]["requests"]
-    assert requests == [
-        {"deleteContentRange": {"range": match}},
-        {"insertText": {"location": {"index": 9}, "text": "done"}},
-        {"updateTextStyle": {
-            "range": {"startIndex": 9, "endIndex": 13},
-            "textStyle": link, "fields": "link",
-        }},
-    ]
+    with pytest.raises(GdocError, match="preserving its pending text style") as error:
+        suggest_replacement("sample-doc", [match], "done", "rev-a", body=body)
+    assert error.value.exit_code == 3
+    service.assert_not_called()
+    gate.assert_not_called()
 
 
 def test_inline_reapplies_link_decorations_after_replacement_link(mocker):

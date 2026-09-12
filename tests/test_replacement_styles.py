@@ -418,3 +418,38 @@ def test_link_retarget_preserves_trial_sentence_and_protected_suffix(mocker):
     assert requests[0]["deleteContentRange"]["range"]["endIndex"] == 47
     assert all(r["updateTextStyle"]["range"]["endIndex"] <= 51
                for r in requests if "updateTextStyle" in r)
+
+
+@pytest.mark.parametrize("style", [{"bold": True}, RED])
+@pytest.mark.parametrize("position", ["start", "middle", "end", "whole"])
+@pytest.mark.parametrize("cell", [False, True])
+def test_mixed_suggestion_checks_native_style_at_every_position(
+    mocker, style, position, cell,
+):
+    left = (("Prefix ", {}),) if position in ("middle", "end") else ()
+    right = ((" suffix\n", {}),) if position in ("start", "middle") else (("\n", {}),)
+    old = (("Styled", style), (" plain", {}))
+    runs = left + old + right
+    requests = _batch(mocker, _body(*runs, cell=cell), "Styled plain", "R🌿", "suggest")
+    new = (("R🌿", {}),)
+    end_first = "insertText" in requests[0]
+    if not left:
+        # The EDIT baseline mask is empty here; the original first run still
+        # supplies SUGGEST insertion style until we choose the target's end.
+        assert end_first
+    pending = left + (old + new if end_first else new + old) + right
+    for view, expected in (("pending", pending), ("accepted", left + new + right),
+                           ("rejected", runs)):
+        assert _project_suggestion(runs, requests, view) == _units(*expected)
+    assert not any("updateTextStyle" in request for request in requests)
+
+
+@pytest.mark.parametrize("style", [{"bold": True}, RED])
+@pytest.mark.parametrize("position", ["start", "middle", "end", "whole"])
+def test_mixed_suggestion_refuses_when_neither_boundary_has_required_style(
+    mocker, style, position,
+):
+    left = (("Prefix ", style),) if position in ("middle", "end") else ()
+    right = ((" suffix\n", {}),) if position in ("start", "middle") else (("\n", {}),)
+    runs = left + (("Styled", style), (" plain", {}), (" tail", style)) + right
+    _refused(mocker, _body(*runs), "Styled plain tail", "Revised")

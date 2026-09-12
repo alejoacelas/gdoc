@@ -2675,11 +2675,22 @@ def suggest_replacement(
             # A SUGGEST style update changes the accepted preview only. Never
             # mistake that proposal for the pending insertion's native style.
             baseline = [s for s in baseline or [] if not s.get("retainedMark")]
-            at_target_end = bool(selected.plain_text
-                                 and any(s["fields"] for s in baseline))
+            scope = _replacement_body(body, match)
+            found = _replacement_paragraph(scope.get("content", []), match)
+            runs = [run for run in found[0].get("elements", [])
+                    if "textRun" in run] if found else []
+            # Unlike EDIT, SUGGEST retains the original at paragraph start.
+            # Its first run supplies insertion style, not the following run
+            # used by the edit baseline; an empty field mask is not proof of
+            # safety. Check the desired native style at every target position.
+            pending_style = next(
+                (run["textRun"].get("textStyle", {}) for run in runs
+                 if run.get("startIndex", 0) < match["startIndex"] <= run["endIndex"]),
+                runs[0]["textRun"].get("textStyle", {}) if runs else {},
+            )
+            at_target_end = bool(selected.plain_text and any(
+                s["fields"] or s["textStyle"] != pending_style for s in baseline))
             if at_target_end:
-                scope = _replacement_body(body, match)
-                found = _replacement_paragraph(scope.get("content", []), match)
                 source_style = next((
                     run["textRun"].get("textStyle", {})
                     for run in found[0].get("elements", [])

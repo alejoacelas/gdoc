@@ -21,7 +21,8 @@ All notable changes to `gdoc` are documented here. This project follows
 ### Fixed
 - Tab replacements reset inherited bullets and direct paragraph/text styles;
   nested list items share a list-creation range and final rules use the retained
-  paragraph mark without adding a blank paragraph.
+  paragraph mark without adding a blank paragraph. `insert --end` applies the
+  same rule handling, so an appended `---` no longer leaves a blank paragraph.
 - Unchanged single-tab `write`/`push` uploads skip reconstruction even without
   a conflict and report that nothing was written.
 

@@ -1427,13 +1427,12 @@ def _tab_body_range(body: dict) -> tuple[int, int]:
     return (1, last_end - 1)
 
 
-def _strip_trailing_newline_unless_hr(parsed, *, keep_hr: bool = True) -> None:
+def _strip_trailing_newline_unless_hr(parsed) -> None:
     """Drop the trailing \\n parse_markdown appends — the existing paragraph at
     the insertion point already owns one, so without this every write leaves an
     extra blank line. Skipped when the last paragraph is a horizontal rule (an
     intentionally-empty paragraph whose border is lost if its only character is
-    removed). Pass keep_hr=False when the caller applies its border to the
-    retained native mark instead. Mutates ``parsed`` in place.
+    removed). Mutates ``parsed`` in place.
     """
     old_len = len(parsed.plain_text)
     last_is_hr = any(
@@ -1441,7 +1440,7 @@ def _strip_trailing_newline_unless_hr(parsed, *, keep_hr: bool = True) -> None:
         and "borderBottom" in s.style
         for s in parsed.styles
     )
-    if parsed.plain_text.endswith("\n") and not (keep_hr and last_is_hr):
+    if parsed.plain_text.endswith("\n") and not last_is_hr:
         parsed.plain_text = parsed.plain_text[:-1]
         for s in parsed.styles:
             if s.end == old_len:
@@ -1510,7 +1509,7 @@ def insert_markdown_into_tab(
 
     at_end = replace or body_end == body_start or position == "end"
     if at_end:
-        _strip_trailing_newline_unless_hr(parsed, keep_hr=not replace)
+        _strip_trailing_newline_unless_hr(parsed)
     # Trimming an empty final paragraph leaves its annotation at zero width.
     # Its style belongs on the retained native mark, not on extra inserted text.
     final_style = next((s.style for s in parsed.styles

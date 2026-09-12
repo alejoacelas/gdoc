@@ -97,6 +97,42 @@ def test_r4_f001_uses_native_terminal_mark_once(mocker, source, expected):
         assert borders[0]["range"]["endIndex"] == 1 + utf16_len(expected)
 
 
+def _append(mocker, markdown, existing="old\n"):
+    end = 1 + utf16_len(existing)
+    content = [{"startIndex": 1, "endIndex": end, "paragraph": {
+        "elements": [{"startIndex": 1, "endIndex": end,
+                      "textRun": {"content": existing}}],
+    }}]
+    doc = {"revisionId": "rev", "tabs": [_tab({"content": content})]}
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value=doc)
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    insert_markdown_into_tab("doc", "Draft", markdown, position="end")
+    batch = service.documents.return_value.batchUpdate.call_args.kwargs["body"]
+    return batch["requests"]
+
+
+@pytest.mark.parametrize("existing", ["old\n", "\n"])
+@pytest.mark.parametrize("source,appended", [
+    ("---", ""), ("---\n", ""), ("Body\n\n---", "Body\n\n"), ("Body", "Body"),
+])
+def test_r4_f001_end_insert_styles_final_rule_on_retained_mark(
+    mocker, existing, source, appended,
+):
+    # Appending splits the existing final paragraph once; a final rule then
+    # borders the retained mark instead of inserting its own newline, which
+    # left a blank paragraph after the rule.
+    requests = _append(mocker, source, existing)
+    inserted = "".join(r["insertText"]["text"] for r in requests if "insertText" in r)
+    split = "\n" if existing.strip("\n") else ""
+    assert inserted == split + appended
+    borders = [r["updateParagraphStyle"]["range"] for r in requests
+               if "borderBottom" in r.get("updateParagraphStyle", {})
+               .get("paragraphStyle", {})]
+    final = 1 + utf16_len(existing) + utf16_len(inserted)
+    assert borders == ([{"startIndex": final - 1, "endIndex": final,
+                         "tabId": "draft"}] if "---" in source else [])
+
+
 @pytest.mark.parametrize("marker,preset", [
     ("-", "BULLET_DISC_CIRCLE_SQUARE"),
     ("1.", "NUMBERED_DECIMAL_ALPHA_ROMAN"),

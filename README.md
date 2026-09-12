@@ -423,7 +423,7 @@ and the current `get_tab_text`, `mdparse`, and Drive Markdown paths:
 | Nonempty suggestion fields | Replacement would discard pending review state. |
 | Internal bookmark/heading/tab links | Replacement does not recreate their native targets and IDs. Ordinary URL links are allowed. |
 | Native horizontal-rule elements in tab writes | The tab exporter omits these; the tab writer approximates Markdown rules with paragraph borders instead of native rule elements. |
-| Nested tables or merged cells | A Markdown table cannot express nesting or row/column spans. Ordinary rectangular tables are allowed. |
+| Nested tables or merged cells | A Markdown table cannot express nesting or row/column spans. Ordinary rectangular tables are allowed and export as Markdown pipe tables for reconstruction. |
 | Headers, footers, footnotes in whole uploads | Body Markdown cannot recreate these separate document segments. |
 | Non-default tab titles or page setup in whole uploads | Drive import resets titles to `Tab 1` and page setup to its defaults (US Letter, one-inch body margins, paged mode). Use `write --tab` to retain them, or explicitly accept the named losses with `--allow-lossy`. |
 

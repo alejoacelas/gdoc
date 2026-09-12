@@ -39,6 +39,7 @@ def _make_document_with_table(table_start=5, rows=2, cols=2):
         table_rows.append({"tableCells": cells})
 
     return {
+        "revisionId": "rev1",
         "body": {
             "content": [
                 {
@@ -101,8 +102,10 @@ class TestInsertTable:
         # Then get: returns doc with table
         doc = _make_document_with_table(table_start=5, rows=2, cols=2)
         mock_service.documents().get().execute.return_value = doc
-        # batchUpdate returns {} for both calls
-        mock_service.documents().batchUpdate().execute.return_value = {}
+        # Both writes return the revision used by the synthetic read-back.
+        mock_service.documents().batchUpdate().execute.return_value = {
+            "writeControl": {"requiredRevisionId": "rev1"},
+        }
 
         table = TableData(
             rows=[["H1", "H2"], ["a", "b"]],
@@ -122,7 +125,9 @@ class TestInsertTable:
 
         doc = _make_document_with_table(table_start=5, rows=2, cols=2)
         mock_service.documents().get().execute.return_value = doc
-        mock_service.documents().batchUpdate().execute.return_value = {}
+        mock_service.documents().batchUpdate().execute.return_value = {
+            "writeControl": {"requiredRevisionId": "rev1"},
+        }
 
         table = TableData(
             rows=[["H1", "H2"], ["a", "b"]],
@@ -143,7 +148,9 @@ class TestInsertTable:
 
         doc = _make_document_with_table(table_start=5, rows=1, cols=2)
         mock_service.documents().get().execute.return_value = doc
-        mock_service.documents().batchUpdate().execute.return_value = {}
+        mock_service.documents().batchUpdate().execute.return_value = {
+            "writeControl": {"requiredRevisionId": "rev1"},
+        }
 
         # One row with one empty cell
         table = TableData(
@@ -260,13 +267,16 @@ class TestInsertTableTabId:
         doc = _make_document_with_table(table_start=5, rows=2, cols=2)
         # When tab_id is provided, _insert_table fetches with includeTabsContent
         mock_tabs_doc = {
+            "revisionId": "rev1",
             "tabs": [{
                 "tabProperties": {"tabId": "tab1", "title": "Tab 1", "index": 0},
                 "documentTab": doc,
             }]
         }
         mock_service.documents().get().execute.return_value = mock_tabs_doc
-        mock_service.documents().batchUpdate().execute.return_value = {}
+        mock_service.documents().batchUpdate().execute.return_value = {
+            "writeControl": {"requiredRevisionId": "rev1"},
+        }
 
         table = TableData(
             rows=[["H1", "H2"], ["a", "b"]],

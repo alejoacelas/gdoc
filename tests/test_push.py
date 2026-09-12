@@ -70,7 +70,9 @@ class TestPushBasic:
         mock_pf.return_value = change_info
         args = _make_args(file=str(f))
         cmd_push(args)
-        mock_update_doc.assert_called_once_with("abc123", "# Hello\n")
+        mock_update_doc.assert_called_once_with(
+            "abc123", "# Hello\n", expected_version=10,
+        )
 
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.api.drive.get_drive_service")
@@ -108,7 +110,9 @@ class TestPushBasic:
         mock_pf.return_value = change_info
         args = _make_args(file=str(f))
         cmd_push(args)
-        mock_update_doc.assert_called_once_with("abc123", "Body")
+        mock_update_doc.assert_called_once_with(
+            "abc123", "Body", expected_version=10,
+        )
 
 
 class TestPushConflict:
@@ -264,7 +268,7 @@ class TestPushQuiet:
     @patch("gdoc.api.drive.get_drive_service")
     @patch("gdoc.api.drive.update_doc_content", return_value=42)
     @patch("gdoc.notify.pre_flight")
-    def test_push_quiet_force_skips_everything(
+    def test_push_quiet_force_keeps_version_guard(
         self, mock_pf, mock_update_doc, _drv, _update,
         mock_ver, mock_load, tmp_path,
     ):

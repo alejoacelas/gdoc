@@ -386,7 +386,27 @@ gdoc cat DOC               # re-read to update baseline
 gdoc write DOC draft.md    # OK written
 ```
 
-Use `--force` to skip conflict detection. Use `--quiet` to skip conflict and awareness checks. Whole-document `write` and `push` still perform no-op and lossiness safety checks.
+`--force` allows overwriting changes since your previous read; it still checks
+for changes made during the current command. `--quiet` skips the notification
+preflight, but write and push retain a lightweight version check.
+Whole-document `write` and `push` still perform no-op and lossiness safety checks.
+
+Single-tab `write` and `push` use the Docs API with a revision precondition.
+Table insertion and cell filling each carry their own revision precondition.
+A rejected follow-up gets at most one fresh read and retry, and only when its
+target can be identified unambiguously; otherwise the command reports a conflict
+and exits 3. Table-only insertions have no text anchor for this recovery.
+
+A later-stage failure reports which stages completed and which did not; a lost
+write response reports uncertain completion. These failures exit 1 (or 3 for a
+revision conflict), and never replay acknowledged or uncertain writes. Inspect
+the document before issuing the command again.
+
+`--force-collapse-tabs` still uses Drive's Markdown import for multiple tabs.
+Drive's upload endpoint exposes no revision/version precondition: a final
+version read immediately before uploading narrows the race but cannot eliminate
+it. Avoid collapsing tabs while collaborators are editing; use `write --tab`
+for revision-protected replacement instead.
 
 ### Markdown replacement safety
 

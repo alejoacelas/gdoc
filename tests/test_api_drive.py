@@ -245,6 +245,17 @@ class TestGetFileInfo:
 
 @patch("gdoc.api.drive.get_drive_service")
 class TestUpdateDocContent:
+    @pytest.fixture(autouse=True)
+    def _import_preflight(self, mocker):
+        mocker.patch("gdoc.api.drive.get_file_version", return_value={"version": 1})
+        mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+            "revisionId": "rev1",
+            "tabs": [
+                {"tabProperties": {"tabId": "a", "title": "A"}},
+                {"tabProperties": {"tabId": "b", "title": "B"}},
+            ],
+        })
+
     def test_success(self, mock_get_service):
         mock_service = MagicMock()
         mock_get_service.return_value = mock_service

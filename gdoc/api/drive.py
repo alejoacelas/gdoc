@@ -159,48 +159,79 @@ def get_file_info(doc_id: str) -> dict:
         _translate_http_error(e, doc_id)
 
 
-def update_doc_content(doc_id: str, content: str) -> int:
-    """Overwrite a Google Doc's content with markdown.
+def update_doc_content(
+    doc_id: str, content: str, *, expected_version: int | None = None,
+) -> int:
+    """Replace content without overwriting changes since the guard read.
 
-    Uploads markdown content via files.update with media, triggering
-    automatic conversion to Google Docs format.
-
-    Args:
-        doc_id: The document ID.
-        content: Markdown content string to upload.
-
-    Returns:
-        The new document version (int) from the API response.
+    Single-tab documents use Docs batchUpdate with the read's revision.
+    A deliberately requested multi-tab collapse still uses Drive import:
+    files.update exposes no revision/version precondition, so a final version
+    read minimizes, but cannot close, the read-to-upload race. Callers pass
+    the version captured before their structural/lossy guard, even with force.
     """
     import io
 
     from googleapiclient.http import MediaIoBaseUpload
 
-    try:
+    from gdoc.api.docs import (
+        _StagedWrite,
+        flatten_tabs,
+        get_document_with_tabs,
+        insert_markdown_into_tab,
+    )
+
+    if expected_version is None:
+        expected_version = get_file_version(doc_id).get("version")
+    if expected_version is None:
+        raise GdocError("cannot verify document version before writing", exit_code=3)
+    document = get_document_with_tabs(doc_id)
+    tabs = flatten_tabs(document.get("tabs", []))
+    if not tabs:
+        raise GdocError("cannot identify document tabs before writing", exit_code=3)
+
+    if len(tabs) == 1:
+        _require_write_version(doc_id, expected_version)
+        insert_markdown_into_tab(
+            doc_id, tabs[0]["id"], content, replace=True, document=document,
+        )
+        with _StagedWrite(doc_id, applied=["document content replaced"]) as progress:
+            progress.stage = "reading the resulting version"
+            return get_file_version(doc_id)["version"]
+
+    with _StagedWrite(doc_id) as progress:
+        progress.stage = "whole-document import"
         service = get_drive_service()
         media = MediaIoBaseUpload(
             io.BytesIO(content.encode("utf-8")),
             mimetype="text/markdown",
             resumable=False,
         )
-        result = (
-            service.files()
-            .update(
-                fileId=doc_id,
-                body={
-                    "mimeType": (
-                        "application/vnd.google-apps.document"
-                    ),
-                },
-                media_body=media,
-                fields="version",
-                supportsAllDrives=True,
-            )
-            .execute()
+        request = service.files().update(
+            fileId=doc_id,
+            body={"mimeType": "application/vnd.google-apps.document"},
+            media_body=media,
+            fields="version",
+            supportsAllDrives=True,
         )
+        # Keep this last: preparation and guard reads must precede the check.
+        _require_write_version(doc_id, expected_version)
+        progress.sent = True
+        result = request.execute()
+        progress.sent = False
+        progress.applied.append("whole-document import")
+        progress.stage = "reading the resulting version"
         return int(result["version"])
-    except HttpError as e:
-        _translate_http_error(e, doc_id)
+
+
+def _require_write_version(doc_id: str, expected_version: int) -> None:
+    current = get_file_version(doc_id).get("version")
+    if current is None or current != expected_version:
+        raise GdocError(
+            "conflict: document changed while preparing the write; "
+            "content was not uploaded. Read the document again before writing.",
+            exit_code=3,
+        )
 
 
 def get_file_version(doc_id: str) -> dict:

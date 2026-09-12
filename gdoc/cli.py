@@ -1548,7 +1548,14 @@ def _check_write_conflict(
                     "or use --force to overwrite.",
                     exit_code=3,
                 )
+        if change_info.current_version is None:
+            raise GdocError(
+                "cannot verify document version before writing", exit_code=3,
+            )
         return change_info, False
+
+    from gdoc.api.drive import get_file_version
+    from gdoc.notify import ChangeInfo
 
     if not force:
         from gdoc.state import load_state
@@ -1565,8 +1572,6 @@ def _check_write_conflict(
                 "or use --force to overwrite.",
                 exit_code=3,
             )
-
-        from gdoc.api.drive import get_file_version
 
         version_data = get_file_version(doc_id)
         current_version = version_data.get("version")
@@ -1585,7 +1590,12 @@ def _check_write_conflict(
                 exit_code=3,
             )
 
-    return None, False
+    else:
+        current_version = get_file_version(doc_id).get("version")
+
+    if current_version is None:
+        raise GdocError("cannot verify document version before writing", exit_code=3)
+    return ChangeInfo(current_version=current_version), False
 
 
 def _check_document_replacement(
@@ -1671,7 +1681,9 @@ def cmd_write(args) -> int:
             force_collapse_tabs=force_collapse,
         )
         from gdoc.api.drive import update_doc_content
-        command_version = update_doc_content(doc_id, content)
+        command_version = update_doc_content(
+            doc_id, content, expected_version=change_info.current_version,
+        )
 
         if mode == "json":
             print(format_json(written=True, version=command_version))
@@ -1840,7 +1852,9 @@ def cmd_push(args) -> int:
     # Upload body (frontmatter stripped)
     from gdoc.api.drive import update_doc_content
 
-    command_version = update_doc_content(doc_id, body)
+    command_version = update_doc_content(
+        doc_id, body, expected_version=change_info.current_version,
+    )
 
     # Output
     from gdoc.format import format_json, get_output_mode

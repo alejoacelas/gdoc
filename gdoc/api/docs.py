@@ -872,135 +872,322 @@ def _find_table_cell_indices(
     return []
 
 
+def _revision_conflict(error: Exception) -> bool:
+    if not isinstance(error, HttpError) or int(error.resp.status) != 400:
+        return False
+    detail = str(error).lower()
+    return "revision" in detail and any(phrase in detail for phrase in (
+        "does not match", "not match", "mismatch", "not the latest",
+        "not latest", "stale", "out of date", "too old",
+    ))
+
+
+@dataclass
+class _StagedWrite:
+    """Track acknowledged stages separately from an unanswered mutation."""
+
+    doc_id: str
+    applied: list[str] = field(default_factory=list)
+    stage: str = "preparing content"
+    sent: bool = False
+    rebased: bool = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, error, traceback):
+        if error is None:
+            return False
+        conflict = _revision_conflict(error) or (
+            isinstance(error, GdocError) and error.exit_code == 3
+        )
+        rejected = (isinstance(error, HttpError)
+                    and 400 <= int(error.resp.status) < 500)
+        uncertain = self.sent and not rejected
+        status = "completion uncertain" if uncertain else "not applied"
+        completed = "; ".join(self.applied) or "none confirmed"
+        prefix = "Partial completion" if self.applied else "Write failed"
+        detail = str(error)
+        if isinstance(error, HttpError) and not conflict:
+            try:
+                _translate_http_error(error, self.doc_id)
+            except AuthError:
+                if not self.applied:
+                    raise
+            except GdocError as translated:
+                detail = str(translated)
+        if conflict:
+            detail = f"conflict: {detail}"
+        raise GdocError(
+            f"{prefix}: applied: {completed}; {self.stage}: {status}; "
+            f"remaining stages not attempted. {detail}. "
+            "Inspect the document before retrying; "
+            "completed batches were not replayed.",
+            exit_code=3 if conflict else 1,
+        ) from error
+
+    def read(self, stage: str, tab_id: str | None):
+        self.stage, self.sent = stage, False
+        kwargs = {"documentId": self.doc_id}
+        if tab_id:
+            kwargs["includeTabsContent"] = True
+        return get_docs_service().documents().get(**kwargs).execute()
+
+    def batch(self, stage, requests, revision_id, recompute=None):
+        self.stage, self.sent = stage, False
+        for attempt in range(2):
+            if not isinstance(revision_id, str) or not revision_id:
+                raise GdocError(
+                    "missing revision; refusing an unpinned write", exit_code=3,
+                )
+            request = get_docs_service().documents().batchUpdate(
+                documentId=self.doc_id,
+                body={
+                    "requests": requests,
+                    "writeControl": {"requiredRevisionId": revision_id},
+                },
+            )
+            try:
+                self.sent = True
+                response = request.execute()
+            except HttpError as error:
+                if not _revision_conflict(error) or attempt or recompute is None:
+                    raise
+                self.sent = False  # A revision rejection is known not to apply.
+                try:
+                    requests, revision_id = recompute()
+                except Exception as failure:
+                    raise GdocError(
+                        f"conflict: cannot safely recompute {stage}: {failure}",
+                        exit_code=3,
+                    ) from failure
+                self.stage = stage
+                self.rebased = True
+                continue
+            self.applied.append(stage)
+            self.sent = False
+            return response.get("writeControl", {}).get("requiredRevisionId", "")
+
+
+def _stage_body(doc, tab_id):
+    if tab_id:
+        # Only an exact ID is safe once the tab was selected by the caller.
+        matches = [t for t in flatten_tabs(doc.get("tabs", [])) if t["id"] == tab_id]
+        if len(matches) != 1:
+            raise GdocError("conflict: target tab disappeared", exit_code=3)
+        return matches[0]["body"]
+    return doc.get("body", {})
+
+
+def _table_position_resolver(parsed, table, tab_id):
+    """Use unique unchanged text before the placeholder, or refuse recovery.
+
+    Search only a contiguous native range. Adjacent tables and table-only
+    replacements have no text anchor and deliberately cannot be rebased.
+    """
+    from gdoc.mdparse import utf16_len
+
+    previous = max((t.plain_text_offset + 1 for t in parsed.tables
+                    if t.plain_text_offset < table.plain_text_offset), default=0)
+    anchor = parsed.plain_text[previous:table.plain_text_offset]
+    # createParagraphBullets consumes leading nesting tabs.
+    anchor = re.sub(r"(?m)^\t+", "", anchor)
+
+    def resolve(doc):
+        candidates = find_text_in_document(
+            None, anchor, match_case=True, body=_stage_body(doc, tab_id),
+        ) if anchor.strip() else []
+        chars = dict(pair for segment in _collect_segments(
+            _stage_body(doc, tab_id).get("content", []),
+        ) for pair in segment)
+        candidates = [m for m in candidates
+                      if m["endIndex"] - m["startIndex"] == utf16_len(anchor)
+                      and chars.get(m["endIndex"]) == "\n"]
+        if len(candidates) != 1:
+            raise GdocError(
+                "conflict: cannot uniquely relocate the table insertion point",
+                exit_code=3,
+            )
+        return candidates[0]["endIndex"]
+
+    return resolve
+
+
+def _without_indices(value):
+    if isinstance(value, dict):
+        return {k: _without_indices(v) for k, v in value.items()
+                if k not in ("startIndex", "endIndex")}
+    if isinstance(value, list):
+        return [_without_indices(v) for v in value]
+    return value
+
+
+def _table_at(body, index):
+    matches = [e for e in body.get("content", [])
+               if "table" in e and index <= e.get("startIndex", 0) <= index + 2]
+    if len(matches) != 1:
+        raise GdocError("conflict: inserted table cannot be identified", exit_code=3)
+    return matches[0]
+
+
+def _table_cell_requests(cell_indices, table, tab_id):
+    # Parse each cell's markdown to plain text + inline styles, once.
+    from gdoc.mdparse import (
+        StyleRange,
+        _utf16_prefix,
+        parse_inline,
+        text_style_fields,
+        utf16_len,
+    )
+
+    parsed_cells: dict[tuple[int, int], tuple[str, list]] = {}
+    for r_idx, row in enumerate(cell_indices):
+        for c_idx in range(len(row)):
+            raw = ""
+            if r_idx < len(table.rows) and c_idx < len(table.rows[r_idx]):
+                raw = table.rows[r_idx][c_idx]
+            parsed_cells[(r_idx, c_idx)] = (
+                parse_inline(raw) if raw else ("", [])
+            )
+
+    # Step 3: Insert cell plain text (reverse order, so the original cell
+    # indices stay valid — inserting at a higher index never shifts a
+    # lower one).
+    text_requests: list[dict] = []
+    for r_idx in range(len(cell_indices) - 1, -1, -1):
+        row = cell_indices[r_idx]
+        for c_idx in range(len(row) - 1, -1, -1):
+            plain, _ = parsed_cells[(r_idx, c_idx)]
+            if plain:
+                cell_location = {"index": row[c_idx]}
+                if tab_id:
+                    cell_location["tabId"] = tab_id
+                text_requests.append({
+                    "insertText": {
+                        "location": cell_location,
+                        "text": plain,
+                    }
+                })
+
+    # Apply inline styles (plus bold for the whole header row) in forward
+    # index order. Each cell's final position is its original index plus the
+    # total length of all earlier (lower-index) cells already inserted.
+    shift = 0
+    for r_idx in range(len(cell_indices)):
+        row = cell_indices[r_idx]
+        for c_idx in range(len(row)):
+            plain, cell_styles = parsed_cells[(r_idx, c_idx)]
+            cell_styles = list(cell_styles)
+            if r_idx == 0 and plain:
+                cell_styles.append(StyleRange(
+                    0, len(plain), {"bold": True}, "text_style",
+                ))
+            base = row[c_idx] + shift
+            # Style offsets are code points; Docs indexes are UTF-16.
+            utf16 = _utf16_prefix(plain)
+            for s in cell_styles:
+                style_range = {
+                    "startIndex": base + utf16[s.start],
+                    "endIndex": base + utf16[s.end],
+                }
+                if tab_id:
+                    style_range["tabId"] = tab_id
+                text_requests.append({
+                    "updateTextStyle": {
+                        "range": style_range,
+                        "textStyle": s.style,
+                        "fields": text_style_fields(s.style),
+                    }
+                })
+            shift += utf16_len(plain)
+
+    return text_requests
+
+
 def _insert_table(
     doc_id: str,
     index: int,
     table,
     tab_id: str | None = None,
-) -> None:
-    """Insert a native Google Docs table and populate cells.
+    *, revision_id: str = "", progress=None, resolve_index=None,
+) -> str:
+    """Insert and fill a table with revision-pinned, single-shot stages."""
+    if progress is None:
+        with _StagedWrite(doc_id) as progress:
+            if not revision_id:
+                doc = progress.read("reading table insertion point", tab_id)
+                revision_id = doc.get("revisionId", "")
+            return _insert_table(
+                doc_id, index, table, tab_id, revision_id=revision_id,
+                progress=progress, resolve_index=resolve_index,
+            )
 
-    Three-step process:
-    1. insertTable batchUpdate
-    2. documents().get() read-back to find cell indices
-    3. insertText into cells (reverse order to avoid shifts)
-    """
-    try:
-        service = get_docs_service()
-
-        # Step 1: Insert the table structure
+    def insertion():
         location = {"index": index}
         if tab_id:
             location["tabId"] = tab_id
-        insert_req = {
-            "insertTable": {
-                "rows": table.num_rows,
-                "columns": table.num_cols,
-                "location": location,
-            }
-        }
-        service.documents().batchUpdate(
-            documentId=doc_id,
-            body={"requests": [insert_req]},
-        ).execute()
+        return [{"insertTable": {
+            "rows": table.num_rows, "columns": table.num_cols, "location": location,
+        }}]
 
-        # Step 2: Read back document to find cell positions
-        if tab_id:
-            doc = service.documents().get(
-                documentId=doc_id, includeTabsContent=True,
-            ).execute()
-            tabs = flatten_tabs(doc.get("tabs", []))
-            tab_match = resolve_tab(tabs, tab_id)
-            cell_indices = _find_table_cell_indices(
-                None, index, body=tab_match["body"],
-            )
-        else:
-            document = service.documents().get(
-                documentId=doc_id
-            ).execute()
-            cell_indices = _find_table_cell_indices(document, index)
+    def relocate():
+        nonlocal index
+        doc = progress.read("re-reading table insertion point", tab_id)
+        if resolve_index is None:
+            raise GdocError("conflict: cannot relocate table insertion", exit_code=3)
+        index = resolve_index(doc)
+        return insertion(), doc.get("revisionId", "")
 
-        if not cell_indices:
-            return
-
-        # Parse each cell's markdown to plain text + inline styles, once.
-        from gdoc.mdparse import (
-            StyleRange,
-            _utf16_prefix,
-            parse_inline,
-            text_style_fields,
-            utf16_len,
+    # A previous table may have recovered from a collaborator's index shift.
+    if progress.rebased:
+        requests, revision_id = relocate()
+    else:
+        requests = insertion()
+    revision_id = progress.batch(
+        "table structure inserted", requests, revision_id, relocate,
+    )
+    doc = progress.read("reading inserted table cells", tab_id)
+    if not revision_id or doc.get("revisionId") != revision_id:
+        # The collaborator moved the table before its first read-back. We
+        # have no trusted table fingerprint yet; do not guess another table.
+        raise GdocError(
+            "conflict: document changed before the inserted table could be located",
+            exit_code=3,
         )
+    body = _stage_body(doc, tab_id)
+    element = _table_at(body, index)
+    fingerprint = _without_indices(element["table"])
+    unique_before = sum(
+        "table" in e and _without_indices(e["table"]) == fingerprint
+        for e in body.get("content", [])
+    ) == 1
 
-        parsed_cells: dict[tuple[int, int], tuple[str, list]] = {}
-        for r_idx, row in enumerate(cell_indices):
-            for c_idx in range(len(row)):
-                raw = ""
-                if r_idx < len(table.rows) and c_idx < len(table.rows[r_idx]):
-                    raw = table.rows[r_idx][c_idx]
-                parsed_cells[(r_idx, c_idx)] = (
-                    parse_inline(raw) if raw else ("", [])
-                )
+    def fill(snapshot, target):
+        indices = _find_table_cell_indices(None, target["startIndex"],
+                                           body=_stage_body(snapshot, tab_id))
+        if len(indices) != table.num_rows or any(
+            len(row) != table.num_cols for row in indices
+        ):
+            raise GdocError("conflict: table dimensions changed", exit_code=3)
+        return _table_cell_requests(indices, table, tab_id)
 
-        # Step 3: Insert cell plain text (reverse order, so the original cell
-        # indices stay valid — inserting at a higher index never shifts a
-        # lower one).
-        text_requests: list[dict] = []
-        for r_idx in range(len(cell_indices) - 1, -1, -1):
-            row = cell_indices[r_idx]
-            for c_idx in range(len(row) - 1, -1, -1):
-                plain, _ = parsed_cells[(r_idx, c_idx)]
-                if plain:
-                    cell_location = {"index": row[c_idx]}
-                    if tab_id:
-                        cell_location["tabId"] = tab_id
-                    text_requests.append({
-                        "insertText": {
-                            "location": cell_location,
-                            "text": plain,
-                        }
-                    })
+    def relocate_cells():
+        snapshot = progress.read("re-reading table cells", tab_id)
+        candidates = [e for e in _stage_body(snapshot, tab_id).get("content", [])
+                      if "table" in e and _without_indices(e["table"]) == fingerprint]
+        if not unique_before or len(candidates) != 1:
+            raise GdocError(
+                "conflict: inserted table changed or is ambiguous; cells not filled",
+                exit_code=3,
+            )
+        return fill(snapshot, candidates[0]), snapshot.get("revisionId", "")
 
-        # Apply inline styles (plus bold for the whole header row) in forward
-        # index order. Each cell's final position is its original index plus the
-        # total length of all earlier (lower-index) cells already inserted.
-        shift = 0
-        for r_idx in range(len(cell_indices)):
-            row = cell_indices[r_idx]
-            for c_idx in range(len(row)):
-                plain, cell_styles = parsed_cells[(r_idx, c_idx)]
-                cell_styles = list(cell_styles)
-                if r_idx == 0 and plain:
-                    cell_styles.append(StyleRange(
-                        0, len(plain), {"bold": True}, "text_style",
-                    ))
-                base = row[c_idx] + shift
-                # Style offsets are code points; Docs indexes are UTF-16.
-                utf16 = _utf16_prefix(plain)
-                for s in cell_styles:
-                    style_range = {
-                        "startIndex": base + utf16[s.start],
-                        "endIndex": base + utf16[s.end],
-                    }
-                    if tab_id:
-                        style_range["tabId"] = tab_id
-                    text_requests.append({
-                        "updateTextStyle": {
-                            "range": style_range,
-                            "textStyle": s.style,
-                            "fields": text_style_fields(s.style),
-                        }
-                    })
-                shift += utf16_len(plain)
-
-        if text_requests:
-            service.documents().batchUpdate(
-                documentId=doc_id,
-                body={"requests": text_requests},
-            ).execute()
-
-    except HttpError as e:
-        _translate_http_error(e, doc_id)
+    requests = fill(doc, element)
+    if requests:
+        revision_id = progress.batch(
+            "table cells filled", requests, doc.get("revisionId", ""), relocate_cells,
+        )
+    return revision_id
 
 
 def _collect_object_refs(body: dict) -> list[tuple[str, int, str]]:
@@ -1462,6 +1649,7 @@ def insert_markdown_into_tab(
     position: str = "start",
     replace: bool = False,
     allow_lossy: bool = False,
+    *, document: dict | None = None,
 ) -> dict:
     """Insert (or replace) markdown content in a tab via Docs API.
 
@@ -1477,6 +1665,8 @@ def insert_markdown_into_tab(
         replace: If True, delete the tab body first then insert at the
             body start.
         allow_lossy: Explicitly permit named native-content losses.
+        document: Optional guard-read snapshot; its revision pins the first
+            batch so a later read cannot silently adopt a collaborator edit.
 
     Returns:
         Dict with "tab_id", "tab_title", "insert_index".
@@ -1488,7 +1678,7 @@ def insert_markdown_into_tab(
         utf16_len,
     )
 
-    doc = get_document_with_tabs(doc_id)
+    doc = document if document is not None else get_document_with_tabs(doc_id)
     revision_id = doc.get("revisionId", "")
     tabs = flatten_tabs(doc.get("tabs", []))
     tab_match = resolve_tab(tabs, tab_name)
@@ -1631,31 +1821,22 @@ def insert_markdown_into_tab(
         }})
     requests.extend(insertion)
 
-    if requests:
-        try:
-            service = get_docs_service()
-            service.documents().batchUpdate(
-                documentId=doc_id,
-                body={
-                    "requests": requests,
-                    "writeControl": {"requiredRevisionId": revision_id},
-                },
-            ).execute()
-        except HttpError as e:
-            _translate_http_error(e, doc_id)
-
-    if parsed.tables:
-        for table in reversed(parsed.tables):
-            # Subtract leading list-indent tabs that createParagraphBullets
-            # removed before this table, shifting its real position left.
-            _insert_table(
-                doc_id,
-                insert_index
-                + utf16_len(parsed.plain_text[:table.plain_text_offset])
-                - table.removed_tabs_before,
-                table,
-                tab_id=tab_id,
+    with _StagedWrite(doc_id) as progress:
+        if requests:
+            revision_id = progress.batch(
+                "tab text and formatting applied", requests, revision_id,
             )
+        if parsed.tables:
+            for table in reversed(parsed.tables):
+                # Earlier list-indent tabs have already been consumed.
+                revision_id = _insert_table(
+                    doc_id,
+                    insert_index
+                    + utf16_len(parsed.plain_text[:table.plain_text_offset])
+                    - table.removed_tabs_before,
+                    table, tab_id=tab_id, revision_id=revision_id, progress=progress,
+                    resolve_index=_table_position_resolver(parsed, table, tab_id),
+                )
 
     return {
         "tab_id": tab_id,
@@ -2318,15 +2499,10 @@ def replace_formatted(
         totals[space] = (totals.get(space, 0) + utf16_len(selected.plain_text)
                          - selected.removed_tabs - (match["endIndex"] - pos))
 
-    try:
-        service = get_docs_service()
-        body = {
-            "requests": all_requests,
-            "writeControl": {"requiredRevisionId": revision_id},
-        }
-        service.documents().batchUpdate(
-            documentId=doc_id, body=body,
-        ).execute()
+    with _StagedWrite(doc_id) as progress:
+        revision_id = progress.batch(
+            "matched text and formatting replaced", all_requests, revision_id,
+        )
 
         # Insert tables only for explicit structural replacements.
         if parsed.tables:
@@ -2344,11 +2520,13 @@ def replace_formatted(
                         match["startIndex"] + offset16
                         - table.removed_tabs_before + shift
                     )
-                    _insert_table(doc_id, idx, table, tab_id=match.get("tabId", tab_id))
+                    revision_id = _insert_table(
+                        doc_id, idx, table, tab_id=match.get("tabId", tab_id), revision_id=revision_id,
+                        progress=progress,
+                        resolve_index=_table_position_resolver(parsed, table, match.get("tabId", tab_id)),
+                    )
 
         return occurrence_count
-    except HttpError as e:
-        _translate_http_error(e, doc_id)
 
 
 # ---------------------------------------------------------------------------

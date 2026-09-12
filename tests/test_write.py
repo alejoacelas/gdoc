@@ -81,7 +81,7 @@ class TestWriteBasic:
         args = _make_args(file=str(f))
         cmd_write(args)
         mock_update_doc.assert_called_once_with(
-            "abc123", "# My Document\n\nContent here.",
+            "abc123", "# My Document\n\nContent here.", expected_version=10,
         )
 
     @patch("gdoc.state.update_state_after_command")
@@ -121,7 +121,9 @@ class TestWriteBasic:
             file=str(f),
         )
         cmd_write(args)
-        mock_update_doc.assert_called_once_with("abc123", "content")
+        mock_update_doc.assert_called_once_with(
+            "abc123", "content", expected_version=10,
+        )
 
 
 class TestWriteFileErrors:
@@ -165,7 +167,9 @@ class TestWriteFileErrors:
         args = _make_args(file=str(f))
         rc = cmd_write(args)
         assert rc == 0
-        mock_update_doc.assert_called_once_with("abc123", "")
+        mock_update_doc.assert_called_once_with(
+            "abc123", "", expected_version=10,
+        )
 
 
 class TestWriteConflictNormal:
@@ -467,7 +471,7 @@ class TestWriteQuietNoForce:
 
 
 class TestWriteQuietForce:
-    """Quiet + force → skip everything."""
+    """Quiet + force skips history but retains the write version."""
 
     @patch("gdoc.state.load_state")
     @patch("gdoc.api.drive.get_file_version")
@@ -475,7 +479,7 @@ class TestWriteQuietForce:
     @patch("gdoc.api.drive.get_drive_service")
     @patch("gdoc.api.drive.update_doc_content", return_value=42)
     @patch("gdoc.notify.pre_flight")
-    def test_write_quiet_force_skips_everything(
+    def test_write_quiet_force_keeps_version_guard(
         self, mock_pf, mock_update_doc, _drv, _update,
         mock_ver, mock_load, tmp_path, capsys,
     ):
@@ -495,7 +499,7 @@ class TestWriteQuietForce:
     @patch("gdoc.api.drive.get_drive_service")
     @patch("gdoc.api.drive.update_doc_content", return_value=42)
     @patch("gdoc.notify.pre_flight")
-    def test_write_quiet_force_full_savings(
+    def test_write_quiet_force_skips_history_not_version(
         self, mock_pf, mock_update_doc, _drv, _update,
         mock_ver, mock_load, tmp_path,
     ):
@@ -590,7 +594,8 @@ class TestWriteAwareness:
         args = _make_args(file=str(f), quiet=True, force=True)
         cmd_write(args)
         mock_update.assert_called_once_with(
-            "abc123", None, command="write",
+            "abc123", ChangeInfo(current_version=mock_ver.return_value.get("version")),
+            command="write",
             quiet=True, command_version=42, full_doc_write=True,
         )
 

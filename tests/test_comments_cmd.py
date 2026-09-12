@@ -68,7 +68,10 @@ class TestCmdComment:
         rc = cmd_comment(args)
         assert rc == 0
         data = json.loads(capsys.readouterr().out)
-        assert data == {"ok": True, "id": "c_new", "status": "created"}
+        assert data == {
+            "ok": True, "id": "c_new", "status": "created",
+            "anchored": False, "reason": "no_quote",
+        }
 
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
@@ -684,7 +687,9 @@ class TestCommentCommandsPlainOutput:
         args = _make_args("comment", text="hello", quiet=True, plain=True)
         rc = cmd_comment(args)
         assert rc == 0
-        assert capsys.readouterr().out.strip() == "id\tc_new"
+        assert capsys.readouterr().out.strip() == (
+            "id\tc_new\nanchored\tfalse\nreason\tno_quote"
+        )
 
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)

@@ -3,6 +3,7 @@
 from googleapiclient.errors import HttpError
 
 from gdoc.api import get_drive_service
+from gdoc.api.comment_transport import execute_comment_request
 from gdoc.util import AuthError, GdocError
 
 
@@ -144,11 +145,16 @@ def create_comment(
         body: dict = {"content": content}
         if quote:
             body["quotedFileContent"] = {"value": quote}
-        result = service.comments().create(
+        result = execute_comment_request(service.comments().create(
             fileId=file_id,
             body=body,
             fields="id, content, author(displayName, emailAddress), createdTime, resolved",
-        ).execute()
+        ))
+        if not result.get("id"):
+            raise GdocError(
+                "Comment ID missing from response; the comment may have saved. "
+                "Inspect comments before retrying."
+            )
         return result
     except HttpError as e:
         _translate_http_error(e, file_id)

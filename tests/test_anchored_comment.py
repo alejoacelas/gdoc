@@ -1,9 +1,9 @@
 """Tests for anchored comments: insert_comment API + cmd_comment fallback.
 
 The Docs API insertComment request (Workspace Developer Preview) creates a
-real anchored comment. Projects not enrolled in the preview — or users with
-comment-only access — must transparently fall back to the Drive
-quotedFileContent path, so `gdoc comment --quote` works for everyone.
+real anchored comment. A definite preview or capability rejection allows a
+Drive quotedFileContent fallback; ambiguous targets and uncertain writes refuse
+further creation.
 """
 
 import json
@@ -475,6 +475,8 @@ def test_all_equivalent_matches_count_before_writing(comment_command, tabs):
 
     assert exc.value.exit_code == 3
     assert "tab 't1' (t1), segment body, range 1:" in str(exc.value)
+    assert "longer quote" in str(exc.value)
+    assert "--tab" in str(exc.value)
     batch.assert_not_called()
     fallback.assert_not_called()
 
@@ -658,7 +660,7 @@ def test_uncertain_write_never_retries_or_falls_back(comment_command, error):
     read, batch, fallback = comment_command
     saved_comments = []
 
-    def save_then_lose_response():
+    def save_then_lose_response(**kwargs):
         saved_comments.append("c_saved")
         raise error
 
@@ -695,8 +697,10 @@ def test_definite_preview_rejection_creates_one_honest_fallback(
     output = captured.out
     if mode == "json":
         assert json.loads(output)["anchored"] is False
+        assert json.loads(output)["reason"] == "preview_unavailable"
     elif mode == "plain":
         assert "anchored\tfalse" in output
+        assert "reason\tpreview_unavailable" in output
     else:
         assert "(unanchored)" in output
 
@@ -726,3 +730,83 @@ def test_comment_parser_accepts_tab_scope():
         "comment", "doc1", "note", "--quote", "echo", "--tab", "Review",
     ])
     assert args.tab == "Review"
+
+
+@pytest.mark.parametrize("text,quote,start,end", [
+    ("İstanbul plan\n", "stanbul plan", 2, 14),
+])
+def test_comment_reuses_case_expansion_offsets(
+    comment_command, text, quote, start, end,
+):
+    read, batch, _fallback = comment_command
+    read.return_value = {"revisionId": "r1", "tabs": [_tab("t1", text)]}
+    assert cmd_comment(_make_args(quote=quote)) == 0
+    body = batch.call_args.kwargs["body"]
+    assert body["requests"][0]["insertComment"]["range"] == {
+        "startIndex": start, "endIndex": end, "tabId": "t1",
+    }
+
+
+def test_comment_tab_id_wins_over_title(comment_command):
+    read, batch, _fallback = comment_command
+    decoy = _tab("decoy", "echo\n")
+    target = _tab("target", "echo\n")
+    decoy["tabProperties"]["title"] = "target"
+    target["tabProperties"]["title"] = "Actual"
+    read.return_value = {"revisionId": "r1", "tabs": [decoy, target]}
+    assert cmd_comment(_make_args(quote="echo", tab="target")) == 0
+    assert batch.call_args.kwargs["body"]["requests"][0]["insertComment"][
+        "range"
+    ]["tabId"] == "target"
+
+
+def test_comment_duplicate_tab_titles_require_id(comment_command):
+    read, batch, fallback = comment_command
+    tabs = [_tab("t1", "echo\n"), _tab("t2", "echo\n")]
+    for tab in tabs:
+        tab["tabProperties"]["title"] = "Notes"
+    read.return_value = {"revisionId": "r1", "tabs": tabs}
+    with pytest.raises(GdocError) as exc:
+        cmd_comment(_make_args(quote="echo", tab="Notes"))
+    assert exc.value.exit_code == 3
+    assert "t1" in str(exc.value) and "t2" in str(exc.value)
+    batch.assert_not_called()
+    fallback.assert_not_called()
+
+
+def test_comment_can_span_inline_native_gap(comment_command):
+    read, batch, _fallback = comment_command
+    tab = _tab("t1", "before", start=1)
+    elements = tab["documentTab"]["body"]["content"][0]["paragraph"]["elements"]
+    elements.extend([
+        {"startIndex": 7, "endIndex": 8,
+         "inlineObjectElement": {"inlineObjectId": "img"}},
+        {"startIndex": 8, "textRun": {"content": "after\n"}},
+    ])
+    read.return_value = {"revisionId": "r1", "tabs": [tab]}
+    assert cmd_comment(_make_args(quote="beforeafter")) == 0
+    assert batch.call_args.kwargs["body"]["requests"][0]["insertComment"][
+        "range"
+    ] == {"startIndex": 1, "endIndex": 13, "tabId": "t1"}
+
+
+@pytest.mark.parametrize("kind,code", [
+    ("ambiguous", 3), ("not_found", 3), ("conflict", 3),
+    ("uncertain", 1), ("auth", 2),
+])
+def test_public_comment_exit_codes(comment_command, capsys, mocker, kind, code):
+    from gdoc.cli import run_argv
+
+    result = CommentAnchorResult(kind, detail="refused") if code == 3 else None
+    error = AuthError("expired") if kind == "auth" else GdocError("uncertain")
+    mocker.patch(
+        "gdoc.cli._try_anchored_comment", return_value=result,
+        side_effect=error if code != 3 else None,
+    )
+    assert run_argv(
+        ["comment", "doc1", "note", "--quote", "echo", "--json", "--quiet"],
+        check_updates=False,
+    ) == code
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err.startswith("ERR:")

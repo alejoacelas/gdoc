@@ -3,13 +3,12 @@
 import re
 from dataclasses import dataclass, field
 from functools import lru_cache
-from http.client import HTTPException
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from httplib2 import HttpLib2Error
 
 from gdoc.api import ACCOUNT_CACHE_SIZE, account_cache_key
+from gdoc.api.comment_transport import execute_comment_request
 from gdoc.util import (
     AuthError,
     GdocError,
@@ -141,10 +140,8 @@ def insert_comment(
         body["writeControl"] = {"requiredRevisionId": revision_id}
     try:
         service = get_docs_service()
-        result = (
-            service.documents()
-            .batchUpdate(documentId=doc_id, body=body)
-            .execute()
+        result = execute_comment_request(
+            service.documents().batchUpdate(documentId=doc_id, body=body),
         )
     except HttpError as e:
         status = int(e.resp.status)
@@ -170,17 +167,7 @@ def insert_comment(
             raise PreviewUnavailableError(
                 "insertComment not permitted for this user"
             )
-        if status >= 500:
-            raise GdocError(
-                "Comment write outcome is uncertain; inspect the document's "
-                "comments before retrying. No fallback comment was created."
-            ) from e
         _translate_http_error(e, doc_id)
-    except (OSError, HTTPException, HttpLib2Error) as e:
-        raise GdocError(
-            "Comment write outcome is uncertain; inspect the document's "
-            "comments before retrying. No fallback comment was created."
-        ) from e
 
     # Comment saves can fail even when the batchUpdate itself returns 200.
     state = result.get("commentUpdateState", "")

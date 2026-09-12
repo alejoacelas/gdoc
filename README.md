@@ -233,21 +233,34 @@ gdoc cat 1aBcDeFg...
 | `reopen DOC COMMENT_ID` | Reopen a resolved comment |
 | `delete-comment DOC ID` | Delete a comment (`--force` to skip confirmation) |
 
-`comment --quote "some doc text"` anchors the comment to the first occurrence
-of that text (all tabs are searched). When the OAuth client's Cloud project is
-enrolled in the
-[Google Workspace Developer Preview Program](https://developers.google.com/workspace/preview),
-this creates a **real anchored comment** via the Docs API `insertComment`
-request — highlighted in the Docs UI exactly like a comment made by hand
-(`OK comment #ID (anchored)`; `"anchored": true` in `--json`). Without preview
-access (or with comment-only permission on the doc, which can't `batchUpdate`),
-or when the quoted text isn't found in the document, it falls back
-transparently to the Drive API path: the comment is created unanchored
-(`anchored: false` in `--json`/`--plain`) with the quote stored as
-`quotedFileContent` metadata, which `cat --comments` matches client-side but
-the Docs UI does not highlight. Same command either way — anchoring problems
-never fail the comment (though unrelated API errors, like a missing doc or
-expired auth, still do).
+`comment --quote "some doc text"` requires a unique match across all tabs
+(including child tabs), searching the body, headers, footers and footnotes.
+Use a longer quote to distinguish repeated text, or `--tab TITLE_OR_ID` to
+limit the search to one tab. IDs take precedence over titles; duplicate titles
+require an ID. Matching folds typography and Unicode spaces such as NBSP,
+while preserving native UTF-16 coordinates. Comments can span non-text objects
+within a paragraph, but quotes cannot cross table/cell boundaries.
+
+With the OAuth project's
+[Workspace Developer Preview](https://developers.google.com/workspace/preview)
+access, the Docs API creates a native highlighted anchor. JSON/plain output
+reports `anchored: true` and `tabId`. Only a definite preview or permission
+rejection permits an unanchored Drive fallback: output reports
+`anchored: false`, `reason: preview_unavailable`, and stderr explains the
+rejection. The quote is stored as `quotedFileContent` metadata, without a
+native highlight; fallback output omits tab/segment scope because no anchor
+was created. Comments without `--quote` report `anchored: false` and
+`reason: no_quote` in JSON/plain output.
+
+No normalized match, ambiguity, or missing revision metadata refuses the
+comment with **exit 3**. A rejected revision triggers one fresh read and
+resolution; another revision rejection also exits 3. Successful anchors and
+unanchored comments exit **0**. Uncertain writes (including a lost response,
+incomplete save confirmation, or server error) exit **1**: inspect comments
+before retrying, since the first write may have saved. Comment creation never
+replays a wire request after a lost response and never falls back in that
+case. Other API errors exit **1**, authentication errors **2**. Errors retain
+the usual `ERR:` stderr format even with `--json`.
 
 ### Other
 

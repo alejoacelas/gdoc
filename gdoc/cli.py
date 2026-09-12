@@ -2461,7 +2461,7 @@ def _try_anchored_comment(
             for segment_id, body in segments:
                 matches = find_text_in_document(
                     None, fold_spaces(quote), body=fold_spaces(body),
-                    normalize=True,
+                    normalize=True, allow_native_gaps=True,
                 )
                 for match in matches:
                     locations.append({
@@ -2524,7 +2524,8 @@ def cmd_comment(args) -> int:
             )
             raise GdocError(
                 f"Quote is ambiguous: {len(resolution.locations)} matches: "
-                f"{locations}. Use --tab or a more specific quote.", exit_code=3,
+                f"{locations}. Use a longer quote, or --tab to select a single tab.",
+                exit_code=3,
             )
         if resolution.status in ("not_found", "conflict"):
             raise GdocError(resolution.detail + "; no comment created", exit_code=3)
@@ -2543,14 +2544,17 @@ def cmd_comment(args) -> int:
     from gdoc.format import get_output_mode, format_json
     mode = get_output_mode(args)
     if mode == "json":
-        extra = {"anchored": anchored} if quote else {}
+        extra = {"anchored": anchored}
+        if not anchored:
+            extra["reason"] = resolution.status if resolution else "no_quote"
         if anchored:
             extra["tabId"] = resolution.locations[0]["tabId"]
         print(format_json(id=new_id, status="created", **extra))
     elif mode == "plain":
         print(f"id\t{new_id}")
-        if quote:
-            print(f"anchored\t{'true' if anchored else 'false'}")
+        print(f"anchored\t{'true' if anchored else 'false'}")
+        if not anchored:
+            print(f"reason\t{resolution.status if resolution else 'no_quote'}")
         if anchored:
             print(f"tabId\t{resolution.locations[0]['tabId']}")
     else:
@@ -4486,9 +4490,12 @@ def build_parser() -> GdocArgumentParser:
     comment_p.add_argument(
         "--quote",
         help=(
-            "Text to anchor the comment to; must match uniquely. "
+            "Text to anchor uniquely across tabs and body/header/footer/footnote "
+            "segments. "
             "If the Docs API preview is unavailable, creates an unanchored "
-            "comment with quote metadata for cat --comments"
+            "comment with quote metadata for cat --comments. No match or ambiguity: "
+            "exit 3. One fresh attempt after a rejected revision; uncertain writes: "
+            "exit 1, inspect comments before retrying"
         ),
     )
     comment_p.add_argument(

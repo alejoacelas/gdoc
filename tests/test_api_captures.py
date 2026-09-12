@@ -143,9 +143,12 @@ def test_non_destructive_anchors_can_span_native_elements(mocker, name, end,
     assert _resolve_insert_index(document['body'], None, quote) == end
     mocker.patch.object(docs, 'get_document_with_tabs', return_value=document)
     insert = mocker.patch.object(docs, 'insert_comment', return_value='comment-1')
-    assert _try_anchored_comment('unused', 'Note.', quote) == 'comment-1'
+    document['revisionId'] = 'capture-revision'
+    result = _try_anchored_comment('unused', 'Note.', quote)
+    assert result.status == 'anchored'
+    assert result.comment_id == 'comment-1'
     insert.assert_called_once_with(
-        'unused', 'Note.', 1, end, tab_id=None, revision_id='',
+        'unused', 'Note.', 1, end, tab_id=None, revision_id='capture-revision',
     )
 
 

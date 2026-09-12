@@ -94,7 +94,8 @@ def test_edit_all_reaches_every_container_and_reports_tab_counts(
                 ("second", "shared-header"): {"bold": True}}
     # Same numerical offsets and even shared segment IDs never mix style contexts.
     assert {_address(r): r["updateTextStyle"]["textStyle"]
-            for r in requests if "updateTextStyle" in r} == expected
+            for r in requests
+            if r.get("updateTextStyle", {}).get("textStyle")} == expected
     for operation in ("deleteContentRange", "insertText"):
         assert {_address(r) for r in requests if operation in r} == set(expected)
     assert not any("updateParagraphStyle" in r for r in requests)

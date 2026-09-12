@@ -311,10 +311,9 @@ def test_complete_heading_exact_batch(mocker, replacement, inserted, structural)
       "foregroundColor": {"color": {"rgbColor": {"red": 0.5}}}},
      "foregroundColor,link,underline"),
 ])
-def test_inline_reapplies_link_shared_with_neighbour(mocker, decor, fields):
-    # Docs does not guarantee inserted text inherits a neighbour's link, so a
-    # homogeneously linked target must get its link restored explicitly, and
-    # setting a link resets colour/underline unless sent in the same request.
+def test_partial_link_does_not_restore_clipped_label(mocker, decor, fields):
+    # The complete link includes the left neighbour, outside the match.
+    # Keeping a clipped fragment is not proof that its original label survives.
     link = {"link": {"url": "https://example.com/spec"}, **decor}
     body = _styled_body(left=dict(link))
     body["content"][0]["paragraph"]["elements"][1]["textRun"]["textStyle"] = dict(link)
@@ -330,7 +329,7 @@ def test_inline_reapplies_link_shared_with_neighbour(mocker, decor, fields):
                                 "text": "2. Archive the sample"}},
                 {"updateTextStyle": {
                     "range": {"startIndex": 9, "endIndex": 30},
-                    "textStyle": link, "fields": fields,
+                    "textStyle": {}, "fields": "link",
                 }},
             ],
             "writeControl": {"requiredRevisionId": "rev-a"},

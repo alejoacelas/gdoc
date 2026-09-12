@@ -387,7 +387,10 @@ def test_fenced_code_rendering_is_shared_and_literal(mocker, command, code):
     assert _apply_text_requests(body, requests) == code + '\nsecond\n'
     styles = [r['updateTextStyle']['textStyle'] for r in requests
               if 'updateTextStyle' in r]
-    assert styles == [{'weightedFontFamily': {'fontFamily': 'Courier New'}}] * 2
+    assert [style for style in styles if style] == [
+        {'weightedFontFamily': {'fontFamily': 'Courier New'}}] * 2
+    # Direct edits restore each mark; suggestions must not propose mark changes.
+    assert styles.count({}) == (2 if command == 'edit' else 0)
     assert not any('updateParagraphStyle' in r for r in requests)
 
 

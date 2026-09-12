@@ -1692,60 +1692,78 @@ def _empty_paragraph_range(content: list[dict], match: dict):
 
 
 def _replacement_text_style(runs: list[dict], match: dict, text: str):
-    """Map unchanged target phrases; otherwise use the largest styled run.
+    """Keep unique surviving runs, including plain runs, in source order.
 
-    Every styled phrase must survive uniquely without overlapping another;
-    otherwise mapping is ambiguous. Gaps retain fields common to all targets.
-    When mapping fails, the longest styled target run wins (first on ties), so adjoining
-    plain prose cannot erase its colour. Links only follow surviving labels.
+    Unmatched gaps keep only styles common to their original runs. Ambiguous
+    mixed rewrites keep common fields, never a guessed dominant style. Links
+    require the full contiguous original label, uniquely at word boundaries.
     Offsets returned here are Python offsets into the replacement text.
     """
     start, end = match["startIndex"], match["endIndex"]
     targets = []
+    links = []
     for run in runs:
-        lo, hi = max(start, run.get("startIndex", 0)), min(end, run["endIndex"])
+        offset = run.get("startIndex", 0)
+        source = run["textRun"]
+        style = source.get("textStyle", {})
+        link = style.get("link")
+        if link:
+            if links and links[-1][1] == offset and links[-1][3] == link:
+                lo, _, label, _ = links[-1]
+                links[-1] = (lo, run["endIndex"], label + source["content"], link)
+            else:
+                links.append((offset, run["endIndex"], source["content"], link))
+        lo, hi = max(start, offset), min(end, run["endIndex"])
         if lo >= hi:
             continue
-        raw = run["textRun"]["content"].encode("utf-16-le")
-        offset = run.get("startIndex", 0)
+        raw = source["content"].encode("utf-16-le")
         label = raw[(lo - offset) * 2:(hi - offset) * 2].decode("utf-16-le")
-        style = run["textRun"].get("textStyle", {})
+        style = {k: v for k, v in style.items() if k != "link"}
         if targets and targets[-1][1] == style:
             targets[-1] = (targets[-1][0] + label, style)
         else:
             targets.append((label, style))
     if not targets or not text:
         return []
-    common = {key: value for key, value in targets[0][1].items()
-              if key != "link" and all(style.get(key) == value
-                                       for _, style in targets)}
-    mapped = []
-    for label, style in targets:
-        pos = text.find(label)
-        if (style and label.strip() and pos >= 0
-                and text.find(label, pos + 1) < 0):
-            mapped.append((pos, pos + len(label), style))
-    mapped.sort(key=lambda item: item[0])
-    styled_count = sum(bool(style) and bool(label.strip()) for label, style in targets)
-    if len(mapped) != styled_count or any(
-        left[1] > right[0] for left, right in zip(mapped, mapped[1:])
-    ):
-        mapped = []
-    if not mapped:
-        from gdoc.mdparse import utf16_len
 
-        _, dominant = max((t for t in targets if t[1]),
-                          key=lambda t: utf16_len(t[0]), default=targets[0])
-        return [(0, len(text), {k: v for k, v in dominant.items() if k != "link"})]
+    def common(selected):
+        return {k: v for k, v in selected[0][1].items()
+                if all(style.get(k) == v for _, style in selected)} if selected else {}
+
+    mapped = []
+    for index, (label, style) in enumerate(targets):
+        pos = text.find(label)
+        if label and pos >= 0 and text.find(label, pos + 1) < 0:
+            mapped.append((index, pos, pos + len(label), style))
+    if any(left[2] > right[1] for left, right in zip(mapped, mapped[1:])):
+        mapped = []
     result = []
-    offset = 0
-    for lo, hi, style in mapped:
+    offset, source_index = 0, 0
+    for index, lo, hi, style in mapped:
         if offset < lo:
-            result.append((offset, lo, common))
+            result.append((offset, lo, common(targets[source_index:index] or targets)))
         result.append((lo, hi, style))
-        offset = hi
+        offset, source_index = hi, index + 1
     if offset < len(text):
-        result.append((offset, len(text), common))
+        result.append((offset, len(text), common(targets[source_index:] or targets)))
+
+    for lo, hi, label, link in links:
+        if lo < start or hi > end or not label.strip():
+            continue
+        pos = text.find(label)
+        stop = pos + len(label)
+        if (pos < 0 or text.find(label, pos + 1) >= 0
+                or (pos and label[0].isalnum() and text[pos - 1].isalnum())
+                or (stop < len(text) and label[-1].isalnum() and text[stop].isalnum())):
+            continue
+        # Link spans may cross non-link formatting boundaries.
+        split = []
+        for a, b, style in result:
+            boundaries = sorted({a, b, max(a, min(b, pos)), max(a, min(b, stop))})
+            for left, right in zip(boundaries, boundaries[1:]):
+                split.append((left, right, {**style, **(
+                    {"link": link} if pos <= left < stop else {})}))
+        result = split
     return result
 
 
@@ -1784,6 +1802,14 @@ def _inline_baseline(paragraph: dict, match: dict, text: str) -> list[dict]:
                       "endIndex": start + utf16_len(text[:hi])},
             "textStyle": dict(target), "fields": ",".join(sorted(fields)),
         })
+    # A full-paragraph style request can implicitly include its retained LF.
+    # Keep its direct style separately so the builder restores it last.
+    if (runs and start == runs[0].get("startIndex", 0)
+            and end == runs[-1]["endIndex"] - 1):
+        mark = start + utf16_len(text)
+        result.append({"range": {"startIndex": mark, "endIndex": mark + 1},
+                       "textStyle": dict(runs[-1]["textRun"].get("textStyle", {})),
+                       "fields": "", "retainedMark": True})
     return result
 
 
@@ -1933,6 +1959,8 @@ def _build_replacement_requests(
         if requests and baseline:
             updates = []
             for style in baseline:
+                if style.get("retainedMark"):
+                    continue
                 target = dict(style["range"])
                 if match_tab:
                     target["tabId"] = match_tab
@@ -1973,6 +2001,21 @@ def _build_replacement_requests(
                 len(requests),
             )
             requests[before_inline:before_inline] = updates
+            for style in baseline:
+                if not style.get("retainedMark"):
+                    continue
+                fields = set().union(*(set(r["updateTextStyle"]["fields"].split(","))
+                                      for r in requests if "updateTextStyle" in r))
+                if fields:
+                    target = dict(style["range"])
+                    if match_tab:
+                        target["tabId"] = match_tab
+                    requests.append({"updateTextStyle": {
+                        "range": target,
+                        "textStyle": {k: v for k, v in style["textStyle"].items()
+                                      if k in fields},
+                        "fields": ",".join(sorted(fields)),
+                    }})
         if segment_id:
             for request in requests:
                 operation = next(iter(request.values()))
@@ -2607,8 +2650,10 @@ def suggest_replacement(
     _reject_overlapping_matches(matches)
     _strip_trailing_newline_unless_hr(parsed)
     occurrence_count = len(matches)
-    contexts = None
-    if body is not None:
+    if body is None:
+        _, requests = _build_replacement_requests(_inline_only(parsed), matches,
+                                                 tab_id=tab_id)
+    else:
         if parsed.tables and any(
             _covers_whole_paragraphs(
                 _replacement_body(body, match).get("content", []), match)
@@ -2621,18 +2666,57 @@ def suggest_replacement(
         planned = [part for match in matches
                    for part in _wording_contexts(
                        _replacement_body(body, match), match, new_markdown)]
-        # Block markers are literal inside a paragraph (the same rule as
-        # edit), so structural Markdown is judged per resolved context.
+        # Validate each resolved context before planning suggestion requests.
         for _, (selected, _) in planned:
             check_inline_only_markdown(selected)
-        matches = [match for match, _ in planned]
-        # Keep the text-style baseline: inserted text does not inherit links
-        # or other direct formatting, in suggestions as in edits.
-        contexts = {_match_key(match): (_inline_only(selected), baseline)
-                    for match, (selected, baseline) in planned}
-    _, requests = _build_replacement_requests(
-        _inline_only(parsed), matches, tab_id=tab_id, contexts=contexts,
-    )
+        requests = []
+        for match, (selected, baseline) in sorted(
+                planned, key=lambda part: _replacement_order(part[0])):
+            # A SUGGEST style update changes the accepted preview only. Never
+            # mistake that proposal for the pending insertion's native style.
+            baseline = [s for s in baseline or [] if not s.get("retainedMark")]
+            at_target_end = bool(selected.plain_text
+                                 and any(s["fields"] for s in baseline))
+            if at_target_end:
+                scope = _replacement_body(body, match)
+                found = _replacement_paragraph(scope.get("content", []), match)
+                source_style = next((
+                    run["textRun"].get("textStyle", {})
+                    for run in found[0].get("elements", [])
+                    if "textRun" in run and run.get("startIndex", 0)
+                    < match["endIndex"] <= run["endIndex"]
+                ), {}) if found else {}
+                if (not found or "link" in source_style
+                        or any(s["textStyle"] != source_style for s in baseline)):
+                    raise GdocError(
+                        "cannot suggest this replacement while preserving its pending "
+                        "text style: mixed or linked targets require "
+                        "formatting that the API can only propose for acceptance; "
+                        "use narrower uniformly styled, unlinked matches "
+                        "or edit instead",
+                        exit_code=3,
+                    )
+                # Insert while the matched run still exists so its own style
+                # is inherited. Suggest deletion afterwards; the native pending
+                # order is old+new, and rejecting retains the untouched original.
+                insertion = {**match, "startIndex": match["endIndex"]}
+                context = (_inline_only(selected), [])
+                _, built = _build_replacement_requests(
+                    parsed, [insertion], tab_id=tab_id,
+                    contexts={_match_key(insertion): context},
+                )
+                delete_range = {key: match[key] for key in
+                                ("startIndex", "endIndex", "tabId", "segmentId")
+                                if key in match}
+                if tab_id and "tabId" not in delete_range:
+                    delete_range["tabId"] = tab_id
+                built.append({"deleteContentRange": {"range": delete_range}})
+            else:
+                _, built = _build_replacement_requests(
+                    parsed, [match], tab_id=tab_id,
+                    contexts={_match_key(match): (_inline_only(selected), baseline)},
+                )
+            requests.extend(built)
     if not requests:
         return SuggestionResult(occurrences=0)
 

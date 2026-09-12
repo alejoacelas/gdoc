@@ -164,3 +164,17 @@ The user wanted PR #63 rebased onto #61 at `2dc05d3`, preserving the final parag
 - No live Google API calls were made. These mocked tests establish request planning; live pending/accepted/rejected preview verification and the requested remote review remain separate checks.
 
 Agent session 01a097ff-b0f9-76c3-8b8a-666b224dc347 · Commits 563d785, f4964bc, 290ecbb, a343d87, 3a233e0, 4585c0c, 35dc8ff, 4ce1779, 2071375, 19ef88a
+
+# Make tab Markdown exports safe reconstruction inputs
+
+The user wanted a PR stacked on #60 that makes tab exports round-trip through gdoc's Markdown parser without changing literal text, supported emphasis, links, or TITLE/SUBTITLE styles.
+
+- Worktree: `/Users/alejo/best/tools/active/gdoc/export-roundtrip`; branch: `alejoacelas/fix-export-roundtrip`; base: `88165fcaa982853c2caacf2363cce0b12cee69bd`. Local commits only; the coordinator owns final rebase, live replay, push, and PR creation.
+- Isolated balanced-link scanning in `a0e02e9`. Its 23 offline regressions prove nested and escaped parentheses retain the complete URL, adjacent punctuation stays outside the link, malformed destinations stay literal, a later valid link remains reachable, and Docs requests target the exact linked label range.
+- Export now escapes literal inline syntax and plain-paragraph block openers, keeps emphasis inside link labels, and inserts an empty HTML comment between touching emphasis delimiters. The parser consumes that separator without adding visible text; code spans and link destinations keep literal comment text. TITLE and SUBTITLE use `<!-- gdoc:TITLE --> ` and `<!-- gdoc:SUBTITLE --> ` paragraph prefixes, including for empty titles; literal copies of those markers are escaped.
+- Added 323 offline cases in `tests/test_markdown_roundtrip.py`: every pair of 16 emphasis/link states (256 cases), literal rules/quotes/headings/lists/fences/table rows, linked emphasis across normal/title/subtitle/H1–H6 paragraphs, blank titles, handwritten identifier underscores and arithmetic stars, supported handwritten emphasis, and code/comment nesting. Round-trip assertions compare exact text, per-character run styles and URLs, paragraph ranges and named styles, and the absence of accidental lists or tables.
+- Exact `parse_markdown(get_tab_text(tab, markdown=True))` assertions exposed an extra paragraph for newline-terminated exports. Parsing now treats one terminal LF as the last paragraph's terminator, preserving additional LFs as real empty paragraphs; all inherited paragraph-edit tests remain green.
+- Full `uv run pytest -q`: 2,085 passed (1,739 at the base; 346 added). The no-stubs gate and diff whitespace check pass. Ruff matches origin/main at `dbfa4c34` exactly: 196 diagnostics, zero added or removed when compared by relative file, code, and message.
+- The base has no `gdoc/lossy.py`. The coordinator explicitly assigned unsupported-style warnings and guard hooks to #65; this PR adds neither. Unsupported fonts/colours/underline/alignment/spacing, existing normalization of heading/list whitespace and styling on boundary spaces, native paragraph inheritance, whole-file Drive import, and concurrency remain outside this bounded grammar. No Google API calls or campaign changes were made.
+
+Agent session 01a09723-4d51-7640-a5c9-747b89d66530 · Commits a0e02e9, cac5f3b

@@ -1562,7 +1562,15 @@ def _wording_contexts(body: dict, match: dict, markdown: str):
         parse_markdown,
     )
 
-    if "\n" in markdown and any(_FENCE_RE.match(line)
+    def _opens_block_fence(line: str) -> bool:
+        # A backtick fence's info string cannot contain a backtick
+        # (CommonMark 4.5), so a closed span such as ```code``` is inline.
+        fence = _FENCE_RE.match(line)
+        return bool(fence) and not (
+            fence.group(1).startswith("`") and "`" in fence.group(2)
+        )
+
+    if "\n" in markdown and any(_opens_block_fence(line)
                                  for line in markdown.split("\n")):
         parsed = parse_markdown(markdown.removesuffix("\n"))
         check_inline_only_markdown(parsed)

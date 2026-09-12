@@ -442,6 +442,21 @@ def test_suggest_still_rejects_structural_whole_paragraph_replacement(mocker):
 
 
 @pytest.mark.parametrize('command', ['edit', 'suggest'])
+def test_closed_backtick_span_line_does_not_open_fence_branch(mocker, command):
+    """```code``` is a code span, not a fence opener (its info string would
+    hold backticks), so a multiline edit keeps one line per paragraph."""
+    body = _body(('Alpha', 'NORMAL_TEXT', False), ('Beta', 'NORMAL_TEXT', False))
+    planner = _requests if command == 'edit' else _suggest_requests
+    requests = planner(mocker, body, 'Alpha\nBeta', '```code```\nnext')
+    assert _apply_text_requests(body, requests) == 'code\nnext\n'
+    styles = [(r['updateTextStyle']['range'], r['updateTextStyle']['textStyle'])
+              for r in requests if 'updateTextStyle' in r]
+    assert styles == [({'startIndex': 1, 'endIndex': 5},
+                       {'weightedFontFamily': {'fontFamily': 'Courier New'}})]
+    assert not any('updateParagraphStyle' in r for r in requests)
+
+
+@pytest.mark.parametrize('command', ['edit', 'suggest'])
 def test_single_line_triple_backtick_span_has_edit_suggest_parity(mocker, command):
     body = _body(('Alpha', 'HEADING_2', False))
     planner = _requests if command == 'edit' else _suggest_requests

@@ -1647,7 +1647,9 @@ def _wording_contexts(body: dict, match: dict, markdown: str):
                 for s in parsed.styles if s.type == "text_style"
                 and s.start < end and s.end > offset
             ])
-            result.append((part, (selected, [])))
+            found = _replacement_paragraph(body.get("content", []), part)
+            baseline = _inline_baseline(found[0], part, line) if found else []
+            result.append((part, (selected, baseline)))
             offset = end + 1
         return result
     result = []
@@ -1692,9 +1694,9 @@ def _empty_paragraph_range(content: list[dict], match: dict):
 def _replacement_text_style(runs: list[dict], match: dict, text: str):
     """Map unchanged target phrases; otherwise use the largest styled run.
 
-    Exact, unique phrases are the only supported mapping for mixed targets.
-    Unmapped gaps retain fields common to all targets. When no styled phrase
-    survives, the longest styled target run wins (first on ties), so adjoining
+    Every styled phrase must survive uniquely without overlapping another;
+    otherwise mapping is ambiguous. Gaps retain fields common to all targets.
+    When mapping fails, the longest styled target run wins (first on ties), so adjoining
     plain prose cannot erase its colour. Links only follow surviving labels.
     Offsets returned here are Python offsets into the replacement text.
     """

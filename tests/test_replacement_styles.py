@@ -237,3 +237,14 @@ def test_duplicate_retained_label_does_not_guess_which_link_to_restore(mocker, c
     body = _body(("A ", {}), ("Label", LINK), (" Z\n", {}))
     requests = _batch(mocker, body, "Label", "Label and Label", command)
     assert _replacement_styles(requests, {}) == [RED] * len("Label and Label")
+
+
+@pytest.mark.parametrize("command", ["edit", "suggest"])
+def test_fenced_inline_text_uses_target_style_before_explicit_code_font(
+    mocker, command,
+):
+    body = _body(("A ", {"bold": True}), ("TOKEN", RED), (" Z\n", {}))
+    requests = _batch(mocker, body, "TOKEN", "```\nRevised\n```", command)
+    assert _replacement_styles(requests, {"bold": True}) == [{
+        **RED, "weightedFontFamily": {"fontFamily": "Courier New"},
+    }] * len("Revised")

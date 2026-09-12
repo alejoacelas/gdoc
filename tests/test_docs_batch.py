@@ -320,7 +320,8 @@ def test_inline_reapplies_link_shared_with_neighbour(mocker, decor, fields):
     body["content"][0]["paragraph"]["elements"][1]["textRun"]["textStyle"] = dict(link)
     service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
     match = {"startIndex": 9, "endIndex": 30}
-    replace_formatted("sample-doc", [match], "2. Archive the sample", "rev-a", body=body)
+    replace_formatted("sample-doc", [match], "2. Archive the sample", "rev-a",
+                      body=body)
     service.documents.return_value.batchUpdate.assert_called_once_with(
         documentId="sample-doc", body={
             "requests": [

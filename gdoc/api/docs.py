@@ -107,9 +107,9 @@ def _is_permission_rejection(e: HttpError) -> bool:
     details = e.error_details if isinstance(e.error_details, list) else []
     reasons = {d.get("reason", "") for d in details if isinstance(d, dict)}
     domains = {d.get("domain", "") for d in details if isinstance(d, dict)}
-    if "usageLimits" in domains or (reasons and not reasons & _PERMISSION_REASONS):
+    if "usageLimits" in domains or reasons - _PERMISSION_REASONS:
         return False
-    if reasons & _PERMISSION_REASONS:
+    if reasons:
         return True
     text = f"{e.reason} {e.content!r}".lower()
     return any(word in text for word in _PERMISSION_WORDS)

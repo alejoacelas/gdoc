@@ -63,6 +63,14 @@ _NON_PERMISSION_403S = [
         "accessNotConfigured", "usageLimits",
     ),
     _google_403("Daily Limit Exceeded", "dailyLimitExceeded", "usageLimits"),
+    {"error": {
+        "code": 403, "message": "The caller does not have permission",
+        "status": "PERMISSION_DENIED",
+        "errors": [
+            {"reason": "forbidden", "domain": "global", "message": "x"},
+            {"reason": "serviceDisabled", "domain": "global", "message": "y"},
+        ],
+    }},
 ]
 
 

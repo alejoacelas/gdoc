@@ -737,12 +737,16 @@ def test_non_body_only_edit_does_not_read_for_cleanup(mocker):
     # would empty the segment instead of replacing the match.
     "```code```", "~~~code~~~",
 ])
+@pytest.mark.parametrize("mode", ["edit", "suggest"])
 def test_non_body_rejects_paragraph_breaks_and_empty_renderings(
-    mocker, markdown,
+    mocker, markdown, mode,
 ):
+    from gdoc.api.docs import suggest_replacement
+
+    replace = replace_formatted if mode == "edit" else suggest_replacement
     service = mocker.patch("gdoc.api.docs.get_docs_service")
     with pytest.raises(GdocError) as error:
-        replace_formatted("doc-one", [_mixed_matches()[1]], markdown, "revision-one")
+        replace("doc-one", [_mixed_matches()[1]], markdown, "revision-one")
     assert error.value.exit_code == 3
     service.assert_not_called()
 

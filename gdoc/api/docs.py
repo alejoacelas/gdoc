@@ -1927,7 +1927,8 @@ def check_segment_replacement(parsed, markdown: str, matches: list[dict]) -> Non
     # fenced block) and a non-empty line the parser renders to nothing, such
     # as a fence delimiter pair, which would otherwise empty the segment.
     plain = parsed.plain_text.removesuffix("\n")
-    if ("\n" in plain or "\n" in markdown.removesuffix("\n")
+    if (markdown == "\n" or "\n" in plain
+            or "\n" in markdown.removesuffix("\n")
             or (markdown.strip() and not plain.strip())):
         raise GdocError(
             "headers, footers, and footnotes support only plain or inline "

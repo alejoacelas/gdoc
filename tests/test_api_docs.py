@@ -959,8 +959,10 @@ class TestReplaceFormattedNoSpeculativeCleanup:
         "suggestionsViewMode": "SUGGESTIONS_INLINE",
     }),
 ])
-def test_document_reads_retry(mocker, name, options, expected_kwargs):
-    """All document GET wrappers preserve options and request two retries."""
+def test_document_reads_request_two_additional_google_client_retries(
+    mocker, name, options, expected_kwargs,
+):
+    """Read wrappers preserve options and request two extra Google-client retries."""
     from gdoc.api import docs
 
     service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
@@ -979,8 +981,13 @@ def test_document_reads_retry(mocker, name, options, expected_kwargs):
 @pytest.mark.parametrize(
     "disconnects, through_cli", [(1, False), (3, False), (3, True)],
 )
-def test_document_read_transport_disconnect(mocker, capsys, disconnects, through_cli):
-    """A disconnected GET recovers or stops after three attempts with an error."""
+def test_document_read_google_client_disconnect_retries(
+    mocker, capsys, disconnects, through_cli,
+):
+    """Allow two extra Google-client retries after read disconnects.
+
+    The mocked transport isolates the client loop; counts are not wire sends.
+    """
     import json
     from http.client import RemoteDisconnected
 
@@ -1037,10 +1044,14 @@ def test_document_read_transport_disconnect(mocker, capsys, disconnects, through
     ("comments", "create_comment", "comments", "create",
      ("sample-doc", "Sample comment.")),
 ])
-def test_mutation_disconnect_is_not_retried(
+def test_mutation_disconnect_adds_no_google_client_retries(
     mocker, module, name, resource_name, method, args,
 ):
-    """A lost mutation response propagates after exactly one transport attempt."""
+    """Mutations add no Google-client retries when the transport raises.
+
+    Synthetic requests isolate execute policy, not generated upload behavior or
+    httplib2's internal retries; this does not guarantee a single wire send.
+    """
     import json
     from http.client import RemoteDisconnected
     from importlib import import_module
@@ -1071,3 +1082,72 @@ def test_mutation_disconnect_is_not_retried(
     execute.assert_called_once_with()
     transport.request.assert_called_once()
     sleep.assert_not_called()
+
+
+@pytest.mark.parametrize("mutation", [False, True], ids=["read", "mutation"])
+def test_generated_docs_client_retry_boundary_with_real_httplib2(mocker, mutation):
+    """Reads add two client retries; mutations add none above httplib2 retries."""
+    from http.client import HTTPSConnection, RemoteDisconnected
+
+    from googleapiclient.discovery import build
+
+    from gdoc.api.docs import get_document
+
+    transport = httplib2.Http()
+    connection = mocker.Mock(spec=HTTPSConnection)
+    connection.sock = mocker.sentinel.socket
+    connection.getresponse.side_effect = RemoteDisconnected("response lost")
+    transport.connections["https:docs.googleapis.com"] = connection
+    client_attempts = mocker.spy(transport, "request")
+    sleep = mocker.patch("googleapiclient.http.time.sleep")
+    service = build("docs", "v1", http=transport, static_discovery=True)
+    mocker.patch("gdoc.api.docs.get_docs_service", return_value=service)
+
+    with pytest.raises(RemoteDisconnected, match="response lost"):
+        if mutation:
+            replace_all_text("sample-doc", "apple", "pear")
+        else:
+            get_document("sample-doc")
+
+    assert client_attempts.call_count == (1 if mutation else 3)
+    assert sleep.call_count == (0 if mutation else 2)
+    # RemoteDisconnected is a BadStatusLine: httplib2 can retry it internally.
+    # Assert the distinction without fixing a dependency's exact send count.
+    assert connection.request.call_count > client_attempts.call_count
+    assert all(
+        call.args[0] == ("POST" if mutation else "GET")
+        for call in connection.request.call_args_list
+    )
+
+
+@pytest.mark.parametrize("name", [
+    "get_document", "get_document_tabs", "get_document_with_tabs",
+    "get_document_structure",
+])
+@pytest.mark.parametrize("status", [429, 503])
+@pytest.mark.parametrize("failures", [2, 3], ids=["recovery", "exhaustion"])
+def test_document_reads_google_client_status_retries(mocker, name, status, failures):
+    """All read wrappers allow two extra client retries for 429 and 5xx errors."""
+    from googleapiclient.discovery import build
+
+    from gdoc.api import docs
+
+    transport = mocker.Mock(spec=httplib2.Http)
+    transport.request.side_effect = [
+        (httplib2.Response({"status": str(status)}), b'{}')
+        for _ in range(failures)
+    ] + [(httplib2.Response({"status": "200"}), b'{"tabs": []}')]
+    sleep = mocker.patch("googleapiclient.http.time.sleep")
+    service = build("docs", "v1", http=transport, static_discovery=True)
+    mocker.patch("gdoc.api.docs.get_docs_service", return_value=service)
+
+    if failures == 3:
+        with pytest.raises(GdocError, match=rf"API error \({status}\)"):
+            getattr(docs, name)("sample-doc")
+    else:
+        assert getattr(docs, name)("sample-doc") == (
+            [] if name == "get_document_tabs" else {"tabs": []}
+        )
+
+    assert transport.request.call_count == 3
+    assert sleep.call_count == 2

@@ -250,7 +250,10 @@ def flatten_tabs(tabs: list[dict], _level: int = 0) -> list[dict]:
 
 
 def get_document_tabs(doc_id: str) -> list[dict]:
-    """Fetch document with all tab content and return flattened tab list."""
+    """Fetch document with all tab content and return flattened tab list.
+
+    Uses the bounded Google-client retry policy documented in get_document.
+    """
     try:
         service = get_docs_service()
         doc = (
@@ -523,6 +526,9 @@ def get_document(doc_id: str) -> dict:
     """Fetch the full document structure via documents().get().
 
     Returns the document JSON including body.content and revisionId.
+    Allows two additional Google-client retries for retryable transport errors,
+    HTTP 5xx/429, and rate-limit 403 responses. This bounds client retries, not
+    wire sends: httplib2 may retry internally. Mutations add no client retries.
     """
     try:
         service = get_docs_service()
@@ -1605,6 +1611,7 @@ def get_document_with_tabs(doc_id: str) -> dict:
     """Fetch document with includeTabsContent=True.
 
     Returns the full document dict (including revisionId and tabs).
+    Uses the bounded Google-client retry policy documented in get_document.
     HttpError is translated via _translate_http_error.
     """
     try:
@@ -1628,6 +1635,7 @@ def get_document_structure(
     Always requests includeTabsContent=True so every tab's body is
     present. A fields mask is passed verbatim when given — note Google
     rejects masks that recursively expand childTabs (repo issue #14).
+    Uses the bounded Google-client retry policy documented in get_document.
 
     Args:
         doc_id: The document ID.

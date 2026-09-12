@@ -424,10 +424,12 @@ The user wanted PR #70 restacked on #65 `c5f4c6e`: preserved both log histories 
 
 # Docs read retries
 
-The user wanted transient Docs read failures retried without retrying mutations.
+The user wanted two additional Google-client retries for reads and no additional
+Google-client retries for mutations.
 
 - Added failing tests for exact read parameters, transport recovery and exhaustion,
-  post-write reads, and exact non-retried edit and suggestion request bodies.
+  post-write reads, and exact edit and suggestion request bodies with no additional
+  Google-client retries.
 - Enabled two generated-client retries on every Docs document GET and reused the
   read wrappers after writes; exhausted reads retain the existing error behavior.
 - All 1,572 tests and the no-stubs gate pass. Ruff still reports the same 196
@@ -463,20 +465,23 @@ Agent session 01a070b6-163b-7f01-b21a-99985daa2388 · Commits b69bd3a, 5504542
 
 # Verify the read-only retry boundary
 
-The user wanted PR #64 retained with bounded read retries and proof that mutations remain single-shot.
+The user wanted PR #64 retained with two additional Google-client retries for reads
+and no additional Google-client retries for mutations.
 
 - Rebased `alejoacelas/fix-docs-get-retry` in
   `/Users/alejo/best/tools/active/gdoc/pr64-read-retries`; it was already based on
   `origin/main` at `dbfa4c34`, so the existing implementation stayed unchanged.
 - Retained tests proving all four document GET wrappers request two retries and
   preserve field/tab/suggestion options; an actual client request over a mocked
-  transport recovers from one disconnect and stops after three failed attempts.
+  transport recovers from one disconnect and exhausts two additional Google-client
+  retries on persistent disconnects. These counts do not describe wire sends.
   The exhaustion tests preserve the exception and CLI exit 1 without any write.
-- Added four transport-disconnect cases proving Docs `batchUpdate`, Drive Markdown
-  update/create uploads, and Drive comment creation each execute once, never sleep
-  for a retry, and propagate the lost-response error. Existing edit/suggestion
-  tests retain exact write bodies and non-retried execution; post-edit readback
-  still requests two retries.
+- Added four mocked-transport disconnect cases proving Docs `batchUpdate`, Drive
+  Markdown update/create, and Drive comment creation add no Google-client retries
+  and propagate transport errors. These use synthetic requests, not generated
+  upload paths; httplib2 may itself retry a first BadStatusLine, so this is not a
+  single-send guarantee. Existing edit/suggestion tests retain exact write bodies
+  and no additional Google-client retries; post-edit readback still requests two.
 - All 1,576 tests and the no-stubs gate pass. Full Ruff still exits 1 with 196
   findings, exactly matching main by file, rule and message, with none added or
   removed. Repository-wide lint cleanup remains outside this PR.

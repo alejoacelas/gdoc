@@ -784,8 +784,8 @@ def test_edit_uses_match_tab_when_no_fallback_tab_is_given(mocker):
     service.documents.return_value.get.assert_not_called()
 
 
-def test_post_write_read_retries_without_retrying_batch(mocker):
-    """The edit executes once before its retried document readback."""
+def test_post_write_read_adds_google_client_retries_only_to_readback(mocker):
+    """Readback adds two Google-client retries; the preceding edit adds none."""
     resource = mocker.patch(
         "gdoc.api.docs.get_docs_service",
     ).return_value.documents.return_value

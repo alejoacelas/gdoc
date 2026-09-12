@@ -1557,7 +1557,20 @@ def insert_markdown_into_tab(
     if replace:
         from gdoc.lossy import check_markdown_replacement
 
-        check_markdown_replacement(body, tab_body=True, allow_lossy=allow_lossy)
+        # Lists live beside the body; include only definitions used by its
+        # paragraphs (including cells), not header/footer-only lists.
+        list_ids = {
+            paragraph.get("bullet", {}).get("listId")
+            for paragraph, _, _ in _replacement_paragraphs(
+                body.get("content", []),
+                {"startIndex": body_start, "endIndex": body_end + 1},
+            )
+        }
+        scope = {"body": body, "lists": {
+            key: value for key, value in tab_match["lists"].items()
+            if key in list_ids
+        }}
+        check_markdown_replacement(scope, tab_body=True, allow_lossy=allow_lossy)
         # Deletion retains the native final paragraph. Reset that paragraph
         # before insertion so its bullets, heading, alignment and spacing do
         # not become the initial state of every new paragraph.

@@ -80,7 +80,7 @@ _TEXT_STYLE_LOSSES = {
 _PARAGRAPH_STYLE_LOSSES = {
     "alignment": "alignment", "lineSpacing": "line spacing",
     "spaceAbove": "paragraph spacing", "spaceBelow": "paragraph spacing",
-    "keepWithNext": "paragraph layout", "keepTogether": "paragraph layout",
+    "keepWithNext": "paragraph layout", "keepLinesTogether": "paragraph layout",
     "avoidWidowAndOrphan": "paragraph layout", "pageBreakBefore": "paragraph layout",
     "indentStart": "indentation", "indentEnd": "indentation",
     "indentFirstLine": "indentation", "tabStops": "tab stops",

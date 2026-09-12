@@ -329,3 +329,72 @@ def test_section_defaults_follow_owning_tab(custom):
         with pytest.raises(GdocError, match="page setup") as exc:
             check_markdown_replacement(scope)
         assert "section layout" not in str(exc.value)
+
+
+@pytest.mark.parametrize("in_cell", [False, True])
+@pytest.mark.parametrize("mode", ["refuse", "override", "style-only"])
+def test_referenced_list_inventory(mocker, capsys, in_cell, mode):
+    content = body({"textRun": {"content": "old\n"}})
+    content["content"][0]["paragraph"]["bullet"] = {"listId": "L"}
+    if in_cell:
+        content = {"content": [{"startIndex": 1, "endIndex": 9, "table": {
+            "tableRows": [{"tableCells": [{"content": content["content"]}]}],
+        }}]}
+    target = tab("target", content)
+    definition = {"listProperties": {"nestingLevels": [{"glyphSymbol": "★"}]}}
+    if mode != "style-only":
+        definition["suggestedListPropertiesChanges"] = {"s": {
+            "listProperties": {"nestingLevels": [{"glyphSymbol": "◆"}]},
+            "listPropertiesSuggestionState": {
+                "nestingLevelsSuggestionStates": [{"glyphSymbolSuggested": True}],
+            },
+        }}
+    target["documentTab"]["lists"] = {"L": definition}
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "revisionId": "r", "tabs": [target],
+    })
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    table_insert = mocker.patch("gdoc.api.docs._insert_table")
+    markdown = "| New |\n| --- |\n| value |"
+    if mode == "refuse":
+        with pytest.raises(GdocError, match="pending suggestions") as exc:
+            insert_markdown_into_tab("doc", "target", markdown, replace=True)
+        assert exc.value.exit_code == 3
+        service.documents.return_value.batchUpdate.assert_not_called()
+        table_insert.assert_not_called()
+    else:
+        insert_markdown_into_tab(
+            "doc", "target", markdown, replace=True, allow_lossy=mode == "override",
+        )
+        service.documents.return_value.batchUpdate.assert_called_once()
+        table_insert.assert_called_once()
+        warning = capsys.readouterr().err
+        assert "list glyphs and list styling" in warning
+        assert ("will discard: pending suggestions" in warning) == (mode == "override")
+
+
+@pytest.mark.parametrize("header_only", [False, True])
+def test_unreferenced_suggested_lists_are_outside_body(mocker, capsys, header_only):
+    target = tab("target", PLAIN)
+    target["documentTab"]["lists"] = {"unused": {
+        "listProperties": {"nestingLevels": [{"glyphSymbol": "★"}]},
+        "suggestedListPropertiesChanges": {"s": {"listProperties": {}}},
+    }}
+    if header_only:
+        header = body({"textRun": {"content": "header\n"}})
+        header["content"][0]["paragraph"]["bullet"] = {"listId": "unused"}
+        target["documentTab"]["headers"] = {"h": header}
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "revisionId": "r", "tabs": [target],
+    })
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    insert_markdown_into_tab("doc", "target", "new", replace=True)
+    service.documents.return_value.batchUpdate.assert_called_once()
+    assert capsys.readouterr().err == ""
+
+
+def test_keep_lines_together_warns_about_paragraph_layout(capsys):
+    check_markdown_replacement({"content": [{"paragraph": {
+        "paragraphStyle": {"keepLinesTogether": True},
+    }}]}, tab_body=True)
+    assert "may reset styles: paragraph layout" in capsys.readouterr().err

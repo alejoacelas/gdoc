@@ -213,6 +213,8 @@ def test_token_refresh_does_not_consume_comment_send_budget(wire, mocker):
         (200, {}),
         (200, b""),
         (200, b"<html>502 Bad Gateway</html>"),
+        (200, b"null"),
+        (200, b"[]"),
     ],
 )
 def test_drive_uncertain_response_requires_inspection(wire, mocker, capsys, response):
@@ -233,7 +235,9 @@ def test_drive_uncertain_response_requires_inspection(wire, mocker, capsys, resp
     assert connection.count == len(saved) == 1
 
 
-@pytest.mark.parametrize("body", [b"", b"<html>502 Bad Gateway</html>"])
+@pytest.mark.parametrize("body", [
+    b"", b"<html>502 Bad Gateway</html>", b"null", b"[]",
+])
 def test_unparseable_anchor_response_is_uncertain_not_replayed(
     wire, mocker, capsys, body,
 ):

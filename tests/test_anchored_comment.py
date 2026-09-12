@@ -746,6 +746,8 @@ def test_conflict_reresolves_instead_of_replaying(comment_command, new_text, mes
     {"commentUpdateState": "ALL_SAVED", "replies": [{}]},
     {"commentUpdateState": "SOME_SAVED", "replies": _OK_RESPONSE["replies"]},
     {"commentUpdateState": "ALL_FAILED_UNKNOWN_REASON"},
+    {"commentUpdateState": "NO_UPDATES_REQUESTED", "replies": _OK_RESPONSE["replies"]},
+    {"replies": _OK_RESPONSE["replies"]},
     {},
 ])
 def test_uncertain_success_response_never_creates_second_comment(
@@ -784,6 +786,43 @@ def test_uncertain_write_never_retries_or_falls_back(comment_command, error):
     fallback.assert_not_called()
 
 
+@pytest.mark.parametrize("message", [
+    "batchUpdate quota exceeded",
+    "batchUpdate API disabled for this project",
+    "Rate limit exceeded",
+])
+def test_unstructured_403_without_permission_wording_never_falls_back(
+    comment_command, message,
+):
+    read, batch, fallback = comment_command
+    batch.return_value.execute.side_effect = _http_error(
+        403, json.dumps({"error": {"message": message}}).encode(),
+    )
+    with pytest.raises(GdocError, match="no fallback comment was created") as exc:
+        cmd_comment(_make_args(quote="quick brown"))
+    assert exc.value.exit_code == 1
+    assert message in str(exc.value)
+    batch.assert_called_once()
+    fallback.assert_not_called()
+
+
+@pytest.mark.parametrize("selector", [
+    {"tab": "Notes"}, {"occurrence": 1}, {"tab": "Notes", "occurrence": 2},
+])
+def test_selectors_without_quote_are_usage_errors_before_any_write(
+    comment_command, selector,
+):
+    read, batch, fallback = comment_command
+    with pytest.raises(GdocError, match="require --quote") as exc:
+        cmd_comment(_make_args(quote=None, **selector))
+    assert exc.value.exit_code == 3
+    for flag in selector:
+        assert f"--{flag}" in str(exc.value)
+    read.assert_not_called()
+    batch.assert_not_called()
+    fallback.assert_not_called()
+
+
 @pytest.mark.parametrize("payload", _NON_PERMISSION_403S)
 def test_quota_or_disabled_api_403_never_creates_fallback(
     comment_command, capsys, payload,
@@ -804,7 +843,7 @@ def test_quota_or_disabled_api_403_never_creates_fallback(
 @pytest.mark.parametrize("status, detail", [
     (400, "Invalid requests[0]: No request set."),
     (400, 'Unknown name "insertComment": Cannot find field.'),
-    (403, "The caller cannot batchUpdate this document"),
+    (403, "The caller does not have permission to batchUpdate this document"),
 ])
 @pytest.mark.parametrize("mode", ["terse", "plain", "json"])
 def test_definite_preview_rejection_creates_one_honest_fallback(

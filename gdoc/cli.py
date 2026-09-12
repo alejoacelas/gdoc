@@ -2524,6 +2524,17 @@ def cmd_comment(args) -> int:
     change_info = pre_flight(doc_id, quiet=quiet)
 
     quote = getattr(args, "quote", "") or ""
+    selectors = [
+        flag for flag, value in (
+            ("--tab", getattr(args, "tab", None)),
+            ("--occurrence", getattr(args, "occurrence", None)),
+        ) if value is not None
+    ]
+    if selectors and not quote:
+        raise GdocError(
+            f"{' and '.join(selectors)} require --quote; no comment created",
+            exit_code=3,
+        )
     new_id = ""
     resolution = None
     if quote:

@@ -99,7 +99,7 @@ _PERMISSION_REASONS = frozenset({
     "forbidden", "insufficientPermissions", "insufficientFilePermissions",
     "permissionDenied",
 })
-_PERMISSION_WORDS = ("permission", "forbidden", "not permitted", "batchupdate")
+_PERMISSION_WORDS = ("permission", "forbidden", "not permitted", "not allowed")
 
 
 def _is_permission_rejection(e: HttpError) -> bool:
@@ -197,8 +197,11 @@ def insert_comment(
         _translate_http_error(e, doc_id)
 
     # Comment saves can fail even when the batchUpdate itself returns 200.
-    state = result.get("commentUpdateState", "")
-    if state and state != "ALL_SAVED":
+    # The API always reports the state explicitly (ALL_SAVED on success,
+    # NO_UPDATES_REQUESTED when no comment request ran), so a missing field
+    # is as uncertain as a partial save.
+    state = result.get("commentUpdateState") or "missing"
+    if state != "ALL_SAVED":
         raise GdocError(
             f"Comment save outcome is uncertain ({state}); inspect comments "
             "before retrying. No fallback comment was created."

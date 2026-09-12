@@ -20,3 +20,16 @@ The user wanted PR #60 babysat to green with every CodeRabbit and Codex finding 
 - Roadblocks: CodeRabbit's one-review-per-hour cap left every commit after the first unreviewed by it, and 68e5b74 shipped with a red test because a pipe to `tail` masked pytest's exit code; fixed in the next commit.
 
 Agent session 8967abb9-167c-43a8-87b8-47b16b1e636d · Commits 26f61a8, ac3546f, 77d3d40, 7f2d6bf, 50fa87f, bdced47, f8b6c88, 68e5b74, 49e1d55
+
+# Preserve native paragraph boundaries
+
+The user wanted PR #60 rebuilt so wording edits preserve paragraph structure and heading deletion never changes a neighbor.
+
+- Split multiline edit and suggest matches into text-only ranges, retaining each native paragraph mark, named style, list ID and nesting; explicit heading/list/quote Markdown changes only its own complete paragraph. Ambiguous paragraph-count changes fail before writing; whole-cell replacement explicitly clears old list state.
+- Unified positional, stdin and file input handling: exactly one trailing newline is ignored. Start/end insertion creates its own paragraph before styling, and zero-width paragraph-style requests are skipped.
+- Removed speculative post-edit cleanup and its neighbor-promotion/final-newline deletion. Empty replacements retain native marks; the explicit cleanup helper refuses the final mark and image paragraphs.
+- Fixed raw code-span closer detection and converted the table-restriction test to pytest-mock. Confirmed the existing tab-route test already uses distinct root and selected-tab bodies.
+- Added 57 synthetic offline cases: transport variants, mixed headings/title/subtitle/nested lists, partial multiline context, multiple matches, cell list removal, insertion boundaries, final/nonfinal heading deletion beside normal/list/table/image neighbors, code closers, and suggested multiline edits. All 1,664 tests pass; Ruff has the same 196 baseline findings, with none on added or changed lines.
+- Kept the inherited run-style policy unchanged. Export grammar, full-document reconstruction, native target validation, and staged-write concurrency remain outside this PR; no live API replay, push, or PR edits were performed.
+
+Agent session 01a09704-0c2d-79c0-ac5b-677663a7b39c · Commits 3307511, bc5dec3

@@ -191,3 +191,14 @@ The user wanted the export/parser review findings fixed on the existing branch, 
 - PR-body note supplied by the coordinator: a live replay of the TITLE/SUBTITLE round trip on this branch restores both styles. The only remaining judge items are new `headingId`s Google assigns when a whole tab is rebuilt, which is inherent to `write --tab`. This follow-up ran offline and did not repeat that live replay; no push or PR mutation was performed.
 
 Agent session 01a0972f-4480-71d2-99a3-6553261460cc · Commits 900ed93
+
+# Linearize PR 69 and preserve exported tables
+
+The user wanted PR #69 based on #63 at `28c4ba9`, independently green, with native rectangular tables surviving a tab Markdown round trip.
+
+- Started from the five replayed export commits ending at `82c386c`. Ported the newline-only segment guard from `96be4e0` and tested refusal in both edit and suggest modes before service access.
+- Rectangular, unmerged tables now export as pipe tables with a header separator, escaped cell pipes, inline styles and links, and `<br>` for cell newlines. The parser preserves escaped separators and adjacent tables; nine new cases cover dimensions, empty cells, single-row tables, literal Markdown/backslashes/pipes, multiline cells, styled links, adjacency, and the existing text fallback for ragged, nested or merged tables. Borders, widths and cell paragraph styles remain outside this format.
+- An isolated archive of `82c386c` reproduced 41 additional paragraph-insertion failures, beyond the known segment failure. With coordinator approval, ported the table-append guard and bullet regression from `96be4e0`, and adapted the `c20b81a` newline fix so only a trailing horizontal rule receives the second trim. This restores trailing blank paragraphs and final TITLE/SUBTITLE marks; #65 will be rebased onto this result.
+- Full offline suite: **2,400 passed**. No-stubs and whitespace checks pass; Ruff matches origin/main's **196** findings exactly by relative file, rule, message and source line, with zero additions or removals. `28c4ba9` is an ancestor and the merge-tree check is conflict-free. No live Google API calls were made.
+
+Agent session 01a09807-e6f3-7b51-833a-9956262d8538 · Commits b2de1a4, 148c655, 7a406bc

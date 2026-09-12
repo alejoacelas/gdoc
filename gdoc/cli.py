@@ -2405,8 +2405,13 @@ class CommentAnchorResult:
 
 def _try_anchored_comment(
     doc_id: str, text: str, quote: str, tab_name: str | None = None,
+    occurrence: int | None = None,
 ) -> CommentAnchorResult:
     """Resolve a unique quote and write it, retrying one rejected revision.
+
+    *occurrence* picks the Nth match (1-based, in document order: tabs in
+    outline order, then body/headers/footers/footnotes within each tab) when
+    the quote repeats. It is re-applied to a fresh read after a conflict.
 
     Only a definite preview rejection permits Drive fallback. Successful but
     incomplete responses and transport failures propagate without another write.
@@ -2472,6 +2477,16 @@ def _try_anchored_comment(
             return CommentAnchorResult(
                 "not_found", detail="Quote not found after Unicode normalization",
             )
+        if occurrence is not None:
+            if not 1 <= occurrence <= len(locations):
+                return CommentAnchorResult(
+                    "not_found", locations=locations,
+                    detail=(
+                        f"--occurrence {occurrence} is out of range: the quote "
+                        f"matches {len(locations)} time(s)"
+                    ),
+                )
+            locations = [locations[occurrence - 1]]
         if len(locations) > 1:
             return CommentAnchorResult("ambiguous", locations=locations)
         if not revision_id:
@@ -2514,6 +2529,7 @@ def cmd_comment(args) -> int:
     if quote:
         resolution = _try_anchored_comment(
             doc_id, args.text, quote, tab_name=getattr(args, "tab", None),
+            occurrence=getattr(args, "occurrence", None),
         )
         if resolution.status == "ambiguous":
             locations = "; ".join(
@@ -2524,7 +2540,8 @@ def cmd_comment(args) -> int:
             )
             raise GdocError(
                 f"Quote is ambiguous: {len(resolution.locations)} matches: "
-                f"{locations}. Use a longer quote, or --tab to select a single tab.",
+                f"{locations}. Use a longer quote, --tab to select a single tab, "
+                "or --occurrence N to pick the Nth match in document order.",
                 exit_code=3,
             )
         if resolution.status in ("not_found", "conflict"):
@@ -4500,6 +4517,13 @@ def build_parser() -> GdocArgumentParser:
     )
     comment_p.add_argument(
         "--tab", help="Search the quote in this tab by title or ID (default: all tabs)"
+    )
+    comment_p.add_argument(
+        "--occurrence", type=int, metavar="N",
+        help=(
+            "Anchor to the Nth match of --quote (1-based, document order) when "
+            "the text repeats; out of range: exit 3"
+        ),
     )
     comment_p.add_argument(
         "--quiet", action="store_true", help="Skip pre-flight checks"

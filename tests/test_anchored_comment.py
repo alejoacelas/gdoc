@@ -352,7 +352,7 @@ class TestCmdCommentAnchored:
         rc = cmd_comment(_make_args(quote="quick brown"))
         assert rc == 0
         mock_try.assert_called_once_with(
-            "abc123", "hello", "quick brown", tab_name=None,
+            "abc123", "hello", "quick brown", tab_name=None, occurrence=None,
         )
         mock_create.assert_not_called()
         out = capsys.readouterr().out
@@ -477,6 +477,64 @@ def test_all_equivalent_matches_count_before_writing(comment_command, tabs):
     assert "tab 't1' (t1), segment body, range 1:" in str(exc.value)
     assert "longer quote" in str(exc.value)
     assert "--tab" in str(exc.value)
+    assert "--occurrence N" in str(exc.value)
+    batch.assert_not_called()
+    fallback.assert_not_called()
+
+
+@pytest.mark.parametrize("tabs,occurrence,expected", [
+    ([_tab("t1", "echo echo\n")], 1, {"startIndex": 1, "endIndex": 5, "tabId": "t1"}),
+    ([_tab("t1", "echo echo\n")], 2, {"startIndex": 6, "endIndex": 10, "tabId": "t1"}),
+    ([_tab("t1", "echo\n"), _tab("t2", "echo\n")], 2,
+     {"startIndex": 1, "endIndex": 5, "tabId": "t2"}),
+])
+def test_occurrence_selects_nth_match_in_document_order(
+    comment_command, capsys, tabs, occurrence, expected,
+):
+    read, batch, fallback = comment_command
+    read.return_value = {"revisionId": "rev1", "tabs": tabs}
+
+    assert cmd_comment(_make_args(quote="echo", occurrence=occurrence, json=True)) == 0
+
+    result = json.loads(capsys.readouterr().out)
+    assert result["anchored"] is True
+    assert result["tabId"] == expected["tabId"]
+    range_ = batch.call_args.kwargs["body"]["requests"][0]["insertComment"]["range"]
+    assert range_ == expected
+    fallback.assert_not_called()
+
+
+def test_occurrence_survives_conflict_reresolution(comment_command):
+    read, batch, fallback = comment_command
+    read.side_effect = [
+        {"revisionId": "rev1", "tabs": [_tab("t1", "echo echo\n")]},
+        {"revisionId": "rev2", "tabs": [_tab("t1", "x echo echo\n")]},
+    ]
+    batch.return_value.execute.side_effect = [_revision_error(), _OK_RESPONSE]
+
+    assert cmd_comment(_make_args(quote="echo", occurrence=2)) == 0
+
+    ranges = [
+        call.kwargs["body"]["requests"][0]["insertComment"]["range"]
+        for call in batch.call_args_list
+    ]
+    assert ranges == [
+        {"startIndex": 6, "endIndex": 10, "tabId": "t1"},
+        {"startIndex": 8, "endIndex": 12, "tabId": "t1"},
+    ]
+    fallback.assert_not_called()
+
+
+@pytest.mark.parametrize("occurrence", [0, 3, -1])
+def test_occurrence_out_of_range_refuses_without_writing(comment_command, occurrence):
+    read, batch, fallback = comment_command
+    read.return_value = {"revisionId": "rev1", "tabs": [_tab("t1", "echo echo\n")]}
+
+    with pytest.raises(GdocError, match="out of range: the quote matches 2") as exc:
+        cmd_comment(_make_args(quote="echo", occurrence=occurrence))
+
+    assert exc.value.exit_code == 3
+    assert "no comment created" in str(exc.value)
     batch.assert_not_called()
     fallback.assert_not_called()
 

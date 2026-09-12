@@ -252,3 +252,18 @@ The user wanted PR #65 watched after its force-push to `87a1d2b` until CI, CodeR
 - Verification: 2,351 tests pass, no-stubs gate passes, Ruff matches `origin/main` at 196 diagnostics with zero added.
 
 Agent session 91584d0f-9088-4a6a-9adb-75d3a413c617 · Commits 9d05dc8, eb1615c
+
+# Rebase bounded reconstruction onto the final replacement stack
+
+The user wanted PR #65 rebased onto #63 at `28c4ba9`, preserving #60 and #61, then verified and published with a fresh Codex review request.
+
+- Both old-base checks returned `88165fc`; replayed all 13 #65 commits onto `28c4ba9`, which includes #61 at `2dc05d3` and #60 at `db3f658`. Original → replayed: `a0e02e9` → `847d517`, `cac5f3b` → `ef7b218`, `f639d24` → `4dc35f3`, `900ed93` → `69de3c4`, `7217279` → `82c386c`, `106cfc1` → `dfb5e9c`, `33b0c4f` → `08a5b2d`, `a982bd2` → `3c62494`, `87a1d2b` → `ec13311`, `9d05dc8` → `c20b81a`, `5091899` → `69d14f1`, `eb1615c` → `f2ec481`, `ca4c85b` → `ad47658`.
+- Parser conflict: retained #60's CommonMark code-span normalization and #65's invisible run separators. Neither behavior was dropped.
+- Log conflict: retained the earlier PR entries first and appended #65's entries. Historical entries and their original hashes were left intact.
+- Blank-paragraph API conflicts: combined #60's leading-table separator handling with #65's final named-style restoration. Kept whole-paragraph and valid-opening-fence checks while removing redundant terminal-LF preprocessing under #65's parser.
+- Guard API conflict: kept the end-insertion condition while adopting #65's replacement-specific newline handling. The later final-rule commit superseded it with retained-mark styling for all end insertions.
+- Final-rule API conflict: retained #65's `keep_hr=False` and final-style request. Removed #60's now-redundant second newline trim so intentional blank paragraphs survive.
+- The first full run found two integration regressions: newline-only segment replacement escaped #61's guard, and table-only append acquired a separator after #65 trimmed its placeholder. Fixed both without changing any existing expected behavior; extended the tests to suggestions and appending after a bullet, adding six cases. All inherited tests remain.
+- Final `uv run pytest tests/ -q`: **2,553 passed**. No-stubs and whitespace checks pass; Ruff matches origin/main at `dbfa4c34` exactly: **196 findings**, zero added or removed by relative file, rule, message and offending source line. All Google API calls were mocked; native preview verification remains outside this task.
+
+Agent session 01a09803-3435-7f13-b5fe-deb4d6f8e0be · Commits 847d517, ef7b218, 4dc35f3, 69de3c4, 82c386c, dfb5e9c, 08a5b2d, 3c62494, ec13311, c20b81a, 69d14f1, f2ec481, ad47658, 96be4e0

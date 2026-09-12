@@ -2175,6 +2175,7 @@ def suggest_replacement(
     revision_id: str,
     tab_id: str | None = None,
     expected_token_identity: tuple[str | None, str | None] | None = None,
+    *, body: dict | None = None,
 ) -> SuggestionResult:
     """Replace matched ranges as *suggested* edits (writeMode=SUGGEST).
 
@@ -2202,6 +2203,7 @@ def suggest_replacement(
             as the baseline, extending the re-auth guard across the read
             (the CLI passes it). Omitted → the baseline is captured here,
             guarding the gate→write pair only.
+        body: Original body used to preserve native paragraph marks.
     """
     from google.auth.exceptions import GoogleAuthError, TransportError
 
@@ -2220,8 +2222,19 @@ def suggest_replacement(
     check_inline_only_markdown(parsed)
     _reject_overlapping_matches(matches)
     _strip_trailing_newline_unless_hr(parsed)
-    sorted_matches, requests = _build_replacement_requests(
-        _inline_only(parsed), matches, tab_id=tab_id,
+    occurrence_count = len(matches)
+    contexts = None
+    if body is not None:
+        wording = [part for match in matches
+                   for part in _paragraph_wording_matches(body, match, new_markdown)]
+        matches = [match for match, _ in wording]
+        contexts = {}
+        for match, markdown in wording:
+            selected = parse_markdown(markdown)
+            _strip_trailing_newline_unless_hr(selected)
+            contexts[match["startIndex"]] = (_inline_only(selected), None)
+    _, requests = _build_replacement_requests(
+        _inline_only(parsed), matches, tab_id=tab_id, contexts=contexts,
     )
     if not requests:
         return SuggestionResult(occurrences=0)
@@ -2312,7 +2325,7 @@ def suggest_replacement(
         # batch (i.e. the edit was merged into the author's open suggestion).
         updated = [sid for sid in _dedupe(updated) if sid not in created]
         outcome = SuggestionResult(
-            occurrences=len(sorted_matches),
+            occurrences=occurrence_count,
             created_suggestion_ids=created,
             updated_suggestion_ids=updated,
             comment_update_state=state,

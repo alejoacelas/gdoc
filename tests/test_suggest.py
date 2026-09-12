@@ -1371,6 +1371,7 @@ class TestCmdSuggest:
             "abc123", [{"startIndex": 1, "endIndex": 6}], "world", "rev123",
             tab_id="t.first",
             expected_token_identity=("cid.apps", "rt1"),
+            body=_structure()["tabs"][0]["documentTab"]["body"],
         )
 
     @patch("gdoc.state.update_state_after_command")
@@ -1708,3 +1709,51 @@ class TestMcpExposure:
             {"old_file", "new_file"},
         )
         assert "suggest" in mcp._DESCRIPTION_NOTES
+
+
+def test_multiline_suggestion_preserves_native_paragraph_marks(mocker):
+    """Suggested wording changes retain both native marks and count one match."""
+    body = _body(
+        _para(_run("Alpha\n", 1, 7),
+              paragraphStyle={"namedStyleType": "TITLE"}),
+        _para(_run("Beta\n", 7, 12),
+              paragraphStyle={"namedStyleType": "HEADING_2"},
+              bullet={"listId": "synthetic-list", "nestingLevel": 2}),
+    )
+    service = _service(_ok_response())
+    mocker.patch("gdoc.api.docs.get_docs_service", return_value=service)
+    mocker.patch("gdoc.api.docs.get_document_structure",
+                 return_value=_readback("suggest.abc"))
+    result = suggest_replacement(
+        "synthetic-doc", [{"startIndex": 1, "endIndex": 11}],
+        "Long alpha\nShort", "synthetic-rev", tab_id="t.0", body=body,
+    )
+    assert result.occurrences == 1
+    assert _batch_call(service).kwargs["body"] == {
+        "writeControl": {"requiredRevisionId": "synthetic-rev", "writeMode": "SUGGEST"},
+        "requests": [
+            {"deleteContentRange": {"range": {
+                "startIndex": 7, "endIndex": 11, "tabId": "t.0",
+            }}},
+            {"insertText": {"location": {"index": 7, "tabId": "t.0"},
+                            "text": "Short"}},
+            {"deleteContentRange": {"range": {
+                "startIndex": 1, "endIndex": 6, "tabId": "t.0",
+            }}},
+            {"insertText": {"location": {"index": 1, "tabId": "t.0"},
+                            "text": "Long alpha"}},
+        ],
+    }
+
+
+def test_multiline_suggestion_count_mismatch_refuses_before_preview(mocker):
+    """An ambiguous paragraph merge fails before even the preview gate."""
+    body = _body(_para(_run("Alpha\n", 1, 7)), _para(_run("Beta\n", 7, 12)))
+    gate = mocker.patch("gdoc.api.docs.check_suggest_preview_access")
+    service = mocker.patch("gdoc.api.docs.get_docs_service")
+    with pytest.raises(GdocError, match="paragraph count mismatch") as exc:
+        suggest_replacement("synthetic-doc", [{"startIndex": 1, "endIndex": 11}],
+                            "Merged", "synthetic-rev", body=body)
+    assert exc.value.exit_code == 3
+    gate.assert_not_called()
+    service.assert_not_called()

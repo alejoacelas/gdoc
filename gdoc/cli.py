@@ -1324,7 +1324,7 @@ def cmd_suggest(args) -> int:
 
     result = suggest_replacement(
         doc_id, plan.matches, new_text, plan.revision_id, tab_id=plan.tab_id,
-        expected_token_identity=read_identity,
+        expected_token_identity=read_identity, body=plan.search_body,
     )
 
     # The suggestion is saved and verified at this point. A failure of the
@@ -3967,17 +3967,16 @@ def build_parser() -> GdocArgumentParser:
     # edit
     edit_p = sub.add_parser(
         "edit", parents=[output_parent], help="Find and replace text",
-        epilog="Note: edit operates on raw document text. "
-               "Use `gdoc cat --plain DOC` to see matchable text. "
-               "Replacement text supports markdown formatting "
-               "(bold, italic, headings, bullets, links). When the match is "
-               "only part of a paragraph, the replacement is inline markdown "
-               "only: bold, italic, strikethrough, links, and CommonMark code "
-               "spans (a backtick string opens a span that only an equal-length "
-               "backtick string closes; an unmatched one is literal). Block "
-               "syntax (headings, list markers, fences, blockquotes, rules) is "
-               "inserted literally there and only applies when the match is a "
-               "whole paragraph.",
+        epilog="Edit matches raw document text (`gdoc cat --plain DOC`). "
+               "One trailing newline is ignored in positional, stdin and file "
+               "inputs. Wording edits preserve native paragraph marks, named "
+               "styles and lists; multiline edits must keep the paragraph count. "
+               "Empty replacement text clears wording and retains paragraph marks. "
+               "Partial-paragraph replacements support inline markdown formatting only "
+               "(bold, italic, strikethrough, links and CommonMark code spans); "
+               "block markers are literal. A complete paragraph can explicitly "
+               "change its heading, list or quote style. Use --cell for whole-cell "
+               "replacement, including tables and intentional list removal.",
     )
     edit_p.add_argument("doc", help="Document ID or URL")
     edit_p.add_argument("old_text", nargs="?", default=None, help="Text to find")

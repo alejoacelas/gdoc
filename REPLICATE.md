@@ -83,3 +83,15 @@ The user wanted both PR #61 P2 findings fixed, the header suggestion request che
 - No live writes or push; the coordinator owns live acceptance and publication.
 
 Agent session 01a0972d-e63f-7db3-81be-e10b7e0508cd · Commits cc6952c
+
+# Babysit PR 61 after the rebuild
+
+The user wanted PR #61 watched until CI, CodeRabbit and Codex were green and quiet, with real findings fixed in small commits and out-of-scope findings deferred on the thread.
+
+- Re-requested both bot reviews for the force-pushed head `7e4c10b`. Codex returned two P2 findings; CodeRabbit re-reviewed on request. The repo has no GitHub Actions workflows, so the CodeRabbit status is the only check.
+- Fixed the segment guard that refused any header, footer or footnote replacement starting with three backticks or tildes. A fence needs its own closing line, so the guard now rejects only a source newline, plus a non-empty single line the block parser renders to nothing (a delimiter pair such as three backticks around a word), which would otherwise empty the segment. Probed offline: `` ``` not closed `` and an indented `` ``` `` now insert literally, `` ```code``` after `` becomes a Courier code span, and multi-line fences and paragraph breaks are still refused before any write. Three accepted and five rejected cases replace the old three-case test.
+- Confirmed Codex's other finding with #60's cell-edit helpers: a `--cell` collapse of a plain-plus-bullet cell to prose emits no `deleteParagraphBullets`, while an all-bullet cell does, so the retained final mark keeps the bullet. Those lines come from #60's commit `be56630`, so the finding was deferred to #60 (groups G01/G07) on the thread rather than fixed here.
+- Corrected two stale lines in the PR body's Summary (a lint-cleanup commit that no longer exists and a 1,608 test count); the consolidated header was left intact.
+- Full `uv run pytest -q`: 1,821 passed; no-stubs and `git diff --check` pass; Ruff counts for both changed files equal HEAD (0 each), so the 196 pre-existing diagnostics are unchanged.
+
+Agent session ff98f78b-ae75-4442-8910-6cd498b6e736 · Commits 2643ab2

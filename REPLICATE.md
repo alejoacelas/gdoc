@@ -267,3 +267,14 @@ The user wanted PR #65 rebased onto #63 at `28c4ba9`, preserving #60 and #61, th
 - Final `uv run pytest tests/ -q`: **2,553 passed**. No-stubs and whitespace checks pass; Ruff matches origin/main at `dbfa4c34` exactly: **196 findings**, zero added or removed by relative file, rule, message and offending source line. All Google API calls were mocked; native preview verification remains outside this task.
 
 Agent session 01a09803-3435-7f13-b5fe-deb4d6f8e0be · Commits 847d517, ef7b218, 4dc35f3, 69de3c4, 82c386c, dfb5e9c, 08a5b2d, 3c62494, ec13311, c20b81a, 69d14f1, f2ec481, ad47658, 96be4e0
+
+# Rebase PR 65 onto the independent export round trip
+
+The user wanted PR #65 directly on #69 at `5b41f05`, with only its own changes above that base and all offline gates green before pushing.
+
+- Replayed the #65 commits after `82c386c` onto `5b41f05`. Kept #69's final-rule newline handling and table export, retained #65's additional bounded-reconstruction regressions, and corrected the older README claim that tab exports flatten rectangular tables.
+- Git dropped `96be4e0` because its patch was already upstream. Its duplicated changes to `test_non_body_rejects_paragraph_breaks_and_empty_renderings` (edit/suggest matrix) and `test_insert_table_only_at_end_adds_no_separator` (bullet matrix) remain only in #69; no additional test functions were deleted.
+- Full offline suite: **2,562 passed**. No-stubs and whitespace checks pass; Ruff matches origin/main `dbfa4c34` exactly at **196** diagnostics, zero additions/removals after normalization by relative file, rule, message and source line. The initial comparison needed canonical macOS temporary paths; rerunning with resolved paths produced the exact match.
+- `5b41f05` is an ancestor and the merge-tree check is clean. No live Google API calls were made; remote review is requested separately after the push.
+
+Agent session 01a0980b-d970-7912-ad22-65aa64e40041 · Commits ef61d08, abf5359, 2f1ae73, f5ce96e, 6e43dcd, 7782b5e, 98a8e22, f46e482, 4045830

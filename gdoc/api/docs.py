@@ -1579,14 +1579,21 @@ def _wording_contexts(body: dict, match: dict, markdown: str):
             fence.group(1).startswith("`") and "`" in fence.group(2)
         )
 
-    if "\n" in markdown and any(_opens_block_fence(line)
-                                 for line in markdown.split("\n")):
+    # Only complete paragraphs can become code lines (a match may include the
+    # last paragraph's newline, clipped below); inside a paragraph the fence
+    # lines are literal text like every other block marker.
+    native = list(_replacement_paragraphs(body.get("content", []), match))
+    whole = bool(native) and match["startIndex"] == native[0][1] and (
+        match["endIndex"] in (native[-1][2], native[-1][2] + 1)
+    )
+    if "\n" in markdown and whole and any(
+        _opens_block_fence(line) for line in markdown.split("\n")
+    ):
         parsed = parse_markdown(markdown.removesuffix("\n"))
         check_inline_only_markdown(parsed)
         # Split rendered code, never its source lines: fence delimiters are
         # syntax, and asterisks/links inside the fence are literal code.
         text = parsed.plain_text.removesuffix("\n")
-        native = list(_replacement_paragraphs(body.get("content", []), match))
         rendered_count = sum(s.type == "paragraph_style" for s in parsed.styles)
         if native and rendered_count != len(native):
             raise GdocError(

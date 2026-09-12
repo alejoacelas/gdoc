@@ -440,6 +440,21 @@ def test_table_rows_inside_partial_paragraphs_are_literal_in_edit_and_suggest(
     assert not any('updateParagraphStyle' in r for r in requests)
 
 
+@pytest.mark.parametrize('command', ['edit', 'suggest'])
+def test_fence_lines_inside_partial_paragraphs_are_literal(mocker, command):
+    """A partially covered range cannot turn its paragraphs into code lines,
+    so the fence lines are literal and the inline Markdown still parses."""
+    body = _body(('Alpha', 'NORMAL_TEXT', False), ('Beta', 'NORMAL_TEXT', False),
+                 ('Gamma', 'NORMAL_TEXT', False))
+    planner = _requests if command == 'edit' else _suggest_requests
+    requests = planner(mocker, body, 'pha\nBeta\nGam', '```\n**x**\n```')
+    assert _apply_text_requests(body, requests) == 'Al```\nx\n```ma\n'
+    styles = [r['updateTextStyle']['textStyle'] for r in requests
+              if 'updateTextStyle' in r]
+    assert styles == [{'bold': True}]
+    assert not any('updateParagraphStyle' in r for r in requests)
+
+
 def test_suggest_rejects_table_replacing_whole_paragraphs(mocker):
     from gdoc.api.docs import suggest_replacement
 

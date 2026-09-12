@@ -328,23 +328,18 @@ The user wanted PR #65 to refuse table replacements that silently flatten bullet
 
 Agent session 01a09845-89a5-7a03-b27a-44b03364e759 · Commits 38bcb7c, 06d6e2b
 
-# Guard table headings and paragraph rules
 
-The user wanted PR #68's table-heading and border-bottom rule losses blocked in PR #65 before the next restack.
+# Revision-safe staged writes
 
-- Observed 18 failing mocked cases before the fix. The guard now names tables containing non-normal named paragraph styles and requires `--allow-lossy`; absent and NORMAL_TEXT cell styles retain their behavior.
-- Border-bottom paragraphs now require the same opt-in: the existing exporter has no rule-rendering helper and emits only their text. Native horizontal-rule behavior and plain/bold-header table behavior remain covered and unchanged.
-- All **2,631 tests pass**, including **169 guard tests**; no-stubs and whitespace checks pass. Ruff matches `origin/main` (`dbfa4c34`) at **196 findings**, with zero additions or removals normalized by relative path, rule, message and source line. No live Google API calls were made.
+The user wanted revision-safe table and whole-document writes that report partial or uncertain completion without replaying successful batches.
 
-Agent session 01a09858-843f-7233-81d1-f32d3855d9f9 · Commits 9ac6af2, 9887431
+- Implemented on branch `alejoacelas/fix-revision-safe-writes`, stacked on PR #60 at `88165fcaa982853c2caacf2363cce0b12cee69bd`, in `/Users/alejo/best/tools/active/gdoc/pr-revision-safe-writes`.
+- Table structure and cell-fill batches carry `writeControl.requiredRevisionId` from the preceding response or read. A rejected follow-up reads once and recomputes from an unchanged, unique text anchor or table fingerprint; ambiguity, a changed target, or a second rejection exits 3. The request shape matches PR #66's cleanup precondition; the #60 base already removed the heading-cleanup stage, so there is no cleanup batch to restore or replay.
+- Mutation state distinguishes confirmed stages, requests that failed before sending, and writes whose responses were lost. Later non-conflict failures exit 1 and report partial completion; uncertain writes and acknowledged first batches are never retried. A failed read after table creation now reports the table as applied instead of silently returning success.
+- Write and push retain their preflight Drive version, including under `--quiet --force`, and compare it immediately before mutation. Single-tab documents reuse the guard-read Docs snapshot for native, revision-pinned replacement. Explicit multi-tab collapse still uses Drive import: local discovery exposes no revision/version upload precondition, so the final version read narrows but cannot close that race; the README documents it.
+- Added 46 synthetic offline regressions in `tests/test_staged_writes.py`: revision propagation through replacement, table-only insertion and two tables; before-send and after-apply failures at each of the three stages; lost read-back and post-write version responses; missing revisions; a real simulated revision rejection after an editor's Unicode prefix insertion; changed, ambiguous and missing insertion/cell targets; exactly one bounded recovery for each follow-up; ordinary 400 failures without retry; CLI error output and exit codes; write/push preflight propagation across quiet/force combinations; atomic single-tab rejection; final Drive check ordering and changed/missing versions; uncertain Drive uploads; and API callers without a CLI preflight.
+- Validation: `uv run pytest` passed all 1,785 tests with a network-blocking pytest plugin enabled; the no-stubs gate and `git diff --check` passed. Ruff reports 196 findings, exactly matching an extracted `origin/main` at `dbfa4c34bfa699ee8dd9839da85eea1fac177d44`, with zero additions by file, code and message.
+- Test-isolation lapse: an early run used legacy Drive-only mocks that left the new Docs read unmocked and attempted GETs of the synthetic `abc123` ID, returning 404. Stopped that run and notified the coordinator; no live mutation was sent. Added explicit Docs/version/export fixtures and blocked network for every subsequent test run; the block also exposed pre-existing missing export mocks.
+- Recovery intentionally refuses table-only or adjacent-table insertion without a unique anchor, and edits before the new table's first trusted read-back. No rollback, broader mutation/read retry policy, comment changes, live write replay, push, or PR creation was performed. Publishing, integration after #66, and live verification remain with the coordinator; post-write awareness-baseline semantics remain outside this change.
 
-# Keep style metadata outside replacement content
-
-The user wanted PR #65's metadata false positives fixed and its quiet-mode safety description corrected without rebasing the stack.
-
-- Added 25 regression cases: 20 reproduced metadata refusals or false warnings before the fix; five controls retained border and style detection in body, header, footer, footnote and table paragraphs.
-- Skip named-style and document-style defaults, their suggested changes, and the list registry during content traversal. Referenced list definitions still receive styling and suggestion checks, and explicit page-setup checks remain active.
-- Clarified that quiet mode skips conflict and awareness checks while whole-document write and push retain no-op and lossiness safety checks.
-- All **2,656 tests pass**, including **194 guard tests**; no-stubs and whitespace checks pass. Ruff matches `origin/main` (`dbfa4c34`) exactly at **196 findings**, with zero additions or removals normalized by relative path, rule, message and source line. No live Google API calls were made.
-
-Agent session 01a098a0-f49b-7770-840c-f6e0ef9917a5 · Commits 4f89128, cb633b3, 5a2a356, b3d4f7d
+Agent session 01a0972f-f7e4-7e40-b10e-15060654dbf1 · Commits 357616d

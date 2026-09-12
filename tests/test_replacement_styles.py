@@ -131,3 +131,109 @@ def test_same_style_wording_needs_no_style_requests(mocker, command, style):
     body = _body(("A TOKEN Z\n", style))
     requests = _batch(mocker, body, "TOKEN", "Revised", command)
     assert [next(iter(r)) for r in requests] == ["deleteContentRange", "insertText"]
+
+
+def _units(*runs):
+    result = []
+    for text, style in runs:
+        raw = text.encode("utf-16-le")
+        result.extend((raw[i:i + 2], deepcopy(style)) for i in range(0, len(raw), 2))
+    return result
+
+
+def _project_suggestion(runs, requests, view):
+    """Small offline contract model: pending deletions retain their old style.
+
+    Only inserted units may be restyled by this batch. This checks our ranges
+    and projections, but cannot establish the preview server's behavior.
+    """
+    units = [(char, style, "original") for char, style in _units(*runs)]
+    for request in requests:
+        if "deleteContentRange" in request:
+            span = request["deleteContentRange"]["range"]
+            lo, hi = span["startIndex"] - 1, span["endIndex"] - 1
+            units[lo:hi] = [(char, style, "deleted") for char, style, _ in units[lo:hi]]
+        elif "insertText" in request:
+            insert = request["insertText"]
+            pos = insert["location"]["index"] - 1
+            inherited = units[pos - 1][1] if pos else units[pos][1]
+            units[pos:pos] = [(char, style, "inserted")
+                              for char, style in _units((insert["text"], inherited))]
+        elif "updateTextStyle" in request:
+            update = request["updateTextStyle"]
+            lo = update["range"]["startIndex"] - 1
+            hi = update["range"]["endIndex"] - 1
+            for _, style, status in units[lo:hi]:
+                assert status == "inserted", "style request touched pre-existing text"
+                for field in update["fields"].split(","):
+                    if field in update["textStyle"]:
+                        style[field] = deepcopy(update["textStyle"][field])
+                    else:
+                        style.pop(field, None)
+    hidden = {"pending": None, "accepted": "deleted", "rejected": "inserted"}[view]
+    return [(char, style) for char, style, status in units if status != hidden]
+
+
+@pytest.mark.parametrize("view", ["pending", "accepted", "rejected"])
+@pytest.mark.parametrize("target", [{}, {"italic": True, **RED}])
+def test_suggestion_projection_contract_preserves_target_and_neighbours(
+    mocker, view, target,
+):
+    left = ("Bold 🌿 ", {"bold": True, "underline": True})
+    old = ("TOKEN", target)
+    right = (" right\n", {"strikethrough": True})
+    runs = (left, old, right)
+    requests = _batch(mocker, _body(*runs), "TOKEN", "R🌿", "suggest")
+    new = ("R🌿", target)
+    expected = {"pending": (left, new, old, right),
+                "accepted": (left, new, right), "rejected": runs}
+    assert _project_suggestion(runs, requests, view) == _units(*expected[view])
+
+
+@pytest.mark.parametrize("command", ["edit", "suggest"])
+def test_link_only_follows_retained_label_with_utf16_offsets(mocker, command):
+    body = _body(("Left ", {}), ("Label🌿", LINK), (" right\n", {}))
+    requests = _batch(mocker, body, "Label🌿", "🌿 New Label🌿 suffix", command)
+    styles = _replacement_styles(requests, {})
+    assert styles[:7] == [RED] * 7
+    assert styles[7:14] == [LINK] * 7
+    assert styles[14:] == [RED] * len(" suffix")
+
+
+@pytest.mark.parametrize("command", ["edit", "suggest"])
+def test_explicit_emphasis_wins_after_target_baseline(mocker, command):
+    body = _body(("Left ", {"bold": True}), ("TOKEN", RED), (" right\n", {}))
+    requests = _batch(mocker, body, "TOKEN", "**R🌿**", command)
+    assert _replacement_styles(requests, {"bold": True}) == [{**RED, "bold": True}] * 3
+
+
+@pytest.mark.parametrize("command", ["edit", "suggest"])
+def test_same_colour_neighbour_does_not_hide_markdown_link_reset(mocker, command):
+    body = _body(("A TOKEN Z\n", RED))
+    requests = _batch(mocker, body, "TOKEN", "[Revised](https://example.test/new)",
+                      command)
+    assert _replacement_styles(requests, RED) == [
+        {**RED, "link": {"url": "https://example.test/new"}},
+    ] * len("Revised")
+
+
+def test_collapsing_cell_removes_link_but_preserves_target_colour(mocker):
+    first = _body(("Old", LINK), ("\n", LINK))
+    second = _body(("Value", LINK), ("\n", LINK))
+    for element in second["content"]:
+        element["startIndex"] += 4
+        element["endIndex"] += 4
+        for run in element["paragraph"]["elements"]:
+            run["startIndex"] += 4
+            run["endIndex"] += 4
+    cell = {"content": first["content"] + second["content"]}
+    body = {"content": [{"table": {"tableRows": [{"tableCells": [cell]}]}}]}
+    requests = _batch(mocker, body, "Old\nValue", "Confirmed", replace_paragraphs=True)
+    assert _replacement_styles(requests, LINK) == [RED] * len("Confirmed")
+
+
+@pytest.mark.parametrize("command", ["edit", "suggest"])
+def test_duplicate_retained_label_does_not_guess_which_link_to_restore(mocker, command):
+    body = _body(("A ", {}), ("Label", LINK), (" Z\n", {}))
+    requests = _batch(mocker, body, "Label", "Label and Label", command)
+    assert _replacement_styles(requests, {}) == [RED] * len("Label and Label")

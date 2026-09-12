@@ -320,14 +320,15 @@ def test_inline_reapplies_link_shared_with_neighbour(mocker, decor, fields):
     body["content"][0]["paragraph"]["elements"][1]["textRun"]["textStyle"] = dict(link)
     service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
     match = {"startIndex": 9, "endIndex": 30}
-    replace_formatted("sample-doc", [match], "done", "rev-a", body=body)
+    replace_formatted("sample-doc", [match], "2. Archive the sample", "rev-a", body=body)
     service.documents.return_value.batchUpdate.assert_called_once_with(
         documentId="sample-doc", body={
             "requests": [
                 {"deleteContentRange": {"range": match}},
-                {"insertText": {"location": {"index": 9}, "text": "done"}},
+                {"insertText": {"location": {"index": 9},
+                                "text": "2. Archive the sample"}},
                 {"updateTextStyle": {
-                    "range": {"startIndex": 9, "endIndex": 13},
+                    "range": {"startIndex": 9, "endIndex": 30},
                     "textStyle": link, "fields": fields,
                 }},
             ],
@@ -419,8 +420,7 @@ def test_inline_reapplies_link_decorations_after_replacement_link(mocker):
                 {"insertText": {"location": {"index": 9, "tabId": "tab-a"},
                                 "text": "new done"}},
                 {"updateTextStyle": {
-                    "range": whole, "textStyle": style,
-                    "fields": "foregroundColor,link,underline",
+                    "range": whole, "textStyle": {}, "fields": "link",
                 }},
                 {"updateTextStyle": {
                     "range": {"startIndex": 9, "endIndex": 12, "tabId": "tab-a"},
@@ -428,8 +428,8 @@ def test_inline_reapplies_link_decorations_after_replacement_link(mocker):
                     "fields": "link",
                 }},
                 {"updateTextStyle": {
-                    "range": whole, "textStyle": decor,
-                    "fields": "foregroundColor,underline",
+                    "range": {"startIndex": 9, "endIndex": 12, "tabId": "tab-a"},
+                    "textStyle": decor, "fields": "foregroundColor,underline",
                 }},
             ],
             "writeControl": {"requiredRevisionId": "rev-a"},

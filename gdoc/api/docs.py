@@ -1647,7 +1647,7 @@ def _wording_contexts(body: dict, match: dict, markdown: str):
                 for s in parsed.styles if s.type == "text_style"
                 and s.start < end and s.end > offset
             ])
-            result.append((part, (selected, ({}, ""))))
+            result.append((part, (selected, [])))
             offset = end + 1
         return result
     result = []
@@ -1689,45 +1689,100 @@ def _empty_paragraph_range(content: list[dict], match: dict):
     return None
 
 
-def _inline_baseline(paragraph: dict, match: dict) -> tuple[dict, str]:
-    """Restore only direct style fields that differ from the insertion neighbour.
+def _replacement_text_style(runs: list[dict], match: dict, text: str):
+    """Map unchanged target phrases; otherwise use the largest styled run.
 
-    Missing fields are reset through the mask, never materialized as defaults.
-    Mixed-style targets retain the existing insertion behavior.
+    Exact, unique phrases are the only supported mapping for mixed targets.
+    Unmapped gaps retain fields common to all targets. When no styled phrase
+    survives, the longest styled target run wins (first on ties), so adjoining
+    plain prose cannot erase its colour. Links only follow surviving labels.
+    Offsets returned here are Python offsets into the replacement text.
     """
     start, end = match["startIndex"], match["endIndex"]
+    targets = []
+    for run in runs:
+        lo, hi = max(start, run.get("startIndex", 0)), min(end, run["endIndex"])
+        if lo >= hi:
+            continue
+        raw = run["textRun"]["content"].encode("utf-16-le")
+        offset = run.get("startIndex", 0)
+        label = raw[(lo - offset) * 2:(hi - offset) * 2].decode("utf-16-le")
+        style = run["textRun"].get("textStyle", {})
+        if targets and targets[-1][1] == style:
+            targets[-1] = (targets[-1][0] + label, style)
+        else:
+            targets.append((label, style))
+    if not targets or not text:
+        return []
+    common = {key: value for key, value in targets[0][1].items()
+              if key != "link" and all(style.get(key) == value
+                                       for _, style in targets)}
+    mapped = []
+    for label, style in targets:
+        pos = text.find(label)
+        if (style and label.strip() and pos >= 0
+                and text.find(label, pos + 1) < 0):
+            mapped.append((pos, pos + len(label), style))
+    mapped.sort(key=lambda item: item[0])
+    styled_count = sum(bool(style) and bool(label.strip()) for label, style in targets)
+    if len(mapped) != styled_count or any(
+        left[1] > right[0] for left, right in zip(mapped, mapped[1:])
+    ):
+        mapped = []
+    if not mapped:
+        from gdoc.mdparse import utf16_len
+
+        _, dominant = max((t for t in targets if t[1]),
+                          key=lambda t: utf16_len(t[0]), default=targets[0])
+        return [(0, len(text), {k: v for k, v in dominant.items() if k != "link"})]
+    result = []
+    offset = 0
+    for lo, hi, style in mapped:
+        if offset < lo:
+            result.append((offset, lo, common))
+        result.append((lo, hi, style))
+        offset = hi
+    if offset < len(text):
+        result.append((offset, len(text), common))
+    return result
+
+
+def _inline_baseline(paragraph: dict, match: dict, text: str) -> list[dict]:
+    """Restore target styles over inserted text, using masks for absent fields.
+
+    Keep the complete desired style for restoring link decorations after
+    explicit Markdown; only differing fields need an initial style request.
+    """
+    from gdoc.mdparse import utf16_len
+
+    start, end = match["startIndex"], match["endIndex"]
     runs = [el for el in paragraph.get("elements", []) if "textRun" in el]
-    targets = [el["textRun"].get("textStyle", {}) for el in runs
-               if el.get("startIndex", 0) < end and el.get("endIndex", 0) > start]
-    if not targets or any(style != targets[0] for style in targets):
-        return {}, ""
-    target = targets[0]
-    # At paragraph start there is no left neighbour; deletion exposes the
-    # first surviving run (possibly just the paragraph's newline).
+    if start == end:
+        return []
     following = next((el["textRun"].get("textStyle", {}) for el in runs
-                      if el.get("endIndex", 0) > end), target)
+                      if el.get("endIndex", 0) > end), {})
     neighbour = next(
         (el["textRun"].get("textStyle", {}) for el in runs
          if el.get("startIndex", 0) < start <= el.get("endIndex", 0)), following,
     )
-    fields = {key for key in target.keys() | neighbour.keys()
-              if target.get(key) != neighbour.get(key)}
-    if "link" in target:
-        # Docs only "generally" carries neighbouring style onto inserted text
-        # and never inherits links, so a linked target gets its link reapplied
-        # even when the neighbour shares it. Setting a link also resets colour
-        # and underline to the link defaults unless they travel in the same
-        # request, so the target's own values ride along.
-        fields.update(key for key in ("link", "foregroundColor", "underline")
-                      if key in target)
-    fields = sorted(fields)
-    style = {key: target[key] for key in fields if key in target}
-    # Decorations shared with the neighbour need no restore, but a Markdown
-    # link in the replacement resets them, so they ride along for that case.
-    for key in ("foregroundColor", "underline"):
-        if key in target:
-            style.setdefault(key, target[key])
-    return style, ",".join(fields)
+    old_link = any("link" in el["textRun"].get("textStyle", {}) for el in runs
+                   if el.get("startIndex", 0) < end and el["endIndex"] > start)
+    result = []
+    for lo, hi, target in _replacement_text_style(runs, match, text):
+        fields = {key for key in target.keys() | neighbour.keys()
+                  if target.get(key) != neighbour.get(key)}
+        if old_link or "link" in target:
+            fields.add("link")
+        if "link" in target:
+            # Setting links resets colour/underline unless included together.
+            fields.update(key for key in ("foregroundColor", "underline")
+                          if key in target)
+        result.append({
+            "range": {"startIndex": start + utf16_len(text[:lo]),
+                      "endIndex": start + utf16_len(text[:hi])},
+            "textStyle": dict(target), "fields": ",".join(sorted(fields)),
+        })
+    return result
 
 
 def _contextual_replacement(parsed, markdown: str, match: dict, body: dict):
@@ -1754,9 +1809,9 @@ def _contextual_replacement(parsed, markdown: str, match: dict, body: dict):
     # A complete paragraph can change its own style explicitly without
     # deleting its native mark or entering the block/cleanup path.
     if whole and explicit_paragraph and "\n" not in markdown and not parsed.tables:
-        return parsed, ({}, "")
+        return parsed, []
     return (ParsedMarkdown(plain_text=text, styles=styles),
-            _inline_baseline(paragraph, match))
+            _inline_baseline(paragraph, match, text))
 
 
 def _match_space(match: dict) -> tuple[str, str]:
@@ -1874,34 +1929,37 @@ def _build_replacement_requests(
                     "fields": "namedStyleType,indentStart,indentEnd,indentFirstLine",
                 }})
         if requests and baseline:
-            from gdoc.mdparse import utf16_len
-            style, mask = baseline
-            target = {"startIndex": match["startIndex"],
-                      "endIndex": match["startIndex"] + utf16_len(selected.plain_text)}
-            if match_tab:
-                target["tabId"] = match_tab
-            parsed_styles = requests[1:]
-            if mask:
-                requests.insert(1, {"updateTextStyle": {
-                    "range": target,
-                    "textStyle": {key: style[key] for key in mask.split(",")
-                                  if key in style},
-                    "fields": mask,
-                }})
-            # Setting a link resets colour and underline to the link defaults,
-            # so a Markdown link in the replacement would undo the target's
-            # decorations, restored or shared with the neighbour. Reapply
-            # them after the parsed style requests.
-            decor = {key: style[key]
-                     for key in ("foregroundColor", "underline") if key in style}
-            if decor and any(
-                "link" in req.get("updateTextStyle", {}).get("fields", "").split(",")
-                for req in parsed_styles
-            ):
-                requests.append({"updateTextStyle": {
-                    "range": target, "textStyle": decor,
-                    "fields": ",".join(sorted(decor)),
-                }})
+            updates = []
+            for style in baseline:
+                target = dict(style["range"])
+                if match_tab:
+                    target["tabId"] = match_tab
+                fields = style["fields"]
+                if fields:
+                    updates.append({"updateTextStyle": {
+                        "range": target,
+                        "textStyle": {k: v for k, v in style["textStyle"].items()
+                                      if k in fields.split(",")},
+                        "fields": fields,
+                    }})
+                # A Markdown link replaces only the URL, retaining the target's
+                # own decorations on its intersection with this style span.
+                decor = {key: style["textStyle"][key]
+                         for key in ("foregroundColor", "underline")
+                         if key in style["textStyle"]}
+                if decor:
+                    for request in list(requests):
+                        link = request.get("updateTextStyle", {})
+                        if "link" not in link.get("textStyle", {}):
+                            continue
+                        lo = max(target["startIndex"], link["range"]["startIndex"])
+                        hi = min(target["endIndex"], link["range"]["endIndex"])
+                        if lo < hi:
+                            requests.append({"updateTextStyle": {
+                                "range": {**target, "startIndex": lo, "endIndex": hi},
+                                "textStyle": decor, "fields": ",".join(sorted(decor)),
+                            }})
+            requests[1:1] = updates
         if segment_id:
             for request in requests:
                 operation = next(iter(request.values()))
@@ -1975,7 +2033,7 @@ def replace_formatted(
             from gdoc.mdparse import ParsedMarkdown
             parts = [
                 (_empty_paragraph_range(body.get("content", []), part) or part,
-                 (ParsedMarkdown(""), ({}, "")))
+                 (ParsedMarkdown(""), []))
                 for part, _ in _paragraph_wording_matches(body, match, "")
             ]
         elif contextual:
@@ -1987,7 +2045,11 @@ def replace_formatted(
         ):
             # Collapsing/expanding cell wording still inherits the native
             # paragraph's custom properties; NORMAL_TEXT would reset them.
-            parts = [(match, (_inline_only(parsed), ({}, "")))]
+            paragraph = {"elements": [run for p, _, _ in native
+                                      for run in p.get("elements", [])]}
+            parts = [(match, (_inline_only(parsed), _inline_baseline(
+                paragraph, match, parsed.plain_text,
+            )))]
         else:
             parts = [(match, (parsed, None))]
         for part, context in parts:
@@ -2510,7 +2572,7 @@ def suggest_replacement(
             as the baseline, extending the re-auth guard across the read
             (the CLI passes it). Omitted → the baseline is captured here,
             guarding the gate→write pair only.
-        body: Original body used to preserve native paragraph marks.
+        body: Source snapshot for native paragraph marks and target run styles.
     """
     from google.auth.exceptions import GoogleAuthError, TransportError
 

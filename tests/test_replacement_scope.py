@@ -256,3 +256,28 @@ def test_unique_match_in_later_tab_does_not_require_all(services, command):
     assert command(_args(all=False)) == 0
     requests = batch.call_args.kwargs["body"]["requests"]
     assert {_address(r) for r in requests} == {("second", None)}
+
+
+def test_suggest_preserves_each_containers_direct_style(services):
+    _, batch = services
+    assert cmd_suggest(_args()) == 0
+    requests = batch.call_args.kwargs["body"]["requests"]
+    assert {_address(r): r["updateTextStyle"]["textStyle"]
+            for r in requests if "updateTextStyle" in r} == {
+        ("first", None): {"bold": True},
+        ("first", "shared-header"): {"italic": True},
+        ("first", "footer"): {"underline": True},
+        ("first", "note"): {"strikethrough": True},
+        ("second", None): {"underline": True},
+        ("second", "shared-header"): {"bold": True},
+    }
+
+
+@pytest.mark.parametrize("tab_id", ["first", "second"])
+def test_suggest_table_markdown_uses_matches_own_tab(services, tab_id):
+    document, batch = services
+    match = {"tabId": tab_id, "container": "body", "startIndex": 1, "endIndex": 6}
+    with pytest.raises(GdocError, match="not supported yet"):
+        suggest_replacement("doc-one", [match], "| A |\n| --- |\n| B |",
+                            "revision-source", body=document)
+    batch.assert_not_called()

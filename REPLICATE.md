@@ -343,3 +343,17 @@ The user wanted revision-safe table and whole-document writes that report partia
 - Recovery intentionally refuses table-only or adjacent-table insertion without a unique anchor, and edits before the new table's first trusted read-back. No rollback, broader mutation/read retry policy, comment changes, live write replay, push, or PR creation was performed. Publishing, integration after #66, and live verification remain with the coordinator; post-write awareness-baseline semantics remain outside this change.
 
 Agent session 01a0972f-f7e4-7e40-b10e-15060654dbf1 · Commits 357616d
+
+# Agent sessions
+
+## Safe native edit targets
+
+The human wanted PR #66 redone as three focused fixes for target identity, native deletion boundaries, and Unicode offsets.
+
+- Tab IDs now precede titles; exact titles precede case-insensitive fallback, and ambiguous titles identify every candidate before refusing. Cell labels identify a unique first-column row, retaining explicit column and table coordinates.
+- Text search stops at inline objects, footnote references, tables, and unexplained native-index gaps. Whole-cell replacement refuses native content; the existing non-destructive inline-anchor behavior and synthetic API fixtures remain covered.
+- Lowercase matching maps transformed characters back to original UTF-16 spans and rejects partial expansions. Fifteen new regression cases failed before the Unicode fix, including an edit whose range swallowed the paragraph mark.
+- All 1,626 tests pass, including 49 new native-target cases and 14 retained capture cases. Changed helpers and tests pass Ruff; the full check retains exactly 196 pre-existing diagnostics, with no additions, under the coordinator-approved baseline exception. The no-stubs check passes.
+- No live captures, push, or PR edits were performed; coordinator review and live replay remain pending. Paragraph formatting, full-document reconstruction guards, and unrelated lint cleanup remain outside scope.
+
+Agent session 01a09703-553d-7e60-ad28-5066d61bf1d4 · Commits 9791974, 54a8e19, 56987ae

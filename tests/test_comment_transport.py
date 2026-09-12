@@ -54,7 +54,10 @@ def wire(mocker):
             if isinstance(response, Exception):
                 raise response
             status, payload = response
-            content = json.dumps(payload).encode()
+            content = (
+                payload if isinstance(payload, bytes)
+                else json.dumps(payload).encode()
+            )
             raw = (
                 (f"HTTP/1.1 {status} Result\r\n"
                  f"Content-Length: {len(content)}\r\n\r\n").encode()
@@ -208,6 +211,8 @@ def test_token_refresh_does_not_consume_comment_send_budget(wire, mocker):
     [
         (503, {"error": {"message": "temporarily unavailable"}}),
         (200, {}),
+        (200, b""),
+        (200, b"<html>502 Bad Gateway</html>"),
     ],
 )
 def test_drive_uncertain_response_requires_inspection(wire, mocker, capsys, response):
@@ -226,3 +231,36 @@ def test_drive_uncertain_response_requires_inspection(wire, mocker, capsys, resp
     )
     assert "inspect" in capsys.readouterr().err.lower()
     assert connection.count == len(saved) == 1
+
+
+@pytest.mark.parametrize("body", [b"", b"<html>502 Bad Gateway</html>"])
+def test_unparseable_anchor_response_is_uncertain_not_replayed(
+    wire, mocker, capsys, body,
+):
+    connection, saved, request = wire
+    connection.responses = [(200, body)]
+    service = MagicMock()
+    service.documents.return_value.batchUpdate.side_effect = request
+    mocker.patch("gdoc.api.docs.get_docs_service", return_value=service)
+    mocker.patch(
+        "gdoc.api.docs.get_document_with_tabs",
+        return_value={
+            "revisionId": "r1",
+            "body": {"content": [{"paragraph": {"elements": [
+                {"startIndex": 1, "textRun": {"content": "echo\n"}},
+            ]}}]},
+        },
+    )
+    fallback = mocker.patch("gdoc.api.comments.create_comment")
+    mocker.patch("gdoc.notify.pre_flight")
+    assert (
+        run_argv(
+            ["comment", "synthetic", "note", "--quote", "echo", "--quiet", "--json"],
+            check_updates=False,
+        )
+        == 1
+    )
+    err = capsys.readouterr().err
+    assert "outcome is uncertain" in err and "inspect" in err.lower()
+    assert connection.count == len(saved) == 1
+    fallback.assert_not_called()

@@ -93,6 +93,28 @@ class CommentRevisionConflictError(GdocError):
     """The pinned comment write was rejected without applying it."""
 
 
+# Google reports quota, rate-limit and API-disabled failures as 403 too.
+# Only these reasons mean the caller lacks permission to batchUpdate.
+_PERMISSION_REASONS = frozenset({
+    "forbidden", "insufficientPermissions", "insufficientFilePermissions",
+    "permissionDenied",
+})
+_PERMISSION_WORDS = ("permission", "forbidden", "not permitted", "batchupdate")
+
+
+def _is_permission_rejection(e: HttpError) -> bool:
+    """True only for a 403 that says this caller may not batchUpdate."""
+    details = e.error_details if isinstance(e.error_details, list) else []
+    reasons = {d.get("reason", "") for d in details if isinstance(d, dict)}
+    domains = {d.get("domain", "") for d in details if isinstance(d, dict)}
+    if "usageLimits" in domains or (reasons and not reasons & _PERMISSION_REASONS):
+        return False
+    if reasons & _PERMISSION_REASONS:
+        return True
+    text = f"{e.reason} {e.content!r}".lower()
+    return any(word in text for word in _PERMISSION_WORDS)
+
+
 def insert_comment(
     doc_id: str,
     content: str,
@@ -163,10 +185,15 @@ def insert_comment(
             raise PreviewUnavailableError(
                 "insertComment preview is not enabled"
             ) from e
-        if status == 403:
+        if status == 403 and _is_permission_rejection(e):
             raise PreviewUnavailableError(
                 "insertComment not permitted for this user"
-            )
+            ) from e
+        if status == 403:
+            raise GdocError(
+                f"Docs API refused the comment write (403: {e.reason}); "
+                "no fallback comment was created"
+            ) from e
         _translate_http_error(e, doc_id)
 
     # Comment saves can fail even when the batchUpdate itself returns 200.

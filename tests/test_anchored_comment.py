@@ -16,6 +16,7 @@ import pytest
 from googleapiclient.errors import HttpError
 
 from gdoc.api.docs import (
+    _PERMISSION_REASONS,
     CommentRevisionConflictError,
     find_text_in_document,
     insert_comment,
@@ -39,6 +40,30 @@ def _mock_docs_service(batch_response=None, batch_error=None):
     else:
         execute.return_value = batch_response or {}
     return service
+
+
+def _google_403(message, reason, domain, status="PERMISSION_DENIED"):
+    return {"error": {
+        "code": 403, "message": message, "status": status,
+        "errors": [{"reason": reason, "domain": domain, "message": message}],
+    }}
+
+
+_NON_PERMISSION_403S = [
+    _google_403(
+        "Quota exceeded for quota metric 'Write requests'", "rateLimitExceeded",
+        "usageLimits", status="RESOURCE_EXHAUSTED",
+    ),
+    _google_403(
+        "User Rate Limit Exceeded", "userRateLimitExceeded", "usageLimits",
+        status="RESOURCE_EXHAUSTED",
+    ),
+    _google_403(
+        "Google Docs API has not been used in project 1 before or it is disabled",
+        "accessNotConfigured", "usageLimits",
+    ),
+    _google_403("Daily Limit Exceeded", "dailyLimitExceeded", "usageLimits"),
+]
 
 
 _OK_RESPONSE = {
@@ -136,6 +161,34 @@ class TestInsertComment:
         )
         with pytest.raises(PreviewUnavailableError):
             insert_comment("doc1", "hello", 10, 25)
+
+    @pytest.mark.parametrize("reason", sorted(_PERMISSION_REASONS))
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_structured_403_permission_reason_permits_fallback(
+        self, mock_svc, reason,
+    ):
+        content = json.dumps({"error": {
+            "code": 403, "message": "The caller does not have permission",
+            "status": "PERMISSION_DENIED",
+            "errors": [{"reason": reason, "domain": "global", "message": "x"}],
+        }}).encode()
+        mock_svc.return_value = _mock_docs_service(
+            batch_error=_http_error(403, content),
+        )
+        with pytest.raises(PreviewUnavailableError):
+            insert_comment("doc1", "hello", 10, 25)
+
+    @pytest.mark.parametrize("payload", _NON_PERMISSION_403S)
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_non_permission_403_refuses_without_fallback(self, mock_svc, payload):
+        mock_svc.return_value = _mock_docs_service(
+            batch_error=_http_error(403, json.dumps(payload).encode()),
+        )
+        with pytest.raises(GdocError, match="no fallback comment was created") as exc:
+            insert_comment("doc1", "hello", 10, 25)
+        assert not isinstance(exc.value, PreviewUnavailableError)
+        assert exc.value.exit_code == 1
+        assert payload["error"]["message"] in str(exc.value)
 
     @patch("gdoc.api.docs.get_docs_service")
     def test_other_400_raises_gdoc_error(self, mock_svc):
@@ -729,6 +782,23 @@ def test_uncertain_write_never_retries_or_falls_back(comment_command, error):
     read.assert_called_once()
     batch.assert_called_once()
     fallback.assert_not_called()
+
+
+@pytest.mark.parametrize("payload", _NON_PERMISSION_403S)
+def test_quota_or_disabled_api_403_never_creates_fallback(
+    comment_command, capsys, payload,
+):
+    read, batch, fallback = comment_command
+    batch.return_value.execute.side_effect = _http_error(
+        403, json.dumps(payload).encode(),
+    )
+    with pytest.raises(GdocError, match="no fallback comment was created") as exc:
+        cmd_comment(_make_args(quote="quick brown", json=True))
+    assert exc.value.exit_code == 1
+    read.assert_called_once()
+    batch.assert_called_once()
+    fallback.assert_not_called()
+    assert capsys.readouterr().out == ""
 
 
 @pytest.mark.parametrize("status, detail", [

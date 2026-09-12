@@ -1911,7 +1911,9 @@ def insert_markdown_into_tab(
 
     # Only inherited bullets require indent resets. Ordinary headings and
     # paragraphs must not materialize new zero-valued indent overrides.
-    boundary = body_start if position == "start" else body_end
+    # A replacement keeps the final paragraph mark, so the inserted text
+    # inherits that paragraph's bullet, not the first paragraph's.
+    boundary = body_end if replace or position == "end" else body_start
     inherited_bullet = any(
         paragraph.get("bullet") for paragraph, _, _ in _replacement_paragraphs(
             body.get("content", []),

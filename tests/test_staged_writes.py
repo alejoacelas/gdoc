@@ -715,3 +715,41 @@ def test_staged_batch_refresh_failure_after_apply_is_not_uncertain(api, mocker):
     assert "Run `gdoc auth`" in message
     assert len(batches(api)) == 2
 
+
+@pytest.mark.parametrize("markdown", ["Plain prose", "Line one\nLine two", ""])
+def test_replacement_clears_bullet_inherited_from_final_paragraph(
+    api, mocker, markdown
+):
+    """Whole-body replacement keeps the final mark, so its bullet must go."""
+    doc = snapshot()
+    body(doc)["content"][-1]["paragraph"]["bullet"] = {"listId": "kix.list"}
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value=doc)
+    insert_markdown_into_tab("synthetic", "Notes", markdown, replace=True)
+    requests = batches(api)[0]["requests"]
+    kinds = [next(iter(r)) for r in requests]
+    resets = [r["deleteParagraphBullets"]["range"] for r in requests
+              if "deleteParagraphBullets" in r]
+    assert resets == [
+        {"startIndex": 1, "endIndex": 1 + utf16_len(markdown) + 1, "tabId": "t1"}
+    ]
+    assert kinds[0] == "deleteContentRange"
+    if markdown:
+        assert kinds[1:3] == ["insertText", "deleteParagraphBullets"]
+    assert not any("createParagraphBullets" in r for r in requests)
+
+
+def test_replacement_without_inherited_bullet_adds_no_reset(api):
+    insert_markdown_into_tab("synthetic", "Notes", "Plain prose", replace=True)
+    requests = batches(api)[0]["requests"]
+    assert not any("deleteParagraphBullets" in r for r in requests)
+
+
+def test_replacement_ignores_bullet_on_deleted_first_paragraph(api, mocker):
+    """Only the retained final paragraph can pass its bullet on."""
+    doc = snapshot()
+    body(doc)["content"][0]["paragraph"]["bullet"] = {"listId": "kix.list"}
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value=doc)
+    insert_markdown_into_tab("synthetic", "Notes", "Plain prose", replace=True)
+    requests = batches(api)[0]["requests"]
+    assert not any("deleteParagraphBullets" in r for r in requests)
+

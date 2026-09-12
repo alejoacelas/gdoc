@@ -325,8 +325,11 @@ def _list_level(indent: str) -> int:
     return min(columns // 2, 8)
 
 
-_IMAGE_INLINE_RE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
-_IMAGE_REF_RE = re.compile(r"!\[([^\]]*)\](?:\[([^\]]*)\])?")
+# Image descriptions may contain balanced brackets (one level, as CommonMark
+# link text does), so `![a [nested] label](url)` is still an image.
+_IMAGE_ALT = r"((?:[^\[\]]|\[[^\[\]]*\])*)"
+_IMAGE_INLINE_RE = re.compile(r"!\[" + _IMAGE_ALT + r"\]\([^)]*\)")
+_IMAGE_REF_RE = re.compile(r"!\[" + _IMAGE_ALT + r"\](?:\[([^\]]*)\])?")
 _REF_DEF_RE = re.compile(r"^ {0,3}\[([^\]]+)\]:\s*\S", re.MULTILINE)
 _HTML_IMG_RE = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
 

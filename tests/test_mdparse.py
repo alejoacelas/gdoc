@@ -939,6 +939,19 @@ class TestNativeImageGuard:
     def test_collapsed_reference_image_refused(self):
         self._refuses("![logo][]\n\n[logo]: https://example.com/l.png\n")
 
+    def test_nested_bracket_alt_inline_refused(self):
+        self._refuses("![a [nested] label](https://example.com/image.png)\n")
+
+    def test_nested_bracket_alt_reference_refused(self):
+        self._refuses("![a [nested] label][pic]\n\n[pic]: https://example.com/i.png\n")
+
+    def test_nested_bracket_shortcut_reference_refused(self):
+        self._refuses("![a [nested] label]\n\n[a [nested] label]: https://x.test/i.png\n")
+
+    def test_nested_bracket_without_destination_is_literal(self):
+        parsed = parse_markdown("An ![a [nested] label] marker\n")
+        assert "![a [nested] label]" in parsed.plain_text
+
     def test_html_img_refused(self):
         self._refuses("Text <img src=\"x.png\"> more\n")
 

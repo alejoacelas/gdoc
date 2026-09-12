@@ -236,9 +236,10 @@ gdoc cat 1aBcDeFg...
 `comment --quote "some doc text"` requires a unique match across all tabs
 (including child tabs), searching the body, headers, footers and footnotes.
 Use a longer quote to distinguish repeated text, `--tab TITLE_OR_ID` to
-limit the search to one tab, or `--occurrence N` to pick the Nth match in
-document order (tabs in outline order, then body, headers, footers and
-footnotes). IDs take precedence over titles; duplicate titles require an ID. Matching folds typography and Unicode spaces such as NBSP,
+limit the search to one tab, or `--occurrence N` to pick the Nth match in a
+stable order (tabs in outline order; within a tab the body, then headers,
+footers and footnotes each sorted by segment ID). IDs take precedence over
+titles; duplicate titles require an ID. Matching folds typography and Unicode spaces such as NBSP,
 while preserving native UTF-16 coordinates. Comments can span non-text objects
 within a paragraph, but quotes cannot cross table/cell boundaries.
 

@@ -2409,9 +2409,10 @@ def _try_anchored_comment(
 ) -> CommentAnchorResult:
     """Resolve a unique quote and write it, retrying one rejected revision.
 
-    *occurrence* picks the Nth match (1-based, in document order: tabs in
-    outline order, then body/headers/footers/footnotes within each tab) when
-    the quote repeats. It is re-applied to a fresh read after a conflict.
+    *occurrence* picks the Nth match (1-based) when the quote repeats. The
+    order is stable rather than visual: tabs in outline order, and within a
+    tab the body first, then headers, footers and footnotes each sorted by
+    segment ID. It is re-applied to a fresh read after a conflict.
 
     Only a definite preview rejection permits Drive fallback. Successful but
     incomplete responses and transport failures propagate without another write.
@@ -2460,9 +2461,11 @@ def _try_anchored_comment(
 
         locations = []
         for tab in tabs:
+            # Keyed segment maps have no document order, so number them by
+            # kind and then by segment ID: stable across the conflict re-read.
             segments = [(None, tab.get("body", {}))]
             for kind in ("headers", "footers", "footnotes"):
-                segments.extend(tab.get(kind, {}).items())
+                segments.extend(sorted(tab.get(kind, {}).items()))
             for segment_id, body in segments:
                 matches = find_text_in_document(
                     None, fold_spaces(quote), body=fold_spaces(body),
@@ -2520,9 +2523,7 @@ def cmd_comment(args) -> int:
     doc_id = _resolve_doc_id(args.doc)
     quiet = getattr(args, "quiet", False)
 
-    from gdoc.notify import pre_flight
-    change_info = pre_flight(doc_id, quiet=quiet)
-
+    # Local usage errors come before any API call, including pre-flight.
     quote = getattr(args, "quote", "") or ""
     selectors = [
         flag for flag, value in (
@@ -2535,6 +2536,10 @@ def cmd_comment(args) -> int:
             f"{' and '.join(selectors)} require --quote; no comment created",
             exit_code=3,
         )
+
+    from gdoc.notify import pre_flight
+    change_info = pre_flight(doc_id, quiet=quiet)
+
     new_id = ""
     resolution = None
     if quote:
@@ -4532,8 +4537,9 @@ def build_parser() -> GdocArgumentParser:
     comment_p.add_argument(
         "--occurrence", type=int, metavar="N",
         help=(
-            "Anchor to the Nth match of --quote (1-based, document order) when "
-            "the text repeats; out of range: exit 3"
+            "Anchor to the Nth match of --quote (1-based; tabs in outline order, "
+            "then body, headers, footers, footnotes by segment ID) when the text "
+            "repeats; out of range: exit 3"
         ),
     )
     comment_p.add_argument(

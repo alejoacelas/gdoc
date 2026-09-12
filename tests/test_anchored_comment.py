@@ -578,6 +578,38 @@ def test_occurrence_survives_conflict_reresolution(comment_command):
     fallback.assert_not_called()
 
 
+def test_occurrence_numbers_segments_by_id_across_reads(comment_command):
+    read, batch, fallback = comment_command
+
+    def doc(revision, order):
+        tab = _tab("t1", "none\n")
+        header = _tab("unused", "echo\n", start=0)["documentTab"]["body"]
+        tab["documentTab"]["headers"] = {key: header for key in order}
+        return {"revisionId": revision, "tabs": [tab]}
+
+    read.side_effect = [doc("rev1", ["h2", "h1"]), doc("rev2", ["h1", "h2"])]
+    batch.return_value.execute.side_effect = [_revision_error(), _OK_RESPONSE]
+
+    assert cmd_comment(_make_args(quote="echo", occurrence=2)) == 0
+
+    segments = [
+        call.kwargs["body"]["requests"][0]["insertComment"]["range"]["segmentId"]
+        for call in batch.call_args_list
+    ]
+    assert segments == ["h2", "h2"]
+    fallback.assert_not_called()
+
+
+def test_selector_usage_error_precedes_pre_flight(mocker):
+    pre_flight = mocker.patch("gdoc.notify.pre_flight")
+    read = mocker.patch("gdoc.api.docs.get_document_with_tabs")
+    with pytest.raises(GdocError, match="require --quote") as exc:
+        cmd_comment(_make_args(quote=None, tab="Notes", quiet=False))
+    assert exc.value.exit_code == 3
+    pre_flight.assert_not_called()
+    read.assert_not_called()
+
+
 @pytest.mark.parametrize("occurrence", [0, 3, -1])
 def test_occurrence_out_of_range_refuses_without_writing(comment_command, occurrence):
     read, batch, fallback = comment_command

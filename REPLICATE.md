@@ -33,3 +33,15 @@ The user wanted PR #60 rebuilt so wording edits preserve paragraph structure and
 - Kept the inherited run-style policy unchanged. Export grammar, full-document reconstruction, native target validation, and staged-write concurrency remain outside this PR; no live API replay, push, or PR edits were performed.
 
 Agent session 01a09704-0c2d-79c0-ac5b-677663a7b39c · Commits 3307511, bc5dec3
+
+# Close paragraph replacement review gaps
+
+The user wanted PR #60's adversarial findings and seven harness replays resolved, with offline regressions and a committed, unpushed branch.
+
+- Matched terminal newlines now consume the corresponding replacement terminator; one- and multi-paragraph inputs use the same count check. Fenced replacement content is parsed once for edit and suggest, preserving literal asterisks and links; incompatible rendered paragraph counts fail before service access. Thematic breaks style the retained native mark without inserting another paragraph.
+- Empty body replacements remove complete paragraphs, borrowing the preceding newline for a final paragraph and coalescing adjacent deletion ranges. A segment's only paragraph retains its mandatory newline; removal after a table refuses before writing rather than deleting table structure.
+- Plain whole-cell wording preserves paragraph properties and list membership, including when collapsing multiple paragraphs. Explicit structural Markdown can still restyle. Insertion resets list indents only when the insertion boundary inherits a bullet.
+- Saved replay snapshots showed no neighbor deletion in either heading rename, no shortening of the trailing heading during append, and no new TITLE/SUBTITLE heading IDs. Added guards for those preserved behaviors alongside the confirmed failures; no live write was needed to establish what the saved requests did.
+- All 1,724 tests pass (60 more than the starting branch); Ruff has exactly the same 196 diagnostics as origin/main, with zero additions. No push or PR mutation; live verification of the new request plans remains with the coordinator.
+
+Agent session 01a09713-3fb2-72c2-bef4-658137d2e74f · Commits 1596dcd

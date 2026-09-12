@@ -551,15 +551,7 @@ def test_insert_table_only_at_end_adds_no_separator(mocker):
     assert insert_table.call_args.args[:2] == ("synthetic-doc", 9)
 
 
-@pytest.mark.parametrize("markdown,text,table_index", [
-    ("| A |\n|---|\n| 1 |\n\nAfter", "\n\nAfter", 9),
-    ("---\n\nAfter", "\n\nAfter", None),
-])
-def test_insert_at_end_leading_block_needs_no_separator(
-        mocker, markdown, text, table_index):
-    """A leading table placeholder or rule mark already ends the existing
-    paragraph, so no separator paragraph is added before it."""
-    body = _body(("Existing", "NORMAL_TEXT", False))
+def _tab_insert(mocker, body, markdown, **kwargs):
     mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
         "revisionId": "synthetic-rev", "tabs": [{
             "documentTab": {"body": body},
@@ -568,21 +560,50 @@ def test_insert_at_end_leading_block_needs_no_separator(
     })
     service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
     insert_table = mocker.patch("gdoc.api.docs._insert_table")
-    insert_markdown_into_tab("synthetic-doc", "Notes", markdown, position="end")
-    requests = service.documents.return_value.batchUpdate.call_args.kwargs[
-        "body"]["requests"]
+    insert_markdown_into_tab("synthetic-doc", "Notes", markdown, **kwargs)
+    calls = service.documents.return_value.batchUpdate.call_args_list
+    requests = calls[0].kwargs["body"]["requests"] if calls else []
+    return requests, insert_table
+
+
+@pytest.mark.parametrize("bullet", [False, True])
+def test_insert_leading_table_at_end_needs_no_separator(mocker, bullet):
+    """InsertTableRequest adds its own newline, so the placeholder newline
+    becomes the existing paragraph's mark: no separator, no style or bullet
+    request may touch that paragraph."""
+    body = _body(("Existing", "HEADING_2", bullet))
+    requests, insert_table = _tab_insert(
+        mocker, body, "| A |\n|---|\n| 1 |\n\nAfter", position="end")
     inserts = [req["insertText"] for req in requests if "insertText" in req]
     assert inserts == [{"location": {"index": 9, "tabId": "synthetic-tab"},
-                        "text": text}]
-    if table_index is None:
-        border = next(r["updateParagraphStyle"] for r in requests
-                      if "borderBottom" in r.get("updateParagraphStyle", {}).get(
-                          "paragraphStyle", {}))
-        assert border["range"] == {"startIndex": 9, "endIndex": 10,
-                                   "tabId": "synthetic-tab"}
-        insert_table.assert_not_called()
-    else:
-        assert insert_table.call_args.args[:2] == ("synthetic-doc", table_index)
+                        "text": "\n\nAfter"}]
+    assert insert_table.call_args.args[:2] == ("synthetic-doc", 9)
+    for req in requests:
+        rng = (req.get("updateParagraphStyle") or req.get("deleteParagraphBullets")
+               or {}).get("range")
+        if rng:
+            assert rng["startIndex"] >= 10
+    resets = [r["deleteParagraphBullets"]["range"] for r in requests
+              if "deleteParagraphBullets" in r]
+    assert resets == ([{"startIndex": 10, "endIndex": 16, "tabId": "synthetic-tab"}]
+                      if bullet else [])
+
+
+def test_insert_leading_rule_at_end_keeps_separator(mocker):
+    """A thematic break is a paragraph of its own, so its mark must not
+    become the existing paragraph's newline."""
+    body = _body(("Existing", "NORMAL_TEXT", False))
+    requests, _ = _tab_insert(mocker, body, "---\n\nAfter", position="end")
+    inserts = [req["insertText"] for req in requests if "insertText" in req]
+    assert inserts == [
+        {"location": {"index": 9, "tabId": "synthetic-tab"}, "text": "\n"},
+        {"location": {"index": 10, "tabId": "synthetic-tab"}, "text": "\n\nAfter"},
+    ]
+    border = next(r["updateParagraphStyle"] for r in requests
+                  if "borderBottom" in r.get("updateParagraphStyle", {}).get(
+                      "paragraphStyle", {}))
+    assert border["range"] == {"startIndex": 10, "endIndex": 11,
+                               "tabId": "synthetic-tab"}
 
 
 def test_cell_collapse_resets_bullet_of_retained_last_paragraph(mocker):

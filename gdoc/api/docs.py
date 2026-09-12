@@ -1392,16 +1392,24 @@ def insert_markdown_into_tab(
     at_end = replace or body_end == body_start or position == "end"
     if at_end:
         _strip_trailing_newline_unless_hr(parsed)
-    # A leading table placeholder or thematic-break mark already ends the
-    # existing paragraph (InsertTableRequest adds its own newline before the
-    # table), unlike a deliberate leading blank line, which stays a paragraph.
-    leading_block = parsed.plain_text.startswith("\n") and (
-        bool(parsed.tables) and parsed.tables[0].plain_text_offset == 0
-        or any(s.type == "paragraph_style" and (s.start, s.end) == (0, 1)
-               and "borderBottom" in s.style for s in parsed.styles)
+    # A leading table needs no separator: InsertTableRequest adds its own
+    # newline before the table, so the placeholder newline becomes the
+    # existing paragraph's mark. Anything else that starts with a newline (a
+    # thematic break, a deliberate blank line) is a new paragraph of its own
+    # and keeps the separator so its mark never lands on existing text.
+    appending = not replace and body_end > body_start and position == "end"
+    leading_table = (
+        appending and parsed.plain_text.startswith("\n")
+        and bool(parsed.tables) and parsed.tables[0].plain_text_offset == 0
     )
+    if leading_table:
+        # The placeholder newline ends the existing paragraph, whose style
+        # and list membership must stay untouched.
+        parsed.styles = [s for s in parsed.styles
+                         if not (s.type == "paragraph_style"
+                                 and (s.start, s.end) == (0, 1))]
     if (not replace and body_end > body_start and parsed.plain_text
-            and not leading_block):
+            and not leading_table):
         if position == "end":
             # The mandatory final newline belongs to the existing paragraph.
             # Split first, then insert and style only the new paragraph.
@@ -1444,8 +1452,10 @@ def insert_markdown_into_tab(
         else:
             del insertion[0]
     if not replace and inherited_bullet and parsed.plain_text:
+        # After a leading table placeholder the reset starts past the
+        # newline that now ends the existing list item.
         insertion.insert(1, {"deleteParagraphBullets": {"range": {
-            "startIndex": insert_index,
+            "startIndex": insert_index + (1 if leading_table else 0),
             "endIndex": insert_index + utf16_len(parsed.plain_text),
             "tabId": tab_id,
         }}})

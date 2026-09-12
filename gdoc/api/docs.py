@@ -2391,7 +2391,8 @@ def suggest_replacement(
         )
 
     parsed = parse_markdown(new_markdown)
-    check_inline_only_markdown(parsed)
+    if body is None or parsed.tables:
+        check_inline_only_markdown(parsed)
     _reject_overlapping_matches(matches)
     _strip_trailing_newline_unless_hr(parsed)
     occurrence_count = len(matches)
@@ -2399,9 +2400,15 @@ def suggest_replacement(
     if body is not None:
         planned = [part for match in matches
                    for part in _wording_contexts(body, match, new_markdown)]
+        # Block markers are literal inside a paragraph (the same rule as
+        # edit), so structural Markdown is judged per resolved context.
+        for _, (selected, _) in planned:
+            check_inline_only_markdown(selected)
         matches = [match for match, _ in planned]
-        contexts = {match["startIndex"]: (_inline_only(selected), None)
-                    for match, (selected, _) in planned}
+        # Keep the text-style baseline: inserted text does not inherit links
+        # or other direct formatting, in suggestions as in edits.
+        contexts = {match["startIndex"]: (_inline_only(selected), baseline)
+                    for match, (selected, baseline) in planned}
     _, requests = _build_replacement_requests(
         _inline_only(parsed), matches, tab_id=tab_id, contexts=contexts,
     )

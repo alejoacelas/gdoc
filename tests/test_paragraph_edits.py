@@ -414,6 +414,34 @@ def test_fence_source_line_count_cannot_hide_rendered_count_mismatch(mocker, com
 
 
 @pytest.mark.parametrize('command', ['edit', 'suggest'])
+@pytest.mark.parametrize('marker', ['# literal', '- literal', '> literal'])
+def test_block_marker_inside_paragraph_is_literal_in_edit_and_suggest(
+        mocker, command, marker):
+    """A partial-paragraph replacement cannot start a block, so suggest must
+    accept the same literal markers edit does instead of refusing upfront."""
+    body = _body(('Alpha beta', 'NORMAL_TEXT', False))
+    planner = _requests if command == 'edit' else _suggest_requests
+    requests = planner(mocker, body, 'beta', marker)
+    assert _apply_text_requests(body, requests) == f'Alpha {marker}\n'
+    assert not any('updateParagraphStyle' in r for r in requests)
+    assert not any('createParagraphBullets' in r for r in requests)
+
+
+def test_suggest_still_rejects_structural_whole_paragraph_replacement(mocker):
+    from gdoc.api.docs import suggest_replacement
+
+    body = _body(('Alpha', 'NORMAL_TEXT', False))
+    service = mocker.patch('gdoc.api.docs.get_docs_service')
+    gate = mocker.patch('gdoc.api.docs.check_suggest_preview_access')
+    matches = find_text_in_document(None, 'Alpha', body=body)
+    with pytest.raises(GdocError, match='not supported yet') as exc:
+        suggest_replacement('doc', matches, '# Heading', 'rev', body=body)
+    assert exc.value.exit_code == 3
+    service.assert_not_called()
+    gate.assert_not_called()
+
+
+@pytest.mark.parametrize('command', ['edit', 'suggest'])
 def test_single_line_triple_backtick_span_has_edit_suggest_parity(mocker, command):
     body = _body(('Alpha', 'HEADING_2', False))
     planner = _requests if command == 'edit' else _suggest_requests

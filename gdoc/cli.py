@@ -1284,11 +1284,9 @@ def cmd_suggest(args) -> int:
     old_text, new_text = _resolve_replacement_text(args, None)
 
     # Structural Markdown needs the multi-batch cleanup/table phases that
-    # suggest mode does not run — reject it before any API call.
-    from gdoc.api.docs import check_inline_only_markdown
-    from gdoc.mdparse import parse_markdown
-
-    check_inline_only_markdown(parse_markdown(new_text))
+    # suggest mode does not run. suggest_replacement rejects it before the
+    # write, once the match context shows whether a block marker is
+    # structural or literal text inside a paragraph.
 
     # Capture the token identity before the document read: the write
     # verifies against this baseline, so the grant that read the ranges is

@@ -336,6 +336,38 @@ def test_inline_reapplies_link_shared_with_neighbour(mocker, decor, fields):
     )
 
 
+def test_suggest_keeps_link_baseline_of_homogeneous_target(mocker):
+    # Suggested text does not inherit the target's link either, so the
+    # suggestion carries the same baseline restore as the edit path.
+    from gdoc.api.docs import suggest_replacement
+
+    link = {"link": {"url": "https://example.com/spec"}}
+    body = _styled_body(left=dict(link))
+    body["content"][0]["paragraph"]["elements"][1]["textRun"]["textStyle"] = dict(link)
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    mocker.patch("gdoc.api.docs.check_suggest_preview_access")
+    mocker.patch("gdoc.api.docs._token_identity", return_value=("client", "token"))
+    service.documents.return_value.batchUpdate.return_value.execute.return_value = {
+        "commentUpdateState": "ALL_SAVED",
+        "suggestionResponses": [{"createdSuggestionIds": ["suggest.synthetic"]}],
+    }
+    mocker.patch("gdoc.api.docs.get_document_structure", return_value={})
+    mocker.patch("gdoc.api.docs.collect_suggestion_ids",
+                 return_value={"suggest.synthetic"})
+    match = {"startIndex": 9, "endIndex": 30}
+    suggest_replacement("sample-doc", [match], "done", "rev-a", body=body)
+    requests = service.documents.return_value.batchUpdate.call_args.kwargs[
+        "body"]["requests"]
+    assert requests == [
+        {"deleteContentRange": {"range": match}},
+        {"insertText": {"location": {"index": 9}, "text": "done"}},
+        {"updateTextStyle": {
+            "range": {"startIndex": 9, "endIndex": 13},
+            "textStyle": link, "fields": "link",
+        }},
+    ]
+
+
 def test_inline_reapplies_link_decorations_after_replacement_link(mocker):
     # A Markdown link in the replacement sets only `link`, which resets colour
     # and underline to the link defaults, so the restored decorations must be

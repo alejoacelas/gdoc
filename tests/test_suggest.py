@@ -1501,30 +1501,37 @@ class TestCmdSuggest:
             cmd_suggest(_args())
         mock_sug.assert_not_called()
 
-    @patch("gdoc.api.docs.suggest_replacement")
-    @patch("gdoc.api.docs.get_document_structure")
+    # Whether a block marker is structural depends on the match: inside a
+    # paragraph it is literal text (as in edit), so the rejection happens
+    # after the document read, once the match context is known, and always
+    # before any write.
+    @pytest.mark.parametrize("new_text", [
+        "# Heading", "- bullet", "1. item", "---", "> quote",
+        "| a |\n|---|\n| b |",
+    ])
+    @patch("gdoc.api.docs.check_suggest_preview_access")
+    @patch("gdoc.api.docs.get_docs_service")
+    @patch("gdoc.api.docs.get_document_structure", return_value=_structure())
     @patch("gdoc.notify.pre_flight", return_value=None)
-    def test_structural_markdown_rejected_before_any_api_call(
-        self, mock_pf, mock_doc, mock_sug,
+    def test_structural_whole_paragraph_replacement_rejected_before_write(
+        self, _pf, _doc, mock_svc, mock_gate, new_text,
     ):
         with pytest.raises(GdocError, match="not supported yet") as exc:
-            cmd_suggest(_args(new_text="# Heading"))
+            cmd_suggest(_args(old_text="hello world", new_text=new_text))
         assert exc.value.exit_code == 3
-        mock_pf.assert_not_called()
-        mock_doc.assert_not_called()
-        mock_sug.assert_not_called()
+        mock_gate.assert_not_called()
+        mock_svc.return_value.documents.return_value.batchUpdate.assert_not_called()
 
-    @pytest.mark.parametrize("new_text", [
-        "- bullet", "1. item", "---", "> quote", "| a |\n|---|\n| b |",
-    ])
-    @patch("gdoc.api.docs.suggest_replacement")
+    @patch("gdoc.api.docs.suggest_replacement", return_value=_result())
+    @patch("gdoc.api.docs.get_document_structure", return_value=_structure())
     @patch("gdoc.notify.pre_flight", return_value=None)
-    def test_each_structural_form_rejected(self, mock_pf, mock_sug, new_text):
-        with pytest.raises(GdocError) as exc:
-            cmd_suggest(_args(new_text=new_text))
-        assert exc.value.exit_code == 3
-        mock_pf.assert_not_called()
-        mock_sug.assert_not_called()
+    @patch("gdoc.state.update_state_after_command")
+    @patch("gdoc.api.drive.get_file_version", return_value=_VERSION)
+    def test_block_marker_inside_paragraph_reaches_suggest(
+        self, _ver, _state, _pf, _doc, mock_sug,
+    ):
+        cmd_suggest(_args(old_text="hello", new_text="# Heading"))
+        assert mock_sug.call_args.args[2] == "# Heading"
 
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.api.drive.get_file_version", return_value=_VERSION)

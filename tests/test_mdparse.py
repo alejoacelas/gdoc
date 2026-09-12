@@ -915,3 +915,47 @@ class TestBalancedLinkDestinations:
         plain, styles = parse_inline("[bad](unclosed [good](https://example.org/(x))")
         assert plain == "[bad](unclosed good"
         assert styles[0].style == {"link": {"url": "https://example.org/(x)"}}
+
+
+class TestNativeImageGuard:
+    """Native writes refuse complete image syntax and accept a literal ``![``."""
+
+    def _refuses(self, text):
+        from gdoc.util import GdocError
+
+        with pytest.raises(GdocError) as info:
+            parse_markdown(text)
+        assert info.value.exit_code == 3
+        assert "images" in str(info.value)
+
+    def test_inline_image_refused(self):
+        self._refuses("Intro\n\n![photo](https://example.com/a.png)\n")
+
+    def test_reference_image_with_definition_refused(self):
+        self._refuses("See ![Logo][logo] here\n\n[LOGO]: https://example.com/l.png\n")
+
+    def test_collapsed_reference_image_refused(self):
+        self._refuses("![logo][]\n\n[logo]: https://example.com/l.png\n")
+
+    def test_html_img_refused(self):
+        self._refuses("Text <img src=\"x.png\"> more\n")
+
+    def test_bare_opener_is_literal(self):
+        assert parse_markdown("Use ![ literally in prose\n").plain_text.startswith("Use ![")
+
+    def test_undefined_reference_is_literal(self):
+        parsed = parse_markdown("An unmatched ![alt] marker\n")
+        assert "![alt]" in parsed.plain_text
+
+    def test_reference_without_definition_is_literal(self):
+        parsed = parse_markdown("![alt][missing] and [other]: https://example.com\n")
+        assert "![alt][missing]" in parsed.plain_text
+
+    def test_image_inside_fence_is_literal(self):
+        parsed = parse_markdown("```\n![photo](https://example.com/a.png)\n```\n")
+        assert "![photo]" in parsed.plain_text
+
+    def test_image_inside_code_span_is_literal(self):
+        parsed = parse_markdown("Type `![alt](url)` to embed\n")
+        assert "![alt](url)" in parsed.plain_text
+

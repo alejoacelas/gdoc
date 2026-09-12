@@ -325,8 +325,23 @@ def _list_level(indent: str) -> int:
     return min(columns // 2, 8)
 
 
+_IMAGE_INLINE_RE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
+_IMAGE_REF_RE = re.compile(r"!\[([^\]]*)\](?:\[([^\]]*)\])?")
+_REF_DEF_RE = re.compile(r"^ {0,3}\[([^\]]+)\]:\s*\S", re.MULTILINE)
+_HTML_IMG_RE = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
+
+
+def _ref_label(label: str) -> str:
+    return " ".join(label.split()).casefold()
+
+
 def _check_native_images(text: str) -> None:
-    """Refuse image syntax before a native write can delete existing content."""
+    """Refuse image syntax before a native write can delete existing content.
+
+    Only complete image syntax is refused: an inline image ``![alt](url)``,
+    a reference image whose label has a definition in the same text, or an
+    HTML ``<img>`` tag. A bare ``![`` in prose is literal text.
+    """
     from gdoc.util import GdocError
 
     # Code examples are literal; image, reference-image and HTML image inputs
@@ -344,7 +359,17 @@ def _check_native_images(text: str) -> None:
             continue
         if fence is None:
             visible.append(_CODE_RE.sub("", _mask_escapes(line)))
-    if re.search(r"!\[|<img\b", "\n".join(visible), re.IGNORECASE):
+    joined = "\n".join(visible)
+    has_image = bool(_IMAGE_INLINE_RE.search(joined) or _HTML_IMG_RE.search(joined))
+    if not has_image:
+        defined = {_ref_label(m.group(1)) for m in _REF_DEF_RE.finditer(joined)}
+        if defined:
+            for m in _IMAGE_REF_RE.finditer(joined):
+                label = m.group(2) if m.group(2) else m.group(1)
+                if _ref_label(label) in defined:
+                    has_image = True
+                    break
+    if has_image:
         raise GdocError(
             "native Markdown writes do not support images; content was not changed",
             exit_code=3,

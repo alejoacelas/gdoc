@@ -31,3 +31,20 @@ def doc_mime(monkeypatch):
         "gdoc.api.drive.get_file_version",
         lambda doc_id: {"mimeType": DOC_MIME, "version": 1, "modifiedTime": ""},
     )
+
+
+@pytest.fixture(autouse=True)
+def _mock_mutation_transport(monkeypatch):
+    """Keep API-shape mocks offline; real HttpRequests exercise real transport."""
+    from googleapiclient.http import HttpRequest
+
+    from gdoc.api import comment_transport
+
+    execute = comment_transport.execute_mutation_request
+
+    def dispatch(request, **kwargs):
+        if isinstance(request, HttpRequest):
+            return execute(request, **kwargs)
+        return request.execute()
+
+    monkeypatch.setattr(comment_transport, "execute_mutation_request", dispatch)

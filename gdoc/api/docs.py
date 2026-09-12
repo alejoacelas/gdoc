@@ -263,13 +263,13 @@ def get_document_tabs(doc_id: str) -> list[dict]:
         _translate_http_error(e, doc_id)
 
 
-def count_document_tabs(doc_id: str) -> int:
+def count_document_tabs(doc_id: str, *, document: dict | None = None) -> int:
     """Return the total tab count (including nested child tabs).
 
     No `fields` mask: the Docs API rejects masks that recursively
     expand `childTabs` (issue #14).
     """
-    doc = get_document_with_tabs(doc_id)
+    doc = document if document is not None else get_document_with_tabs(doc_id)
     return len(flatten_tabs(doc.get("tabs", [])))
 
 
@@ -994,7 +994,7 @@ class _StagedWrite:
             f"remaining stages not attempted. {detail}. "
             "Inspect the document before retrying; "
             "completed batches were not replayed.",
-            exit_code=3 if conflict else 1,
+            exit_code=3 if conflict and not self.applied and not uncertain else 1,
         ) from error
 
     def read(self, stage: str, tab_id: str | None):
@@ -1020,7 +1020,8 @@ class _StagedWrite:
             )
             try:
                 self.sent = True
-                response = request.execute()
+                from gdoc.api.comment_transport import execute_mutation_request
+                response = execute_mutation_request(request)
             except HttpError as error:
                 if not _revision_conflict(error) or attempt or recompute is None:
                     raise
@@ -1175,12 +1176,24 @@ def _table_cell_requests(cell_indices, table, tab_id):
     return text_requests
 
 
+def _table_scaffolding(parsed, table):
+    """Only the parser's own separator and placeholder may be consumed."""
+    offset = table.plain_text_offset
+    previous_placeholder = any(t.plain_text_offset == offset - 1
+                               for t in parsed.tables)
+    before = (offset > 0 and parsed.plain_text[offset - 1] == "\n"
+              and not previous_placeholder)
+    placeholder = offset < len(parsed.plain_text)
+    return int(before), int(placeholder)
+
+
 def _insert_table(
     doc_id: str,
     index: int,
     table,
     tab_id: str | None = None,
     *, revision_id: str = "", progress=None, resolve_index=None,
+    ordinal: int = 1, scaffolding: tuple[int, int] = (0, 0),
 ) -> str:
     """Insert and fill a table with revision-pinned, single-shot stages."""
     if progress is None:
@@ -1190,16 +1203,29 @@ def _insert_table(
                 revision_id = doc.get("revisionId", "")
             return _insert_table(
                 doc_id, index, table, tab_id, revision_id=revision_id,
-                progress=progress, resolve_index=resolve_index,
+                progress=progress, resolve_index=resolve_index, ordinal=ordinal,
+                scaffolding=scaffolding,
             )
 
+    label = f"table {ordinal} in tab {tab_id or 'default'}"
+
     def insertion():
-        location = {"index": index}
+        before, placeholder = scaffolding
+        location = {"index": index - before}
         if tab_id:
             location["tabId"] = tab_id
-        return [{"insertTable": {
+        requests = []
+        if before or placeholder:
+            span = {"startIndex": index - before, "endIndex": index + placeholder}
+            if tab_id:
+                span["tabId"] = tab_id
+            requests.append({"deleteContentRange": {"range": span}})
+        # insertTable supplies its own leading newline. Consume our parser's
+        # separators in this same pinned batch so they cannot survive as blanks.
+        requests.append({"insertTable": {
             "rows": table.num_rows, "columns": table.num_cols, "location": location,
-        }}]
+        }})
+        return requests
 
     def relocate():
         nonlocal index
@@ -1215,7 +1241,7 @@ def _insert_table(
     else:
         requests = insertion()
     revision_id = progress.batch(
-        "table structure inserted", requests, revision_id, relocate,
+        f"{label}: table structure inserted", requests, revision_id, relocate,
     )
     doc = progress.read("reading inserted table cells", tab_id)
     if not revision_id or doc.get("revisionId") != revision_id:
@@ -1226,7 +1252,7 @@ def _insert_table(
             exit_code=3,
         )
     body = _stage_body(doc, tab_id)
-    element = _table_at(body, index)
+    element = _table_at(body, index - scaffolding[0])
     fingerprint = _without_indices(element["table"])
     unique_before = sum(
         "table" in e and _without_indices(e["table"]) == fingerprint
@@ -1256,7 +1282,8 @@ def _insert_table(
     requests = fill(doc, element)
     if requests:
         revision_id = progress.batch(
-            "table cells filled", requests, doc.get("revisionId", ""), relocate_cells,
+            f"{label}: table cells filled", requests, doc.get("revisionId", ""),
+            relocate_cells,
         )
     return revision_id
 
@@ -1672,71 +1699,24 @@ def _build_cleanup_requests(
     style remains. This returns requests that transfer that style to
     the preceding paragraph (if NORMAL_TEXT) and delete the empty one.
     """
-    target_elem = None
-    prev_elem = None
-    for elem in body.get("content", []):
-        si = elem.get("startIndex", 0)
-        if si == position and "paragraph" in elem:
-            target_elem = elem
-            break
-        if "paragraph" in elem:
-            prev_elem = elem
-
-    if target_elem is None:
-        return []
-
-    p = target_elem["paragraph"]
-    style = p.get("paragraphStyle", {}).get("namedStyleType", "NORMAL_TEXT")
-
-    # A text-only view can hide an image/reference or a positioned object.
-    # Only delete a verified, sole newline at this exact native position.
-    elements = p.get("elements", [])
-    if (
-        style == "NORMAL_TEXT"
-        or p.get("positionedObjectIds")
-        or target_elem.get("endIndex") != position + 1
-        or len(elements) != 1
-        or elements[0].get("textRun", {}).get("content") != "\n"
-        or elements[0].get("startIndex") != position
-        or elements[0].get("endIndex") != position + 1
-    ):
-        return []
-
-    requests: list[dict] = []
-
-    # Transfer the heading style to the preceding paragraph if it's
-    # NORMAL_TEXT (i.e. the last paragraph of the inserted text).
-    if prev_elem is not None:
-        prev_style = prev_elem["paragraph"].get(
-            "paragraphStyle", {},
-        ).get("namedStyleType", "NORMAL_TEXT")
-        if prev_style == "NORMAL_TEXT":
-            prev_range: dict = {
-                "startIndex": prev_elem.get("startIndex", 0),
-                "endIndex": prev_elem.get("endIndex", 0),
-            }
-            if tab_id:
-                prev_range["tabId"] = tab_id
-            requests.append({
-                "updateParagraphStyle": {
-                    "range": prev_range,
-                    "paragraphStyle": {"namedStyleType": style},
-                    "fields": "namedStyleType",
-                }
-            })
-
-    # Delete the empty heading paragraph
-    delete_range: dict = {
-        "startIndex": position,
-        "endIndex": position + 1,
-    }
-    if tab_id:
-        delete_range["tabId"] = tab_id
-    requests.append({
-        "deleteContentRange": {"range": delete_range}
-    })
-
-    return requests
+    content = body.get("content", [])
+    for element in content:
+        if element.get("startIndex") != position:
+            continue
+        paragraph = element.get("paragraph", {})
+        elements = paragraph.get("elements", [])
+        if (paragraph.get("positionedObjectIds") or len(elements) != 1
+                or elements[0].get("textRun", {}).get("content") != "\n"
+                or elements[0].get("startIndex") != position
+                or elements[0].get("endIndex") != position + 1
+                or element.get("endIndex") != position + 1
+                or element is content[-1]):
+            return []
+        target = {"startIndex": position, "endIndex": position + 1}
+        if tab_id:
+            target["tabId"] = tab_id
+        return [{"deleteContentRange": {"range": target}}]
+    return []
 
 
 def _tab_body_range(body: dict) -> tuple[int, int]:
@@ -1827,6 +1807,12 @@ def insert_markdown_into_tab(
     tab_id = tab_match["id"]
     body = tab_match["body"]
 
+    if replace and any("sectionBreak" in e and e.get("startIndex", 0) > 0
+                       for e in body.get("content", [])):
+        raise GdocError(
+            "native replacement cannot preserve multiple sections; "
+            "replace specific text instead", exit_code=3,
+        )
     body_start, body_end = _tab_body_range(body)
 
     if replace:
@@ -1969,7 +1955,7 @@ def insert_markdown_into_tab(
                 "tab text and formatting applied", requests, revision_id,
             )
         if parsed.tables:
-            for table in reversed(parsed.tables):
+            for ordinal, table in reversed(list(enumerate(parsed.tables, 1))):
                 # Earlier list-indent tabs have already been consumed.
                 revision_id = _insert_table(
                     doc_id,
@@ -1978,6 +1964,7 @@ def insert_markdown_into_tab(
                     - table.removed_tabs_before,
                     table, tab_id=tab_id, revision_id=revision_id, progress=progress,
                     resolve_index=_table_position_resolver(parsed, table, tab_id),
+                    ordinal=ordinal, scaffolding=_table_scaffolding(parsed, table),
                 )
 
     return {
@@ -2648,7 +2635,7 @@ def replace_formatted(
 
         # Insert tables only for explicit structural replacements.
         if parsed.tables:
-            for table in reversed(parsed.tables):
+            for ordinal, table in reversed(list(enumerate(parsed.tables, 1))):
                 # UTF-16 offset of the table placeholder; invariant per
                 # table, so hoisted out of the per-match loop.
                 offset16 = utf16_len(
@@ -2666,6 +2653,7 @@ def replace_formatted(
                         doc_id, idx, table, tab_id=match.get("tabId", tab_id), revision_id=revision_id,
                         progress=progress,
                         resolve_index=_table_position_resolver(parsed, table, match.get("tabId", tab_id)),
+                        ordinal=ordinal, scaffolding=_table_scaffolding(parsed, table),
                     )
 
         return occurrence_count

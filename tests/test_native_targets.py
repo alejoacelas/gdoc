@@ -345,8 +345,7 @@ def test_unicode_edit_does_not_delete_paragraph_mark(mocker):
     "inlineObjectElement", "footnoteReference", "positioned",
 ])
 def test_every_batch_preserves_native_heading_content(mocker, kind, tab_id):
-    # Two matches ensure cleanup still runs for the text-only heading, while
-    # preserving the other heading's image/reference/positioned-object anchor.
+    # Contextual replacement preserves the native anchor without heuristic cleanup.
     native_width = 0 if kind == "positioned" else 1
     before_heading = paragraph("Old", 1, "HEADING_1")
     after_heading = paragraph("\n", 1 + native_width, "HEADING_1")
@@ -382,7 +381,7 @@ def test_every_batch_preserves_native_heading_content(mocker, kind, tab_id):
     assert docs.replace_formatted("synthetic", matches, "", "before-edit", tab_id) == 2
     batches = [call.kwargs["body"]
                for call in service.documents().batchUpdate.call_args_list]
-    assert len(batches) == 2
+    assert len(batches) == 1
     for stage, batch in enumerate(batches):
         for request in batch["requests"]:
             if "deleteContentRange" not in request:
@@ -396,15 +395,12 @@ def test_every_batch_preserves_native_heading_content(mocker, kind, tab_id):
         assert batch["writeControl"] == {
             "requiredRevisionId": "before-edit" if stage == 0 else "after-edit",
         }
-    assert batches[1]["requests"] == [{"deleteContentRange": {"range": {
-        "startIndex": 2 + native_width, "endIndex": 3 + native_width,
-        **({"tabId": tab_id} if tab_id else {}),
-    }}}]
+
 
 
 @pytest.mark.parametrize("tab_id", [None, "vendors-tab"])
 @pytest.mark.parametrize("first,second", [("i\u0307", "İ"), ("İ", "i\u0307")])
-def test_unequal_match_widths_cleanup_own_headings(mocker, tab_id, first, second):
+def test_unequal_match_widths_preserve_native_headings(mocker, tab_id, first, second):
     first_para = paragraph(first + "\n", 1, "HEADING_1")
     second_para = paragraph(second + "\n", first_para["endIndex"], "HEADING_2")
     before = {"body": {"content": [
@@ -427,22 +423,17 @@ def test_unequal_match_widths_cleanup_own_headings(mocker, tab_id, first, second
     assert count == 2
     batches = [call.kwargs["body"]
                for call in service.documents().batchUpdate.call_args_list]
-    assert len(batches) == 2
+    assert len(batches) == 1
     deletions = [[r["deleteContentRange"]["range"] for r in b["requests"]
                   if "deleteContentRange" in r] for b in batches]
     assert [(r["startIndex"], r["endIndex"]) for r in deletions[0]] == [
         (second_para["startIndex"], second_para["endIndex"] - 1),
         (1, first_para["endIndex"] - 1),
     ]
-    assert [(r["startIndex"], r["endIndex"]) for r in deletions[1]] == [(6, 7), (3, 4)]
-    assert batches[1]["writeControl"] == {"requiredRevisionId": "after-edit"}
+    assert batches[0]["writeControl"] == {"requiredRevisionId": "before-edit"}
     assert all(r.get("tabId") == tab_id for batch in deletions for r in batch)
-    # Cleanup deletes only its two leftover headings, leaving the unrelated
-    # HEADING_3 and Keep paragraph intact in the UTF-16 document text.
-    text = "X\n\nX\n\n\nKeep\n"
-    for span in deletions[1]:
-        text = text[:span["startIndex"] - 1] + text[span["endIndex"] - 1:]
-    assert text == "X\nX\n\nKeep\n"
+    service.documents().get.return_value.execute.assert_not_called()
+
 
 
 @pytest.mark.parametrize("span", [(2, 3), (1, 3), (None, None)])

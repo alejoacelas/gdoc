@@ -395,12 +395,19 @@ Single-tab `write` and `push` use the Docs API with a revision precondition.
 Table insertion and cell filling each carry their own revision precondition.
 A rejected follow-up gets at most one fresh read and retry, and only when its
 target can be identified unambiguously; otherwise the command reports a conflict
-and exits 3. Table-only insertions have no text anchor for this recovery.
+with exit 1 if any stage already applied, or exit 3 if nothing applied.
+Table-only insertions have no text anchor for this recovery.
 
 A later-stage failure reports which stages completed and which did not; a lost
-write response reports uncertain completion. These failures exit 1 (or 3 for a
-revision conflict), and never replay acknowledged or uncertain writes. Inspect
+write response reports uncertain completion. Partial or uncertain writes exit 1;
+a clean revision refusal exits 3. Mutations use a single-send HTTP transport
+and never replay acknowledged or uncertain writes. Inspect
 the document before issuing the command again.
+
+Native writes leave the read baseline unchanged: their displayed Drive version
+may include a collaborator's subsequent edit. Read the document again before
+another unforced write. Image syntax (including reference images) and replacement
+of bodies with multiple sections are refused before changing content.
 
 `--force-collapse-tabs` still uses Drive's Markdown import for multiple tabs.
 Drive's upload endpoint exposes no revision/version precondition: a final

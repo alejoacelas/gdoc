@@ -81,7 +81,8 @@ class TestWriteBasic:
         args = _make_args(file=str(f))
         cmd_write(args)
         mock_update_doc.assert_called_once_with(
-            "abc123", "# My Document\n\nContent here.", expected_version=10,
+            "abc123", "# My Document\n\nContent here.",
+            expected_version=10, document={},
         )
 
     @patch("gdoc.state.update_state_after_command")
@@ -122,7 +123,7 @@ class TestWriteBasic:
         )
         cmd_write(args)
         mock_update_doc.assert_called_once_with(
-            "abc123", "content", expected_version=10,
+            "abc123", "content", expected_version=10, document={},
         )
 
 
@@ -168,7 +169,7 @@ class TestWriteFileErrors:
         rc = cmd_write(args)
         assert rc == 0
         mock_update_doc.assert_called_once_with(
-            "abc123", "", expected_version=10,
+            "abc123", "", expected_version=10, document={},
         )
 
 
@@ -548,7 +549,7 @@ class TestWriteAwareness:
         cmd_write(args)
         mock_update.assert_called_once_with(
             "abc123", change_info, command="write",
-            quiet=False, command_version=42, full_doc_write=True,
+            quiet=False, command_version=42, full_doc_write=False,
         )
 
     @patch("gdoc.state.update_state_after_command")
@@ -596,7 +597,7 @@ class TestWriteAwareness:
         mock_update.assert_called_once_with(
             "abc123", ChangeInfo(current_version=mock_ver.return_value.get("version")),
             command="write",
-            quiet=True, command_version=42, full_doc_write=True,
+            quiet=True, command_version=42, full_doc_write=False,
         )
 
 

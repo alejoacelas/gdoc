@@ -161,10 +161,13 @@ def get_file_info(doc_id: str) -> dict:
 
 def update_doc_content(
     doc_id: str, content: str, *, expected_version: int | None = None,
+    document: dict | None = None,
 ) -> int:
     """Replace content without overwriting changes since the guard read.
 
-    Single-tab documents use Docs batchUpdate with the read's revision.
+    Single-tab documents use Docs batchUpdate with the supplied guard snapshot.
+    The returned Drive version is for display, not a read baseline: its GET
+    may observe collaborator edits after the acknowledged native mutation.
     A deliberately requested multi-tab collapse still uses Drive import:
     files.update exposes no revision/version precondition, so a final version
     read minimizes, but cannot close, the read-to-upload race. Callers pass
@@ -185,7 +188,7 @@ def update_doc_content(
         expected_version = get_file_version(doc_id).get("version")
     if expected_version is None:
         raise GdocError("cannot verify document version before writing", exit_code=3)
-    document = get_document_with_tabs(doc_id)
+    document = document if document is not None else get_document_with_tabs(doc_id)
     tabs = flatten_tabs(document.get("tabs", []))
     if not tabs:
         raise GdocError("cannot identify document tabs before writing", exit_code=3)
@@ -217,7 +220,8 @@ def update_doc_content(
         # Keep this last: preparation and guard reads must precede the check.
         _require_write_version(doc_id, expected_version)
         progress.sent = True
-        result = request.execute()
+        from gdoc.api.comment_transport import execute_mutation_request
+        result = execute_mutation_request(request)
         progress.sent = False
         progress.applied.append("whole-document import")
         progress.stage = "reading the resulting version"

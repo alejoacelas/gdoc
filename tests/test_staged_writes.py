@@ -46,8 +46,9 @@ def snapshot(revision="r1", prefix="Old\n", table=False):
     content = [paragraph(prefix, 1)] if prefix else []
     index = 1 + utf16_len(prefix)
     if table:
-        content.append(paragraph("\n", index))
-        start = index + 1
+        if not prefix:
+            content.append(paragraph("\n", index))
+        start = index if prefix else index + 1
         rows = []
         for row in range(2):
             cell_start = start + 2 + 3 * row
@@ -112,7 +113,7 @@ def test_all_table_stages_use_their_own_revision(api):
     assert [b["writeControl"] for b in batches(api)] == [
         {"requiredRevisionId": r} for r in ("r1", "r2", "r3")
     ]
-    assert "insertTable" in batches(api)[1]["requests"][0]
+    assert "insertTable" in batches(api)[1]["requests"][-1]
     assert {
         r["insertText"]["text"]
         for r in batches(api)[2]["requests"]
@@ -200,7 +201,7 @@ def test_missing_response_revision_refuses_unpinned_followup(api):
     api.batchUpdate.return_value.execute.side_effect = [{}]
     with pytest.raises(GdocError, match="missing revision") as caught:
         write()
-    assert caught.value.exit_code == 3
+    assert caught.value.exit_code == 1
     assert len(batches(api)) == 1
 
 
@@ -213,9 +214,9 @@ def test_interleaved_editor_before_table_rejects_then_recomputes_utf16_index(api
         nonlocal live_revision
         batch = batches(api)[-1]
         required = batch["writeControl"]["requiredRevisionId"]
-        if "insertTable" in batch["requests"][0]:
+        if "insertTable" in batch["requests"][-1]:
             sent_indices.append(
-                batch["requests"][0]["insertTable"]["location"]["index"]
+                batch["requests"][-1]["insertTable"]["location"]["index"]
             )
         if required != live_revision:
             raise http_error()
@@ -233,7 +234,7 @@ def test_interleaved_editor_before_table_rejects_then_recomputes_utf16_index(api
         snapshot("r4", "🙂 Added\nIntro\n", table=True),
     ]
     write()
-    assert sent_indices == [7, 16]
+    assert sent_indices == [6, 15]
     assert [b["writeControl"]["requiredRevisionId"] for b in batches(api)] == [
         "r1",
         "r2",
@@ -250,7 +251,7 @@ def test_ambiguous_or_changed_insertion_anchor_refuses_after_one_read(api, prefi
     api.get.return_value.execute.return_value = snapshot("editor", prefix)
     with pytest.raises(GdocError, match="cannot uniquely relocate") as caught:
         write()
-    assert caught.value.exit_code == 3
+    assert caught.value.exit_code == 1
     assert len(batches(api)) == 2
     assert api.get.call_count == 1
 
@@ -262,7 +263,7 @@ def test_table_only_conflict_is_not_guessed(api):
         insert_markdown_into_tab(
             "synthetic", "Notes", "| A |\n|---|\n| B |", replace=True
         )
-    assert caught.value.exit_code == 3
+    assert caught.value.exit_code == 1
     assert len(batches(api)) == 2
     assert api.get.call_count == 1
 
@@ -276,7 +277,7 @@ def test_second_revision_rejection_stops_without_replaying_first_batch(api):
     api.get.return_value.execute.return_value = snapshot("editor", "Added\nIntro\n")
     with pytest.raises(GdocError, match="conflict") as caught:
         write()
-    assert caught.value.exit_code == 3
+    assert caught.value.exit_code == 1
     assert len(batches(api)) == 3
     assert api.get.call_count == 1
 
@@ -317,7 +318,7 @@ def test_fill_recovery_refuses_changed_or_ambiguous_table(api, change):
     original = snapshot("r3", "Intro\n", table=True)
     changed = deepcopy(original)
     changed["revisionId"] = "editor"
-    table = body(changed)["content"][2]
+    table = next(e for e in body(changed)["content"] if "table" in e)
     if change == "cell_edited":
         table["table"]["tableRows"][0]["tableCells"][0]["content"][0] = paragraph(
             "Editor\n", 11
@@ -336,7 +337,7 @@ def test_fill_recovery_refuses_changed_or_ambiguous_table(api, change):
     api.get.return_value.execute.side_effect = [original, changed]
     with pytest.raises(GdocError, match="conflict") as caught:
         write()
-    assert caught.value.exit_code == 3
+    assert caught.value.exit_code == 1
     assert len(batches(api)) == 3
     assert api.get.call_count == 2
 
@@ -347,7 +348,7 @@ def test_editor_between_table_creation_and_readback_is_not_adopted(api):
     )
     with pytest.raises(GdocError, match="changed before the inserted table") as caught:
         write()
-    assert caught.value.exit_code == 3
+    assert caught.value.exit_code == 1
     assert len(batches(api)) == 2
 
 
@@ -584,10 +585,10 @@ def test_two_tables_carry_revision_from_previous_cell_fill(api):
         "r5",
     ]
     assert [
-        b["requests"][0]["insertTable"]["location"]["index"]
+        b["requests"][-1]["insertTable"]["location"]["index"]
         for b in batches(api)
-        if "insertTable" in b["requests"][0]
-    ] == [15, 7]
+        if "insertTable" in b["requests"][-1]
+    ] == [14, 6]
 
 
 def test_conflict_reread_failure_refuses_without_retry(api):
@@ -595,7 +596,7 @@ def test_conflict_reread_failure_refuses_without_retry(api):
     api.get.return_value.execute.side_effect = OSError("read failed")
     with pytest.raises(GdocError, match="conflict: cannot safely recompute") as caught:
         write()
-    assert caught.value.exit_code == 3
+    assert caught.value.exit_code == 1
     assert api.get.call_count == 1
     assert len(batches(api)) == 2
 
@@ -613,7 +614,7 @@ def test_fill_retry_second_conflict_stops(api):
     ]
     with pytest.raises(GdocError, match="conflict") as caught:
         write()
-    assert caught.value.exit_code == 3
+    assert caught.value.exit_code == 1
     assert api.get.call_count == 2
     assert len(batches(api)) == 4
 

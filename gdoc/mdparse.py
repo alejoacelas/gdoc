@@ -325,6 +325,32 @@ def _list_level(indent: str) -> int:
     return min(columns // 2, 8)
 
 
+def _check_native_images(text: str) -> None:
+    """Refuse image syntax before a native write can delete existing content."""
+    from gdoc.util import GdocError
+
+    # Code examples are literal; image, reference-image and HTML image inputs
+    # outside code are unsupported by this renderer.
+    visible = []
+    fence = None
+    for line in text.splitlines():
+        match = _FENCE_RE.match(line)
+        if match:
+            marker = match.group(1)
+            if fence is None:
+                fence = marker
+            elif marker[0] == fence[0] and len(marker) >= len(fence):
+                fence = None
+            continue
+        if fence is None:
+            visible.append(_CODE_RE.sub("", _mask_escapes(line)))
+    if re.search(r"!\[|<img\b", "\n".join(visible), re.IGNORECASE):
+        raise GdocError(
+            "native Markdown writes do not support images; content was not changed",
+            exit_code=3,
+        )
+
+
 def parse_markdown(text: str) -> ParsedMarkdown:
     """Parse markdown text into plain text + style annotations.
 
@@ -336,6 +362,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
     if not text:
         return ParsedMarkdown(plain_text="")
 
+    _check_native_images(text)
     # A terminal LF closes the last paragraph; it is not an extra blank one.
     # Preserve additional LFs, each of which represents a real empty paragraph.
     lines = text.removesuffix("\n").split("\n")

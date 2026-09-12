@@ -71,7 +71,7 @@ class TestPushBasic:
         args = _make_args(file=str(f))
         cmd_push(args)
         mock_update_doc.assert_called_once_with(
-            "abc123", "# Hello\n", expected_version=10,
+            "abc123", "# Hello\n", expected_version=10, document={},
         )
 
     @patch("gdoc.state.update_state_after_command")
@@ -111,7 +111,7 @@ class TestPushBasic:
         args = _make_args(file=str(f))
         cmd_push(args)
         mock_update_doc.assert_called_once_with(
-            "abc123", "Body", expected_version=10,
+            "abc123", "Body", expected_version=10, document={},
         )
 
 
@@ -298,7 +298,7 @@ class TestPushAwareness:
         cmd_push(args)
         mock_update.assert_called_once_with(
             "abc123", change_info, command="push",
-            quiet=False, command_version=42, full_doc_write=True,
+            quiet=False, command_version=42, full_doc_write=False,
         )
 
 

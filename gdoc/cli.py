@@ -1601,7 +1601,7 @@ def _check_write_conflict(
 def _check_document_replacement(
     doc_id: str, *, command: str, allow_lossy: bool = False,
     force_collapse_tabs: bool = False,
-) -> None:
+) -> dict:
     """Check tab collapse and native-content loss against one upload snapshot."""
     from gdoc.api.docs import flatten_tabs, get_document_with_tabs
     from gdoc.lossy import check_markdown_replacement
@@ -1618,6 +1618,7 @@ def _check_document_replacement(
                 exit_code=3,
             )
     check_markdown_replacement(doc, allow_lossy=allow_lossy)
+    return doc
 
 
 def cmd_write(args) -> int:
@@ -1675,7 +1676,7 @@ def cmd_write(args) -> int:
             mode, doc_id, result, command_version, verb="wrote",
         )
     else:
-        _check_document_replacement(
+        document = _check_document_replacement(
             doc_id, command="write",
             allow_lossy=getattr(args, "allow_lossy", False),
             force_collapse_tabs=force_collapse,
@@ -1683,6 +1684,7 @@ def cmd_write(args) -> int:
         from gdoc.api.drive import update_doc_content
         command_version = update_doc_content(
             doc_id, content, expected_version=change_info.current_version,
+            document=document,
         )
 
         if mode == "json":
@@ -1699,7 +1701,7 @@ def cmd_write(args) -> int:
     update_state_after_command(
         doc_id, change_info, command="write",
         quiet=quiet, command_version=command_version,
-        full_doc_write=not tab_name,
+        full_doc_write=False,
     )
 
     return 0
@@ -1843,7 +1845,7 @@ def cmd_push(args) -> int:
         return _finish_noop_write(doc_id, change_info, args, quiet,
                                   command="push", matched_version=matched)
 
-    _check_document_replacement(
+    document = _check_document_replacement(
         doc_id, command="push",
         allow_lossy=getattr(args, "allow_lossy", False),
         force_collapse_tabs=force_collapse,
@@ -1854,6 +1856,7 @@ def cmd_push(args) -> int:
 
     command_version = update_doc_content(
         doc_id, body, expected_version=change_info.current_version,
+        document=document,
     )
 
     # Output
@@ -1874,7 +1877,7 @@ def cmd_push(args) -> int:
     update_state_after_command(
         doc_id, change_info, command="push",
         quiet=quiet, command_version=command_version,
-        full_doc_write=True,
+        full_doc_write=False,
     )
 
     return 0
@@ -1912,7 +1915,7 @@ def cmd_sync_hook(args) -> int:
 
         # Hooks cannot request consent; always fail closed and report a skip.
         try:
-            _check_document_replacement(doc_id, command="sync")
+            document = _check_document_replacement(doc_id, command="sync")
         except Exception as e:
             title = metadata.get("title", doc_id)
             print(f'SYNC: skipped "{title}" (replacement safety check: {e})',
@@ -1921,7 +1924,7 @@ def cmd_sync_hook(args) -> int:
 
         from gdoc.api.drive import update_doc_content
 
-        command_version = update_doc_content(doc_id, body)
+        command_version = update_doc_content(doc_id, body, document=document)
 
         title = metadata.get("title", doc_id)
         print(
@@ -1934,7 +1937,7 @@ def cmd_sync_hook(args) -> int:
         update_state_after_command(
             doc_id, None, command="push",
             quiet=True, command_version=command_version,
-            full_doc_write=True,
+            full_doc_write=False,
         )
 
     except Exception as e:

@@ -19,9 +19,10 @@ def no_network(mocker):
     mocker.patch.object(docs, "get_docs_service", side_effect=forbidden)
 
 
-def paragraph(text, start):
+def paragraph(text, start, style="NORMAL_TEXT"):
     end = start + len(text.encode("utf-16-le")) // 2
-    return {"startIndex": start, "endIndex": end, "paragraph": {"elements": [
+    return {"startIndex": start, "endIndex": end, "paragraph": {
+        "paragraphStyle": {"namedStyleType": style}, "elements": [
         {"startIndex": start, "endIndex": end, "textRun": {"content": text}},
     ]}}
 
@@ -337,3 +338,154 @@ def test_unicode_edit_does_not_delete_paragraph_mark(mocker):
     assert cmd_edit(edit_args(cell=None, old_text="plan", new_text="TASK")) == 0
     assert replace.call_args.args[1] == [{"startIndex": 3, "endIndex": 7}]
     assert replace.call_args.args[2] == "TASK"
+
+
+@pytest.mark.parametrize("tab_id", [None, "vendors-tab"])
+@pytest.mark.parametrize("kind", [
+    "inlineObjectElement", "footnoteReference", "positioned",
+])
+def test_every_batch_preserves_native_heading_content(mocker, kind, tab_id):
+    # Two matches ensure cleanup still runs for the text-only heading, while
+    # preserving the other heading's image/reference/positioned-object anchor.
+    native_width = 0 if kind == "positioned" else 1
+    before_heading = paragraph("Old", 1, "HEADING_1")
+    after_heading = paragraph("\n", 1 + native_width, "HEADING_1")
+    after_heading["startIndex"] = 1
+    if kind == "positioned":
+        for heading in (before_heading, after_heading):
+            heading["paragraph"]["positionedObjectIds"] = ["drawing"]
+    else:
+        native = ({"inlineObjectId": "image"} if kind == "inlineObjectElement"
+                  else {"footnoteId": "note"})
+        before_heading["paragraph"]["elements"].append(
+            {"startIndex": 4, "endIndex": 5, kind: native})
+        after_heading["paragraph"]["elements"].insert(
+            0, {"startIndex": 1, "endIndex": 2, kind: native})
+    before_heading["paragraph"]["elements"].extend(
+        paragraph("\n", 4 + native_width)["paragraph"]["elements"])
+    before_heading["endIndex"] = 5 + native_width
+    before = {"body": {"content": [
+        before_heading, paragraph("Old\n", 5 + native_width, "HEADING_2"),
+        paragraph("Keep\n", 9 + native_width),
+    ]}}
+    after = {"revisionId": "after-edit", "body": {"content": [
+        after_heading, paragraph("\n", 2 + native_width, "HEADING_2"),
+        paragraph("Keep\n", 3 + native_width),
+    ]}}
+    service = mocker.MagicMock()
+    service.documents().get().execute.return_value = after
+    mocker.patch.object(docs, "get_docs_service", return_value=service)
+    if tab_id:
+        after["tabs"] = [{"tabProperties": {"tabId": tab_id, "title": "Vendors"},
+                          "documentTab": {"body": after["body"]}}]
+    matches = docs.find_text_in_document(before, "Old")
+    assert docs.replace_formatted("synthetic", matches, "", "before-edit", tab_id) == 2
+    batches = [call.kwargs["body"]
+               for call in service.documents().batchUpdate.call_args_list]
+    assert len(batches) == 2
+    for stage, batch in enumerate(batches):
+        for request in batch["requests"]:
+            if "deleteContentRange" not in request:
+                continue
+            span = request["deleteContentRange"]["range"]
+            assert span.get("tabId") == tab_id
+            # Native element (or positioned-object paragraph mark) survives
+            # every batch, with its position adjusted after the primary edit.
+            protected = 4 if stage == 0 else 1
+            assert not span["startIndex"] <= protected < span["endIndex"]
+        assert batch["writeControl"] == {
+            "requiredRevisionId": "before-edit" if stage == 0 else "after-edit",
+        }
+    assert batches[1]["requests"] == [{"deleteContentRange": {"range": {
+        "startIndex": 2 + native_width, "endIndex": 3 + native_width,
+        **({"tabId": tab_id} if tab_id else {}),
+    }}}]
+
+
+@pytest.mark.parametrize("tab_id", [None, "vendors-tab"])
+@pytest.mark.parametrize("first,second", [("i\u0307", "İ"), ("İ", "i\u0307")])
+def test_unequal_match_widths_cleanup_own_headings(mocker, tab_id, first, second):
+    first_para = paragraph(first + "\n", 1, "HEADING_1")
+    second_para = paragraph(second + "\n", first_para["endIndex"], "HEADING_2")
+    before = {"body": {"content": [
+        first_para, second_para, paragraph("\n", 6, "HEADING_3"),
+        paragraph("Keep\n", 7),
+    ]}}
+    after = {"revisionId": "after-edit", "body": {"content": [
+        paragraph("X\n", 1), paragraph("\n", 3, "HEADING_1"),
+        paragraph("X\n", 4), paragraph("\n", 6, "HEADING_2"),
+        paragraph("\n", 7, "HEADING_3"), paragraph("Keep\n", 8),
+    ]}}
+    if tab_id:
+        after["tabs"] = [{"tabProperties": {"tabId": tab_id, "title": "Vendors"},
+                          "documentTab": {"body": after["body"]}}]
+    service = mocker.MagicMock()
+    service.documents().get().execute.return_value = after
+    mocker.patch.object(docs, "get_docs_service", return_value=service)
+    matches = docs.find_text_in_document(before, "İ")
+    count = docs.replace_formatted("synthetic", matches, "X\n", "before-edit", tab_id)
+    assert count == 2
+    batches = [call.kwargs["body"]
+               for call in service.documents().batchUpdate.call_args_list]
+    assert len(batches) == 2
+    deletions = [[r["deleteContentRange"]["range"] for r in b["requests"]
+                  if "deleteContentRange" in r] for b in batches]
+    assert [(r["startIndex"], r["endIndex"]) for r in deletions[0]] == [
+        (second_para["startIndex"], second_para["endIndex"] - 1),
+        (1, first_para["endIndex"] - 1),
+    ]
+    assert [(r["startIndex"], r["endIndex"]) for r in deletions[1]] == [(6, 7), (3, 4)]
+    assert batches[1]["writeControl"] == {"requiredRevisionId": "after-edit"}
+    assert all(r.get("tabId") == tab_id for batch in deletions for r in batch)
+    # Cleanup deletes only its two leftover headings, leaving the unrelated
+    # HEADING_3 and Keep paragraph intact in the UTF-16 document text.
+    text = "X\n\nX\n\n\nKeep\n"
+    for span in deletions[1]:
+        text = text[:span["startIndex"] - 1] + text[span["endIndex"] - 1:]
+    assert text == "X\nX\n\nKeep\n"
+
+
+@pytest.mark.parametrize("span", [(2, 3), (1, 3), (None, None)])
+def test_cleanup_requires_verified_newline_indices(span):
+    heading = paragraph("\n", 1, "HEADING_1")
+    element = heading["paragraph"]["elements"][0]
+    element["startIndex"], element["endIndex"] = span
+    assert docs._build_cleanup_requests({"content": [heading]}, 1) == []
+
+
+@pytest.mark.parametrize("col", [None, 2])
+def test_value_column_label_collision_refuses_cli_before_any_batch(mocker, col):
+    # Anonymous reconstruction of the live Vendors table: the earlier row's
+    # Partner value repeats the later row's first-column label.
+    grid = table([
+        ["Vendor\n", "Partner\n", "Status\n"],
+        ["Acme Cloud\n", "Datawise\n", "Rechazado\n"],
+        ["Datawise\n", "Acme Cloud\n", "Pendiente Q3\n"],
+        ["Northwind\n", "n/a\n", "Pendiente Q4\n"],
+    ], start=40)
+    document = {"revisionId": "before-edit", "tabs": [{
+        "tabProperties": {"tabId": "vendors-tab", "title": "Vendors"},
+        "documentTab": {"body": {"content": [grid]}},
+    }]}
+    original = deepcopy(document)
+    mocker.patch("gdoc.notify.pre_flight", return_value=None)
+    mocker.patch("gdoc.api.drive.get_file_version", return_value={"version": 1})
+    mocker.patch("gdoc.state.update_state_after_command")
+    mocker.patch.object(docs, "get_document", return_value=document)
+    mocker.patch.object(docs, "get_document_with_tabs", return_value=document)
+    service = mocker.MagicMock()
+    mocker.patch.object(docs, "get_docs_service", return_value=service)
+    with pytest.raises(GdocError, match="ambiguous cell label") as exc:
+        cmd_edit(edit_args(cell="Datawise", col=col, table=0, tab="Vendors",
+                           old_text="Aprobado ✅"))
+    assert exc.value.exit_code == 3
+    assert "table 0 row 1 column 1" in str(exc.value)
+    assert "table 0 row 2 column 0" in str(exc.value)
+    service.documents().batchUpdate.assert_not_called()
+    assert document == original
+    # Explicit coordinates remain usable for the requested Status cell.
+    assert docs.resolve_cell_range(document["tabs"][0]["documentTab"]["body"],
+                                   "2,2", table_index=0) == {
+        "startIndex": grid["table"]["tableRows"][2]["tableCells"][2]["startIndex"] + 1,
+        "endIndex": grid["table"]["tableRows"][2]["tableCells"][2]["endIndex"] - 1,
+    }

@@ -827,7 +827,8 @@ def resolve_cell_range(
     - label (anything else): match the first column of a unique row whose
       text equals `cell`; the target is column `col` if given, else column 1.
       Searches every table by default, or only table `table_index` when given.
-      Duplicate labels raise GdocError with exit code 3 before resolving a range.
+      Duplicate labels or labels repeated in value columns raise GdocError
+      with exit code 3 before resolving a range.
 
     `normalize` folds smart quotes/dashes when comparing labels. Returns
     None if nothing resolves.
@@ -859,17 +860,23 @@ def resolve_cell_range(
     target = fold_typography(cell) if normalize else cell
     target = target.strip()
     matches = []
+    value_matches = []
     for ti, table in search_tables:
         for ri, row in enumerate(table.get("tableRows", [])):
             cells = row.get("tableCells", [])
-            if not cells:
-                continue
-            label = _extract_paragraphs_text(cells[0].get("content", []))
-            label = (fold_typography(label) if normalize else label).strip()
-            if label == target:
-                matches.append((ti, ri, cells))
-    if len(matches) > 1:
-        candidates = ", ".join(f"table {ti} row {ri}" for ti, ri, _ in matches)
+            for ci, candidate in enumerate(cells):
+                label = _extract_paragraphs_text(candidate.get("content", []))
+                label = (fold_typography(label) if normalize else label).strip()
+                if label == target:
+                    if ci == 0:
+                        matches.append((ti, ri, cells))
+                    else:
+                        value_matches.append(f"table {ti} row {ri} column {ci}")
+    if len(matches) > 1 or (matches and value_matches):
+        candidates = ", ".join(
+            [f"table {ti} row {ri} column 0" for ti, ri, _ in matches]
+            + value_matches
+        )
         raise GdocError(
             f"ambiguous cell label {cell!r}: {candidates}; "
             "use --table and --cell ROW,COL",
@@ -1652,6 +1659,84 @@ def add_tab(doc_id: str, title: str) -> dict:
         }
     except HttpError as e:
         _translate_http_error(e, doc_id)
+
+
+def _build_cleanup_requests(
+    body: dict, position: int, tab_id: str | None = None,
+) -> list[dict]:
+    """Build batchUpdate requests to clean up an empty heading paragraph.
+
+    Pure function \u2014 inspects body content and returns request dicts
+    without making API calls. When the deleted text was the entire
+    content of a heading paragraph, an empty "\\n" with the heading
+    style remains. This returns requests that transfer that style to
+    the preceding paragraph (if NORMAL_TEXT) and delete the empty one.
+    """
+    target_elem = None
+    prev_elem = None
+    for elem in body.get("content", []):
+        si = elem.get("startIndex", 0)
+        if si == position and "paragraph" in elem:
+            target_elem = elem
+            break
+        if "paragraph" in elem:
+            prev_elem = elem
+
+    if target_elem is None:
+        return []
+
+    p = target_elem["paragraph"]
+    style = p.get("paragraphStyle", {}).get("namedStyleType", "NORMAL_TEXT")
+
+    # A text-only view can hide an image/reference or a positioned object.
+    # Only delete a verified, sole newline at this exact native position.
+    elements = p.get("elements", [])
+    if (
+        style == "NORMAL_TEXT"
+        or p.get("positionedObjectIds")
+        or target_elem.get("endIndex") != position + 1
+        or len(elements) != 1
+        or elements[0].get("textRun", {}).get("content") != "\n"
+        or elements[0].get("startIndex") != position
+        or elements[0].get("endIndex") != position + 1
+    ):
+        return []
+
+    requests: list[dict] = []
+
+    # Transfer the heading style to the preceding paragraph if it's
+    # NORMAL_TEXT (i.e. the last paragraph of the inserted text).
+    if prev_elem is not None:
+        prev_style = prev_elem["paragraph"].get(
+            "paragraphStyle", {},
+        ).get("namedStyleType", "NORMAL_TEXT")
+        if prev_style == "NORMAL_TEXT":
+            prev_range: dict = {
+                "startIndex": prev_elem.get("startIndex", 0),
+                "endIndex": prev_elem.get("endIndex", 0),
+            }
+            if tab_id:
+                prev_range["tabId"] = tab_id
+            requests.append({
+                "updateParagraphStyle": {
+                    "range": prev_range,
+                    "paragraphStyle": {"namedStyleType": style},
+                    "fields": "namedStyleType",
+                }
+            })
+
+    # Delete the empty heading paragraph
+    delete_range: dict = {
+        "startIndex": position,
+        "endIndex": position + 1,
+    }
+    if tab_id:
+        delete_range["tabId"] = tab_id
+    requests.append({
+        "deleteContentRange": {"range": delete_range}
+    })
+
+    return requests
 
 
 def _tab_body_range(body: dict) -> tuple[int, int]:

@@ -4110,7 +4110,8 @@ def build_parser() -> GdocArgumentParser:
     edit_p.add_argument(
         "--cell",
         help="Target a table cell instead of searching text: a first-column label "
-             "(replaces the cell to its right) or 'ROW,COL' coordinates",
+             "(replaces the cell to its right) or 'ROW,COL' coordinates; "
+             "labels repeated in other rows or value columns are refused",
     )
     edit_p.add_argument(
         "--col", type=int,

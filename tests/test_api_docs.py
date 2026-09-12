@@ -725,3 +725,121 @@ def test_segments_are_ordered_by_id_not_map_insertion_order():
         "header-z": content, "header-a": content,
     }}, "TOKEN")
     assert [m["segmentId"] for m in matches] == ["header-a", "header-z"]
+
+
+class TestBuildCleanupRequests:
+    def test_empty_heading_produces_requests(self):
+        from gdoc.api.docs import _build_cleanup_requests
+
+        body = {"content": [
+            {
+                "paragraph": {
+                    "elements": [{"textRun": {"content": "text\n"}}],
+                    "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
+                },
+                "startIndex": 1,
+                "endIndex": 6,
+            },
+            {
+                "paragraph": {
+                    "elements": [{"startIndex": 6, "endIndex": 7,
+                                  "textRun": {"content": "\n"}}],
+                    "paragraphStyle": {"namedStyleType": "HEADING_1"},
+                },
+                "startIndex": 6,
+                "endIndex": 7,
+            },
+        ]}
+        reqs = _build_cleanup_requests(body, 6)
+        assert len(reqs) == 2
+        # First: transfer style to preceding paragraph
+        assert "updateParagraphStyle" in reqs[0]
+        style = reqs[0]["updateParagraphStyle"]["paragraphStyle"]
+        assert style["namedStyleType"] == "HEADING_1"
+        # Second: delete the empty heading
+        assert "deleteContentRange" in reqs[1]
+        assert reqs[1]["deleteContentRange"]["range"]["startIndex"] == 6
+
+    def test_normal_text_noop(self):
+        from gdoc.api.docs import _build_cleanup_requests
+
+        body = {"content": [{
+            "paragraph": {
+                "elements": [{"textRun": {"content": "\n"}}],
+                "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
+            },
+            "startIndex": 1,
+            "endIndex": 2,
+        }]}
+        assert _build_cleanup_requests(body, 1) == []
+
+    def test_no_element_at_position_noop(self):
+        from gdoc.api.docs import _build_cleanup_requests
+
+        body = {"content": []}
+        assert _build_cleanup_requests(body, 99) == []
+
+    def test_non_empty_heading_noop(self):
+        from gdoc.api.docs import _build_cleanup_requests
+
+        body = {"content": [{
+            "paragraph": {
+                "elements": [{"textRun": {"content": "Title\n"}}],
+                "paragraphStyle": {"namedStyleType": "HEADING_1"},
+            },
+            "startIndex": 1,
+            "endIndex": 7,
+        }]}
+        assert _build_cleanup_requests(body, 1) == []
+
+    def test_tab_id_included(self):
+        from gdoc.api.docs import _build_cleanup_requests
+
+        body = {"content": [
+            {
+                "paragraph": {
+                    "elements": [{"textRun": {"content": "x\n"}}],
+                    "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
+                },
+                "startIndex": 1,
+                "endIndex": 3,
+            },
+            {
+                "paragraph": {
+                    "elements": [{"startIndex": 3, "endIndex": 4,
+                                  "textRun": {"content": "\n"}}],
+                    "paragraphStyle": {"namedStyleType": "HEADING_2"},
+                },
+                "startIndex": 3,
+                "endIndex": 4,
+            },
+        ]}
+        reqs = _build_cleanup_requests(body, 3, tab_id="tab1")
+        assert reqs[0]["updateParagraphStyle"]["range"]["tabId"] == "tab1"
+        assert reqs[1]["deleteContentRange"]["range"]["tabId"] == "tab1"
+
+    def test_style_transferred_from_heading(self):
+        from gdoc.api.docs import _build_cleanup_requests
+
+        body = {"content": [
+            {
+                "paragraph": {
+                    "elements": [{"textRun": {"content": "text\n"}}],
+                    "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
+                },
+                "startIndex": 1,
+                "endIndex": 6,
+            },
+            {
+                "paragraph": {
+                    "elements": [{"startIndex": 6, "endIndex": 7,
+                                  "textRun": {"content": "\n"}}],
+                    "paragraphStyle": {"namedStyleType": "HEADING_3"},
+                },
+                "startIndex": 6,
+                "endIndex": 7,
+            },
+        ]}
+        reqs = _build_cleanup_requests(body, 6)
+        ups = reqs[0]["updateParagraphStyle"]
+        assert ups["paragraphStyle"]["namedStyleType"] == "HEADING_3"

@@ -623,6 +623,8 @@ gdoc edit DOC --cell 7,1 "new value"
 gdoc edit DOC --cell "Status" --col 2 "Done"
 ```
 
+Labels must identify exactly one first-column row in the selected table(s). If the same text also appears in a value column, label mode refuses with exit code 3; use explicit `--table` and `--cell ROW,COL` coordinates.
+
 Cell edits preserve the cell's paragraph structure; an empty cell is filled in place. The replacement supports the same Markdown formatting as a normal `edit`.
 
 ### Matching tolerance

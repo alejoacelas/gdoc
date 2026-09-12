@@ -839,6 +839,10 @@ _STRIKE = {"strikethrough": True}
     ("```\n**code** `x`\n```", "\n**code** `x`\n", [(0, 14, _CODE)]),
     ("`a` and ``b`` and ```c```", "a and b and c",
      [(0, 1, _CODE), (6, 7, _CODE), (12, 13, _CODE)]),
+    # Escapes are not processed inside a code span (CommonMark 6.1): the first
+    # backtick after the opener closes it, the backslash stays, and the
+    # trailing backtick is literal text.
+    (r"`a\`b`", "a\\b`", [(0, 2, _CODE)]),
     # An unmatched backtick string is literal; the text around it still parses.
     ("``` **b**", "``` b", [(4, 5, _BOLD)]),
     ("```\n**code**", "```\ncode", [(4, 8, _BOLD)]),

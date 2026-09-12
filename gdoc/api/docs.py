@@ -1501,15 +1501,16 @@ def insert_markdown_into_tab(
     # and keeps the separator so its mark never lands on existing text.
     appending = not replace and body_end > body_start and position == "end"
     leading_table = (
-        appending and parsed.plain_text.startswith("\n")
-        and bool(parsed.tables) and parsed.tables[0].plain_text_offset == 0
+        appending and bool(parsed.tables) and parsed.tables[0].plain_text_offset == 0
     )
     if leading_table:
         # The placeholder newline ends the existing paragraph, whose style
         # and list membership must stay untouched.
         parsed.styles = [s for s in parsed.styles
                          if not (s.type == "paragraph_style"
-                                 and (s.start, s.end) == (0, 1))]
+                                 and s.start == 0 and s.end <= 1)]
+        if not parsed.plain_text:
+            final_style = None
     if (not replace and body_end > body_start and not leading_table
             and (parsed.plain_text or parsed.tables or final_style is not None)):
         if position == "end":
@@ -1543,7 +1544,10 @@ def insert_markdown_into_tab(
     if not replace and inherited_bullet:
         _reset_list_indents(parsed)
     insertion = to_docs_requests(parsed, insert_index, tab_id=tab_id)
-    if at_end and parsed.plain_text.endswith("\n"):
+    if at_end and parsed.plain_text.endswith("\n") and any(
+        s.type == "paragraph_style" and s.end == len(parsed.plain_text)
+        and "borderBottom" in s.style for s in parsed.styles
+    ):
         # A trailing thematic break kept the parser's newline so its border
         # has a range. The mandatory final newline already follows the
         # insertion point and serves as that paragraph's mark, so insert one

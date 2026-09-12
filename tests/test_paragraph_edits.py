@@ -547,10 +547,11 @@ def test_insert_at_end_trailing_rule_reuses_final_newline(mocker, replace):
                                "tabId": "synthetic-tab"}
 
 
-def test_insert_table_only_at_end_adds_no_separator(mocker):
+@pytest.mark.parametrize("bullet", [False, True])
+def test_insert_table_only_at_end_adds_no_separator(mocker, bullet):
     """InsertTableRequest inserts its own newline before the table, so a
     table-only append must not add a separator paragraph first."""
-    body = _body(("Existing", "NORMAL_TEXT", False))
+    body = _body(("Existing", "NORMAL_TEXT", bullet))
     mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
         "revisionId": "synthetic-rev", "tabs": [{
             "documentTab": {"body": body},

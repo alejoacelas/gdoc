@@ -1517,6 +1517,15 @@ def _replacement_paragraphs(content: list[dict], match: dict):
                 yield from _replacement_paragraphs(cell.get("content", []), match)
 
 
+def _covers_whole_paragraphs(content: list[dict], match: dict) -> bool:
+    """True when the match spans complete native paragraphs, marks excluded."""
+    native = list(_replacement_paragraphs(content, match))
+    return bool(native) and (
+        match["startIndex"] == native[0][1]
+        and match["endIndex"] == native[-1][2]
+    )
+
+
 def _replacement_paragraph(content: list[dict], match: dict):
     """Find the paragraph containing the match without its paragraph mark."""
     for paragraph, start, end in _replacement_paragraphs(content, match):
@@ -1839,10 +1848,8 @@ def replace_formatted(
                   if body is not None else [])
         # A table replacing complete paragraphs is structural and must reach
         # _insert_table; inside a paragraph its source stays literal text.
-        whole = bool(native) and (
-            match["startIndex"] == native[0][1]
-            and match["endIndex"] == native[-1][2]
-        )
+        whole = _covers_whole_paragraphs(body.get("content", []), match) \
+            if body is not None else False
         if replace_paragraphs:
             contextual = body is not None and not parsed.tables and (
                 len(native) == len(new_markdown.split("\n"))
@@ -2399,13 +2406,21 @@ def suggest_replacement(
         )
 
     parsed = parse_markdown(new_markdown)
-    if body is None or parsed.tables:
+    if body is None:
         check_inline_only_markdown(parsed)
     _reject_overlapping_matches(matches)
     _strip_trailing_newline_unless_hr(parsed)
     occurrence_count = len(matches)
     contexts = None
     if body is not None:
+        if parsed.tables and any(
+            _covers_whole_paragraphs(body.get("content", []), match)
+            for match in matches
+        ):
+            # edit would insert a native table here; suggest cannot, and
+            # literal rows would misrepresent the request. Inside a
+            # paragraph the rows are literal text, as in edit.
+            check_inline_only_markdown(parsed)
         planned = [part for match in matches
                    for part in _wording_contexts(body, match, new_markdown)]
         # Block markers are literal inside a paragraph (the same rule as

@@ -427,6 +427,34 @@ def test_block_marker_inside_paragraph_is_literal_in_edit_and_suggest(
     assert not any('createParagraphBullets' in r for r in requests)
 
 
+@pytest.mark.parametrize('command', ['edit', 'suggest'])
+def test_table_rows_inside_partial_paragraphs_are_literal_in_edit_and_suggest(
+        mocker, command):
+    """A match that only partly covers its end paragraphs cannot become a
+    table, so the rows stay literal text on both paths."""
+    body = _body(('Alpha', 'NORMAL_TEXT', False), ('Beta', 'NORMAL_TEXT', False),
+                 ('Gamma', 'NORMAL_TEXT', False))
+    planner = _requests if command == 'edit' else _suggest_requests
+    requests = planner(mocker, body, 'pha\nBeta\nGam', '| H |\n|---|\n| x |')
+    assert _apply_text_requests(body, requests) == 'Al| H |\n|---|\n| x |ma\n'
+    assert not any('updateParagraphStyle' in r for r in requests)
+
+
+def test_suggest_rejects_table_replacing_whole_paragraphs(mocker):
+    from gdoc.api.docs import suggest_replacement
+
+    body = _body(('Alpha', 'NORMAL_TEXT', False), ('Beta', 'NORMAL_TEXT', False),
+                 ('Gamma', 'NORMAL_TEXT', False))
+    service = mocker.patch('gdoc.api.docs.get_docs_service')
+    gate = mocker.patch('gdoc.api.docs.check_suggest_preview_access')
+    matches = find_text_in_document(None, 'Alpha\nBeta\nGamma', body=body)
+    with pytest.raises(GdocError, match='not supported yet') as exc:
+        suggest_replacement('doc', matches, '| H |\n|---|\n| x |', 'rev', body=body)
+    assert exc.value.exit_code == 3
+    service.assert_not_called()
+    gate.assert_not_called()
+
+
 def test_suggest_still_rejects_structural_whole_paragraph_replacement(mocker):
     from gdoc.api.docs import suggest_replacement
 

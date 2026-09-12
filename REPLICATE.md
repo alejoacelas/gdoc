@@ -357,3 +357,20 @@ The human wanted PR #66 redone as three focused fixes for target identity, nativ
 - No live captures, push, or PR edits were performed; coordinator review and live replay remain pending. Paragraph formatting, full-document reconstruction guards, and unrelated lint cleanup remain outside scope.
 
 Agent session 01a09703-553d-7e60-ad28-5066d61bf1d4 · Commits 9791974, 54a8e19, 56987ae
+
+## Close the revision-safe write BLOCK review
+
+The human wanted every finding in the revision-safe writes review fixed, including the concurrent-table spacing replay and integration with PR #66, with offline gates and no push.
+
+- **P1 — First snapshot:** whole-document write, push, and sync retain the structural guard's Docs snapshot through native request planning; a collaborator revision cannot replace its `requiredRevisionId`, including forced and quiet variants.
+- **P1 — Hidden resend:** Docs mutation stages and Drive imports use the single-send transport from PR #68, generalized in `gdoc/api/comment_transport.py`; real HttpRequest/httplib2 fault injection proves one wire send and one applied mutation when the response is lost before a possible stale-revision 400.
+- **P1 — Unseen baseline:** native writes keep `last_read_version` unchanged; the post-write Drive version is display/last-seen metadata only, and the two-write regression refuses an unseen collaborator edit on the second write.
+- **P1 — Markdown images:** inline, reference, shortcut-reference, and HTML images refuse before deletion; native body replacement also refuses additional section breaks rather than discarding section-specific settings.
+- **P2 — Partial exit status:** conflicts after acknowledged work exit 1; an initial revision rejection with no applied or uncertain mutation exits 3.
+- **P2 — Table progress:** applied stages identify the source-table ordinal and target tab, including reverse-order insertion and failure after one table is filled and the next structure is inserted.
+- **Spacing replay:** table insertion consumes its parser-owned separator/placeholder in the same revision-pinned batch; both deletion bounds and insertion position relocate together after a concurrent prepend, with no extra blank paragraphs in the offline native-index model.
+- **PR #66 integration:** merged `e7f2070`, retaining native target validation and PR #60's contextual replacements; no heuristic heading cleanup was restored, and `_StagedWrite.batch` remains the common revision-bound stage helper; `git merge-tree --write-tree HEAD e7f2070` succeeds without conflicts.
+- **Verification:** `uv run pytest` with socket connections blocked and `UV_OFFLINE=1`: **1,898 passed**; the new 35-case regression file against `357616d`: **26 failed, 9 passing controls**; Ruff: **196 existing diagnostics and zero additions** versus local `origin/main` at `dbfa4c3`; `git diff --check` passes.
+- **Limits:** no live Google calls were made, so layout evidence is offline; deliberate multi-tab collapse still uses the documented non-atomic Drive import and retains its final-version-check race, though hidden transport resend is prevented; no commits were pushed.
+
+Agent session 01a09741-ca64-7e20-aaf3-f10ef172c4fa · Commits 7db25c8 (PR #66 integration), a119170 (review fixes and regressions)

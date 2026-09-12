@@ -1355,6 +1355,7 @@ def cmd_suggest(args) -> int:
         check_segment_replacement,
         find_suggestions_in_range,
     )
+    from gdoc.mdparse import parse_markdown
 
     check_segment_replacement(parse_markdown(new_text), new_text, plan.matches)
     containers = {

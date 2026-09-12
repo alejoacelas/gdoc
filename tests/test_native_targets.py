@@ -139,3 +139,131 @@ def test_ambiguous_cell_edit_refuses_before_mutation(mocker):
         cmd_edit(edit_args())
     assert exc.value.exit_code == 3
     replace.assert_not_called()
+
+
+@pytest.mark.parametrize("native", [
+    {"inlineObjectElement": {"inlineObjectId": "synthetic-image"}},
+    {"footnoteReference": {"footnoteId": "synthetic-footnote"}},
+])
+def test_inline_native_objects_split_search_segments(native):
+    document = {"body": {"content": [{"paragraph": {"elements": [
+        {"startIndex": 1, "endIndex": 5, "textRun": {"content": "Left"}},
+        {"startIndex": 5, "endIndex": 6, **native},
+        {"startIndex": 6, "endIndex": 12, "textRun": {"content": "Right\n"}},
+    ]}}]}}
+    before = deepcopy(document)
+    assert docs.find_text_in_document(document, "LeftRight") == []
+    assert docs.find_text_in_document(document, "Right") == [
+        {"startIndex": 6, "endIndex": 11},
+    ]
+    assert document == before
+
+
+@pytest.mark.parametrize("allow_native_gaps", [False, True])
+def test_table_splits_outer_paragraphs_and_cells(allow_native_gaps):
+    middle = table([["Cell\n"]], start=6)
+    end = middle["endIndex"]
+    document = {"body": {"content": [paragraph("Left\n", 1), middle,
+                                       paragraph("Right\n", end)]}}
+    kwargs = {"allow_native_gaps": allow_native_gaps}
+    for needle in ("Left\nRight", "Left\nCell", "Cell\nRight"):
+        assert docs.find_text_in_document(document, needle, **kwargs) == []
+    assert docs.find_text_in_document(document, "Right", **kwargs) == [
+        {"startIndex": end, "endIndex": end + 5},
+    ]
+    assert docs.find_text_in_document(document, "Cell", **kwargs) == [
+        {"startIndex": 9, "endIndex": 13},
+    ]
+
+
+def test_nested_table_splits_surrounding_cell_text():
+    nested = table([["Nested\n"]], start=10)
+    end = nested["endIndex"]
+    cell = {"content": [paragraph("Before\n", 3), nested, paragraph("After\n", end)]}
+    document = {"body": {"content": [{"table": {"tableRows": [
+        {"tableCells": [cell]},
+    ]}}]}}
+    assert docs.find_text_in_document(document, "Before\nAfter") == []
+    assert docs.find_text_in_document(document, "Nested") == [
+        {"startIndex": 13, "endIndex": 19},
+    ]
+    with pytest.raises(GdocError, match="non-text content"):
+        docs._cell_text_range(cell)
+
+
+@pytest.mark.parametrize("explicit_block", [False, True])
+def test_structural_gaps_cannot_be_searched_through(explicit_block):
+    content = [paragraph("Left\n", 1)]
+    if explicit_block:
+        content.append({"startIndex": 6, "endIndex": 7,
+                        "sectionBreak": {"sectionStyle": {}}})
+    content.append(paragraph("Right\n", 7))
+    assert docs.find_text_in_document({"body": {"content": content}},
+                                      "Left\nRight") == []
+
+
+def test_adjacent_paragraphs_and_style_runs_remain_searchable():
+    first = paragraph("Left\n", 1)
+    first["paragraph"]["elements"] = [
+        {"startIndex": 1, "endIndex": 3, "textRun": {"content": "Le"}},
+        {"startIndex": 3, "endIndex": 6,
+         "textRun": {"content": "ft\n", "textStyle": {"bold": True}}},
+    ]
+    document = {"body": {"content": [first, paragraph("Right\n", 6)]}}
+    assert docs.find_text_in_document(document, "Left\nRight") == [
+        {"startIndex": 1, "endIndex": 11},
+    ]
+
+
+@pytest.mark.parametrize("cell_address", ["0,1", "Label"])
+@pytest.mark.parametrize("object_type", ["inline", "footnote", "positioned"])
+def test_cell_native_object_refuses_before_mutation(mocker, cell_address, object_type):
+    grid = table([["Label\n", "Before\n"]])
+    cell = grid["table"]["tableRows"][0]["tableCells"][1]
+    start = cell["endIndex"]
+    para = paragraph("\n", start + 1)
+    if object_type == "positioned":
+        # Positioned objects consume no native character position.
+        para = paragraph("\n", start)
+        para["paragraph"]["positionedObjectIds"] = ["synthetic-drawing"]
+    else:
+        native = ({"inlineObjectElement": {"inlineObjectId": "synthetic-image"}}
+                  if object_type == "inline" else
+                  {"footnoteReference": {"footnoteId": "synthetic-footnote"}})
+        para["startIndex"] = start
+        para["paragraph"]["elements"].insert(0, {
+            "startIndex": start, "endIndex": start + 1, **native,
+        })
+    cell["content"].extend([para, paragraph("After\n", para["endIndex"])])
+    cell["endIndex"] = cell["content"][-1]["endIndex"]
+    grid["table"]["tableRows"][0]["endIndex"] = cell["endIndex"]
+    grid["endIndex"] = cell["endIndex"]
+    document = {"body": {"content": [grid]}}
+    before = deepcopy(document)
+    mocker.patch("gdoc.notify.pre_flight", return_value=None)
+    mocker.patch.object(docs, "get_document", return_value=document)
+    replace = mocker.patch.object(docs, "replace_formatted")
+    with pytest.raises(GdocError, match="cell contains non-text content") as exc:
+        cmd_edit(edit_args(cell=cell_address))
+    assert exc.value.exit_code == 3
+    replace.assert_not_called()
+    assert document == before
+
+
+def test_whole_cell_refuses_an_unexplained_native_gap():
+    cell = {"content": [paragraph("Left\n", 3), paragraph("Right\n", 9)]}
+    with pytest.raises(GdocError, match="structural gap"):
+        docs._cell_text_range(cell)
+
+
+def test_cross_table_edit_refuses_before_mutation(mocker):
+    middle = table([["Cell\n"]], start=6)
+    document = {"body": {"content": [paragraph("Left\n", 1), middle,
+                                       paragraph("Right\n", middle["endIndex"])]}}
+    mocker.patch("gdoc.notify.pre_flight", return_value=None)
+    mocker.patch.object(docs, "get_document", return_value=document)
+    replace = mocker.patch.object(docs, "replace_formatted")
+    with pytest.raises(GdocError, match="no match found") as exc:
+        cmd_edit(edit_args(cell=None, old_text="Left\nRight", new_text="Joined"))
+    assert exc.value.exit_code == 3
+    replace.assert_not_called()

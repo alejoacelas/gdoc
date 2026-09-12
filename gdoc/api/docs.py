@@ -536,14 +536,16 @@ def _utf16_len(ch: str) -> int:
     return 2 if ord(ch) > 0xFFFF else 1
 
 
-def _collect_segments(content: list[dict]) -> list[list[tuple[int, str]]]:
+def _collect_segments(
+    content: list[dict], *, allow_native_gaps: bool = False,
+) -> list[list[tuple[int, str]]]:
     """Group (doc_index, char) pairs into independently-searchable segments.
 
-    Paragraph text at one level forms a single segment; each table cell is
-    its own segment (recursively, for nested tables). Searching per segment
-    means a match can never span a table-cell boundary \u2014 the Docs API can't
-    delete a range that crosses cells or removes a cell's final paragraph
-    mark, so such a match would produce an invalid edit.
+    Paragraph text at one level forms a segment, split at non-text inline
+    elements unless allow_native_gaps is set for non-destructive anchors.
+    Structural blocks and discontinuous native indices also split segments.
+    Each table cell remains a separate segment, recursively, because Docs
+    rejects edits that cross cell boundaries.
 
     Doc indices are UTF-16 code units, so a non-BMP character (emoji)
     advances the index by 2 even though it's one Python char.
@@ -556,19 +558,33 @@ def _collect_segments(content: list[dict]) -> list[list[tuple[int, str]]]:
             for pe in paragraph.get("elements", []):
                 text_run = pe.get("textRun")
                 if text_run is None:
+                    # An edit spanning this gap would delete the native element.
+                    if root and not allow_native_gaps:
+                        segments.append(root)
+                        root = []
                     continue
                 run = text_run.get("content", "")
                 start_idx = pe.get("startIndex", 0)
+                if (root and not allow_native_gaps
+                        and start_idx != root[-1][0] + _utf16_len(root[-1][1])):
+                    segments.append(root)
+                    root = []
                 offset = 0
                 for ch in run:
                     root.append((start_idx + offset, ch))
                     offset += _utf16_len(ch)
             continue
+        # Structural blocks interrupt surrounding paragraphs, even for anchors.
+        if root:
+            segments.append(root)
+            root = []
         table = element.get("table")
         if table is not None:
             for row in table.get("tableRows", []):
                 for cell in row.get("tableCells", []):
-                    segments.extend(_collect_segments(cell.get("content", [])))
+                    segments.extend(_collect_segments(
+                        cell.get("content", []), allow_native_gaps=allow_native_gaps,
+                    ))
     if root:
         segments.append(root)
     return segments
@@ -600,6 +616,8 @@ def find_text_in_document(
     match_case: bool = False,
     body: dict | None = None,
     normalize: bool = False,
+    *,
+    allow_native_gaps: bool = False,
 ) -> list[dict]:
     """Find text in the supplied tabs' bodies and non-body containers.
 
@@ -618,6 +636,10 @@ def find_text_in_document(
         normalize: If True, fold smart quotes/dashes to ASCII on both sides
             before matching. The fold is length-preserving, so returned
             indices stay correct.
+        allow_native_gaps: For non-destructive anchors only, allow matches
+            across inline native elements omitted from plain-text extraction.
+            Such ranges include the native elements: never use this option
+            for replacement or deletion. Table-cell boundaries still apply.
 
     Returns ranges with startIndex/endIndex, plus container, segmentId,
     and tabId where available. Containers are ordered body, headers,
@@ -639,7 +661,9 @@ def find_text_in_document(
         return matches
 
     matches = []
-    for chars in _collect_segments(body.get("content", [])):
+    for chars in _collect_segments(
+        body.get("content", []), allow_native_gaps=allow_native_gaps,
+    ):
         concat = "".join(ch for _, ch in chars)
         doc_indices = [idx for idx, _ in chars]
 
@@ -735,19 +759,30 @@ def _cell_text_range(cell: dict) -> dict | None:
     Spans the cell's text but excludes the final structural paragraph mark
     (the Docs API forbids deleting a cell's last newline). An empty cell
     yields a zero-width range → pure insert. Returns None if no paragraph
-    element with an index can be located.
+    element with an index can be located. Refuse native objects or structural
+    gaps: a whole-cell text replacement must not silently delete them.
     """
     first_start: int | None = None
     last_start: int | None = None
     last_content = ""
     for element in cell.get("content", []):
         para = element.get("paragraph")
-        if para is None:
-            continue
+        if (para is None or para.get("positionedObjectIds")
+                or any("textRun" not in pe for pe in para.get("elements", []))):
+            raise GdocError(
+                "cell contains non-text content; replace specific text instead",
+                exit_code=3,
+            )
         for pe in para.get("elements", []):
             start = pe.get("startIndex")
             if start is None:
                 continue
+            previous_width = sum(_utf16_len(ch) for ch in last_content)
+            if last_start is not None and start != last_start + previous_width:
+                raise GdocError(
+                    "cell contains a structural gap; replace specific text instead",
+                    exit_code=3,
+                )
             if first_start is None:
                 first_start = start
             tr = pe.get("textRun")

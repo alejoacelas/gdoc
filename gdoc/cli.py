@@ -2388,6 +2388,7 @@ def _try_anchored_comment(doc_id: str, text: str, quote: str) -> str:
         for tab in tabs:
             matches = find_text_in_document(
                 None, quote, body=tab["body"], normalize=normalize,
+                allow_native_gaps=True,
             )
             if not matches:
                 continue
@@ -2951,10 +2952,13 @@ def _resolve_insert_index(
             raise GdocError("--index must be >= 1", exit_code=3)
         return index
     if after is not None:
-        matches = find_text_in_document(None, after, body=body)
+        matches = find_text_in_document(
+            None, after, body=body, allow_native_gaps=True,
+        )
         if not matches:
             matches = find_text_in_document(
                 None, after, body=body, normalize=True,
+                allow_native_gaps=True,
             )
         if not matches:
             from gdoc.api.docs import diagnose_no_match

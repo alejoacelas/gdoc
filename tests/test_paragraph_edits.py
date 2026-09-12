@@ -449,10 +449,10 @@ def test_closed_backtick_span_line_does_not_open_fence_branch(mocker, command):
     planner = _requests if command == 'edit' else _suggest_requests
     requests = planner(mocker, body, 'Alpha\nBeta', '```code```\nnext')
     assert _apply_text_requests(body, requests) == 'code\nnext\n'
-    styles = [(r['updateTextStyle']['range'], r['updateTextStyle']['textStyle'])
-              for r in requests if 'updateTextStyle' in r]
-    assert styles == [({'startIndex': 1, 'endIndex': 5},
-                       {'weightedFontFamily': {'fontFamily': 'Courier New'}})]
+    styles = [r['updateTextStyle'] for r in requests if 'updateTextStyle' in r]
+    assert [(s['range']['startIndex'], s['range']['endIndex'], s['textStyle'])
+            for s in styles] == [
+        (1, 5, {'weightedFontFamily': {'fontFamily': 'Courier New'}})]
     assert not any('updateParagraphStyle' in r for r in requests)
 
 

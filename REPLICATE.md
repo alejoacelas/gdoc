@@ -153,3 +153,14 @@ The user wanted PR #63's paragraph-start selection gap closed and the three save
 - Full `uv run pytest -q`: **1,889 passed**, 24 more than the starting branch; the replacement-style module has **87 passing cases**. Ruff has exactly **196 diagnostics**, identical to locally archived `origin/main` by file, rule, message and offending source line, with zero additions/removals. No-stubs and diff-whitespace checks pass. The two saved boundary captures validate native end-first behavior for those cases; the new paragraph-start/mixed matrix remains offline-only. No live Google calls, pushes or PR mutations were made.
 
 Agent session 01a09740-e697-7110-8d36-f868d2de0d75 · Commits e14d549
+
+# Rebase PR 63 onto the final segment fixes
+
+The user wanted PR #63 rebased onto #61 at `2dc05d3`, preserving the final paragraph, segment and run-style fixes before publication.
+
+- Replayed all nine commits from the old base `f86e615` onto `2dc05d3`, which includes #60 at `db3f658`. Combined per-run style restoration with shared link decorations, and retained whole-paragraph table guards and per-context Markdown validation before suggestion planning. Earlier PR entries remain first in this log.
+- Reconciled seven inherited expectations: decoration restoration covers only the new link, retained paragraph marks get explicit style resets, linked suggestions refuse before service access, and six tab/segment containers inherit pending styles by inserting at the target end before deletion. Fenced styling now tests whole-paragraph targets; two additional regressions preserve refusal for partial-paragraph fences.
+- Full `uv run pytest tests/ -q`: **1,935 passed**. The no-stubs and diff checks pass; Ruff matches origin/main's **196** findings exactly by relative file, rule, message and source line, with zero additions or removals. The base is an ancestor and `git merge-tree --write-tree 2dc05d3 HEAD` succeeds without conflicts.
+- No live Google API calls were made. These mocked tests establish request planning; live pending/accepted/rejected preview verification and the requested remote review remain separate checks.
+
+Agent session 01a097ff-b0f9-76c3-8b8a-666b224dc347 · Commits 563d785, f4964bc, 290ecbb, a343d87, 3a233e0, 4585c0c, 35dc8ff, 4ce1779, 2071375, 19ef88a

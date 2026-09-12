@@ -1035,6 +1035,12 @@ class _ReplacementPlan:
     search_body: dict
     search_scope: dict
 
+    @property
+    def replacement_source(self) -> dict:
+        if any(m.get("tabId") or m.get("segmentId") for m in self.matches):
+            return self.search_scope
+        return self.search_body
+
 
 def _resolve_replacement_text(args, cell) -> tuple[str | None, str | None]:
     """Resolve old/new text from positionals, `-` (stdin), or --old/--new-file.
@@ -1114,10 +1120,9 @@ def _prepare_text_replacement(
 ) -> _ReplacementPlan:
     """Pre-flight, read the document, and locate the ranges to replace.
 
-    `edit` reads the default view (legacy `body`, or the named tab).
-    `suggest` always reads every tab with SUGGESTIONS_INLINE — the only
-    view whose indexes match what a suggest-mode batchUpdate addresses —
-    and targets an explicit tab (the first when --tab is absent).
+    Text search covers every tab unless --tab restricts it. Multiple matches
+    require --all; cell addressing retains its existing default-tab behavior.
+    Suggestions use SUGGESTIONS_INLINE so read and write indexes agree.
     """
     quiet = getattr(args, "quiet", False)
     replace_all = getattr(args, "all", False)
@@ -1138,7 +1143,13 @@ def _prepare_text_replacement(
         print("WARN: doc changed since last read", file=sys.stderr)
 
     # Get document structure + revision ID
-    from gdoc.api.docs import find_text_in_document, get_document
+    from gdoc.api.docs import (
+        find_text_in_document,
+        flatten_tabs,
+        get_document,
+        get_document_with_tabs,
+        resolve_tab,
+    )
 
     tab_name = getattr(args, "tab", None)
     tab_id = None
@@ -1168,38 +1179,28 @@ def _prepare_text_replacement(
         tabs = flatten_tabs(doc.get("tabs", []))
         if not tabs:
             raise GdocError(f"document has no tabs: {doc_id}")
-        tab_match = resolve_tab(tabs, tab_name) if tab_name else tabs[0]
-        tab_id = tab_match["id"]
-        search_body = tab_match["body"]
-        search_scope = tab_match
-    elif tab_name:
-        from gdoc.api.docs import flatten_tabs, get_document_with_tabs, resolve_tab
+    elif cell is not None and not tab_name:
+        doc = get_document(doc_id)
+        revision_id = doc.get("revisionId", "")
+        tabs = []
+    else:
         doc = get_document_with_tabs(doc_id)
         revision_id = doc.get("revisionId", "")
         tabs = flatten_tabs(doc.get("tabs", []))
-        tab_match = resolve_tab(tabs, tab_name)
-        tab_id = tab_match["id"]
-        search_body = tab_match["body"]
-        search_scope = tab_match
+
+    if tabs:
+        selected = resolve_tab(tabs, tab_name) if tab_name else tabs[0]
+        search_body = selected["body"]
+        if tab_name or cell is not None:
+            search_scope = selected
+            tab_id = selected["id"]
+        else:
+            search_scope = doc
     else:
-        document = get_document(doc_id)
-        revision_id = document.get("revisionId", "")
-        search_body = document.get("body", {})
-        search_scope = document
-        if cell is None and any(document.get(key) for key in (
-            "headers", "footers", "footnotes",
-        )):
-            # Legacy reads omit tab IDs. Refresh the first tab and revision
-            # together so non-body ranges carry explicit tab coordinates.
-            from gdoc.api.docs import flatten_tabs, get_document_with_tabs
-            doc = get_document_with_tabs(doc_id)
-            tabs = flatten_tabs(doc.get("tabs", []))
-            if not tabs:
-                raise GdocError(f"document has no tabs: {doc_id}")
-            search_scope = tabs[0]
-            search_body = search_scope["body"]
-            tab_id = search_scope["id"]
-            revision_id = doc.get("revisionId", "")
+        if tab_name or "tabs" in doc:
+            raise GdocError(f"document has no tabs: {doc_id}")
+        search_scope = doc
+        search_body = doc.get("body", {})
 
     if cell is not None:
         from gdoc.api.docs import resolve_cell_range
@@ -1211,12 +1212,8 @@ def _prepare_text_replacement(
             raise GdocError(f"cell not found: {cell!r}", exit_code=3)
         matches = [cell_range]
     else:
-        has_segments = any(search_scope.get(key)
-                           for key in ("headers", "footers", "footnotes"))
         matches = find_text_in_document(
-            search_scope if has_segments else None, old_text,
-            match_case=case_sensitive,
-            body=None if has_segments else search_body, normalize=normalize,
+            search_scope, old_text, match_case=case_sensitive, normalize=normalize,
         )
         if not matches:
             from gdoc.api.docs import diagnose_no_match
@@ -1228,9 +1225,14 @@ def _prepare_text_replacement(
             raise GdocError(msg, exit_code=3)
         if not replace_all and len(matches) > 1:
             raise GdocError(
-                f"multiple matches ({len(matches)} found). Use --all",
+                f"multiple matches ({len(matches)} found). "
+                "Use --all or --tab to narrow scope",
                 exit_code=3,
             )
+
+    match_tabs = {m.get("tabId") for m in matches}
+    if cell is None and len(match_tabs) == 1 and None not in match_tabs:
+        tab_id = next(iter(match_tabs))
 
     return _ReplacementPlan(
         quiet=quiet, change_info=change_info, matches=matches,
@@ -1250,6 +1252,11 @@ def cmd_edit(args) -> int:
     plan = _prepare_text_replacement(args, doc_id, old_text)
     matches = plan.matches
 
+    from gdoc.api.docs import check_segment_replacement
+    from gdoc.mdparse import parse_markdown
+
+    check_segment_replacement(parse_markdown(new_text), new_text, matches)
+
     # Perform formatted replacement via Docs API batchUpdate. A table in the
     # replacement is rejected there when more than one match takes the block
     # path; partial-paragraph matches insert the table source literally.
@@ -1257,7 +1264,7 @@ def cmd_edit(args) -> int:
 
     occurrences = replace_formatted(
         doc_id, matches, new_text, plan.revision_id, tab_id=plan.tab_id,
-        body=plan.search_body,
+        body=plan.replacement_source,
         **({"replace_paragraphs": True} if cell is not None else {}),
     )
 
@@ -1272,13 +1279,23 @@ def cmd_edit(args) -> int:
 
     mode = get_output_mode(args)
     label = "occurrence" if occurrences == 1 else "occurrences"
+    counts = {}
+    if getattr(args, "all", False) and cell is None:
+        for match in matches:
+            if match.get("tabId"):
+                key = match["tabId"]
+                counts[key] = counts.get(key, 0) + 1
     if mode == "json":
-        print(format_json(replaced=occurrences))
+        print(format_json(replaced=occurrences, **({"tabs": counts} if counts else {})))
     elif mode == "plain":
         print(f"id\t{doc_id}")
         print("status\tupdated")
+        for key, count in counts.items():
+            print(f"tab\t{key}\t{count}")
     else:
         print(f"OK replaced {occurrences} {label}")
+        for key, count in counts.items():
+            print(f"  tab {key}: {count}")
 
     # Update state
     from gdoc.state import update_state_after_command
@@ -1333,12 +1350,13 @@ def cmd_suggest(args) -> int:
 
     check_segment_replacement(parse_markdown(new_text), new_text, plan.matches)
     containers = {
-        coordinates.get("segmentId"): content
+        (coordinates.get("tabId"), coordinates.get("segmentId")): content
         for content, coordinates in _search_containers(plan.search_scope)
     }
     for m in plan.matches:
         overlapping = find_suggestions_in_range(
-            containers[m.get("segmentId")], m["startIndex"], m["endIndex"],
+            containers[(m.get("tabId"), m.get("segmentId"))],
+            m["startIndex"], m["endIndex"],
         )
         if overlapping:
             ids = ", ".join(sorted(overlapping))
@@ -1353,7 +1371,7 @@ def cmd_suggest(args) -> int:
 
     result = suggest_replacement(
         doc_id, plan.matches, new_text, plan.revision_id, tab_id=plan.tab_id,
-        expected_token_identity=read_identity, body=plan.search_body,
+        expected_token_identity=read_identity, body=plan.replacement_source,
     )
 
     # The suggestion is saved and verified at this point. A failure of the
@@ -4018,7 +4036,8 @@ def build_parser() -> GdocArgumentParser:
     edit_p.add_argument("--old-file", help="Read old text from file")
     edit_p.add_argument("--new-file", help="Read new text from file")
     edit_p.add_argument(
-        "--all", action="store_true", help="Replace all occurrences"
+        "--all", action="store_true",
+        help="Replace all occurrences in every tab, or only --tab when supplied"
     )
     edit_p.add_argument(
         "--case-sensitive", action="store_true", help="Case-sensitive matching"
@@ -4047,7 +4066,8 @@ def build_parser() -> GdocArgumentParser:
         "--quiet", action="store_true", help="Skip pre-flight checks"
     )
     edit_p.add_argument(
-        "--tab", help="Target a specific tab by title or ID"
+        "--tab", help="Limit search to this tab; otherwise search every tab and "
+        "require --all for multiple matches"
     )
     edit_p.set_defaults(func=cmd_edit)
 
@@ -4075,7 +4095,8 @@ def build_parser() -> GdocArgumentParser:
     suggest_p.add_argument("--old-file", help="Read old text from file")
     suggest_p.add_argument("--new-file", help="Read new text from file")
     suggest_p.add_argument(
-        "--all", action="store_true", help="Suggest for all occurrences"
+        "--all", action="store_true",
+        help="Suggest for all occurrences in every tab, or only --tab when supplied"
     )
     suggest_p.add_argument(
         "--case-sensitive", action="store_true", help="Case-sensitive matching"
@@ -4088,7 +4109,8 @@ def build_parser() -> GdocArgumentParser:
         "--quiet", action="store_true", help="Skip pre-flight checks"
     )
     suggest_p.add_argument(
-        "--tab", help="Target a specific tab by title or ID"
+        "--tab", help="Limit search to this tab; otherwise search every tab and "
+        "require --all for multiple matches"
     )
     suggest_p.set_defaults(func=cmd_suggest)
 

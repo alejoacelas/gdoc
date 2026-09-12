@@ -604,7 +604,7 @@ def test_find_all_selected_tab_containers():
     ]
 
 
-def test_find_raw_document_uses_only_first_tab():
+def test_find_raw_document_searches_every_tab():
     first = _segment_scope()
     sibling = _segment_scope()
     sibling["tabProperties"]["tabId"] = "tab-two"
@@ -612,7 +612,9 @@ def test_find_raw_document_uses_only_first_tab():
         {"id": "tab-one", **first["documentTab"]}, "TOKEN",
     )
     assert len(expected) == 4
-    assert find_text_in_document({"tabs": [first, sibling]}, "TOKEN") == expected
+    assert find_text_in_document({"tabs": [first, sibling]}, "TOKEN") == (
+        expected + [{**m, "tabId": "tab-two"} for m in expected]
+    )
 
 
 def test_legacy_body_range_shape_is_unchanged():
@@ -693,9 +695,7 @@ def test_segment_edit_exact_batch_and_body_only_cleanup(mocker):
         "requests": _expected_mixed_requests(body_paragraph=True),
         "writeControl": {"requiredRevisionId": "revision-one"},
     })
-    cleanup.assert_called_once_with(
-        _segment_scope()["documentTab"]["body"], 9, "tab-one",
-    )
+    cleanup.assert_not_called()
 
 
 @pytest.mark.parametrize("markdown", [
@@ -773,8 +773,6 @@ def test_cleanup_uses_match_tab_when_no_fallback_tab_is_given(mocker):
     assert replace_formatted(
         "doc-one", _mixed_matches(), "REPLACED", "revision-one",
     ) == 3
-    tabs.assert_called_once_with("doc-one")
+    tabs.assert_not_called()
     service.documents.return_value.get.assert_not_called()
-    cleanup.assert_called_once_with(
-        _segment_scope()["documentTab"]["body"], 9, "tab-one",
-    )
+    cleanup.assert_not_called()

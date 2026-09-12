@@ -1358,7 +1358,7 @@ class TestCmdSuggest:
     @patch("gdoc.api.docs.suggest_replacement", return_value=_result())
     @patch("gdoc.api.docs.get_document_structure", return_value=_structure())
     @patch("gdoc.notify.pre_flight", return_value=None)
-    def test_reads_inline_view_and_targets_first_tab(
+    def test_reads_inline_view_and_carries_match_tab(
         self, _pf, mock_doc, mock_sug, _ver, _state, _tid,
     ):
         cmd_suggest(_args(doc="https://docs.google.com/document/d/abc123/edit"))
@@ -1368,10 +1368,11 @@ class TestCmdSuggest:
         # The token identity captured before the read travels to the write,
         # so a re-auth anywhere between them aborts pre-send.
         mock_sug.assert_called_once_with(
-            "abc123", [{"startIndex": 1, "endIndex": 6}], "world", "rev123",
+            "abc123", [{"startIndex": 1, "endIndex": 6,
+                        "tabId": "t.first", "container": "body"}], "world", "rev123",
             tab_id="t.first",
             expected_token_identity=("cid.apps", "rt1"),
-            body=_structure()["tabs"][0]["documentTab"]["body"],
+            body=_structure(),
         )
 
     @patch("gdoc.state.update_state_after_command")
@@ -1388,7 +1389,8 @@ class TestCmdSuggest:
         ])
         cmd_suggest(_args(tab="draft"))
         call = mock_sug.call_args
-        assert call.args[1] == [{"startIndex": 5, "endIndex": 10}]
+        assert call.args[1] == [{"startIndex": 5, "endIndex": 10,
+                                 "tabId": "t.draft", "container": "body"}]
         assert call.kwargs["tab_id"] == "t.draft"
 
     @patch("gdoc.api.docs.suggest_replacement")
@@ -1657,7 +1659,9 @@ class TestCmdSuggest:
         cmd_suggest(_args(
             old_text=None, new_text=None, old_file=str(old), new_file=str(new),
         ))
-        assert mock_sug.call_args.args[1] == [{"startIndex": 1, "endIndex": 6}]
+        assert mock_sug.call_args.args[1] == [{
+            "startIndex": 1, "endIndex": 6, "tabId": "t.first", "container": "body",
+        }]
         assert mock_sug.call_args.args[2] == "**world**"
 
     @patch("gdoc.state.update_state_after_command")
@@ -1829,7 +1833,7 @@ def test_suggest_overlap_checks_only_the_matched_container(
             match["segmentId"] = target + "-one"
         suggest.assert_called_once_with(
             "abc123", [match], "REPLACED", "revision-one", tab_id="tab-one",
-            expected_token_identity=("client", "token"),
+            expected_token_identity=("client", "token"), body=document,
         )
 
 

@@ -495,16 +495,15 @@ def _collect_segments(content: list[dict]) -> list[list[tuple[int, str]]]:
 
 
 def _search_containers(document: dict):
-    """Yield the first/selected tab's independent index spaces, body first.
+    """Yield every supplied tab's independent index spaces, body first.
 
     Accept a legacy document, a raw tabs document, or one flattened tab.
     Segment IDs are sorted so API map iteration cannot change write order.
     """
     if "tabs" in document:
-        tabs = flatten_tabs(document["tabs"])
-        if not tabs:
-            return
-        document = tabs[0]
+        for tab in flatten_tabs(document["tabs"]):
+            yield from _search_containers(tab)
+        return
     tab_id = document.get("id")
     coordinates = {"tabId": tab_id} if tab_id else {}
     yield document.get("body", {}), {"container": "body", **coordinates}
@@ -522,7 +521,7 @@ def find_text_in_document(
     body: dict | None = None,
     normalize: bool = False,
 ) -> list[dict]:
-    """Find text in the first/selected tab's body and non-body containers.
+    """Find text in the supplied tabs' bodies and non-body containers.
 
     Passing ``body`` explicitly limits the search to that content and keeps
     the legacy two-key range shape. A full document or flattened tab also
@@ -1765,6 +1764,20 @@ def _match_space(match: dict) -> tuple[str, str]:
     return match.get("tabId", ""), match.get("segmentId", "")
 
 
+def _match_key(match: dict) -> tuple:
+    return (*_match_space(match), match["startIndex"])
+
+
+def _replacement_body(scope: dict | None, match: dict) -> dict | None:
+    """Resolve paragraph/style context in the match's own index space."""
+    if scope is None or "content" in scope:
+        return scope
+    for content, coordinates in _search_containers(scope):
+        if _match_space(coordinates) == _match_space(match):
+            return content
+    raise GdocError("replacement container not found in source snapshot", exit_code=3)
+
+
 def _replacement_order(match: dict) -> tuple:
     tab, segment = _match_space(match)
     kind_order = {"body": 0, "header": 1, "footer": 2, "footnote": 3}
@@ -1793,7 +1806,7 @@ def check_segment_replacement(parsed, markdown: str, matches: list[dict]) -> Non
 
 def _build_replacement_requests(
     parsed, matches: list[dict], tab_id: str | None = None,
-    *, contexts: dict | None = None, reset_bullets: set[int] | None = None,
+    *, contexts: dict | None = None, reset_bullets: set[tuple] | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """Build the delete+insert requests for a find/replace, last-to-first.
 
@@ -1826,9 +1839,12 @@ def _build_replacement_requests(
             all_requests.append({
                 "deleteContentRange": {"range": delete_range}
             })
-        selected, baseline = (contexts[match["startIndex"]] if contexts is not None
+        selected, baseline = (contexts[_match_key(match)] if contexts is not None
                               else (parsed, None))
-        requests = to_docs_requests(_inline_only(selected) if segment_id else selected, match["startIndex"], tab_id=match_tab)
+        requests = to_docs_requests(
+            _inline_only(selected) if segment_id else selected,
+            match["startIndex"], tab_id=match_tab,
+        )
         if baseline is not None and selected.plain_text == "\n" and any(
             s.type == "paragraph_style" and "borderBottom" in s.style
             for s in selected.styles
@@ -1836,7 +1852,7 @@ def _build_replacement_requests(
             # The HR styles the retained native LF; inserting its renderer's
             # placeholder would create a second paragraph.
             requests = [r for r in requests if "insertText" not in r]
-        if reset_bullets and match["startIndex"] in reset_bullets:
+        if reset_bullets and _match_key(match) in reset_bullets:
             from gdoc.mdparse import utf16_len
             target = {"startIndex": match["startIndex"],
                       "endIndex": match["startIndex"]
@@ -1883,7 +1899,8 @@ def _build_replacement_requests(
         if segment_id:
             for request in requests:
                 operation = next(iter(request.values()))
-                operation.get("range", operation.get("location"))["segmentId"] = segment_id
+                address = operation.get("range", operation.get("location"))
+                address["segmentId"] = segment_id
         all_requests.extend(requests)
     return sorted_matches, all_requests
 
@@ -1931,7 +1948,9 @@ def replace_formatted(
     occurrence_count = len(matches)
     planned = []
     reset_bullets = set()
+    source = body
     for match in matches:
+        body = _replacement_body(source, match)
         # Whole-cell selection permits structural changes. Equal-count edits
         # retain native marks, with list removal handled explicitly below.
         native = (list(_replacement_paragraphs(body.get("content", []), match))
@@ -1983,34 +2002,36 @@ def replace_formatted(
                     0, len(context[0].plain_text),
                     {"namedStyleType": "NORMAL_TEXT"}, "paragraph_style",
                 ))
-                reset_bullets.add(part["startIndex"])
+                reset_bullets.add(_match_key(part))
                 _reset_list_indents(context[0])
             elif explicit and (
                 (replace_paragraphs and not contextual)
                 or (found and found[0].get("bullet"))
             ):
-                reset_bullets.add(part["startIndex"])
+                reset_bullets.add(_match_key(part))
                 _reset_list_indents(context[0])
             planned.append((part, context))
     if not new_markdown and not replace_paragraphs:
         # Final-paragraph removal borrows the preceding LF. Adjacent targets
         # may therefore overlap: delete their union once, in original indexes.
         merged = []
-        for part, context in sorted(planned, key=lambda p: p[0]["startIndex"]):
-            if merged and part["startIndex"] <= merged[-1][0]["endIndex"]:
+        for part, context in sorted(planned, key=lambda p: _match_key(p[0])):
+            if (merged and _match_space(part) == _match_space(merged[-1][0])
+                    and part["startIndex"] <= merged[-1][0]["endIndex"]):
                 previous = merged[-1][0]
                 previous["endIndex"] = max(previous["endIndex"], part["endIndex"])
             else:
                 merged.append((dict(part), context))
         # A merged group ending at the segment boundary needs the LF before
         # the entire group, rather than the LF between its last two members.
-        planned = [
-            ((_empty_paragraph_range(body.get("content", []), part) or part)
-             if body is not None else part, context)
-            for part, context in merged
-        ]
+        planned = []
+        for part, context in merged:
+            body = _replacement_body(source, part)
+            if body is not None:
+                part = _empty_paragraph_range(body.get("content", []), part) or part
+            planned.append((part, context))
     matches = [part for part, _ in planned]
-    contexts = {part["startIndex"]: context for part, context in planned}
+    contexts = {_match_key(part): context for part, context in planned}
     # Table insertion after the main batch tracks index shifts for a single
     # block-path match only. Inline matches insert the table source literally
     # and never reach _insert_table, so they do not count.
@@ -2027,6 +2048,18 @@ def replace_formatted(
     if not all_requests:
         return 0
 
+    # Each lower replacement may have a different rendered length when
+    # --all includes both partial and complete paragraph matches.
+    shifts = {}
+    totals = {}
+    for match in reversed(sorted_matches):
+        pos = match["startIndex"]
+        selected, _ = contexts[_match_key(match)]
+        space = _match_space(match)
+        shifts[_match_key(match)] = totals.get(space, 0)
+        totals[space] = (totals.get(space, 0) + utf16_len(selected.plain_text)
+                         - selected.removed_tabs - (match["endIndex"] - pos))
+
     try:
         service = get_docs_service()
         body = {
@@ -2037,16 +2070,6 @@ def replace_formatted(
             documentId=doc_id, body=body,
         ).execute()
 
-        # Each lower replacement may have a different rendered length when
-        # --all includes both partial and complete paragraph matches.
-        shifts = {}
-        shift = 0
-        for match in reversed(sorted_matches):
-            pos = match["startIndex"]
-            selected, _ = contexts[pos]
-            shifts[pos] = shift
-            shift += (utf16_len(selected.plain_text) - selected.removed_tabs
-                      - (match["endIndex"] - pos))
         # Insert tables only for explicit structural replacements.
         if parsed.tables:
             for table in reversed(parsed.tables):
@@ -2056,14 +2079,14 @@ def replace_formatted(
                     parsed.plain_text[:table.plain_text_offset],
                 )
                 for match in sorted_matches:
-                    if contexts[match["startIndex"]][1] is not None:
+                    if contexts[_match_key(match)][1] is not None:
                         continue
-                    shift = shifts[match["startIndex"]]
+                    shift = shifts[_match_key(match)]
                     idx = (
                         match["startIndex"] + offset16
                         - table.removed_tabs_before + shift
                     )
-                    _insert_table(doc_id, idx, table, tab_id=tab_id)
+                    _insert_table(doc_id, idx, table, tab_id=match.get("tabId", tab_id))
 
         return occurrence_count
     except HttpError as e:
@@ -2506,7 +2529,8 @@ def suggest_replacement(
     contexts = None
     if body is not None:
         if parsed.tables and any(
-            _covers_whole_paragraphs(body.get("content", []), match)
+            _covers_whole_paragraphs(
+                _replacement_body(body, match).get("content", []), match)
             for match in matches
         ):
             # edit would insert a native table here; suggest cannot, and
@@ -2514,7 +2538,8 @@ def suggest_replacement(
             # paragraph the rows are literal text, as in edit.
             check_inline_only_markdown(parsed)
         planned = [part for match in matches
-                   for part in _wording_contexts(body, match, new_markdown)]
+                   for part in _wording_contexts(
+                       _replacement_body(body, match), match, new_markdown)]
         # Block markers are literal inside a paragraph (the same rule as
         # edit), so structural Markdown is judged per resolved context.
         for _, (selected, _) in planned:
@@ -2522,7 +2547,7 @@ def suggest_replacement(
         matches = [match for match, _ in planned]
         # Keep the text-style baseline: inserted text does not inherit links
         # or other direct formatting, in suggestions as in edits.
-        contexts = {match["startIndex"]: (_inline_only(selected), baseline)
+        contexts = {_match_key(match): (_inline_only(selected), baseline)
                     for match, (selected, baseline) in planned}
     _, requests = _build_replacement_requests(
         _inline_only(parsed), matches, tab_id=tab_id, contexts=contexts,

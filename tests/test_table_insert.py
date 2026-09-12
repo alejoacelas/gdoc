@@ -170,13 +170,11 @@ class TestInsertTable:
 class TestEditTableRestriction:
     # The guard lives in replace_formatted (it needs the per-match contexts),
     # so run the real function against a mocked Docs service.
-    @patch("gdoc.api.docs.get_docs_service")
-    @patch("gdoc.api.docs.find_text_in_document")
-    @patch("gdoc.api.docs.get_document")
-    @patch("gdoc.notify.pre_flight", return_value=None)
-    def test_tables_blocked_with_all(
-        self, _pf, mock_get_doc, mock_find, mock_svc,
-    ):
+    def test_tables_blocked_with_all(self, mocker):
+        mock_svc = mocker.patch("gdoc.api.docs.get_docs_service")
+        mock_find = mocker.patch("gdoc.api.docs.find_text_in_document")
+        mock_get_doc = mocker.patch("gdoc.api.docs.get_document")
+        mocker.patch("gdoc.notify.pre_flight", return_value=None)
         mock_get_doc.return_value = {"revisionId": "rev1", "body": {}}
         mock_find.return_value = [
             {"startIndex": 1, "endIndex": 5},

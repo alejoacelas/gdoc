@@ -1302,73 +1302,26 @@ def add_tab(doc_id: str, title: str) -> dict:
 def _build_cleanup_requests(
     body: dict, position: int, tab_id: str | None = None,
 ) -> list[dict]:
-    """Build batchUpdate requests to clean up an empty heading paragraph.
+    """Remove an explicitly identified empty paragraph, never its neighbor.
 
-    Pure function \u2014 inspects body content and returns request dicts
-    without making API calls. When the deleted text was the entire
-    content of a heading paragraph, an empty "\\n" with the heading
-    style remains. This returns requests that transfer that style to
-    the preceding paragraph (if NORMAL_TEXT) and delete the empty one.
+    Call only for a separator created by the current operation. The segment's
+    final newline is mandatory, and non-text elements are never scaffolding.
     """
-    target_elem = None
-    prev_elem = None
-    for elem in body.get("content", []):
-        si = elem.get("startIndex", 0)
-        if si == position and "paragraph" in elem:
-            target_elem = elem
-            break
-        if "paragraph" in elem:
-            prev_elem = elem
-
-    if target_elem is None:
-        return []
-
-    p = target_elem["paragraph"]
-    style = p.get("paragraphStyle", {}).get("namedStyleType", "NORMAL_TEXT")
-
-    # Only act on empty paragraphs with a non-NORMAL_TEXT style
-    content = ""
-    for e in p.get("elements", []):
-        if "textRun" in e:
-            content += e["textRun"]["content"]
-    if content != "\n" or style == "NORMAL_TEXT":
-        return []
-
-    requests: list[dict] = []
-
-    # Transfer the heading style to the preceding paragraph if it's
-    # NORMAL_TEXT (i.e. the last paragraph of the inserted text).
-    if prev_elem is not None:
-        prev_style = prev_elem["paragraph"].get(
-            "paragraphStyle", {},
-        ).get("namedStyleType", "NORMAL_TEXT")
-        if prev_style == "NORMAL_TEXT":
-            prev_range: dict = {
-                "startIndex": prev_elem.get("startIndex", 0),
-                "endIndex": prev_elem.get("endIndex", 0),
-            }
-            if tab_id:
-                prev_range["tabId"] = tab_id
-            requests.append({
-                "updateParagraphStyle": {
-                    "range": prev_range,
-                    "paragraphStyle": {"namedStyleType": style},
-                    "fields": "namedStyleType",
-                }
-            })
-
-    # Delete the empty heading paragraph
-    delete_range: dict = {
-        "startIndex": position,
-        "endIndex": position + 1,
-    }
-    if tab_id:
-        delete_range["tabId"] = tab_id
-    requests.append({
-        "deleteContentRange": {"range": delete_range}
-    })
-
-    return requests
+    content = body.get("content", [])
+    for element in content:
+        if element.get("startIndex") != position:
+            continue
+        paragraph = element.get("paragraph", {})
+        elements = paragraph.get("elements", [])
+        if (not elements or any("textRun" not in e for e in elements)
+                or "".join(e["textRun"]["content"] for e in elements) != "\n"
+                or element is content[-1]):
+            return []
+        target = {"startIndex": position, "endIndex": position + 1}
+        if tab_id:
+            target["tabId"] = tab_id
+        return [{"deleteContentRange": {"range": target}}]
+    return []
 
 
 def _tab_body_range(body: dict) -> tuple[int, int]:
@@ -1406,6 +1359,14 @@ def _strip_trailing_newline_unless_hr(parsed) -> None:
         for s in parsed.styles:
             if s.end == old_len:
                 s.end = old_len - 1
+
+
+def _reset_list_indents(parsed) -> None:
+    """Clear inherited list indents without overriding explicit Markdown."""
+    for style in parsed.styles:
+        if style.type == "paragraph_style":
+            for field in ("indentStart", "indentEnd", "indentFirstLine"):
+                style.style.setdefault(field, {"magnitude": 0, "unit": "PT"})
 
 
 def insert_markdown_into_tab(
@@ -1450,11 +1411,22 @@ def insert_markdown_into_tab(
     else:
         insert_index = body_start
 
-    parsed = parse_markdown(markdown)
-
-    _strip_trailing_newline_unless_hr(parsed)
-
+    parsed = parse_markdown(markdown if replace else markdown.removesuffix("\n"))
     requests: list[dict] = []
+
+    if replace or body_end == body_start or position == "end":
+        _strip_trailing_newline_unless_hr(parsed)
+    if not replace and body_end > body_start and (parsed.plain_text or parsed.tables):
+        if position == "end":
+            # The mandatory final newline belongs to the existing paragraph.
+            # Split first, then insert and style only the new paragraph.
+            requests.append({"insertText": {
+                "location": {"index": insert_index, "tabId": tab_id},
+                "text": "\n",
+            }})
+            insert_index += 1
+        # At start, the parser's final newline separates the inserted text
+        # from the existing first paragraph; do not strip it.
 
     if replace and body_end > body_start:
         delete_range = {
@@ -1464,9 +1436,16 @@ def insert_markdown_into_tab(
         }
         requests.append({"deleteContentRange": {"range": delete_range}})
 
-    requests.extend(
-        to_docs_requests(parsed, insert_index, tab_id=tab_id)
-    )
+    if not replace:
+        _reset_list_indents(parsed)
+    insertion = to_docs_requests(parsed, insert_index, tab_id=tab_id)
+    if not replace and parsed.plain_text:
+        insertion.insert(1, {"deleteParagraphBullets": {"range": {
+            "startIndex": insert_index,
+            "endIndex": insert_index + utf16_len(parsed.plain_text),
+            "tabId": tab_id,
+        }}})
+    requests.extend(insertion)
 
     if requests:
         try:
@@ -1501,23 +1480,56 @@ def insert_markdown_into_tab(
     }
 
 
-def _replacement_paragraph(content: list[dict], match: dict):
-    """Find a containing paragraph, including paragraphs inside table cells."""
+def _replacement_paragraphs(content: list[dict], match: dict):
+    """Yield intersected native paragraphs, including paragraphs in cells."""
     for element in content:
         paragraph = element.get("paragraph")
         if paragraph:
             elements = paragraph.get("elements", [])
             if elements:
-                start = elements[0].get("startIndex", 0)
-                end = elements[-1].get("endIndex", start)
-                if start <= match["startIndex"] and match["endIndex"] <= end - 1:
-                    return paragraph, start, end - 1
+                start = elements[0].get("startIndex", element.get("startIndex", 0))
+                end = elements[-1].get("endIndex", element.get("endIndex", start))
+                if (start < match["endIndex"] or start == match["startIndex"]) \
+                        and match["startIndex"] < end:
+                    yield paragraph, start, end - 1
         for row in element.get("table", {}).get("tableRows", []):
             for cell in row.get("tableCells", []):
-                found = _replacement_paragraph(cell.get("content", []), match)
-                if found:
-                    return found
+                yield from _replacement_paragraphs(cell.get("content", []), match)
+
+
+def _replacement_paragraph(content: list[dict], match: dict):
+    """Find the paragraph containing the match without its paragraph mark."""
+    for paragraph, start, end in _replacement_paragraphs(content, match):
+        if start <= match["startIndex"] and match["endIndex"] <= end:
+            return paragraph, start, end
     return None
+
+
+def _paragraph_wording_matches(body: dict, match: dict, markdown: str):
+    """Split a wording edit at native paragraph marks, which stay untouched.
+
+    Retaining each mark preserves named styles, list IDs, nesting and custom
+    paragraph properties without trying to reconstruct them from Markdown.
+    """
+    paragraphs = list(_replacement_paragraphs(body.get("content", []), match))
+    if not paragraphs:
+        return [(match, markdown)]
+    if len(paragraphs) == 1:
+        return [({**match, "endIndex": min(match["endIndex"], paragraphs[0][2])},
+                 markdown)]
+    lines = markdown.split("\n") if markdown else [""] * len(paragraphs)
+    if len(lines) != len(paragraphs):
+        raise GdocError(
+            f"paragraph count mismatch: matched {len(paragraphs)}, "
+            f"replacement has {len(lines)}; edit each paragraph separately "
+            "or use an explicit "
+            "whole-cell replacement (--cell)", exit_code=3,
+        )
+    result = []
+    for (_, start, end), line in zip(paragraphs, lines):
+        result.append(({**match, "startIndex": max(start, match["startIndex"]),
+                        "endIndex": min(end, match["endIndex"])}, line))
+    return result
 
 
 def _inline_baseline(paragraph: dict, match: dict) -> tuple[dict, str]:
@@ -1556,7 +1568,7 @@ def _inline_baseline(paragraph: dict, match: dict) -> tuple[dict, str]:
 
 
 def _contextual_replacement(parsed, markdown: str, match: dict, body: dict):
-    """Use block Markdown only outside a paragraph or for an explicit full block.
+    """Plan a paragraph edit without replacing its native paragraph mark.
 
     A partial-paragraph replacement is inline Markdown only (see
     ``parse_inline``): code spans follow CommonMark backtick-string matching
@@ -1570,25 +1582,23 @@ def _contextual_replacement(parsed, markdown: str, match: dict, body: dict):
         return parsed, None
     paragraph, start, end = found
     text, styles = parse_inline(markdown)
-    explicit_block = (
-        bool(parsed.tables) or "\n" in markdown
-        or parsed.plain_text != text
-        or any(s.type != "text_style" and s.style != {"namedStyleType": "NORMAL_TEXT"}
-               for s in parsed.styles)
+    explicit_paragraph = any(
+        s.type == "bullets" or (s.type == "paragraph_style"
+                               and s.style != {"namedStyleType": "NORMAL_TEXT"})
+        for s in parsed.styles
     )
     whole = match["startIndex"] == start and match["endIndex"] == end
-    # An explicit block, or an empty replacement that deletes the whole
-    # paragraph text, keeps the block path so a leftover empty heading is
-    # still cleaned up.
-    if whole and (explicit_block or not text):
-        return parsed, None
+    # A complete paragraph can change its own style explicitly without
+    # deleting its native mark or entering the block/cleanup path.
+    if whole and explicit_paragraph and "\n" not in markdown and not parsed.tables:
+        return parsed, ({}, "")
     return (ParsedMarkdown(plain_text=text, styles=styles),
             _inline_baseline(paragraph, match))
 
 
 def _build_replacement_requests(
     parsed, matches: list[dict], tab_id: str | None = None,
-    *, contexts: dict | None = None,
+    *, contexts: dict | None = None, reset_bullets: set[int] | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """Build the delete+insert requests for a find/replace, last-to-first.
 
@@ -1622,6 +1632,21 @@ def _build_replacement_requests(
         selected, baseline = (contexts[match["startIndex"]] if contexts is not None
                               else (parsed, None))
         requests = to_docs_requests(selected, match["startIndex"], tab_id=tab_id)
+        if reset_bullets and match["startIndex"] in reset_bullets:
+            from gdoc.mdparse import utf16_len
+            target = {"startIndex": match["startIndex"],
+                      "endIndex": match["startIndex"]
+                      + max(1, utf16_len(selected.plain_text))}
+            if tab_id:
+                target["tabId"] = tab_id
+            requests.insert(1 if requests else 0,
+                            {"deleteParagraphBullets": {"range": target}})
+            if not selected.plain_text:
+                requests.append({"updateParagraphStyle": {
+                    "range": target,
+                    "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
+                    "fields": "namedStyleType,indentStart,indentEnd,indentFirstLine",
+                }})
         if requests and baseline and baseline[1]:
             from gdoc.mdparse import utf16_len
             target = {"startIndex": match["startIndex"],
@@ -1654,7 +1679,7 @@ def replace_formatted(
     new_markdown: str,
     revision_id: str,
     tab_id: str | None = None,
-    *, body: dict | None = None,
+    *, body: dict | None = None, replace_paragraphs: bool = False,
 ) -> int:
     """Replace matched text ranges with formatted content.
 
@@ -1669,6 +1694,7 @@ def replace_formatted(
         revision_id: The document revision ID for concurrency control.
         tab_id: Optional tab ID for targeting a specific tab.
         body: Original body with paragraph and direct run styles for inline edits.
+        replace_paragraphs: Explicit whole-cell replacement, including list state.
 
     Returns:
         Number of replacements made.
@@ -1684,11 +1710,30 @@ def replace_formatted(
 
     _strip_trailing_newline_unless_hr(parsed)
 
-    contexts = {
-        match["startIndex"]: _contextual_replacement(parsed, new_markdown, match, body)
-        if body is not None else (parsed, None)
-        for match in matches
-    }
+    occurrence_count = len(matches)
+    wording = [part for match in matches for part in (
+        _paragraph_wording_matches(body, match, new_markdown)
+        if body is not None and not replace_paragraphs else [(match, new_markdown)]
+    )]
+    matches = [match for match, _ in wording]
+    contexts = {}
+    reset_bullets = set()
+    for match, markdown in wording:
+        selected = parse_markdown(markdown)
+        _strip_trailing_newline_unless_hr(selected)
+        context = (_contextual_replacement(selected, markdown, match, body)
+                   if body is not None and not replace_paragraphs
+                   else (selected, None))
+        contexts[match["startIndex"]] = context
+        if replace_paragraphs or any(s.type == "paragraph_style"
+                                     for s in context[0].styles):
+            found = (_replacement_paragraph(body.get("content", []), match)
+                     if body is not None else None)
+            if replace_paragraphs or (found and found[0].get("bullet")):
+                reset_bullets.add(match["startIndex"])
+                # Removing bullets adds indentation in Docs. Explicit list
+                # removal resets it, while keeping Markdown's own indents.
+                _reset_list_indents(context[0])
     # Table insertion after the main batch tracks index shifts for a single
     # block-path match only. Inline matches insert the table source literally
     # and never reach _insert_table, so they do not count.
@@ -1699,6 +1744,7 @@ def replace_formatted(
         )
     sorted_matches, all_requests = _build_replacement_requests(
         parsed, matches, tab_id=tab_id, contexts=contexts,
+        reset_bullets=reset_bullets,
     )
 
     if not all_requests:
@@ -1714,23 +1760,6 @@ def replace_formatted(
             documentId=doc_id, body=body,
         ).execute()
 
-        if all(baseline is not None for _, baseline in contexts.values()):
-            return len(sorted_matches)
-
-        # Clean up leftover heading paragraphs (before table insertion
-        # so indices haven't shifted from table expansion).
-        # Fetch document once, compute all cleanup requests, then
-        # execute in a single batchUpdate.
-        if tab_id:
-            doc = get_document_with_tabs(doc_id)
-            tabs = flatten_tabs(doc.get("tabs", []))
-            tab_match = resolve_tab(tabs, tab_id)
-            fetch_body = tab_match["body"]
-        else:
-            doc = service.documents().get(documentId=doc_id).execute()
-            fetch_body = doc.get("body", {})
-
-        all_cleanup: list[dict] = []
         # Each lower replacement may have a different rendered length when
         # --all includes both partial and complete paragraph matches.
         shifts = {}
@@ -1741,21 +1770,7 @@ def replace_formatted(
             shifts[pos] = shift
             shift += (utf16_len(selected.plain_text) - selected.removed_tabs
                       - (match["endIndex"] - pos))
-        for match in sorted_matches:
-            selected, baseline = contexts[match["startIndex"]]
-            if baseline is not None:
-                continue
-            adjusted_pos = (match["startIndex"] + shifts[match["startIndex"]]
-                            + utf16_len(selected.plain_text) - selected.removed_tabs)
-            reqs = _build_cleanup_requests(fetch_body, adjusted_pos, tab_id)
-            all_cleanup.extend(reqs)
-
-        if all_cleanup:
-            service.documents().batchUpdate(
-                documentId=doc_id, body={"requests": all_cleanup},
-            ).execute()
-
-        # Insert tables if any (after main batchUpdate + cleanup)
+        # Insert tables only for explicit structural replacements.
         if parsed.tables:
             for table in reversed(parsed.tables):
                 # UTF-16 offset of the table placeholder; invariant per
@@ -1773,7 +1788,7 @@ def replace_formatted(
                     )
                     _insert_table(doc_id, idx, table, tab_id=tab_id)
 
-        return len(sorted_matches)
+        return occurrence_count
     except HttpError as e:
         _translate_http_error(e, doc_id)
 

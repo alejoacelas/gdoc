@@ -199,7 +199,15 @@ def _scan(text: str, masked: str) -> tuple[str, list[StyleRange]]:
         tail = masked[pos:]
         best: tuple[re.Match, str] | None = None
         for pat, kind in _INLINE_PATTERNS:
-            m = pat.search(tail)
+            if kind == "code":
+                m = None
+                raw_tail = text[pos:]
+                for opener in re.finditer(r"(?<!`)(`+)(?!`)", tail):
+                    m = pat.match(raw_tail, opener.start())
+                    if m is not None:
+                        break
+            else:
+                m = pat.search(tail)
             if m is not None and (best is None or m.start() < best[0].start()):
                 best = (m, kind)
         if best is None:
@@ -519,7 +527,7 @@ def to_docs_requests(
     #    styles because a `namedStyleType` re-resolves a run's direct character
     #    formatting and would clear bold/italic set afterwards.
     for sr in parsed.styles:
-        if sr.type == "paragraph_style":
+        if sr.type == "paragraph_style" and sr.end > sr.start:
             requests.append({
                 "updateParagraphStyle": {
                     "range": _range(

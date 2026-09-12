@@ -1010,7 +1010,7 @@ def cmd_find(args) -> int:
 
 
 def _read_file(path: str) -> str:
-    """Read file content, stripping one trailing newline."""
+    """Read replacement source; normalize its terminator after resolving inputs."""
     import os
 
     if not os.path.isfile(path):
@@ -1020,9 +1020,6 @@ def _read_file(path: str) -> str:
             content = f.read()
     except OSError as e:
         raise GdocError(f"cannot read file: {e}", exit_code=3)
-    # Strip exactly one trailing newline (editors add one)
-    if content.endswith("\n"):
-        content = content[:-1]
     return content
 
 
@@ -1105,7 +1102,9 @@ def _resolve_replacement_text(args, cell) -> tuple[str | None, str | None]:
                 "(or use --old-file/--new-file)",
                 exit_code=3,
             )
-    return old_text, new_text
+    # Input transport must not decide whether a paragraph mark is edited.
+    return (old_text.removesuffix("\n") if old_text is not None else None,
+            new_text.removesuffix("\n") if new_text is not None else None)
 
 
 def _prepare_text_replacement(
@@ -1237,6 +1236,7 @@ def cmd_edit(args) -> int:
     occurrences = replace_formatted(
         doc_id, matches, new_text, plan.revision_id, tab_id=plan.tab_id,
         body=plan.search_body,
+        **({"replace_paragraphs": True} if cell is not None else {}),
     )
 
     # Get post-edit version for state tracking (Decision #12)

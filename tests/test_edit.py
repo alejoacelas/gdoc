@@ -800,6 +800,7 @@ def test_edit_routes_context_and_keeps_conflict_warning(mocker, capsys, route):
     replace.assert_called_once_with(
         "abc123", matches, "world", "rev-a",
         tab_id="tab-a" if route == "tab" else None, body=body,
+        **({"replace_paragraphs": True} if route == "cell" else {}),
     )
     if route == "cell":
         cell.assert_called_once_with(body, "0,1", col=1, table_index=0, normalize=False)

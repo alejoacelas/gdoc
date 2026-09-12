@@ -408,9 +408,8 @@ def test_table_replacement_rejected_for_multiple_block_matches(mocker):
     service.documents.return_value.batchUpdate.assert_not_called()
 
 
-def test_empty_whole_paragraph_replacement_still_cleans_up_heading(mocker):
-    # Deleting all of a heading's text is not an inline edit: the block path
-    # runs so the leftover empty heading paragraph is removed as before.
+def test_empty_whole_paragraph_replacement_keeps_final_newline(mocker):
+    # Deleting heading text keeps its native mark and never starts cleanup.
     service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
     chain = service.documents.return_value
     chain.get.return_value.execute.return_value = {"body": {"content": [{
@@ -428,10 +427,6 @@ def test_empty_whole_paragraph_replacement_still_cleans_up_heading(mocker):
             "requests": [{"deleteContentRange": {
                 "range": {"startIndex": 1, "endIndex": 10}}}],
             "writeControl": {"requiredRevisionId": "rev-a"},
-        }),
-        mocker.call(documentId="sample-doc", body={
-            "requests": [{"deleteContentRange": {
-                "range": {"startIndex": 1, "endIndex": 2}}}],
         }),
     ]
 

@@ -212,7 +212,7 @@ class TestGetDocumentWithTabs:
 
 
 class TestBuildCleanupRequests:
-    def test_empty_heading_produces_requests(self):
+    def test_final_empty_heading_is_retained(self):
         from gdoc.api.docs import _build_cleanup_requests
 
         body = {"content": [
@@ -234,14 +234,7 @@ class TestBuildCleanupRequests:
             },
         ]}
         reqs = _build_cleanup_requests(body, 6)
-        assert len(reqs) == 2
-        # First: transfer style to preceding paragraph
-        assert "updateParagraphStyle" in reqs[0]
-        style = reqs[0]["updateParagraphStyle"]["paragraphStyle"]
-        assert style["namedStyleType"] == "HEADING_1"
-        # Second: delete the empty heading
-        assert "deleteContentRange" in reqs[1]
-        assert reqs[1]["deleteContentRange"]["range"]["startIndex"] == 6
+        assert reqs == []  # Final newline is mandatory.
 
     def test_normal_text_noop(self):
         from gdoc.api.docs import _build_cleanup_requests
@@ -296,11 +289,16 @@ class TestBuildCleanupRequests:
                 "endIndex": 4,
             },
         ]}
+        body["content"].append({"startIndex": 4, "endIndex": 9,
+                                "paragraph": {"elements": [
+                                    {"textRun": {"content": "next\n"}},
+                                ]}})
         reqs = _build_cleanup_requests(body, 3, tab_id="tab1")
-        assert reqs[0]["updateParagraphStyle"]["range"]["tabId"] == "tab1"
-        assert reqs[1]["deleteContentRange"]["range"]["tabId"] == "tab1"
+        assert reqs == [{"deleteContentRange": {"range": {
+            "startIndex": 3, "endIndex": 4, "tabId": "tab1",
+        }}}]
 
-    def test_style_transferred_from_heading(self):
+    def test_heading_never_promotes_previous_paragraph(self):
         from gdoc.api.docs import _build_cleanup_requests
 
         body = {"content": [
@@ -322,12 +320,11 @@ class TestBuildCleanupRequests:
             },
         ]}
         reqs = _build_cleanup_requests(body, 6)
-        ups = reqs[0]["updateParagraphStyle"]
-        assert ups["paragraphStyle"]["namedStyleType"] == "HEADING_3"
+        assert not any("updateParagraphStyle" in req for req in reqs)
 
 
-class TestReplaceFormattedCleanupPositions:
-    """Verify cleanup positions account for multi-match replacement delta."""
+class TestReplaceFormattedNoSpeculativeCleanup:
+    """Wording edits never trigger a second mutation of guessed scaffolding."""
 
     @patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
     @patch("gdoc.api.docs.get_docs_service")
@@ -343,9 +340,7 @@ class TestReplaceFormattedCleanupPositions:
         matches = [{"startIndex": 10, "endIndex": 13}]  # 3-char match
         replace_formatted("doc1", matches, "foobar", "rev1")  # 6-char plain_text
 
-        mock_cleanup.assert_called_once()
-        # cleanup pos = 10 + 6 = 16 (trailing \n stripped in replace context)
-        assert mock_cleanup.call_args[0][1] == 16
+        mock_cleanup.assert_not_called()
 
     @patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
     @patch("gdoc.api.docs.get_docs_service")
@@ -368,12 +363,7 @@ class TestReplaceFormattedCleanupPositions:
         ]
         replace_formatted("doc1", matches, "foobar", "rev1")
 
-        positions = [c[0][1] for c in mock_cleanup.call_args_list]
-        # sorted_matches descending: [100, 50, 10]; delta=3
-        # j=0 (100): 100 + 6 + (3-1-0)*3 = 100 + 6 + 6 = 112
-        # j=1 (50):  50  + 6 + (3-1-1)*3 = 50  + 6 + 3 = 59
-        # j=2 (10):  10  + 6 + (3-1-2)*3 = 10  + 6 + 0 = 16
-        assert positions == [112, 59, 16]
+        mock_cleanup.assert_not_called()
 
     @patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
     @patch("gdoc.api.docs.get_docs_service")
@@ -390,8 +380,7 @@ class TestReplaceFormattedCleanupPositions:
         matches = [{"startIndex": 10, "endIndex": 13}]
         replace_formatted("doc1", matches, "\U0001F600ab", "rev1")  # 3 chars, 4 units
 
-        pos = mock_cleanup.call_args[0][1]
-        assert pos == 14
+        mock_cleanup.assert_not_called()
 
     @patch("gdoc.api.docs._insert_table")
     @patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
@@ -431,10 +420,7 @@ class TestReplaceFormattedCleanupPositions:
         ]
         replace_formatted("doc1", matches, "bar", "rev1")
 
-        positions = [c[0][1] for c in mock_cleanup.call_args_list]
-        # j=0 (50): 50 + 3 + (2-1-0)*0 = 53
-        # j=1 (10): 10 + 3 + (2-1-1)*0 = 13
-        assert positions == [53, 13]
+        mock_cleanup.assert_not_called()
 
 
 class TestFindTextBody:
@@ -755,10 +741,7 @@ class TestInsertMarkdownIntoTab:
         insert_reqs = [r for r in reqs if "insertText" in r]
         assert delete_reqs == []
         assert len(insert_reqs) == 1
-        # parse_markdown emits "hello\n\n" for "hello\n"; single trailing
-        # \n strip matches replace_formatted's behavior, leaving one \n as
-        # the paragraph marker.
-        assert insert_reqs[0]["insertText"]["text"] == "hello\n"
+        assert insert_reqs[0]["insertText"]["text"] == "hello"
         assert captured[0]["writeControl"] == {
             "requiredRevisionId": "rev-xyz",
         }
@@ -778,11 +761,14 @@ class TestInsertMarkdownIntoTab:
             "doc1", "TODO", "tail", position="end", replace=False,
         )
 
-        assert result["insert_index"] == 19
+        assert result["insert_index"] == 20
         reqs = captured[0]["requests"]
         insert_reqs = [r for r in reqs if "insertText" in r]
         assert insert_reqs[0]["insertText"]["location"]["index"] == 19
-        assert insert_reqs[0]["insertText"]["text"] == "tail"
+        assert insert_reqs[0]["insertText"]["text"] == "\n"
+        assert insert_reqs[1]["insertText"] == {
+            "location": {"index": 20, "tabId": "t.todo"}, "text": "tail",
+        }
 
     @patch("gdoc.api.docs.get_docs_service")
     @patch("gdoc.api.docs.get_document_with_tabs")

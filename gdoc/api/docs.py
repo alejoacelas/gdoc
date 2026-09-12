@@ -1417,10 +1417,12 @@ def insert_markdown_into_tab(
     at_end = replace or body_end == body_start or position == "end"
     if at_end:
         _strip_trailing_newline_unless_hr(parsed)
-    if not replace and body_end > body_start and (parsed.plain_text or parsed.tables):
+    if not replace and body_end > body_start and parsed.plain_text:
         if position == "end":
             # The mandatory final newline belongs to the existing paragraph.
             # Split first, then insert and style only the new paragraph.
+            # Table-only input has no text to split off: InsertTableRequest
+            # adds its own newline before the table.
             requests.append({"insertText": {
                 "location": {"index": insert_index, "tabId": tab_id},
                 "text": "\n",

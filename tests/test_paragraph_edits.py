@@ -540,6 +540,25 @@ def test_insert_at_end_trailing_rule_reuses_final_newline(mocker, replace):
                                "tabId": "synthetic-tab"}
 
 
+def test_insert_table_only_at_end_adds_no_separator(mocker):
+    """InsertTableRequest inserts its own newline before the table, so a
+    table-only append must not add a separator paragraph first."""
+    body = _body(("Existing", "NORMAL_TEXT", False))
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "revisionId": "synthetic-rev", "tabs": [{
+            "documentTab": {"body": body},
+            "tabProperties": {"tabId": "synthetic-tab", "title": "Notes"},
+        }],
+    })
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    insert_table = mocker.patch("gdoc.api.docs._insert_table")
+    insert_markdown_into_tab("synthetic-doc", "Notes", "| A |\n|---|\n| 1 |",
+                             position="end")
+    service.documents.return_value.batchUpdate.assert_not_called()
+    assert insert_table.call_count == 1
+    assert insert_table.call_args.args[:2] == ("synthetic-doc", 9)
+
+
 def test_cell_collapse_resets_bullet_of_retained_last_paragraph(mocker):
     """Collapsing a mixed cell keeps only the last paragraph's mark, so its
     bullet must be removed even though the first paragraph had none."""

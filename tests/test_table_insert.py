@@ -8,6 +8,7 @@ import pytest
 from gdoc.api.docs import (
     _find_table_cell_indices,
     _insert_table,
+    replace_formatted,
 )
 from gdoc.cli import cmd_edit
 from gdoc.mdparse import TableData
@@ -200,6 +201,41 @@ class TestEditTableRestriction:
         with pytest.raises(GdocError, match="tables not supported"):
             cmd_edit(args)
         mock_svc.return_value.documents.return_value.batchUpdate.assert_not_called()
+
+    def test_single_match_table_takes_structural_path(self, mocker):
+        # A Markdown table replacing one paragraph is structural: it must
+        # bypass the contextual wording path (which would refuse on the
+        # paragraph count) and reach _insert_table, as on main.
+        mock_svc = mocker.patch("gdoc.api.docs.get_docs_service")
+        mock_insert = mocker.patch("gdoc.api.docs._insert_table")
+        content, index = [], 1
+        for text in ("Intro", "placeholder", "Outro"):
+            end = index + len(text) + 1
+            content.append({
+                "startIndex": index, "endIndex": end,
+                "paragraph": {
+                    "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
+                    "elements": [{
+                        "startIndex": index, "endIndex": end,
+                        "textRun": {"content": text + "\n", "textStyle": {}},
+                    }],
+                },
+            })
+            index = end
+        match = {"startIndex": 7, "endIndex": 18}
+
+        count = replace_formatted(
+            "doc1", [match], "| A |\n|---|\n| 1 |", "rev1",
+            body={"content": content},
+        )
+
+        assert count == 1
+        batch = mock_svc.return_value.documents.return_value.batchUpdate
+        assert batch.call_args.kwargs["body"]["requests"] == [
+            {"deleteContentRange": {"range": match}},
+        ]
+        assert mock_insert.call_count == 1
+        assert mock_insert.call_args.args[:2] == ("doc1", 7)
 
 
 class TestFindTableCellIndicesBody:

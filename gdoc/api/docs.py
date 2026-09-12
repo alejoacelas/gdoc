@@ -1818,12 +1818,18 @@ def replace_formatted(
         # retain native marks, with list removal handled explicitly below.
         native = (list(_replacement_paragraphs(body.get("content", []), match))
                   if body is not None else [])
-        contextual = body is not None and (
-            not replace_paragraphs or (
-                len(native) == len(new_markdown.split("\n"))
-                and not parsed.tables
-            )
+        # A table replacing complete paragraphs is structural and must reach
+        # _insert_table; inside a paragraph its source stays literal text.
+        whole = bool(native) and (
+            match["startIndex"] == native[0][1]
+            and match["endIndex"] == native[-1][2]
         )
+        if replace_paragraphs:
+            contextual = body is not None and not parsed.tables and (
+                len(native) == len(new_markdown.split("\n"))
+            )
+        else:
+            contextual = body is not None and not (parsed.tables and whole)
         if body is not None and not new_markdown and not replace_paragraphs:
             from gdoc.mdparse import ParsedMarkdown
             parts = [

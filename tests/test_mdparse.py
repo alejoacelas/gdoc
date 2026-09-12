@@ -945,8 +945,13 @@ class TestNativeImageGuard:
     def test_nested_bracket_alt_reference_refused(self):
         self._refuses("![a [nested] label][pic]\n\n[pic]: https://example.com/i.png\n")
 
-    def test_nested_bracket_shortcut_reference_refused(self):
-        self._refuses("![a [nested] label]\n\n[a [nested] label]: https://x.test/i.png\n")
+    def test_bracketed_label_cannot_define_a_reference(self):
+        # CommonMark link labels may not contain brackets, so no definition
+        # can resolve this shortcut form; it is literal text.
+        parsed = parse_markdown(
+            "![a [nested] label]\n\n[a [nested] label]: https://x.test/i.png\n"
+        )
+        assert "![a [nested] label]" in parsed.plain_text
 
     def test_nested_bracket_without_destination_is_literal(self):
         parsed = parse_markdown("An ![a [nested] label] marker\n")

@@ -46,8 +46,8 @@ class ParsedMarkdown:
 _BOLD_ITALIC_RE = re.compile(r"\*\*\*(.+?)\*\*\*")
 _BOLD_RE = re.compile(r"\*\*(.+?)\*\*|__(.+?)__")
 _ITALIC_RE = re.compile(
-    r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)"
-    r"|(?<!_)_(?!_)(.+?)(?<!_)_(?!_)"
+    r"(?<!\*)\*(?![\s*])(.+?)(?<![\s*])\*(?!\*)"
+    r"|(?<![\w_])_(?![\s_])(.+?)(?<![\s_])_(?![\w_])"
 )
 # Strikethrough is one or two tildes (GFM); a run of three or more is literal.
 _STRIKE_RE = re.compile(r"(?<!~)~~(?!~)(.+?)(?<!~)~~(?!~)")
@@ -69,6 +69,8 @@ _INLINE_PATTERNS = [
     (_STRIKE_RE, "strike"),
     (_CODE_RE, "code"),
     (_LINK_RE, "link"),
+    # Exported run boundaries: no visible text, unlike a space or zero-width char.
+    (re.compile(r"<!-- -->"), "separator"),
 ]
 
 # Text-style dicts applied per emphasis kind (these recurse into their inner
@@ -84,6 +86,8 @@ _CODE_FONT = {"weightedFontFamily": {"fontFamily": "Courier New"}}
 
 # Heading pattern
 _HEADING_RE = re.compile(r"^(#{1,6})\s+(.+)$")
+# Docs has two named styles with no ordinary Markdown heading equivalent.
+_NAMED_STYLE_RE = re.compile(r"^<!-- gdoc:(TITLE|SUBTITLE) --> (.*)$")
 
 # List item patterns (capture leading indentation for nesting)
 _BULLET_RE = re.compile(r"^([ \t]*)[-*]\s+(.+)$")
@@ -250,7 +254,9 @@ def _scan(text: str, masked: str) -> tuple[str, list[StyleRange]]:
             return pos + m.start(group), pos + m.end(group)
 
         seg_start = offset
-        if kind == "code":
+        if kind == "separator":
+            pass
+        elif kind == "code":
             # Code spans are literal (backslashes kept), normalised per
             # CommonMark 6.1: line endings become spaces, and one leading
             # plus one trailing space is dropped when both are present and
@@ -310,12 +316,15 @@ def parse_markdown(text: str) -> ParsedMarkdown:
 
     Handles: headings (H1-H6), bullet/numbered lists (nested), bold, italic,
     bold+italic, strikethrough, inline code, links, blockquotes, horizontal
-    rules, fenced code blocks, and tables.
+    rules, fenced code blocks, and tables. The exporter also uses explicit
+    ``<!-- gdoc:TITLE -->`` / ``<!-- gdoc:SUBTITLE -->`` paragraph prefixes.
     """
     if not text:
         return ParsedMarkdown(plain_text="")
 
-    lines = text.split("\n")
+    # A terminal LF closes the last paragraph; it is not an extra blank one.
+    # Preserve additional LFs, each of which represents a real empty paragraph.
+    lines = text.removesuffix("\n").split("\n")
     plain_parts: list[str] = []
     all_styles: list[StyleRange] = []
     all_tables: list[TableData] = []
@@ -423,6 +432,15 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                 style={"namedStyleType": "NORMAL_TEXT"},
                 type="paragraph_style",
             ))
+            continue
+
+        named_m = _NAMED_STYLE_RE.match(line)
+        if named_m:
+            inline_text, inline_styles = _parse_inline(named_m.group(2))
+            emit_paragraph(
+                inline_text, inline_styles, {"namedStyleType": named_m.group(1)},
+            )
+            i += 1
             continue
 
         # Heading

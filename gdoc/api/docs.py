@@ -306,20 +306,25 @@ def _style_run_markdown(content: str, style: dict) -> str:
         return content
     lead = text[: len(text) - len(text.lstrip(" "))]
     trail = text[len(text.rstrip(" ")):]
-    core = text.strip(" ")
+    core = "".join(
+        "\\" + char if char in "\\`*_[]~<" else char
+        for char in text.strip(" ")
+    )
 
     link = (style.get("link") or {}).get("url")
+    if style.get("bold") and style.get("italic"):
+        core = f"***{core}***"
+    elif style.get("bold"):
+        core = f"**{core}**"
+    elif style.get("italic"):
+        core = f"*{core}*"
+    if style.get("strikethrough"):
+        core = f"~~{core}~~"
     if link:
-        core = f"[{core}]({link})"
-    else:
-        if style.get("bold") and style.get("italic"):
-            core = f"***{core}***"
-        elif style.get("bold"):
-            core = f"**{core}**"
-        elif style.get("italic"):
-            core = f"*{core}*"
-        if style.get("strikethrough"):
-            core = f"~~{core}~~"
+        destination = "".join(
+            "\\" + char if char in "\\()" else char for char in link
+        )
+        core = f"[{core}]({destination})"
     return f"{lead}{core}{trail}{newline}"
 
 
@@ -332,9 +337,12 @@ def _runs_markdown(elements: list[dict]) -> str:
             continue
         content = text_run.get("content", "")
         if content:
-            parts.append(
-                _style_run_markdown(content, text_run.get("textStyle", {}))
-            )
+            rendered = _style_run_markdown(content, text_run.get("textStyle", {}))
+            if parts and parts[-1][-1:] in ("*", "~") and rendered[:1] in ("*", "~"):
+                # Standard Markdown's empty comment separates delimiters without
+                # adding a visible character or merging differently styled runs.
+                parts.append("<!-- -->")
+            parts.append(rendered)
     return "".join(parts)
 
 
@@ -372,10 +380,16 @@ def _paragraph_markdown(
 
     named_style = paragraph.get("paragraphStyle", {}).get("namedStyleType", "")
     level = _HEADING_LEVELS.get(named_style)
+    if named_style in ("TITLE", "SUBTITLE"):
+        return f"<!-- gdoc:{named_style} --> {text}{newline}"
     if level and text.strip():
         # lstrip leading spaces/tabs so the "# " prefix can't stack a
         # widening gap across read->write round-trips.
         return "#" * level + " " + text.lstrip(" \t") + newline
+    # Inline escaping above handles stars, underscores, and code fences. Escape
+    # remaining literal block openers only after adding genuine block syntax.
+    text = re.sub(r"^([ \t]*)([-#>|])", r"\1\\\2", text)
+    text = re.sub(r"^([ \t]*\d+)\.(?=\s)", r"\1\\.", text)
     return text + newline
 
 

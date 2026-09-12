@@ -969,6 +969,8 @@ class _StagedWrite:
     def __exit__(self, exc_type, error, traceback):
         if error is None:
             return False
+        if isinstance(error, AuthError) and not self.applied:
+            return False  # Raised before any send; keep the exit-2 guidance.
         conflict = _revision_conflict(error) or (
             isinstance(error, GdocError) and error.exit_code == 3
         )
@@ -997,6 +999,9 @@ class _StagedWrite:
             exit_code=3 if conflict and not self.applied and not uncertain else 1,
         ) from error
 
+    def mark_sent(self):
+        self.sent = True
+
     def read(self, stage: str, tab_id: str | None):
         self.stage, self.sent = stage, False
         kwargs = {"documentId": self.doc_id}
@@ -1019,9 +1024,8 @@ class _StagedWrite:
                 },
             )
             try:
-                self.sent = True
                 from gdoc.api.comment_transport import execute_mutation_request
-                response = execute_mutation_request(request)
+                response = execute_mutation_request(request, on_send=self.mark_sent)
             except HttpError as error:
                 if not _revision_conflict(error) or attempt or recompute is None:
                     raise

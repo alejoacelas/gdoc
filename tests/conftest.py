@@ -45,6 +45,8 @@ def _mock_mutation_transport(monkeypatch):
     def dispatch(request, **kwargs):
         if isinstance(request, HttpRequest):
             return execute(request, **kwargs)
+        if kwargs.get("on_send") is not None:
+            kwargs["on_send"]()  # A mocked execute stands for the wire send.
         return request.execute()
 
     monkeypatch.setattr(comment_transport, "execute_mutation_request", dispatch)

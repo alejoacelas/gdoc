@@ -8,6 +8,7 @@ import httplib2
 import pytest
 from googleapiclient.errors import HttpError
 
+from gdoc.api.comment_transport import execute_mutation_request
 from gdoc.api.docs import insert_markdown_into_tab, replace_formatted
 from gdoc.api.drive import update_doc_content
 from gdoc.cli import cmd_push, cmd_write, run_argv
@@ -633,3 +634,84 @@ def test_force_does_not_bypass_missing_preflight_version(mocker, quiet):
     with pytest.raises(GdocError, match="cannot verify document version") as caught:
         _check_write_conflict("synthetic", quiet=quiet, force=True)
     assert caught.value.exit_code == 3
+
+
+def transport_request(execute):
+    """A request whose execute stands in for AuthorizedHttp's pre-send work."""
+    http = SimpleNamespace(
+        http=SimpleNamespace(timeout=5), credentials=object(), _request=None
+    )
+    return SimpleNamespace(http=http, execute=lambda **kwargs: execute())
+
+
+def test_transport_refresh_failure_before_send_is_auth_error():
+    from google.auth.exceptions import RefreshError
+
+    from gdoc.util import AuthError
+
+    sent = []
+
+    def execute():
+        raise RefreshError("invalid_grant: Token has been revoked")
+
+    with pytest.raises(AuthError, match="Run `gdoc auth`") as caught:
+        execute_mutation_request(transport_request(execute), on_send=sent.append)
+    assert caught.value.exit_code == 2
+    assert sent == []
+
+
+def test_transport_network_failure_before_send_is_not_uncertain():
+    from google.auth.exceptions import TransportError
+
+    def execute():
+        raise TransportError("dns failure")
+
+    with pytest.raises(GdocError, match="the write was not sent") as caught:
+        execute_mutation_request(transport_request(execute))
+    assert caught.value.exit_code == 1
+    assert "uncertain" not in str(caught.value)
+
+
+def test_transport_lost_response_stays_uncertain():
+    def execute():
+        raise OSError("response lost")
+
+    with pytest.raises(GdocError, match="uncertain"):
+        execute_mutation_request(transport_request(execute))
+
+
+def test_staged_batch_refresh_failure_keeps_auth_exit_code(api, mocker):
+    from gdoc.util import AuthError
+
+    mocker.patch(
+        "gdoc.api.comment_transport.execute_mutation_request",
+        side_effect=AuthError("Authentication expired. Run `gdoc auth`."),
+    )
+    with pytest.raises(AuthError, match="Run `gdoc auth`") as caught:
+        write()
+    assert caught.value.exit_code == 2
+    assert len(batches(api)) == 1
+
+
+def test_staged_batch_refresh_failure_after_apply_is_not_uncertain(api, mocker):
+    from gdoc.api import comment_transport
+    from gdoc.util import AuthError
+
+    real = comment_transport.execute_mutation_request
+    calls = []
+
+    def dispatch(request, **kwargs):
+        calls.append(request)
+        if len(calls) == 2:
+            raise AuthError("Authentication expired. Run `gdoc auth`.")
+        return real(request, **kwargs)
+
+    mocker.patch.object(comment_transport, "execute_mutation_request", dispatch)
+    with pytest.raises(GdocError, match="Partial completion") as caught:
+        write()
+    assert caught.value.exit_code == 1
+    message = str(caught.value)
+    assert "not applied" in message and "completion uncertain" not in message
+    assert "Run `gdoc auth`" in message
+    assert len(batches(api)) == 2
+

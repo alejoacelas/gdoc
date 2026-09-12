@@ -219,9 +219,8 @@ def update_doc_content(
         )
         # Keep this last: preparation and guard reads must precede the check.
         _require_write_version(doc_id, expected_version)
-        progress.sent = True
         from gdoc.api.comment_transport import execute_mutation_request
-        result = execute_mutation_request(request)
+        result = execute_mutation_request(request, on_send=progress.mark_sent)
         progress.sent = False
         progress.applied.append("whole-document import")
         progress.stage = "reading the resulting version"

@@ -693,10 +693,11 @@ Requirements and limits:
 - **Inline Markdown only.** Bold, italic, strikethrough, inline code, and links
   are suggested along with the text. Headings, lists, blockquotes, horizontal
   rules, tables, and `--cell` are rejected before any API call — use `edit` for
-  those. Newlines are fine: they become suggested paragraph breaks, and the new
-  paragraphs inherit the anchor paragraph's style (unlike `edit`, which resets
-  inserted paragraphs to normal text). Fenced code blocks are accepted as
-  code-font paragraphs.
+  those. A replacement inside one paragraph must not introduce paragraph
+  breaks; block Markdown requires the whole paragraph as its target and must
+  also satisfy the command's supported-format rules. Fenced code blocks are
+  accepted as code-font paragraphs only when the paragraph-boundary contract
+  is satisfied.
 - **No overlap with existing suggestions.** The document is read with
   suggestions inline; a match that touches text someone else has already
   suggested inserting, deleting, or restyling is refused, so a review thread is

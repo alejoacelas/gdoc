@@ -58,7 +58,7 @@ _STRIKE_RE = re.compile(r"(?<!~)~~(?!~)(.+?)(?<!~)~~(?!~)")
 # path: ```code``` is a code span, and a fence that is never closed by an equal
 # run is literal text.
 _CODE_RE = re.compile(r"(?<!`)(`+)(?!`)([\s\S]*?)(?<!`)\1(?!`)")
-_LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+_LINK_RE = re.compile(r"\[([^\]]+)\]\((.*)\)")
 
 # Inline patterns in precedence order. Each entry: (regex, kind). On a tie at
 # the same position, the earlier entry wins, so ***x*** beats **x**/*x*.
@@ -174,6 +174,29 @@ def _parse_inline(text: str) -> tuple[str, list[StyleRange]]:
     return _scan(text, _mask_escapes(text))
 
 
+def _find_link(masked: str) -> re.Match | None:
+    """Find a link ending at its matching destination parenthesis.
+
+    Escaped parentheses are already masked, so only unescaped delimiters
+    contribute to depth. An unfinished destination is left as literal text.
+    """
+    for opener in re.finditer(r"\[[^\]]+\]\(", masked):
+        depth = 1
+        for end in range(opener.end(), len(masked)):
+            char = masked[end]
+            if char == "\n":
+                break
+            if char == "(":
+                depth += 1
+            elif char == ")":
+                depth -= 1
+                if depth == 0:
+                    if end > opener.end():
+                        return _LINK_RE.match(masked, opener.start(), end + 1)
+                    break
+    return None
+
+
 def _scan(text: str, masked: str) -> tuple[str, list[StyleRange]]:
     """Recursively parse inline formatting.
 
@@ -206,6 +229,8 @@ def _scan(text: str, masked: str) -> tuple[str, list[StyleRange]]:
                     m = pat.match(raw_tail, opener.start())
                     if m is not None:
                         break
+            elif kind == "link":
+                m = _find_link(tail)
             else:
                 m = pat.search(tail)
             if m is not None and (best is None or m.start() < best[0].start()):

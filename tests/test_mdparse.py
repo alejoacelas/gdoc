@@ -873,3 +873,46 @@ def test_inline_code_spans_and_literal_blocks(source, text, ranges):
     assert got_text == text
     assert [(s.start, s.end, s.style) for s in got_styles] == ranges
     assert all(s.type == "text_style" for s in got_styles)
+
+
+class TestBalancedLinkDestinations:
+    @pytest.mark.parametrize("destination, expected", [
+        ("https://example.org/Inverse_image_(set_theory)",
+         "https://example.org/Inverse_image_(set_theory)"),
+        ("https://example.org/a_(b_(c))?d=(e)",
+         "https://example.org/a_(b_(c))?d=(e)"),
+        (r"https://example.org/a_\(b\)", "https://example.org/a_(b)"),
+        (r"https://example.org/a\)b", "https://example.org/a)b"),
+        (r"https://example.org/a\(b", "https://example.org/a(b"),
+        (r"https://example.org/a\\(b)", "https://example.org/a\\(b)"),
+    ])
+    @pytest.mark.parametrize("suffix", [".", ")", ", next"])
+    def test_destination_and_adjacent_punctuation(self, destination, expected, suffix):
+        plain, styles = parse_inline(f"See [**inverse image**]({destination}){suffix}")
+        assert plain == f"See inverse image{suffix}"
+        assert [(s.start, s.end, s.style) for s in styles] == [
+            (4, 17, {"bold": True}),
+            (4, 17, {"link": {"url": expected}}),
+        ]
+        requests = to_docs_requests(
+            parse_markdown(f"[inverse image]({destination})"), 1,
+        )
+        links = [r["updateTextStyle"] for r in requests if "updateTextStyle" in r]
+        assert links[0]["textStyle"] == {"link": {"url": expected}}
+        assert links[0]["range"] == {"startIndex": 1, "endIndex": 14}
+
+    @pytest.mark.parametrize("text", [
+        "[label](https://example.org/(unclosed)",
+        "[label](https://example.org/unclosed",
+        "[label](https://example.org/\nnext)",
+        r"\[label](https://example.org/(x))",
+    ])
+    def test_invalid_or_escaped_link_is_literal(self, text):
+        plain, styles = parse_inline(text)
+        assert plain == text.removeprefix("\\")
+        assert styles == []
+
+    def test_unclosed_link_does_not_hide_later_valid_link(self):
+        plain, styles = parse_inline("[bad](unclosed [good](https://example.org/(x))")
+        assert plain == "[bad](unclosed good"
+        assert styles[0].style == {"link": {"url": "https://example.org/(x)"}}

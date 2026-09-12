@@ -393,15 +393,43 @@ def _paragraph_markdown(
     return text + newline
 
 
+def _table_markdown(table: dict) -> str | None:
+    """Export rectangular, unmerged tables; retain the text fallback otherwise."""
+    rows = [row.get("tableCells", []) for row in table.get("tableRows", [])]
+    if not rows or not rows[0] or any(len(row) != len(rows[0]) for row in rows):
+        return None
+    for row in rows:
+        for cell in row:
+            style = cell.get("tableCellStyle", {})
+            if (style.get("rowSpan", 1) != 1 or style.get("columnSpan", 1) != 1
+                    or any("table" in element for element in cell.get("content", []))):
+                return None
+    lines = []
+    for row in rows:
+        cells = []
+        for cell in row:
+            text = "".join(
+                _runs_markdown(element["paragraph"].get("elements", []))
+                for element in cell.get("content", []) if "paragraph" in element
+            ).removesuffix("\n")
+            cells.append(text.replace("|", "\\|").replace("\n", "<br>"))
+        lines.append("| " + " | ".join(cells) + " |\n")
+    lines.insert(1, "| " + " | ".join(["---"] * len(rows[0])) + " |\n")
+    return "".join(lines)
+
+
 def get_tab_text(tab: dict, markdown: bool = False) -> str:
     """Extract text from a tab's body content.
 
-    Handles paragraphs and tables (tab-joined cells per row). When
+    Handles paragraphs and tables (tab-joined cells per row in plain text). When
     *markdown* is True, the per-tab export (which builds markdown by hand,
     unlike the whole-doc Drive export) renders headings (``#``), bullet and
     numbered lists (nested, 2 spaces per level), and inline emphasis
     (``**bold**``, ``*italic*``, ``~~strike~~``) and ``[links](url)``, so a
     tab's supported text and styles can be reconstructed with ``write --tab``.
+    Rectangular, unmerged tables use pipe rows, with the first row as a header
+    and cell newlines as ``<br>``; irregular and nested tables keep the text
+    fallback. Table borders, widths and paragraph styles are not represented.
 
     Markdown export escapes literal syntax: ``1. Hello`` becomes
     ``1\\. Hello``, and ``_``, ``[``, and ``<`` gain backslashes. It uses
@@ -430,6 +458,10 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
         elif "table" in element:
             ordered_counters.clear()
             table = element["table"]
+            rendered = _table_markdown(table) if markdown else None
+            if rendered is not None:
+                parts.append(rendered)
+                continue
             for row in table.get("tableRows", []):
                 cells = []
                 for cell in row.get("tableCells", []):

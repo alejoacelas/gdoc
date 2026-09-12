@@ -154,6 +154,20 @@ def _strip_escapes(s: str) -> str:
     return "".join(out)
 
 
+def _table_cells(line: str) -> list[str]:
+    """Split unescaped pipes, retaining inline escapes for the cell parser."""
+    text = line[1:-1]
+    separators = [m.start() for m in re.finditer(r"\|", _mask_escapes(text))]
+    boundaries = [-1, *separators, len(text)]
+    return [
+        re.sub(
+            r"\\.|<br>", lambda m: "\n" if m[0] == "<br>" else m[0],
+            text[start + 1:end].strip(),
+        )
+        for start, end in zip(boundaries, boundaries[1:])
+    ]
+
+
 def parse_inline(text: str) -> tuple[str, list[StyleRange]]:
     """Public: parse inline formatting from a single string.
 
@@ -404,12 +418,14 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             and _TABLE_SEP_RE.match(lines[i + 1])
         ):
             table_rows: list[list[str]] = []
-            header_cells = [c.strip() for c in line.strip("|").split("|")]
+            header_cells = _table_cells(line)
             table_rows.append(header_cells)
             num_cols = len(header_cells)
             i += 2  # skip header + separator
             while i < len(lines) and _TABLE_ROW_RE.match(lines[i]):
-                cells = [c.strip() for c in lines[i].strip("|").split("|")]
+                if i + 1 < len(lines) and _TABLE_SEP_RE.match(lines[i + 1]):
+                    break  # Adjacent exported tables remain separate tables.
+                cells = _table_cells(lines[i])
                 if len(cells) < num_cols:
                     cells.extend([""] * (num_cols - len(cells)))
                 elif len(cells) > num_cols:

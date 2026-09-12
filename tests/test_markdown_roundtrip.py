@@ -210,3 +210,75 @@ def test_italic_boundary_whitespace_keeps_text_and_core_style(
     start = len("Before" if middle else "") + len(lead)
     assert [(s.start, s.end, s.style) for s in parsed.styles
             if s.type == "text_style"] == [(start, start + 5, {"italic": True})]
+
+
+def _table(rows):
+    return {"table": {"tableRows": [
+        {"tableCells": [{"content": [_paragraph([(text, {})])]}
+                        for text in row]}
+        for row in rows
+    ]}}
+
+
+@pytest.mark.parametrize("rows", [
+    [["Name", "Value"], ["Alpha", "Beta"], ["Gamma", "Delta"]],
+    [["Only header"]],
+    [["", ""], ["", ""]],
+    [["a|b", r"c\|d"], ["end\\", "|"], ["*literal*", "<br>"]],
+    [["Heading", "Other"], ["first\nsecond", "line\\\nbreak"]],
+])
+def test_native_rectangular_table_roundtrip(rows):
+    table = _table(rows)
+    tab = {"body": {"content": [
+        _paragraph([("Before", {})]), table, _paragraph([("After", {})]),
+    ]}}
+    exported = get_tab_text(tab, markdown=True)
+    parsed = parse_markdown(exported)
+    assert len(parsed.tables) == 1
+    result = parsed.tables[0]
+    assert (result.num_rows, result.num_cols) == (len(rows), len(rows[0]))
+    assert [[parse_inline(cell)[0] for cell in row] for row in result.rows] == rows
+    assert parsed.plain_text == "Before\n\nAfter\n"
+    assert result.plain_text_offset == len("Before\n")
+    assert exported.count("\n") == len(rows) + 3
+    assert get_tab_text({"body": {"content": [table]}}) == "".join(
+        "\t".join(row) + "\n" for row in rows
+    )
+
+
+def test_table_inline_styles_and_adjacent_tables_roundtrip():
+    table = _table([["Header"], ["unused"]])
+    table["table"]["tableRows"][1]["tableCells"][0]["content"] = [
+        _paragraph([("a|b", {"bold": True, "link": {"url": "https://e.org/a|b"}})]),
+        _paragraph([("next", {"italic": True})]),
+    ]
+    parsed = parse_markdown(get_tab_text(
+        {"body": {"content": [table, _table([["Next"]])]}}, markdown=True,
+    ))
+    assert len(parsed.tables) == 2
+    plain, styles = parse_inline(parsed.tables[0].rows[1][0])
+    assert plain == "a|b\nnext"
+    assert [(s.start, s.end, s.style) for s in styles] == [
+        (0, 3, {"bold": True}),
+        (0, 3, {"link": {"url": "https://e.org/a|b"}}),
+        (4, 8, {"italic": True}),
+    ]
+    assert parsed.tables[1].rows == [["Next"]]
+
+
+@pytest.mark.parametrize("kind", ["ragged", "nested", "merged"])
+def test_irregular_tables_keep_text_fallback(kind):
+    table = _table([["Header", "Other"], ["Value", "Tail"]])
+    rows = table["table"]["tableRows"]
+    if kind == "ragged":
+        rows[1]["tableCells"].pop()
+    elif kind == "nested":
+        rows[1]["tableCells"][0]["content"].append(_table([["Nested"]]))
+    else:
+        rows[0]["tableCells"][0]["tableCellStyle"] = {"columnSpan": 2}
+    tab = {"body": {"content": [table]}}
+    exported = get_tab_text(tab, markdown=True)
+    assert exported == get_tab_text(tab)
+    tail = "\n" if kind == "ragged" else "\tTail\n"
+    assert exported == "Header\tOther\nValue" + tail
+    assert not parse_markdown(exported).tables

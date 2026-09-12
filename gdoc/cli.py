@@ -3,7 +3,8 @@
 import argparse
 import os
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Literal
 
 from gdoc import __version__
 from gdoc.revdiff import DEFAULT_CONTEXT, DEFAULT_MIN_COMMON
@@ -2390,47 +2391,113 @@ def cmd_comments(args) -> int:
     return 0
 
 
-def _try_anchored_comment(doc_id: str, text: str, quote: str) -> str:
-    """Create a truly anchored comment via the Docs API preview, if possible.
+@dataclass
+class CommentAnchorResult:
+    """An anchored write, a safe refusal, or a definite preview rejection."""
 
-    Searches every tab for the first occurrence of *quote* (exact match
-    across all tabs first, then retrying with typography folding) and
-    anchors an insertComment request to that range, pinned to the revision
-    that was searched. Returns the new comment ID, or "" when the caller
-    should fall back to the Drive quotedFileContent path: quote text not
-    found, or the preview request unavailable (project not enrolled,
-    comment-only access, or the doc changed since the read).
+    status: Literal[
+        "anchored", "ambiguous", "not_found", "conflict", "preview_unavailable",
+    ]
+    comment_id: str = ""
+    locations: list[dict] = field(default_factory=list)
+    detail: str = ""
+
+
+def _try_anchored_comment(
+    doc_id: str, text: str, quote: str, tab_name: str | None = None,
+) -> CommentAnchorResult:
+    """Resolve a unique quote and write it, retrying one rejected revision.
+
+    Only a definite preview rejection permits Drive fallback. Successful but
+    incomplete responses and transport failures propagate without another write.
     """
+    import unicodedata
+
     from gdoc.api.docs import (
+        CommentRevisionConflictError,
         find_text_in_document,
-        flatten_tabs,
         get_document_with_tabs,
         insert_comment,
+        resolve_tab,
     )
     from gdoc.util import PreviewUnavailableError
 
-    document = get_document_with_tabs(doc_id)
-    revision_id = document.get("revisionId", "")
-    tabs = flatten_tabs(document.get("tabs", []))
-    if not tabs:
-        tabs = [{"id": None, "body": document.get("body", {})}]
-    for normalize in (False, True):
-        for tab in tabs:
-            matches = find_text_in_document(
-                None, quote, body=tab["body"], normalize=normalize,
-                allow_native_gaps=True,
+    def fold_spaces(value):
+        # One character stays one character: reuse the existing offset mapper.
+        # Fold a copy of the body and the quote identically, including NBSP.
+        if isinstance(value, str):
+            return "".join(
+                " " if unicodedata.category(ch) == "Zs" else ch for ch in value
             )
-            if not matches:
-                continue
-            try:
-                return insert_comment(
-                    doc_id, text,
-                    matches[0]["startIndex"], matches[0]["endIndex"],
-                    tab_id=tab["id"], revision_id=revision_id,
+        if isinstance(value, dict):
+            return {key: fold_spaces(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [fold_spaces(item) for item in value]
+        return value
+
+    for attempt in range(2):
+        document = get_document_with_tabs(doc_id)
+        revision_id = document.get("revisionId", "")
+        tabs = []
+        pending = list(document.get("tabs", []))
+        while pending:
+            raw_tab = pending.pop(0)
+            props = raw_tab.get("tabProperties", {})
+            tabs.append({
+                **raw_tab.get("documentTab", {}),
+                "id": props.get("tabId"), "title": props.get("title", ""),
+            })
+            pending[0:0] = raw_tab.get("childTabs", [])
+        if not tabs:
+            tabs = [{**document, "id": None, "title": "first tab"}]
+        if tab_name is not None:
+            tabs = [resolve_tab(tabs, tab_name)]
+
+        locations = []
+        for tab in tabs:
+            segments = [(None, tab.get("body", {}))]
+            for kind in ("headers", "footers", "footnotes"):
+                segments.extend(tab.get(kind, {}).items())
+            for segment_id, body in segments:
+                matches = find_text_in_document(
+                    None, fold_spaces(quote), body=fold_spaces(body),
+                    normalize=True,
                 )
-            except PreviewUnavailableError:
-                return ""
-    return ""
+                for match in matches:
+                    locations.append({
+                        **match, "tabId": tab["id"], "tabTitle": tab["title"],
+                        "segmentId": segment_id,
+                    })
+        if not locations:
+            return CommentAnchorResult(
+                "not_found", detail="Quote not found after Unicode normalization",
+            )
+        if len(locations) > 1:
+            return CommentAnchorResult("ambiguous", locations=locations)
+        if not revision_id:
+            return CommentAnchorResult(
+                "conflict", locations=locations,
+                detail="No revision ID available; cannot safely pin the comment",
+            )
+        location = locations[0]
+        segment = (
+            {"segment_id": location["segmentId"]} if location["segmentId"] else {}
+        )
+        try:
+            comment_id = insert_comment(
+                doc_id, text, location["startIndex"], location["endIndex"],
+                tab_id=location["tabId"], revision_id=revision_id, **segment,
+            )
+        except CommentRevisionConflictError as e:
+            if attempt == 0:
+                continue
+            return CommentAnchorResult("conflict", locations=locations, detail=str(e))
+        except PreviewUnavailableError as e:
+            return CommentAnchorResult(
+                "preview_unavailable", locations=locations, detail=str(e),
+            )
+        return CommentAnchorResult("anchored", comment_id, locations)
+    raise AssertionError("unreachable")
 
 
 def cmd_comment(args) -> int:
@@ -2443,13 +2510,32 @@ def cmd_comment(args) -> int:
 
     quote = getattr(args, "quote", "") or ""
     new_id = ""
+    resolution = None
     if quote:
-        new_id = _try_anchored_comment(doc_id, args.text, quote)
-    anchored = bool(new_id)
+        resolution = _try_anchored_comment(
+            doc_id, args.text, quote, tab_name=getattr(args, "tab", None),
+        )
+        if resolution.status == "ambiguous":
+            locations = "; ".join(
+                f"tab {loc['tabTitle']!r} ({loc['tabId']}), "
+                f"segment {loc['segmentId'] or 'body'}, "
+                f"range {loc['startIndex']}:{loc['endIndex']}"
+                for loc in resolution.locations
+            )
+            raise GdocError(
+                f"Quote is ambiguous: {len(resolution.locations)} matches: "
+                f"{locations}. Use --tab or a more specific quote.", exit_code=3,
+            )
+        if resolution.status in ("not_found", "conflict"):
+            raise GdocError(resolution.detail + "; no comment created", exit_code=3)
+        new_id = resolution.comment_id
+    anchored = resolution is not None and resolution.status == "anchored"
     if not anchored:
         from gdoc.api.comments import create_comment
         result = create_comment(doc_id, args.text, quote=quote)
         new_id = result["id"]
+        if quote:
+            print(f"Comment created unanchored: {resolution.detail}", file=sys.stderr)
 
     from gdoc.api.drive import get_file_version
     command_version = get_file_version(doc_id).get("version")
@@ -2458,14 +2544,21 @@ def cmd_comment(args) -> int:
     mode = get_output_mode(args)
     if mode == "json":
         extra = {"anchored": anchored} if quote else {}
+        if anchored:
+            extra["tabId"] = resolution.locations[0]["tabId"]
         print(format_json(id=new_id, status="created", **extra))
     elif mode == "plain":
         print(f"id\t{new_id}")
         if quote:
             print(f"anchored\t{'true' if anchored else 'false'}")
+        if anchored:
+            print(f"tabId\t{resolution.locations[0]['tabId']}")
     else:
-        suffix = " (anchored)" if anchored else ""
+        suffix = " (anchored)" if anchored else " (unanchored)" if quote else ""
         print(f"OK comment #{new_id}{suffix}")
+        if anchored:
+            location = resolution.locations[0]
+            print(f"Tab: {location['tabTitle']} ({location['tabId']})")
 
     from gdoc.state import update_state_after_command
     update_state_after_command(
@@ -4393,10 +4486,13 @@ def build_parser() -> GdocArgumentParser:
     comment_p.add_argument(
         "--quote",
         help=(
-            "Text to anchor the comment to. Creates a real anchored "
-            "comment (Docs API preview) when available; otherwise "
-            "stored as quote metadata for cat --comments"
+            "Text to anchor the comment to; must match uniquely. "
+            "If the Docs API preview is unavailable, creates an unanchored "
+            "comment with quote metadata for cat --comments"
         ),
+    )
+    comment_p.add_argument(
+        "--tab", help="Search the quote in this tab by title or ID (default: all tabs)"
     )
     comment_p.add_argument(
         "--quiet", action="store_true", help="Skip pre-flight checks"

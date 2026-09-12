@@ -3,9 +3,11 @@
 import re
 from dataclasses import dataclass, field
 from functools import lru_cache
+from http.client import HTTPException
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from httplib2 import HttpLib2Error
 
 from gdoc.api import ACCOUNT_CACHE_SIZE, account_cache_key
 from gdoc.util import (
@@ -88,6 +90,10 @@ def replace_all_text(
         _translate_http_error(e, doc_id)
 
 
+class CommentRevisionConflictError(GdocError):
+    """The pinned comment write was rejected without applying it."""
+
+
 def insert_comment(
     doc_id: str,
     content: str,
@@ -95,6 +101,7 @@ def insert_comment(
     end_index: int,
     tab_id: str | None = None,
     revision_id: str = "",
+    segment_id: str | None = None,
 ) -> str:
     """Insert a comment anchored to a text range (Docs API insertComment).
 
@@ -103,9 +110,9 @@ def insert_comment(
     hand. The request is a Workspace Developer Preview feature: projects not
     enrolled get a 400 for the unknown request type, and comment-only access
     can't batchUpdate at all (403) but can still comment via the Drive API.
-    Both are raised as PreviewUnavailableError so callers can fall back to
-    the Drive path — as is a revision mismatch when *revision_id* is given
-    (the doc changed under us, so the range may no longer be right).
+    Definite preview rejection raises PreviewUnavailableError. A revision
+    mismatch raises CommentRevisionConflictError so callers can re-read the
+    anchor. Uncertain write outcomes never permit fallback or blind replay.
 
     Args:
         doc_id: The document ID.
@@ -115,6 +122,7 @@ def insert_comment(
         tab_id: Tab the range lives in (omitted → first tab).
         revision_id: If non-empty, sent as writeControl.requiredRevisionId
             so the anchor can't land on stale coordinates.
+        segment_id: Header, footer or footnote containing the range.
 
     Returns:
         The new comment thread ID (same ID space as Drive API comments).
@@ -122,6 +130,8 @@ def insert_comment(
     range_: dict = {"startIndex": start_index, "endIndex": end_index}
     if tab_id:
         range_["tabId"] = tab_id
+    if segment_id:
+        range_["segmentId"] = segment_id
     body: dict = {
         "requests": [
             {"insertComment": {"content": content, "range": range_}}
@@ -139,41 +149,56 @@ def insert_comment(
     except HttpError as e:
         status = int(e.resp.status)
         detail = str(e)
-        # A non-enrolled project sees insertComment as an unknown field:
-        # either rejected by name ("Unknown name"/"Cannot find field") or
-        # silently dropped, leaving an empty request union ("No request
-        # set" — the observed live behavior). We always set insertComment,
-        # so an empty union can only mean the server didn't recognize it.
-        # A revision mismatch means the doc changed between our read and
-        # this write; the caller's unanchored fallback is still correct.
+        # Only a definite rejection permits another write. Never treat a
+        # revision rejection as a missing preview feature.
+        if status in (400, 409, 412) and "revision" in detail.lower():
+            raise CommentRevisionConflictError(
+                "Document changed before the comment could be anchored",
+                exit_code=3,
+            ) from e
         if status == 400 and (
-            "Unknown name" in detail
-            or "Cannot find field" in detail
-            or "No request set" in detail
-            or "revision" in detail.lower()
+            "No request set" in detail
+            or (
+                "insertComment" in detail
+                and ("Unknown name" in detail or "Cannot find field" in detail)
+            )
         ):
             raise PreviewUnavailableError(
-                "insertComment not available or not applicable "
-                "(preview not enabled, or the document changed)"
-            )
+                "insertComment preview is not enabled"
+            ) from e
         if status == 403:
             raise PreviewUnavailableError(
                 "insertComment not permitted for this user"
             )
+        if status >= 500:
+            raise GdocError(
+                "Comment write outcome is uncertain; inspect the document's "
+                "comments before retrying. No fallback comment was created."
+            ) from e
         _translate_http_error(e, doc_id)
+    except (OSError, HTTPException, HttpLib2Error) as e:
+        raise GdocError(
+            "Comment write outcome is uncertain; inspect the document's "
+            "comments before retrying. No fallback comment was created."
+        ) from e
 
     # Comment saves can fail even when the batchUpdate itself returns 200.
     state = result.get("commentUpdateState", "")
     if state and state != "ALL_SAVED":
-        raise PreviewUnavailableError(f"comment not saved ({state})")
+        raise GdocError(
+            f"Comment save outcome is uncertain ({state}); inspect comments "
+            "before retrying. No fallback comment was created."
+        )
     replies = result.get("replies", [])
     thread = (replies[0] if replies else {}).get(
         "insertComment", {},
     ).get("commentThread", {})
     comment_id = thread.get("commentId", "")
     if not comment_id:
-        raise PreviewUnavailableError(
-            "no comment thread in insertComment response"
+        raise GdocError(
+            "No comment thread ID in insertComment response; the comment may "
+            "have been saved. Inspect comments before retrying. "
+            "No fallback comment was created."
         )
     return comment_id
 

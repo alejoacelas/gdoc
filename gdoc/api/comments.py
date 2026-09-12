@@ -125,16 +125,16 @@ def delete_comment(file_id: str, comment_id: str) -> None:
 def create_comment(
     file_id: str, content: str, quote: str = "",
 ) -> dict:
-    """Create a comment on a file.
+    """Create an unanchored Drive comment on a file.
 
     Args:
         file_id: The document ID.
         content: The comment text.
         quote: Quoted text the comment refers to. Stored as
             quotedFileContent metadata for client-side annotation
-            (e.g. cat --comments). Note: Google Docs does not
-            support API-created anchored comments, so this will
-            not appear visually anchored in the Docs UI.
+            (e.g. cat --comments), not a native Docs anchor. For an
+            anchored comment use docs.insert_comment; call this as fallback
+            only when that request was definitively rejected.
 
     Returns:
         Comment dict with id, content, author, createdTime, resolved.

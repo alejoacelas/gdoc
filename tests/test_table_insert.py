@@ -174,7 +174,7 @@ class TestEditTableRestriction:
     def test_tables_blocked_with_all(self, mocker):
         mock_svc = mocker.patch("gdoc.api.docs.get_docs_service")
         mock_find = mocker.patch("gdoc.api.docs.find_text_in_document")
-        mock_get_doc = mocker.patch("gdoc.api.docs.get_document")
+        mock_get_doc = mocker.patch("gdoc.api.docs.get_document_with_tabs")
         mocker.patch("gdoc.notify.pre_flight", return_value=None)
         mock_get_doc.return_value = {"revisionId": "rev1", "body": {}}
         mock_find.return_value = [

@@ -1369,7 +1369,8 @@ class TestCmdSuggest:
         # so a re-auth anywhere between them aborts pre-send.
         mock_sug.assert_called_once_with(
             "abc123", [{"startIndex": 1, "endIndex": 6,
-                        "tabId": "t.first", "container": "body"}], "world", "rev123",
+                        "tabId": "t.first", "container": "body"}],
+            "world", "rev123",
             tab_id="t.first",
             expected_token_identity=("cid.apps", "rt1"),
             body=_structure(),
@@ -1790,7 +1791,9 @@ def test_suggest_segments_exact_batch(mocker, _preview_gate_passes):
         },
     )
     _preview_gate_passes.assert_called_once_with("doc-one")
-    readback.assert_called_once_with("doc-one", suggestions_view_mode=SUGGESTIONS_INLINE)
+    readback.assert_called_once_with(
+        "doc-one", suggestions_view_mode=SUGGESTIONS_INLINE,
+    )
 
 
 @pytest.mark.parametrize("target", ["body", "headers", "footnotes"])

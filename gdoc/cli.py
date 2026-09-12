@@ -4066,7 +4066,8 @@ def build_parser() -> GdocArgumentParser:
         "--quiet", action="store_true", help="Skip pre-flight checks"
     )
     edit_p.add_argument(
-        "--tab", help="Limit search to this tab; otherwise search every tab and "
+        "--tab", help="Limit search to this tab title or ID; search every tab "
+        "otherwise and "
         "require --all for multiple matches"
     )
     edit_p.set_defaults(func=cmd_edit)
@@ -4109,7 +4110,8 @@ def build_parser() -> GdocArgumentParser:
         "--quiet", action="store_true", help="Skip pre-flight checks"
     )
     suggest_p.add_argument(
-        "--tab", help="Limit search to this tab; otherwise search every tab and "
+        "--tab", help="Limit search to this tab title or ID; search every tab "
+        "otherwise and "
         "require --all for multiple matches"
     )
     suggest_p.set_defaults(func=cmd_suggest)

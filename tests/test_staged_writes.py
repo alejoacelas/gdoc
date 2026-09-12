@@ -805,3 +805,41 @@ def test_tab_write_pins_the_guarded_snapshot(api, drive_api, mocker, tmp_path):
     read.assert_called_once_with("synthetic")
     assert batches(api)[0]["writeControl"] == {"requiredRevisionId": "r1"}
 
+
+def test_empty_replacement_normalizes_retained_heading(api, mocker):
+    """An empty body write must not leave the final mark as a heading."""
+    doc = snapshot()
+    body(doc)["content"][-1]["paragraph"]["paragraphStyle"] = {
+        "namedStyleType": "HEADING_1", "indentStart": {"magnitude": 36, "unit": "PT"}
+    }
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value=doc)
+    insert_markdown_into_tab("synthetic", "Notes", "", replace=True)
+    requests = batches(api)[0]["requests"]
+    styles = [r["updateParagraphStyle"] for r in requests
+              if "updateParagraphStyle" in r]
+    assert styles == [{
+        "range": {"startIndex": 1, "endIndex": 2, "tabId": "t1"},
+        "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
+        "fields": "namedStyleType,indentStart,indentEnd,indentFirstLine",
+    }]
+    assert [next(iter(r)) for r in requests] == [
+        "deleteContentRange", "updateParagraphStyle"
+    ]
+
+
+def test_prose_replacement_styles_retained_paragraph_once(api, mocker):
+    """Inserted prose already stamps NORMAL_TEXT onto the retained mark."""
+    doc = snapshot()
+    body(doc)["content"][-1]["paragraph"]["paragraphStyle"] = {
+        "namedStyleType": "HEADING_1"
+    }
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value=doc)
+    insert_markdown_into_tab("synthetic", "Notes", "Plain prose", replace=True)
+    requests = batches(api)[0]["requests"]
+    styles = [r["updateParagraphStyle"] for r in requests
+              if "updateParagraphStyle" in r]
+    assert len(styles) == 1
+    assert styles[0]["paragraphStyle"] == {"namedStyleType": "NORMAL_TEXT"}
+    assert styles[0]["range"]["startIndex"] == 1
+    assert styles[0]["range"]["endIndex"] >= 1 + utf16_len("Plain prose")
+

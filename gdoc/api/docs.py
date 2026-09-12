@@ -1417,12 +1417,19 @@ def insert_markdown_into_tab(
     at_end = replace or body_end == body_start or position == "end"
     if at_end:
         _strip_trailing_newline_unless_hr(parsed)
-    if not replace and body_end > body_start and parsed.plain_text:
+    # A leading table placeholder or thematic-break mark already ends the
+    # existing paragraph (InsertTableRequest adds its own newline before the
+    # table), unlike a deliberate leading blank line, which stays a paragraph.
+    leading_block = parsed.plain_text.startswith("\n") and (
+        bool(parsed.tables) and parsed.tables[0].plain_text_offset == 0
+        or any(s.type == "paragraph_style" and (s.start, s.end) == (0, 1)
+               and "borderBottom" in s.style for s in parsed.styles)
+    )
+    if (not replace and body_end > body_start and parsed.plain_text
+            and not leading_block):
         if position == "end":
             # The mandatory final newline belongs to the existing paragraph.
             # Split first, then insert and style only the new paragraph.
-            # Table-only input has no text to split off: InsertTableRequest
-            # adds its own newline before the table.
             requests.append({"insertText": {
                 "location": {"index": insert_index, "tabId": tab_id},
                 "text": "\n",

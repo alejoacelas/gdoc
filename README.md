@@ -491,6 +491,18 @@ gdoc cat --all-tabs DOC
 
 `--tab` and `--all-tabs` are mutually exclusive with `--comments`. They work with `--json` and `--plain`.
 
+Tab Markdown export escapes literal syntax: a plain `1. Hello` paragraph now
+prints as `1\. Hello`, and `_`, `[`, and `<` gain backslashes. It also emits
+`<!-- -->` between touching emphasis runs and `<!-- gdoc:TITLE --> ` or
+`<!-- gdoc:SUBTITLE --> ` prefixes for those named paragraph styles. This visible
+source noise is an accepted trade-off: escapes distinguish literal prose from
+Markdown structure, empty comments separate styles without adding characters to
+the document, and ordinary Markdown cannot express TITLE and SUBTITLE distinctly.
+Keep these markers when reconstructing a tab with `write --tab`; arbitrary
+Markdown tools and the separate Drive importer may not preserve them. For verbatim
+prose, copying search strings, or text to match with `edit`, use
+`gdoc cat --plain --tab "Notes" DOC`.
+
 ## Byte truncation
 
 Use `--max-bytes` on `cat` to limit output size. Truncation is UTF-8-safe (never splits a multi-byte character):

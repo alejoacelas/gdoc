@@ -293,7 +293,7 @@ def _list_is_ordered(lists: dict, list_id: str, level: int) -> bool:
 def _style_run_markdown(content: str, style: dict) -> str:
     """Wrap one text run's content in markdown emphasis / link syntax.
 
-    Surrounding spaces and the trailing paragraph newline are kept outside
+    Surrounding whitespace and the trailing paragraph newline are kept outside
     the markers (``** bold **`` is not valid markdown), so only the visible
     core is wrapped. Emphasis nests as ``***bold italic***`` and
     ``~~struck~~``; a link becomes ``[text](url)``.
@@ -304,11 +304,11 @@ def _style_run_markdown(content: str, style: dict) -> str:
         text, newline = text[:-1], "\n"
     if not text.strip():
         return content
-    lead = text[: len(text) - len(text.lstrip(" "))]
-    trail = text[len(text.rstrip(" ")):]
+    lead = text[: len(text) - len(text.lstrip())]
+    trail = text[len(text.rstrip()):]
     core = "".join(
         "\\" + char if char in "\\`*_[]~<" else char
-        for char in text.strip(" ")
+        for char in text.strip()
     )
 
     link = (style.get("link") or {}).get("url")
@@ -401,9 +401,18 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
     unlike the whole-doc Drive export) renders headings (``#``), bullet and
     numbered lists (nested, 2 spaces per level), and inline emphasis
     (``**bold**``, ``*italic*``, ``~~strike~~``) and ``[links](url)``, so a
-    tab round-trips through ``insert``/``edit`` without losing structure.
-    With *markdown* False (the ``--plain`` path) text is returned verbatim
-    -- the matchable form ``gdoc edit`` searches against.
+    tab's supported text and styles can be reconstructed with ``write --tab``.
+
+    Markdown export escapes literal syntax: ``1. Hello`` becomes
+    ``1\\. Hello``, and ``_``, ``[``, and ``<`` gain backslashes. It uses
+    ``<!-- -->`` between touching emphasis runs and ``<!-- gdoc:TITLE -->`` /
+    ``<!-- gdoc:SUBTITLE -->`` prefixes for those named paragraph styles.
+    This source noise is the accepted trade-off: escapes distinguish prose
+    from structure, comments separate styles without adding visible characters,
+    and ordinary Markdown has no TITLE/SUBTITLE equivalent. Retain these markers
+    when reconstructing a tab; arbitrary Markdown tools and Drive import need
+    not preserve them. With *markdown* False (``cat --plain --tab``), text is
+    returned verbatim for searching, copying prose, and matching ``gdoc edit``.
     """
     body = tab.get("body", {})
     content = body.get("content", [])
@@ -1419,7 +1428,12 @@ def insert_markdown_into_tab(
     Returns:
         Dict with "tab_id", "tab_title", "insert_index".
     """
-    from gdoc.mdparse import parse_markdown, to_docs_requests, utf16_len
+    from gdoc.mdparse import (
+        _paragraph_style_fields,
+        parse_markdown,
+        to_docs_requests,
+        utf16_len,
+    )
 
     doc = get_document_with_tabs(doc_id)
     revision_id = doc.get("revisionId", "")
@@ -1437,12 +1451,17 @@ def insert_markdown_into_tab(
     else:
         insert_index = body_start
 
-    parsed = parse_markdown(markdown if replace else markdown.removesuffix("\n"))
+    parsed = parse_markdown(markdown)
     requests: list[dict] = []
 
     at_end = replace or body_end == body_start or position == "end"
     if at_end:
         _strip_trailing_newline_unless_hr(parsed)
+    # Trimming an empty final paragraph leaves its annotation at zero width.
+    # Its style belongs on the retained native mark, not on extra inserted text.
+    final_style = next((s.style for s in parsed.styles
+                        if s.type == "paragraph_style"
+                        and s.start == s.end == len(parsed.plain_text)), None)
     # A leading table needs no separator: InsertTableRequest adds its own
     # newline before the table, so the placeholder newline becomes the
     # existing paragraph's mark. Anything else that starts with a newline (a
@@ -1459,8 +1478,8 @@ def insert_markdown_into_tab(
         parsed.styles = [s for s in parsed.styles
                          if not (s.type == "paragraph_style"
                                  and (s.start, s.end) == (0, 1))]
-    if (not replace and body_end > body_start and parsed.plain_text
-            and not leading_table):
+    if (not replace and body_end > body_start and not leading_table
+            and (parsed.plain_text or parsed.tables or final_style is not None)):
         if position == "end":
             # The mandatory final newline belongs to the existing paragraph.
             # Split first, then insert and style only the new paragraph.
@@ -1510,6 +1529,15 @@ def insert_markdown_into_tab(
             "endIndex": insert_index + utf16_len(parsed.plain_text),
             "tabId": tab_id,
         }}})
+    if final_style is not None:
+        final_index = (insert_index + utf16_len(parsed.plain_text)
+                       - parsed.removed_tabs)
+        insertion.append({"updateParagraphStyle": {
+            "range": {"startIndex": final_index, "endIndex": final_index + 1,
+                      "tabId": tab_id},
+            "paragraphStyle": final_style,
+            "fields": _paragraph_style_fields(final_style),
+        }})
     requests.extend(insertion)
 
     if requests:
@@ -1634,7 +1662,7 @@ def _wording_contexts(body: dict, match: dict, markdown: str):
     if "\n" in markdown and whole and any(
         _opens_block_fence(line) for line in markdown.split("\n")
     ):
-        parsed = parse_markdown(markdown.removesuffix("\n"))
+        parsed = parse_markdown(markdown)
         check_inline_only_markdown(parsed)
         # Split rendered code, never its source lines: fence delimiters are
         # syntax, and asterisks/links inside the fence are literal code.

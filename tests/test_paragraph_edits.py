@@ -866,3 +866,94 @@ def test_delete_nonfinal_heading_leaves_later_inline_image_untouched(mocker):
     }}}]
     assert body == original
     assert image["startIndex"] == 27
+
+
+def _tab_insert_requests(mocker, body, markdown, operation):
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "revisionId": "synthetic-rev", "tabs": [{
+            "documentTab": {"body": body},
+            "tabProperties": {"tabId": "synthetic-tab", "title": "Notes"},
+        }],
+    })
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    insert_markdown_into_tab(
+        "synthetic-doc", "Notes", markdown,
+        position="end" if operation == "end" else "start",
+        replace=operation == "write",
+    )
+    batch = service.documents.return_value.batchUpdate
+    return batch.call_args.kwargs["body"]["requests"] if batch.called else []
+
+
+@pytest.mark.parametrize("operation", ["start", "end", "write"])
+@pytest.mark.parametrize("existing", ["Existing", ""])
+@pytest.mark.parametrize("markdown", [
+    "new", "new\n", "new\n\n", "new\n\n\n", "\n", "\n\n", "\n\n\n", "",
+])
+def test_tab_insertion_preserves_trailing_blank_paragraphs(
+    mocker, operation, existing, markdown,
+):
+    body = _body((existing, "NORMAL_TEXT", False))
+    requests = _tab_insert_requests(mocker, body, markdown, operation)
+    rendered = markdown if markdown.endswith("\n") else markdown + "\n"
+    if operation == "write" or not existing:
+        expected = rendered
+    elif not markdown:
+        expected = existing + "\n"
+    elif operation == "start":
+        expected = rendered + existing + "\n"
+    else:
+        expected = existing + "\n" + rendered
+    assert _apply_text_requests(body, requests) == expected
+
+
+@pytest.mark.parametrize("operation", ["start", "end", "write"])
+@pytest.mark.parametrize("existing", ["Existing 😀", ""])
+@pytest.mark.parametrize("prefix", ["", "Body 😀\n", "  - Nested\n"])
+@pytest.mark.parametrize("named_style", ["TITLE", "SUBTITLE"])
+def test_tab_empty_final_named_style_targets_its_paragraph_mark(
+    mocker, operation, existing, prefix, named_style,
+):
+    body = _body((existing, "NORMAL_TEXT", False))
+    markdown = prefix + f"<!-- gdoc:{named_style} --> \n"
+    requests = _tab_insert_requests(mocker, body, markdown, operation)
+    prefix_text = "Nested\n" if prefix.startswith("  -") else prefix
+    rendered = prefix_text + "\n"
+    if operation == "write" or not existing:
+        expected = rendered
+        target = 1 + utf16_len(prefix_text)
+    elif operation == "start":
+        expected = rendered + existing + "\n"
+        target = 1 + utf16_len(prefix_text)
+    else:
+        expected = existing + "\n" + rendered
+        target = 1 + utf16_len(existing + "\n" + prefix_text)
+    # The text-only replayer does not simulate bullet tab removal.
+    assert _apply_text_requests(body, requests) == expected.replace(
+        "Nested", "\tNested",
+    )
+    # Account for tabs removed by earlier bullet requests at each style request.
+    removed_tabs = 0
+    for request in requests:
+        if "createParagraphBullets" in request:
+            removed_tabs += 1 if prefix.startswith("  -") else 0
+        style = request.get("updateParagraphStyle", {})
+        if style.get("paragraphStyle", {}).get("namedStyleType") == named_style:
+            assert style["range"] == {
+                "startIndex": target + (1 if prefix.startswith("  -") else 0)
+                - removed_tabs,
+                "endIndex": target + (1 if prefix.startswith("  -") else 0)
+                - removed_tabs + 1,
+                "tabId": "synthetic-tab",
+            }
+            break
+    else:
+        pytest.fail("No request applies the final named style")
+
+
+@pytest.mark.parametrize("command", ["edit", "suggest"])
+def test_fenced_replacement_preserves_blank_paragraph_after_closer(mocker, command):
+    body = _body(("Alpha", "TITLE", False), ("Beta", "SUBTITLE", False))
+    planner = _requests if command == "edit" else _suggest_requests
+    requests = planner(mocker, body, "Alpha\nBeta\n", "```\ncode\n```\n\n")
+    assert _apply_text_requests(body, requests) == "code\n\n"

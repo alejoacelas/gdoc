@@ -191,3 +191,22 @@ def test_separator_inside_nested_code_keeps_outer_emphasis():
         (7, 15, {"weightedFontFamily": {"fontFamily": "Courier New"}}),
         (0, len(plain), {"bold": True}),
     ]
+
+
+@pytest.mark.parametrize("whitespace", ["\t", "\u00a0", "\u2003"])
+@pytest.mark.parametrize("side", ["leading", "trailing", "both"])
+@pytest.mark.parametrize("middle", [False, True])
+def test_italic_boundary_whitespace_keeps_text_and_core_style(
+    whitespace, side, middle,
+):
+    lead = whitespace if side in ("leading", "both") else ""
+    trail = whitespace if side in ("trailing", "both") else ""
+    runs = [(lead + "Draft" + trail, {"italic": True})]
+    if middle:
+        runs = [("Before", {}), *runs, ("After", {})]
+    exported = get_tab_text({"body": {"content": [_paragraph(runs)]}}, markdown=True)
+    parsed = parse_markdown(exported)
+    assert parsed.plain_text == "".join(text for text, _ in runs) + "\n"
+    start = len("Before" if middle else "") + len(lead)
+    assert [(s.start, s.end, s.style) for s in parsed.styles
+            if s.type == "text_style"] == [(start, start + 5, {"italic": True})]

@@ -20,10 +20,9 @@ def _stdin_json(file_path):
 
 
 @pytest.fixture(autouse=True)
-def _stub_single_tab():
+def _stub_single_tab(mocker):
     """Use a plain single-tab snapshot unless a test overrides the read."""
-    with patch("gdoc.api.docs.get_document_with_tabs", return_value={"tabs": [{}]}):
-        yield
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={"tabs": [{}]})
 
 
 class TestSyncHookBasic:

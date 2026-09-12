@@ -34,8 +34,7 @@ def _stub_single_tab(mocker):
     """Use a plain single-tab snapshot unless a test overrides the read."""
     mocker.patch("gdoc.api.drive.export_doc", return_value="Remote notes")
     mocker.patch("gdoc.api.drive.get_file_version", return_value={"version": 10})
-    with patch("gdoc.api.docs.get_document_with_tabs", return_value={"tabs": [{}]}):
-        yield
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={"tabs": [{}]})
 
 
 class TestPushBasic:

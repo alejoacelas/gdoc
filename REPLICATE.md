@@ -241,3 +241,14 @@ The user wanted both PR #65 review findings fixed, the pinned live replays inspe
 - Insert-start replay `20260912T200955-d0b58dc33d` also shows **no bullet on the inserted paragraph**; the original list item retains its list ID. Its four judge items are explicit zero `indentStart`/`indentFirstLine` overrides and the comment anchor moving forward by the inserted 26 UTF-16 units. The anchor still surrounds the same original text. Indent materialization comes from `gdoc/api/docs.py:_reset_list_indents` (line 1388), called by the non-replacement branch in `insert_markdown_into_tab` (line 1520); bullet deletion is at line 1523. Any desired cleanup of those insertion-specific overrides belongs with #60's insertion planner, not this replacement guard. No insert-start change was made.
 
 Agent session 01a0973e-cbea-7693-96c0-d98499dfa5a1 · Commits a982bd2
+
+# Babysit PR #65 after the rebuild
+
+The user wanted PR #65 watched after its force-push to `87a1d2b` until CI, CodeRabbit and Codex were green and quiet, with real findings fixed in small commits and out-of-scope requests deferred on the thread.
+
+- Codex reviewed `87a1d2b` and raised two threads. P2 (`insert --end` of a final `---`): confirmed offline that the end-insertion path kept the parser's rule newline on top of its own split newline, leaving a blank paragraph after the bordered one. Fixed by trimming the placeholder (`keep_hr=False`) so the zero-width rule style lands on the retained final mark, as the replace path already did; the new regression covers `---`, `---\n` and `Body\n\n---` appended to empty and non-empty tabs and fails on the previous head.
+- P1 (rectangular tables pass the tab guard but `cat --tab` flattens cells to tab-separated text, so a round trip replaces the table with prose): reproduced, then deferred on the thread. Markdown can express these tables and the writer inserts them natively, so the loss belongs to the tab exporter in #69 (groups G05/G06), not the guard; guarding every table would refuse hand-written pipe tables. The README hazard row now states the exporter limitation.
+- CodeRabbit answered both the automatic and the manual review request with "Review rate limited" (free OSS quota); its check shows success with that description, so it has not reviewed the rebuilt head.
+- Verification: 2,351 tests pass, no-stubs gate passes, Ruff matches `origin/main` at 196 diagnostics with zero added.
+
+Agent session 91584d0f-9088-4a6a-9adb-75d3a413c617 · Commits 9d05dc8

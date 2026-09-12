@@ -178,3 +178,16 @@ The user wanted a PR stacked on #60 that makes tab exports round-trip through gd
 - The base has no `gdoc/lossy.py`. The coordinator explicitly assigned unsupported-style warnings and guard hooks to #65; this PR adds neither. Unsupported fonts/colours/underline/alignment/spacing, existing normalization of heading/list whitespace and styling on boundary spaces, native paragraph inheritance, whole-file Drive import, and concurrency remain outside this bounded grammar. No Google API calls or campaign changes were made.
 
 Agent session 01a09723-4d51-7640-a5c9-747b89d66530 · Commits a0e02e9, cac5f3b
+
+# Close tab export review gaps
+
+The user wanted the export/parser review findings fixed on the existing branch, documented, tested and committed without pushing.
+
+- Removed insertion's duplicate source-newline trimming: start/end insertion, empty tabs and replacement now preserve trailing blank paragraphs. Auditing the shared fenced edit/suggest path found the same duplicate trim; a blank paragraph after the closing fence now survives there too.
+- Export now moves all boundary whitespace outside emphasis markers, matching the italic parser's whitespace definition. Leading/trailing tabs, nonbreaking spaces and em spaces retain their visible text and the core's italic style, including between other runs; boundary-whitespace styling remains intentionally unsupported.
+- Empty final TITLE/SUBTITLE styles now target the retained native paragraph mark after insertion, including empty destinations, appends and replacements. Regression requests verify UTF-16 offsets and index shifts after nested-list tab removal, without adding a paragraph just to carry the style.
+- README and export docstring explain that literal `1. Hello` becomes `1\. Hello`, `_`, `[` and `<` gain escapes, `<!-- -->` separates touching emphasis, and TITLE/SUBTITLE use reserved comment prefixes. The rationale accepts raw-source noise to preserve visible text and supported styles; retain markers for `write --tab`, and use `cat --plain --tab` for verbatim prose/search strings.
+- Added 104 offline cases. Full `uv run pytest -q`: 2,189 passed; no-stubs and diff whitespace checks passed. Ruff matches origin/main exactly at 196 diagnostics, with zero additions or removals by relative file, code and message.
+- PR-body note supplied by the coordinator: a live replay of the TITLE/SUBTITLE round trip on this branch restores both styles. The only remaining judge items are new `headingId`s Google assigns when a whole tab is rebuilt, which is inherent to `write --tab`. This follow-up ran offline and did not repeat that live replay; no push or PR mutation was performed.
+
+Agent session 01a0972f-4480-71d2-99a3-6553261460cc · Commits 900ed93

@@ -422,6 +422,58 @@ def test_single_line_triple_backtick_span_has_edit_suggest_parity(mocker, comman
     assert not any('updateParagraphStyle' in r for r in requests)
 
 
+@pytest.mark.parametrize("replace", [False, True])
+def test_insert_at_end_trailing_rule_reuses_final_newline(mocker, replace):
+    """A trailing thematic break borrows the mandatory final newline as its
+    mark instead of inserting one more, which left an empty paragraph after
+    the rule."""
+    body = _body(("Existing", "NORMAL_TEXT", False))
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "revisionId": "synthetic-rev", "tabs": [{
+            "documentTab": {"body": body},
+            "tabProperties": {"tabId": "synthetic-tab", "title": "Notes"},
+        }],
+    })
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    insert_markdown_into_tab("synthetic-doc", "Notes", "Text\n\n---",
+                             position="end", replace=replace)
+    requests = service.documents.return_value.batchUpdate.call_args.kwargs[
+        "body"]["requests"]
+    inserts = [req["insertText"] for req in requests if "insertText" in req]
+    first = 1 if replace else 10
+    expected = [{"location": {"index": first, "tabId": "synthetic-tab"},
+                 "text": "Text\n\n"}]
+    if not replace:
+        expected.insert(0, {"location": {"index": 9, "tabId": "synthetic-tab"},
+                            "text": "\n"})
+    assert inserts == expected
+    border = next(r["updateParagraphStyle"] for r in requests
+                  if "borderBottom" in r.get("updateParagraphStyle", {}).get(
+                      "paragraphStyle", {}))
+    assert border["range"] == {"startIndex": first + 6, "endIndex": first + 7,
+                               "tabId": "synthetic-tab"}
+
+
+def test_cell_collapse_resets_bullet_of_retained_last_paragraph(mocker):
+    """Collapsing a mixed cell keeps only the last paragraph's mark, so its
+    bullet must be removed even though the first paragraph had none."""
+    body = _body(("Plain intro", "NORMAL_TEXT", False),
+                 ("Listed", "NORMAL_TEXT", True))
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    replace_formatted("synthetic-doc", [{"startIndex": 1, "endIndex": 19}],
+                      "One line", "rev", body=body, replace_paragraphs=True)
+    requests = service.documents.return_value.batchUpdate.call_args.kwargs[
+        "body"]["requests"]
+    assert _apply_text_requests(body, requests) == "One line\n"
+    resets = [r["deleteParagraphBullets"]["range"] for r in requests
+              if "deleteParagraphBullets" in r]
+    assert resets == [{"startIndex": 1, "endIndex": 9}]
+    style = next(r["updateParagraphStyle"] for r in requests
+                 if "updateParagraphStyle" in r)
+    assert style["range"] == {"startIndex": 1, "endIndex": 9}
+    assert style["paragraphStyle"]["namedStyleType"] == "NORMAL_TEXT"
+
+
 @pytest.mark.parametrize('multiline', [False, True])
 def test_thematic_break_styles_retained_mark_without_inserting_mark(mocker, multiline):
     body = _body(('Alpha', 'HEADING_2', False))

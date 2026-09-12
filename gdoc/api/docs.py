@@ -1414,7 +1414,8 @@ def insert_markdown_into_tab(
     parsed = parse_markdown(markdown if replace else markdown.removesuffix("\n"))
     requests: list[dict] = []
 
-    if replace or body_end == body_start or position == "end":
+    at_end = replace or body_end == body_start or position == "end"
+    if at_end:
         _strip_trailing_newline_unless_hr(parsed)
     if not replace and body_end > body_start and (parsed.plain_text or parsed.tables):
         if position == "end":
@@ -1448,6 +1449,16 @@ def insert_markdown_into_tab(
     if not replace and inherited_bullet:
         _reset_list_indents(parsed)
     insertion = to_docs_requests(parsed, insert_index, tab_id=tab_id)
+    if at_end and parsed.plain_text.endswith("\n"):
+        # A trailing thematic break kept the parser's newline so its border
+        # has a range. The mandatory final newline already follows the
+        # insertion point and serves as that paragraph's mark, so insert one
+        # character less; the style range already lands on it.
+        text = parsed.plain_text[:-1]
+        if text:
+            insertion[0]["insertText"]["text"] = text
+        else:
+            del insertion[0]
     if not replace and inherited_bullet and parsed.plain_text:
         insertion.insert(1, {"deleteParagraphBullets": {"range": {
             "startIndex": insert_index,
@@ -1854,9 +1865,11 @@ def replace_formatted(
                      if body is not None else None)
             explicit = any(s.type in ("paragraph_style", "bullets")
                            for s in context[0].styles)
+            # A structural collapse keeps only the last paragraph's mark, so
+            # its bullet is the one the inserted prose would inherit.
             if replace_paragraphs and not explicit and native and (
                 not new_markdown or (found and found[0].get("bullet"))
-                or (not contextual and all(p.get("bullet") for p, _, _ in native))
+                or (not contextual and native[-1][0].get("bullet"))
             ):
                 # Plain whole-cell prose is the explicit list-removal route.
                 # Keep non-list paragraph properties and ordinary edits intact.

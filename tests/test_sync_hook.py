@@ -21,13 +21,8 @@ def _stdin_json(file_path):
 
 @pytest.fixture(autouse=True)
 def _stub_single_tab():
-    """Default `count_document_tabs` to `1` for the whole test module.
-
-    The multi-tab safety check would otherwise call the real Docs API.
-    Tests asserting the multi-tab skip override this with their own
-    patch.
-    """
-    with patch("gdoc.api.docs.count_document_tabs", return_value=1):
+    """Use a plain single-tab snapshot unless a test overrides the read."""
+    with patch("gdoc.api.docs.get_document_with_tabs", return_value={"tabs": [{}]}):
         yield
 
 
@@ -135,19 +130,21 @@ class TestSyncHookErrorHandling:
         "gdoc.api.drive.update_doc_content",
         side_effect=Exception("API failure"),
     )
-    def test_api_error_swallowed(self, _update_doc, tmp_path):
+    def test_api_error_reported(self, _update_doc, tmp_path, capsys):
         f = tmp_path / "spec.md"
         f.write_text("---\ngdoc: abc123\ntitle: T\n---\nBody")
         args = _make_args()
         with patch("sys.stdin", _stdin_json(str(f))):
             rc = cmd_sync_hook(args)
         assert rc == 0
+        assert "SYNC: failed: API failure" in capsys.readouterr().err
 
 
 class TestSyncHookMultiTabSafety:
     """Sync hook must not silently flatten a multi-tab doc."""
 
-    @patch("gdoc.api.docs.count_document_tabs", return_value=3)
+    @patch("gdoc.api.docs.get_document_with_tabs",
+           return_value={"tabs": [{}] * 3})
     @patch("gdoc.api.drive.update_doc_content")
     def test_skip_multi_tab(
         self, mock_update_doc, _count, tmp_path, capsys,
@@ -164,3 +161,46 @@ class TestSyncHookMultiTabSafety:
         assert "SYNC: skipped" in err
         assert "My Doc" in err
         assert "multi-tab" in err
+
+
+@pytest.mark.parametrize("scope", [
+    {"body": {"content": [{"paragraph": {"elements": [{"person": {}}]}}]}},
+    {"tabs": [{"documentTab": {"headers": {"h": {"content": []}}}}]},
+])
+def test_sync_refuses_lossy_scope(mocker, tmp_path, capsys, scope):
+    f = tmp_path / "spec.md"
+    f.write_text("---\ngdoc: abc123\n---\nBody", encoding="utf-8")
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value=scope)
+    upload = mocker.patch("gdoc.api.drive.update_doc_content")
+    state = mocker.patch("gdoc.state.update_state_after_command")
+    with patch("sys.stdin", _stdin_json(str(f))):
+        assert cmd_sync_hook(_make_args()) == 0
+    upload.assert_not_called()
+    state.assert_not_called()
+    assert "SYNC: skipped" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("error", [RuntimeError("offline"), OSError("read failed")])
+def test_sync_safety_read_failure_is_visible(mocker, tmp_path, capsys, error):
+    f = tmp_path / "spec.md"
+    f.write_text("---\ngdoc: abc123\n---\nBody", encoding="utf-8")
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", side_effect=error)
+    upload = mocker.patch("gdoc.api.drive.update_doc_content")
+    with patch("sys.stdin", _stdin_json(str(f))):
+        assert cmd_sync_hook(_make_args()) == 0
+    upload.assert_not_called()
+    assert "SYNC: skipped" in capsys.readouterr().err
+
+
+def test_sync_uses_one_safety_snapshot(mocker, tmp_path):
+    f = tmp_path / "spec.md"
+    f.write_text("---\ngdoc: abc123\n---\nBody", encoding="utf-8")
+    fetch = mocker.patch("gdoc.api.docs.get_document_with_tabs", side_effect=[
+        {"tabs": [{}]}, {"tabs": [{}, {}]},
+    ])
+    upload = mocker.patch("gdoc.api.drive.update_doc_content", return_value=42)
+    mocker.patch("gdoc.state.update_state_after_command")
+    with patch("sys.stdin", _stdin_json(str(f))):
+        assert cmd_sync_hook(_make_args()) == 0
+    fetch.assert_called_once_with("abc123")
+    upload.assert_called_once()

@@ -30,16 +30,11 @@ FRONTMATTER = "---\ngdoc: abc123\ntitle: My Doc\n---\n"
 
 
 @pytest.fixture(autouse=True)
-def _stub_single_tab():
-    """Default `count_document_tabs` to `1` for the whole test module.
-
-    Mirrors the pattern from `test_write.py`: legacy push tests assume
-    a single-tab doc, and the new multi-tab safety check would
-    otherwise call the real Docs API. Tests that need a different
-    count stack their own `@patch("gdoc.api.docs.count_document_tabs",
-    ...)` on top.
-    """
-    with patch("gdoc.api.docs.count_document_tabs", return_value=1):
+def _stub_single_tab(mocker):
+    """Use a plain single-tab snapshot unless a test overrides the read."""
+    mocker.patch("gdoc.api.drive.export_doc", return_value="Remote notes")
+    mocker.patch("gdoc.api.drive.get_file_version", return_value={"version": 10})
+    with patch("gdoc.api.docs.get_document_with_tabs", return_value={"tabs": [{}]}):
         yield
 
 
@@ -245,7 +240,7 @@ class TestPushQuiet:
         args = _make_args(file=str(f), quiet=True)
         cmd_push(args)
         mock_pf.assert_not_called()
-        mock_ver.assert_called_once_with("abc123")
+        assert mock_ver.call_count == 2  # Conflict check, then no-op export.
 
     @patch("gdoc.api.drive.get_file_version")
     @patch("gdoc.state.load_state")
@@ -280,7 +275,7 @@ class TestPushQuiet:
         rc = cmd_push(args)
         assert rc == 0
         mock_pf.assert_not_called()
-        mock_ver.assert_not_called()
+        mock_ver.assert_called_once_with("abc123")
         mock_load.assert_not_called()
 
 
@@ -370,7 +365,8 @@ class TestPushCollapseSafety:
     """Pushes against multi-tab docs without --force-collapse-tabs fail."""
 
     @patch("gdoc.api.drive.update_doc_content")
-    @patch("gdoc.api.docs.count_document_tabs", return_value=3)
+    @patch("gdoc.api.docs.get_document_with_tabs",
+           return_value={"tabs": [{}] * 3})
     @patch("gdoc.notify.pre_flight")
     def test_refuses_multi_tab_without_flag(
         self, mock_pf, _mock_count, mock_update, tmp_path,
@@ -393,9 +389,10 @@ class TestPushCollapseSafety:
 
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.api.drive.update_doc_content", return_value=42)
-    @patch("gdoc.api.docs.count_document_tabs")
+    @patch("gdoc.api.docs.get_document_with_tabs",
+           return_value={"tabs": [{}] * 3})
     @patch("gdoc.notify.pre_flight")
-    def test_force_collapse_bypasses_check(
+    def test_force_collapse_still_reads_native_content(
         self, mock_pf, mock_count, mock_update, _u, tmp_path,
     ):
         f = tmp_path / "doc.md"
@@ -406,6 +403,6 @@ class TestPushCollapseSafety:
         args = _make_args(file=str(f), force_collapse_tabs=True)
         rc = cmd_push(args)
         assert rc == 0
-        # With the opt-in flag, no count lookup happens at all.
-        mock_count.assert_not_called()
+        # Collapse consent still requires a native-content inspection.
+        mock_count.assert_called_once_with("abc123")
         mock_update.assert_called_once()

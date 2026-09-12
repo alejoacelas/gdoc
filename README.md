@@ -388,6 +388,68 @@ gdoc write DOC draft.md    # OK written
 
 Use `--force` to skip conflict detection. Use `--quiet` to skip pre-flight checks entirely (saves 2 API calls).
 
+### Markdown replacement safety
+
+`write` and `push` refuse before mutation (exit 3) when their replacement
+scope contains known native content the Markdown path cannot preserve.
+Use targeted `edit` operations to retain that content, or explicitly accept
+its loss:
+
+```bash
+gdoc write DOC draft.md --allow-lossy
+gdoc write DOC draft.md --tab Notes --allow-lossy
+gdoc push draft.md --allow-lossy
+```
+
+`write --tab NAME` checks **only the selected tab body**, including its table
+cells. Rich siblings, child tabs, headers, footers, and unreferenced object
+metadata do not block it; an empty body remains writable. Whole-document
+`write` and `push` check the full Docs response, including all nested tabs,
+headers, footers, and footnotes, because Drive replaces the whole document.
+Unchanged single-tab uploads return “already in sync” before the guard, even
+without a conflict or with `--quiet --force`. The comparison preserves
+indentation and blank paragraphs; it ignores CRLF and one terminal newline.
+
+The inventory follows the [Docs document structures](https://developers.google.com/workspace/docs/api/reference/rest/v1/documents)
+and the current `get_tab_text`, `mdparse`, and Drive Markdown paths:
+
+| Detected structure | Why replacement requires consent |
+| --- | --- |
+| People, rich-link, and date chips | Text or ordinary links cannot retain native chip identity and behavior. |
+| Inline images/embedded objects and positioned-object references | Tab Markdown omits these; whole-document Markdown cannot preserve native drawing/chart links and positioning. Image references alone do not establish a safe native-object round-trip. |
+| Footnotes, equations, automatic text, generated tables of contents | Markdown replacement does not recreate their native references or generated behavior. |
+| Section boundaries and custom section layout | Markdown cannot recreate sections, multiple columns, or section layout overrides. A tab’s initial section marker is retained by the API replacement and is excluded from its guard; ordinary default section metadata remains allowed. |
+| Page/column breaks | These native layout boundaries have no supported Markdown equivalent. |
+| Nonempty suggestion fields | Replacement would discard pending review state. |
+| Internal bookmark/heading/tab links | Replacement does not recreate their native targets and IDs. Ordinary URL links are allowed. |
+| Native horizontal-rule elements in tab writes | The tab exporter omits these; the tab writer approximates Markdown rules with paragraph borders instead of native rule elements. |
+| Nested tables or merged cells | A Markdown table cannot express nesting or row/column spans. Ordinary rectangular tables are allowed. |
+| Headers, footers, footnotes in whole uploads | Body Markdown cannot recreate these separate document segments. |
+| Non-default tab titles or page setup in whole uploads | Drive import resets titles to `Tab 1` and page setup to its defaults (US Letter, one-inch body margins, paged mode). Use `write --tab` to retain them, or explicitly accept the named losses with `--allow-lossy`. |
+
+Bold, italic, strikeout, headings, lists, external links, rectangular tables,
+and default section metadata do not trigger the guard. Known style losses
+(such as colour, alignment, paragraph spacing or list glyphs) produce one
+warning. `--allow-lossy` also prints the structural and page/title losses it
+permits. Unknown fields are not automatically refused.
+
+Tab replacements clear the retained paragraph's old bullets and direct styles
+before insertion, then apply the new Markdown. Contiguous nested list items
+are created together. One terminal newline closes the final paragraph;
+additional blank paragraphs remain intentional, including a final rule.
+
+This inventory of known structural losses is not a guarantee of pixel-perfect formatting or detection of features
+the Docs API does not expose. Whole-document inspection is a preflight read;
+Drive upload does not provide the tab writer's revision-pinned batch update.
+Tab-collapse and native-content checks use the same document snapshot.
+
+`--force` bypasses conflicts only. `--force-collapse-tabs` separately permits
+flattening multiple tabs; it does not permit rich-content loss. A rich,
+multi-tab whole-document replacement needs both `--allow-lossy` and
+`--force-collapse-tabs`. `--quiet` does not bypass either safety guard.
+Automatic sync also checks the whole-document scope; it has no lossiness override and reports a skip to stderr
+if the check refuses or cannot complete.
+
 ## Spreadsheets
 
 `cat`, `tabs`, and `info` detect Google Sheets automatically — point them at a

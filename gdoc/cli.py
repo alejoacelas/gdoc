@@ -1452,19 +1452,35 @@ def cmd_suggest(args) -> int:
     return 0
 
 
-def _doc_matches(doc_id: str, body: str) -> bool:
-    """True if the doc's current markdown export equals the content to write."""
-    from gdoc.api.drive import export_doc
+def _comparable_markdown(text: str) -> str:
+    """Ignore CRLF and one terminal paragraph mark, not meaningful whitespace."""
+    return text.replace("\r\n", "\n").removesuffix("\n")
+
+
+def _doc_matches(doc_id: str, body: str, version: int | None = None) -> int | None:
+    """Return the pre-export version for an unchanged single-tab upload."""
+    from gdoc.api.docs import count_document_tabs
+    from gdoc.api.drive import export_doc, get_file_version
 
     try:
+        # Capture the baseline before exporting, never a newer unseen revision.
+        if version is None:
+            version = get_file_version(doc_id).get("version")
         current = export_doc(doc_id, mime_type="text/markdown")
+        if _comparable_markdown(current) != _comparable_markdown(body):
+            return None
+        # Drive only exports the first tab; matching it cannot prove a no-op
+        # for the whole document (even with --force-collapse-tabs).
+        if count_document_tabs(doc_id) > 1:
+            return None
     except GdocError:
-        return False
-    return current.strip() == body.strip()
+        return None
+    return version
 
 
 def _finish_noop_write(
     doc_id: str, change_info, args, quiet: bool, command: str,
+    matched_version: int | None = None,
 ) -> int:
     """Conclude a write-like command whose content already matches the doc.
 
@@ -1475,7 +1491,9 @@ def _finish_noop_write(
     from gdoc.format import format_json, get_output_mode
     from gdoc.state import update_state_after_command
 
-    command_version = get_file_version(doc_id).get("version")
+    command_version = matched_version
+    if command_version is None:
+        command_version = get_file_version(doc_id).get("version")
     mode = get_output_mode(args)
     if mode == "json":
         print(format_json(in_sync=True, version=command_version))
@@ -1497,7 +1515,7 @@ def _check_write_conflict(
 ):
     """Run conflict detection for write-like commands.
 
-    Returns (change_info, in_sync). in_sync is True when the version moved
+    Returns (change_info, in_sync). in_sync is the matched version when it moved
     but the doc content already equals `body` (e.g. our own earlier write or
     a cosmetic Docs version bump) — the caller should skip the upload.
     Raises GdocError(exit_code=3) on a real conflict.
@@ -1510,16 +1528,20 @@ def _check_write_conflict(
 
         if not force:
             if change_info.last_read_version is None:
-                if body is not None and _doc_matches(doc_id, body):
-                    return change_info, True
+                if body is not None:
+                    matched = _doc_matches(doc_id, body, change_info.current_version)
+                    if matched is not None:
+                        return change_info, matched
                 raise GdocError(
                     "no read baseline. Run 'gdoc cat' first, "
                     "or use --force to overwrite.",
                     exit_code=3,
                 )
             if change_info.has_conflict:
-                if body is not None and _doc_matches(doc_id, body):
-                    return change_info, True
+                if body is not None:
+                    matched = _doc_matches(doc_id, body, change_info.current_version)
+                    if matched is not None:
+                        return change_info, matched
                 raise GdocError(
                     "doc changed since last read. "
                     "Run 'gdoc cat' first, "
@@ -1534,8 +1556,10 @@ def _check_write_conflict(
         state = load_state(doc_id)
 
         if state is None or state.last_read_version is None:
-            if body is not None and _doc_matches(doc_id, body):
-                return None, True
+            if body is not None:
+                matched = _doc_matches(doc_id, body)
+                if matched is not None:
+                    return None, matched
             raise GdocError(
                 "no read baseline. Run 'gdoc cat' first, "
                 "or use --force to overwrite.",
@@ -1550,8 +1574,10 @@ def _check_write_conflict(
             current_version is not None
             and current_version != state.last_read_version
         ):
-            if body is not None and _doc_matches(doc_id, body):
-                return None, True
+            if body is not None:
+                matched = _doc_matches(doc_id, body)
+                if matched is not None:
+                    return None, matched
             raise GdocError(
                 "doc changed since last read. "
                 "Run 'gdoc cat' first, "
@@ -1560,6 +1586,28 @@ def _check_write_conflict(
             )
 
     return None, False
+
+
+def _check_document_replacement(
+    doc_id: str, *, command: str, allow_lossy: bool = False,
+    force_collapse_tabs: bool = False,
+) -> None:
+    """Check tab collapse and native-content loss against one upload snapshot."""
+    from gdoc.api.docs import flatten_tabs, get_document_with_tabs
+    from gdoc.lossy import check_markdown_replacement
+
+    doc = get_document_with_tabs(doc_id)
+    if not force_collapse_tabs:
+        tab_count = len(flatten_tabs(doc.get("tabs", [])))
+        if tab_count > 1:
+            raise GdocError(
+                f"{command} would collapse {tab_count} tabs into 1 "
+                "(multi-tab document). Use `gdoc write --tab NAME DOC FILE` "
+                "for per-tab replacement, `gdoc insert --tab NAME DOC FILE` "
+                "to add content, or pass --force-collapse-tabs to confirm.",
+                exit_code=3,
+            )
+    check_markdown_replacement(doc, allow_lossy=allow_lossy)
 
 
 def cmd_write(args) -> int:
@@ -1592,8 +1640,12 @@ def cmd_write(args) -> int:
     change_info, in_sync = _check_write_conflict(
         doc_id, quiet, force, body=None if tab_name else content,
     )
-    if in_sync:
-        return _finish_noop_write(doc_id, change_info, args, quiet, command="write")
+    matched = in_sync or (not tab_name and _doc_matches(
+        doc_id, content, change_info.current_version if change_info else None,
+    ))
+    if matched:
+        return _finish_noop_write(doc_id, change_info, args, quiet,
+                                  command="write", matched_version=matched)
 
     from gdoc.format import format_json, get_output_mode
     mode = get_output_mode(args)
@@ -1602,6 +1654,7 @@ def cmd_write(args) -> int:
         from gdoc.api.docs import insert_markdown_into_tab
         result = insert_markdown_into_tab(
             doc_id, tab_name, content, replace=True,
+            allow_lossy=getattr(args, "allow_lossy", False),
         )
 
         from gdoc.api.drive import get_file_version
@@ -1612,19 +1665,11 @@ def cmd_write(args) -> int:
             mode, doc_id, result, command_version, verb="wrote",
         )
     else:
-        # Refuse destructive multi-tab collapse unless the user opts in.
-        if not force_collapse:
-            from gdoc.api.docs import count_document_tabs
-            tab_count = count_document_tabs(doc_id)
-            if tab_count > 1:
-                raise GdocError(
-                    f"write would collapse {tab_count} tabs into 1. "
-                    "Use `gdoc write --tab NAME FILE` for per-tab "
-                    "writes, `gdoc insert --tab NAME FILE` to populate "
-                    "a tab, or pass --force-collapse-tabs to confirm.",
-                    exit_code=3,
-                )
-
+        _check_document_replacement(
+            doc_id, command="write",
+            allow_lossy=getattr(args, "allow_lossy", False),
+            force_collapse_tabs=force_collapse,
+        )
         from gdoc.api.drive import update_doc_content
         command_version = update_doc_content(doc_id, content)
 
@@ -1779,24 +1824,18 @@ def cmd_push(args) -> int:
 
     # Conflict detection (reuse shared helper)
     change_info, in_sync = _check_write_conflict(doc_id, quiet, force, body=body)
-    if in_sync:
-        return _finish_noop_write(doc_id, change_info, args, quiet, command="push")
+    matched = in_sync or _doc_matches(
+        doc_id, body, change_info.current_version if change_info else None,
+    )
+    if matched:
+        return _finish_noop_write(doc_id, change_info, args, quiet,
+                                  command="push", matched_version=matched)
 
-    # Refuse destructive multi-tab collapse unless the user opts in.
-    # `pull`/`push` round-trips a multi-tab doc through a flat markdown
-    # file, so an unguarded push silently deletes every tab but the
-    # first. Mirror the safety check from `cmd_write`.
-    if not force_collapse:
-        from gdoc.api.docs import count_document_tabs
-        tab_count = count_document_tabs(doc_id)
-        if tab_count > 1:
-            raise GdocError(
-                f"push would collapse {tab_count} tabs into 1. "
-                "Use `gdoc edit --tab NAME` for find/replace within a "
-                "tab, `gdoc insert --tab NAME FILE` to add content to a "
-                "tab, or pass --force-collapse-tabs to confirm.",
-                exit_code=3,
-            )
+    _check_document_replacement(
+        doc_id, command="push",
+        allow_lossy=getattr(args, "allow_lossy", False),
+        force_collapse_tabs=force_collapse,
+    )
 
     # Upload body (frontmatter stripped)
     from gdoc.api.drive import update_doc_content
@@ -1857,19 +1896,13 @@ def cmd_sync_hook(args) -> int:
 
         doc_id = _resolve_doc_id(metadata["gdoc"])
 
-        # Refuse to silently flatten a multi-tab doc. The hook runs
-        # without user attention on every matching file edit, so there
-        # is no safe way to surface a confirmation prompt — skip
-        # entirely and log to stderr.
-        from gdoc.api.docs import count_document_tabs
-        if count_document_tabs(doc_id) > 1:
+        # Hooks cannot request consent; always fail closed and report a skip.
+        try:
+            _check_document_replacement(doc_id, command="sync")
+        except Exception as e:
             title = metadata.get("title", doc_id)
-            print(
-                f'SYNC: skipped "{title}" (multi-tab doc; sync would '
-                "collapse tabs). Use `gdoc edit --tab` or "
-                "`gdoc insert --tab` to write to a specific tab.",
-                file=sys.stderr,
-            )
+            print(f'SYNC: skipped "{title}" (replacement safety check: {e})',
+                  file=sys.stderr)
             return 0
 
         from gdoc.api.drive import update_doc_content
@@ -1890,8 +1923,9 @@ def cmd_sync_hook(args) -> int:
             full_doc_write=True,
         )
 
-    except Exception:
-        pass  # Never block the agent
+    except Exception as e:
+        # Keep the hook non-blocking, but never hide a failed read or upload.
+        print(f"SYNC: failed: {e}", file=sys.stderr)
 
     return 0
 
@@ -4208,7 +4242,12 @@ def build_parser() -> GdocArgumentParser:
         help="Confirm you intend to collapse a multi-tab doc into one tab",
     )
     write_p.add_argument(
-        "--force", action="store_true", help="Force overwrite even if doc changed"
+        "--allow-lossy", action="store_true",
+        help="Knowingly discard native/rich content Markdown cannot preserve; "
+             "does not bypass conflicts or permit tab collapse",
+    )
+    write_p.add_argument(
+        "--force", action="store_true", help="Bypass write conflicts only"
     )
     write_p.add_argument(
         "--quiet", action="store_true", help="Skip pre-flight checks"
@@ -4263,7 +4302,12 @@ def build_parser() -> GdocArgumentParser:
     push_p = sub.add_parser("push", parents=[output_parent], help="Upload local markdown to doc")
     push_p.add_argument("file", help="Local file with gdoc frontmatter")
     push_p.add_argument(
-        "--force", action="store_true", help="Force overwrite even if doc changed"
+        "--allow-lossy", action="store_true",
+        help="Knowingly discard native/rich content Markdown cannot preserve; "
+             "does not bypass conflicts or permit tab collapse",
+    )
+    push_p.add_argument(
+        "--force", action="store_true", help="Bypass write conflicts only"
     )
     push_p.add_argument(
         "--force-collapse-tabs", action="store_true",

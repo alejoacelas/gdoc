@@ -789,9 +789,8 @@ class TestNewToDocsRequests:
         ]
         assert starts == sorted(starts)
 
-    def test_nested_bullet_range_adjusted_for_removed_tabs(self):
-        # The level-1 item removes 1 tab; the following level-0 item's
-        # createParagraphBullets range is shifted left by that 1.
+    def test_nested_items_share_one_list_range(self):
+        # Parent and child must be created together to preserve nesting.
         reqs = to_docs_requests(
             parse_markdown("- a\n  - b\n- c"), insert_index=1,
         )
@@ -799,7 +798,7 @@ class TestNewToDocsRequests:
             r["createParagraphBullets"]["range"]["startIndex"]
             for r in reqs if "createParagraphBullets" in r
         ]
-        assert starts == [1, 3, 5]
+        assert starts == [1]  # One range establishes the entire nested list.
 
 
 class TestTableTabAdjustment:

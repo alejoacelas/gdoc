@@ -620,21 +620,18 @@ def to_docs_requests(
                 }
             })
 
-    # 4. Bullets last, in FORWARD document order. Two forces:
-    #    - createParagraphBullets counts and REMOVES the leading tabs that
-    #      encode nesting level, shifting all later indices left.
-    #    - ordered lists only number continuously (1, 2, 3) when each item is
-    #      created after the one above it — reverse order makes each item start
-    #      its own list at 1 (and can drop bullets entirely).
-    #    So process top-to-bottom and subtract the tabs that earlier items in
-    #    this same batch have already removed.
-    text = parsed.plain_text
+    # 4. Create each contiguous list in one request: per-item requests make
+    # nested children start new lists at level zero. Work forwards and subtract
+    # tabs removed by earlier lists, after all text/paragraph styles are set.
+    lists: list[StyleRange] = []
+    for sr in sorted((s for s in parsed.styles if s.type == "bullets"),
+                     key=lambda s: s.start):
+        if lists and lists[-1].end == sr.start and lists[-1].style == sr.style:
+            lists[-1].end = sr.end
+        else:
+            lists.append(StyleRange(sr.start, sr.end, sr.style, "bullets"))
     removed = 0
-    bullet_ranges = [sr for sr in parsed.styles if sr.type == "bullets"]
-    for sr in sorted(bullet_ranges, key=lambda s: s.start):
-        leading = 0
-        while sr.start + leading < len(text) and text[sr.start + leading] == "\t":
-            leading += 1
+    for sr in lists:
         requests.append({
             "createParagraphBullets": {
                 "range": _range(
@@ -644,7 +641,8 @@ def to_docs_requests(
                 "bulletPreset": sr.style["bulletPreset"],
             }
         })
-        removed += leading
+        removed += sum(len(line) - len(line.lstrip("\t"))
+                       for line in parsed.plain_text[sr.start:sr.end].split("\n"))
 
     return requests
 

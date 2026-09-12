@@ -4,6 +4,27 @@ All notable changes to `gdoc` are documented here. This project follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `write` and `push` refuse known lossy Markdown replacements before mutation
+  (exit 3). `write --tab` checks only the selected body, so rich siblings and
+  headers/footers cannot block an empty target tab. Whole-document uploads
+  check all tabs and document segments; existing no-op writes remain no-ops.
+  Non-default tab titles and page setup require explicit consent for whole-file
+  imports; known style losses and opted-in structural losses are named.
+  Automatic sync applies the same guard and reports safety-check failures
+  to stderr without uploading.
+- `--allow-lossy` explicitly permits native-content loss, independently of
+  `--force` (conflicts) and `--force-collapse-tabs` (tab flattening).
+
+### Fixed
+- Tab replacements reset inherited bullets and direct paragraph/text styles;
+  nested list items share a list-creation range and final rules use the retained
+  paragraph mark without adding a blank paragraph.
+- Unchanged single-tab `write`/`push` uploads skip reconstruction even without
+  a conflict and report that nothing was written.
+
 ## [0.21.0] — 2026-08-26
 
 ### Added

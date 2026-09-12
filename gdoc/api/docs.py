@@ -1427,12 +1427,13 @@ def _tab_body_range(body: dict) -> tuple[int, int]:
     return (1, last_end - 1)
 
 
-def _strip_trailing_newline_unless_hr(parsed) -> None:
+def _strip_trailing_newline_unless_hr(parsed, *, keep_hr: bool = True) -> None:
     """Drop the trailing \\n parse_markdown appends — the existing paragraph at
     the insertion point already owns one, so without this every write leaves an
     extra blank line. Skipped when the last paragraph is a horizontal rule (an
     intentionally-empty paragraph whose border is lost if its only character is
-    removed). Mutates ``parsed`` in place.
+    removed). Pass keep_hr=False when the caller applies its border to the
+    retained native mark instead. Mutates ``parsed`` in place.
     """
     old_len = len(parsed.plain_text)
     last_is_hr = any(
@@ -1440,7 +1441,7 @@ def _strip_trailing_newline_unless_hr(parsed) -> None:
         and "borderBottom" in s.style
         for s in parsed.styles
     )
-    if parsed.plain_text.endswith("\n") and not last_is_hr:
+    if parsed.plain_text.endswith("\n") and not (keep_hr and last_is_hr):
         parsed.plain_text = parsed.plain_text[:-1]
         for s in parsed.styles:
             if s.end == old_len:
@@ -1461,6 +1462,7 @@ def insert_markdown_into_tab(
     markdown: str,
     position: str = "start",
     replace: bool = False,
+    allow_lossy: bool = False,
 ) -> dict:
     """Insert (or replace) markdown content in a tab via Docs API.
 
@@ -1475,6 +1477,7 @@ def insert_markdown_into_tab(
         position: "start" or "end". Ignored when replace=True.
         replace: If True, delete the tab body first then insert at the
             body start.
+        allow_lossy: Explicitly permit named native-content losses.
 
     Returns:
         Dict with "tab_id", "tab_title", "insert_index".
@@ -1507,7 +1510,7 @@ def insert_markdown_into_tab(
 
     at_end = replace or body_end == body_start or position == "end"
     if at_end:
-        _strip_trailing_newline_unless_hr(parsed)
+        _strip_trailing_newline_unless_hr(parsed, keep_hr=not replace)
     # Trimming an empty final paragraph leaves its annotation at zero width.
     # Its style belongs on the retained native mark, not on extra inserted text.
     final_style = next((s.style for s in parsed.styles
@@ -1550,6 +1553,27 @@ def insert_markdown_into_tab(
             "tabId": tab_id,
         }
         requests.append({"deleteContentRange": {"range": delete_range}})
+
+    if replace:
+        from gdoc.lossy import check_markdown_replacement
+
+        check_markdown_replacement(body, tab_body=True, allow_lossy=allow_lossy)
+        # Deletion retains the native final paragraph. Reset that paragraph
+        # before insertion so its bullets, heading, alignment and spacing do
+        # not become the initial state of every new paragraph.
+        retained = {"startIndex": body_start, "endIndex": body_start + 1,
+                    "tabId": tab_id}
+        requests.extend([
+            {"deleteParagraphBullets": {"range": retained}},
+            {"updateParagraphStyle": {
+                "range": retained,
+                "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
+                "fields": "*",
+            }},
+            {"updateTextStyle": {
+                "range": retained, "textStyle": {}, "fields": "*",
+            }},
+        ])
 
     # Only inherited bullets require indent resets. Ordinary headings and
     # paragraphs must not materialize new zero-valued indent overrides.

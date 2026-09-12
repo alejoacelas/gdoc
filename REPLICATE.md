@@ -71,3 +71,15 @@ The user wanted PR #61 rebuilt on PR #60 so replacements find every intended tab
 - Initial inherited tests still mocked the former body-only read and had to be updated to mock the all-tab read; old cleanup assertions were replaced with assertions that #60's removed cleanup remains unused. No campaign files, main checkout, comment anchoring, tab-title ambiguity rules, style inheritance policy, or broad lint cleanup were changed. Staged table-write concurrency and live API verification remain outside this PR; no push or PR creation was performed. The coordinator owns final review, rebase and publication.
 
 Agent session 01a09723-74a3-7451-a0c5-49d86b0e2d14 · Commits 8384c09, 3640b4e, 9fc51e7, d694bc7, 085f11c, cef3806, 40f279e
+
+# Close segment deletion and ambiguity review findings
+
+The user wanted both PR #61 P2 findings fixed, the header suggestion request checked, and the branch committed without pushing.
+
+- Normalize omitted paragraph start indices to zero in the existing deletion helper. Header, footer and footnote first-paragraph removal now includes the paragraph mark; last-paragraph removal borrows the preceding mark and preserves the segment-final newline.
+- Cross-tab edit/suggest ambiguity errors name every matching tab by title and ID. Same-tab ambiguity recommends `--all` or more specific text, without implying `--tab` can resolve it. Both paths still fail before writing.
+- Added 12 fixed-coordinate deletion cases covering three segment types, explicit/omitted zero indices and first/last paragraphs, plus two same-tab ambiguity cases; extended both cross-tab ambiguity tests. Before the fix, seven assertions failed on the reported defects; afterward the focused suite passed 32 tests and full `uv run pytest -q` passed 1,816 tests. The no-stubs and diff checks pass; Ruff matches origin/main's 196 diagnostics exactly, with zero additions or removals by file, rule, message and source line.
+- Saved replay `20260912T195004-00768dcae2` confirms one successful SUGGEST batch with the source revision guard, header/tab identity, deletion [8,14), and insertion of UPDATED at 8. Accepted/rejected previews have the intended text and all three views preserve the body. UPDATED is bold in the inline suggestion view but plain in the accepted preview; G08 style handling remains with #63 and was not changed.
+- No live writes or push; the coordinator owns live acceptance and publication.
+
+Agent session 01a0972d-e63f-7db3-81be-e10b7e0508cd · Commits cc6952c

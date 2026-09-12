@@ -45,3 +45,16 @@ The user wanted PR #60's adversarial findings and seven harness replays resolved
 - All 1,724 tests pass (60 more than the starting branch); Ruff has exactly the same 196 diagnostics as origin/main, with zero additions. No push or PR mutation; live verification of the new request plans remains with the coordinator.
 
 Agent session 01a09713-3fb2-72c2-bef4-658137d2e74f · Commits 1596dcd
+
+# Restore whole-cell list removal
+
+The user wanted PR #60's documented plain-prose list-removal route restored, four cell replacement shapes tested, and the second live replay's alleged regressions investigated without pushing.
+
+- Whole-cell plain prose replacing list items now clears bullets and applies NORMAL_TEXT with list-indent resets only to the replacement paragraphs. Empty replacement leaves one NORMAL_TEXT paragraph, including from a non-list heading; explicit Markdown lists still create membership. Nonempty prose in non-list cells and ordinary text-targeted edits keep the preservation policy.
+- Added a 16-case request matrix through the real argument parser and `cmd_edit`, covering one/two native paragraphs, prose/empty/list/multiline replacements, bullets/non-list headings, UTF-16 ranges, and tab targeting. Updated obsolete list-preservation expectations and added a nonfinal-heading deletion guard with an inline image later in the body.
+- Replay `20260912T193354-7cc207ac02`: the saved request deletes exactly [65,82), the heading plus its LF. After removing that paragraph and ignoring index fields, the remaining body equals the saved after body; the footnotes, inline-object map and sibling tab also remain equal. The image moves from content[7] at [145,147) to content[6] at [128,130); the remote paragraph moves from content[8] to content[7]. No image becomes text and no unrelated paragraph merges.
+- Replay `20260912T193230-87278f56aa`: the saved pre-fix batch contains only deletion [27,54) and insertion of Confirmed. Both original list items' paragraphStyle and bullet dictionaries equal the resulting paragraph's dictionaries, including alignment, lineSpacing and avoidWidowAndOrphan; other cells and the outside paragraph remain equal after index normalization. This is whole-cell syntax (one replacement positional), so the new intentional list-to-prose rule applies; there is no old-text search argument in this command.
+- Replays `20260912T193329-a481b99e9e` and `20260912T193433-e96b549a92`: both saved requests delete [41,57) and insert the 14-character Final findings without an LF. Both snapshots retain exactly three paragraphs; the introduction is identical, the heading keeps its style and ID, and the final paragraph keeps its text and style while shifting from [58,100) to [56,98). There is no added element or empty paragraph outside the target; array-position/absolute-index comparisons do not establish collateral changes.
+- Full `uv run pytest -q`: 1,739 passed; no-stubs gate passed. Ruff reports the same 196 diagnostics as origin/main, with zero added diagnostics when compared by file, code and message. Snapshot comparisons and new planner tests ran offline; no live API write, push or PR mutation was performed.
+
+Agent session 01a0971e-0d33-74c3-9708-fdcfb35bb4b7 · Commits be56630

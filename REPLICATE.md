@@ -543,6 +543,7 @@ The user wanted PR #64 restacked on #70 `de9db12`: preserved both log sides and 
 
 The user wanted PR #64 restacked on #70 `4f6a560`: preserved both log sides and all code/tests; 2,866 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_098f9adc04f1 · Commits 7ff6566347f316dd0053d2b82a53c71ffedd706d.
 
+## Heading cleanup and repeated cell labels
 
 
 
@@ -576,3 +577,12 @@ The user wanted PR #70 restacked on #65 `1ffd817`: retained revision-safety and 
 The user wanted PR #64 restacked on #70 `4eeab26`: preserved both log histories and all code/tests; 2,915 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_8027a7d4ae60 · Commits bd9b54589a12a0f3c1168e7631639a0462de1b14.
 
 The user wanted PR #64 restacked on #70 `fa8cdbd`: preserved both log histories and all code/tests; 2,975 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_187d4d2013d6 · Commits fbcafc2f5d540dfc416ecfa5e4a58c9e5ca75b40.
+The human wanted PR #66's adversarial cleanup findings and the recorded value-column label failure fixed before another replay.
+
+- Cleanup deletes only a verified one-unit newline in a text-only heading, preserving inline images, footnote references, and positioned-object anchors; its batch now requires the revision returned by the cleanup read.
+- Each replacement's follow-up position uses the actual UTF-16 widths of lower matches. Both source orders of `İ` and `i̇` preserve the unrelated neighbouring heading.
+- Label mode refuses a first-column label repeated in a value column, with exit code 3 and candidate coordinates. The exact recorded Vendors snapshot now refuses; explicit row/column addressing remains available. The recorded write targeted the Datawise row's Partner cell, rather than its requested Status cell.
+- All 1,641 tests pass, including 15 new regressions that fail against the pre-fix code. Tests inspect every replacement batch for protected native positions, covering both legacy body and explicit tab paths. Ruff matches origin/main's 196 existing diagnostics with zero added or removed diagnostics.
+- No live document writes or push were performed; live harness replay remains with the coordinator.
+
+Agent session 01a0970f-266f-7581-8402-a834760ace1d · Commits e7f2070

@@ -932,7 +932,9 @@ class TestNativeImageGuard:
         self._refuses("Intro\n\n![photo](https://example.com/a.png)\n")
 
     def test_reference_image_with_definition_refused(self):
-        self._refuses("See ![Logo][logo] here\n\n[LOGO]: https://example.com/l.png\n")
+        self._refuses(
+            "See ![Logo][logo] here\n\n[LOGO]: https://example.com/l.png\n"
+        )
 
     def test_collapsed_reference_image_refused(self):
         self._refuses("![logo][]\n\n[logo]: https://example.com/l.png\n")

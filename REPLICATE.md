@@ -95,3 +95,14 @@ The user wanted PR #61 watched until CI, CodeRabbit and Codex were green and qui
 - Full `uv run pytest -q`: 1,821 passed; no-stubs and `git diff --check` pass; Ruff counts for both changed files equal HEAD (0 each), so the 196 pre-existing diagnostics are unchanged.
 
 Agent session ff98f78b-ae75-4442-8910-6cd498b6e736 · Commits 2643ab2
+
+# Rebase PR 61 onto the final paragraph-formatting fixes
+
+The user wanted PR #61 rebased onto #60's final head, its three remaining review findings addressed, and the result tested and published.
+
+- Replayed all twelve commits onto `db3f658`, preserving #60's list removal, retained paragraph marks, link decorations and contextual Markdown rules alongside #61's independent tab/segment addresses. Baseline style requests use the match tab; suggestion contexts retain their baseline under the full scope key; the table guard resolves each match's own container. Existing REPLICATE entries from both branches survived without a textual conflict.
+- Removed stale document-read fixtures and all test references to the deleted cleanup helper. The final-paragraph-after-table rejection now asserts against the service mock active during the call. No surviving test was dropped.
+- The first full run exposed a missing `parse_markdown` import after Git automatically combined the CLI changes; restored it and added three regressions for suggestion baselines across six containers and whole-paragraph table rejection in both tabs.
+- Full `uv run pytest tests/ -q`: 1,846 passed. The no-stubs and diff checks passed; Ruff matched origin/main's 196 findings exactly by relative file, rule, message and offending source line, with zero additions or removals (198 concise-output lines on each side including summaries). All API calls in tests were mocked; no live Google API calls were made.
+
+Agent session 01a097fb-495c-7ab3-9f7e-3194dd05e2b6 · Commits 77f8c50, 628a2ac, 4807564, a4f59d2, 3c15542, c431a33, d9bb8ea, 8388c2c, 8621937, b9048e0, af15de6, 1151d00, 5db7781, bb228f1, efe77e1

@@ -610,10 +610,10 @@ Tables require a single match — use without `--all` when the replacement conta
 
 ## Editing inside tables
 
-`edit` searches and replaces text inside table cells, not just plain paragraphs. For label/value grids (a label in one column, the value in the next), address a cell directly instead of anchoring on its current text:
+`edit` searches and replaces text inside table cells, not just plain paragraphs. For label/value grids (a label in the first column, the value in the next), address a cell directly instead of anchoring on its current text:
 
 ```bash
-# Replace the cell to the right of a label
+# Replace the cell to the right of a unique first-column label
 gdoc edit DOC --tab "Tab 1" --cell "Discussion topics from JP" "Show and tell; Q2 planning"
 
 # Address by ROW,COL coordinates (0-based) within the Nth table (--table, default 0)

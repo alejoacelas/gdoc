@@ -421,14 +421,14 @@ class TestResolveTab:
         result = resolve_tab(self._tabs(), "t2")
         assert result["id"] == "t2"
 
-    def test_title_priority_over_id(self):
-        """When a title matches, it takes priority over ID match."""
+    def test_id_priority_over_title(self):
+        """An immutable ID takes priority over a title match."""
         tabs = [
             {"id": "t1", "title": "t2", "index": 0, "nesting_level": 0, "body": {}},
             {"id": "t2", "title": "Other", "index": 1, "nesting_level": 0, "body": {}},
         ]
         result = resolve_tab(tabs, "t2")
-        assert result["id"] == "t1"  # title match wins
+        assert result["id"] == "t2"  # ID match wins
 
     def test_not_found_raises(self):
         with pytest.raises(GdocError, match="tab not found: nope") as exc_info:

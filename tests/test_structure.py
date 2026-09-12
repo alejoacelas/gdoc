@@ -114,11 +114,11 @@ class TestResolveRawTab:
         tab = resolve_raw_tab(_DOC["tabs"], "Appendix")
         assert tab["tabProperties"]["tabId"] == "t2c"
 
-    def test_title_beats_id(self):
-        # A tab titled "t1" must win over the tab whose ID is "t1".
+    def test_id_beats_title(self):
+        # The tab whose ID is "t1" must win over a tab titled "t1".
         tabs = [_tab("t1", "Main"), _tab("x9", "t1")]
         tab = resolve_raw_tab(tabs, "t1")
-        assert tab["tabProperties"]["tabId"] == "x9"
+        assert tab["tabProperties"]["tabId"] == "t1"
 
     def test_not_found_returns_none(self):
         assert resolve_raw_tab(_DOC["tabs"], "missing") is None

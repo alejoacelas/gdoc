@@ -491,26 +491,32 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
     return "".join(parts)
 
 
+def _match_tab(tabs: list[dict], tab_name: str) -> dict | None:
+    """Prefer immutable IDs, then unique exact or case-insensitive titles."""
+    for tab in tabs:
+        if str(tab["id"]) == tab_name:
+            return tab
+    matches = [tab for tab in tabs if tab["title"] == tab_name]
+    if not matches:
+        matches = [tab for tab in tabs if tab["title"].lower() == tab_name.lower()]
+    if len(matches) > 1:
+        candidates = ", ".join(f'{tab["title"]!r} (id: {tab["id"]})' for tab in matches)
+        raise GdocError(
+            f"ambiguous tab {tab_name!r}: {candidates}; use a tab ID",
+            exit_code=3,
+        )
+    return matches[0] if matches else None
+
+
 def resolve_tab(tabs: list[dict], tab_name: str) -> dict:
-    """Resolve a tab by title (case-insensitive) or ID.
+    """Resolve a flattened tab by ID, exact title, or unique folded title.
 
-    Args:
-        tabs: Flattened list of tab dicts from flatten_tabs().
-        tab_name: Tab title or ID to match.
-
-    Returns:
-        The matched tab dict.
-
-    Raises:
-        GdocError: If no matching tab is found.
+    Raise GdocError with exit code 3 for missing or ambiguous titles.
     """
-    for t in tabs:
-        if t["title"].lower() == tab_name.lower():
-            return t
-    for t in tabs:
-        if str(t["id"]) == tab_name:
-            return t
-    raise GdocError(f"tab not found: {tab_name}", exit_code=3)
+    match = _match_tab(tabs, tab_name)
+    if match is None:
+        raise GdocError(f"tab not found: {tab_name}", exit_code=3)
+    return match
 
 
 def get_document(doc_id: str) -> dict:
@@ -772,10 +778,10 @@ def resolve_cell_range(
     Two forms, auto-detected:
     - coordinate ('R,C'): row R, column C of a table (0-based). Uses table
       `table_index`, or the first table when `table_index` is None.
-    - label (anything else): find the first row cell whose text equals
-      `cell`; the target is column `col` if given, else the cell to its
-      right. Searches every table by default, or only table `table_index`
-      when one is given.
+    - label (anything else): match the first column of a unique row whose
+      text equals `cell`; the target is column `col` if given, else column 1.
+      Searches every table by default, or only table `table_index` when given.
+      Duplicate labels raise GdocError with exit code 3 before resolving a range.
 
     `normalize` folds smart quotes/dashes when comparing labels. Returns
     None if nothing resolves.
@@ -796,28 +802,40 @@ def resolve_cell_range(
             return None
         return _cell_text_range(cells[c])
 
-    # Label mode: honor an explicit --table; otherwise scan all tables.
+    # Only the first column identifies a row; values must not select neighbours.
     if table_index is None:
-        search_tables = tables
+        search_tables = enumerate(tables)
     elif 0 <= table_index < len(tables):
-        search_tables = [tables[table_index]]
+        search_tables = [(table_index, tables[table_index])]
     else:
         return None
 
     target = fold_typography(cell) if normalize else cell
     target = target.strip()
-    for table in search_tables:
-        for row in table.get("tableRows", []):
+    matches = []
+    for ti, table in search_tables:
+        for ri, row in enumerate(table.get("tableRows", [])):
             cells = row.get("tableCells", [])
-            for ci, c_ in enumerate(cells):
-                label = _extract_paragraphs_text(c_.get("content", []))
-                label = (fold_typography(label) if normalize else label).strip()
-                if label == target:
-                    target_col = col if col is not None else ci + 1
-                    if not 0 <= target_col < len(cells):
-                        return None
-                    return _cell_text_range(cells[target_col])
-    return None
+            if not cells:
+                continue
+            label = _extract_paragraphs_text(cells[0].get("content", []))
+            label = (fold_typography(label) if normalize else label).strip()
+            if label == target:
+                matches.append((ti, ri, cells))
+    if len(matches) > 1:
+        candidates = ", ".join(f"table {ti} row {ri}" for ti, ri, _ in matches)
+        raise GdocError(
+            f"ambiguous cell label {cell!r}: {candidates}; "
+            "use --table and --cell ROW,COL",
+            exit_code=3,
+        )
+    if not matches:
+        return None
+    cells = matches[0][2]
+    target_col = 1 if col is None else col
+    if not 0 <= target_col < len(cells):
+        return None
+    return _cell_text_range(cells[target_col])
 
 
 def _find_table_cell_indices(
@@ -1547,26 +1565,19 @@ def get_document_structure(
 
 
 def resolve_raw_tab(tabs: list[dict], tab_name: str) -> dict | None:
-    """Find a raw tab dict by title (case-insensitive) or tab ID.
+    """Resolve a raw tab across the tree with the same identity rules as resolve_tab.
 
-    Unlike resolve_tab (which returns a flattened summary), this returns
-    the tab's raw API dict — tabProperties, documentTab, childTabs —
-    searching the whole tree. Title matches win over ID matches,
-    mirroring resolve_tab. Returns None when nothing matches.
+    Return None when missing; refuse ambiguous titles with exit code 3.
     """
     def walk(ts: list[dict]):
-        for t in ts:
-            yield t
-            yield from walk(t.get("childTabs", []))
+        for tab in ts:
+            props = tab.get("tabProperties", {})
+            yield {"id": props.get("tabId", ""), "title": props.get("title", ""),
+                   "raw": tab}
+            yield from walk(tab.get("childTabs", []))
 
-    for t in walk(tabs):
-        props = t.get("tabProperties", {})
-        if props.get("title", "").lower() == tab_name.lower():
-            return t
-    for t in walk(tabs):
-        if str(t.get("tabProperties", {}).get("tabId", "")) == tab_name:
-            return t
-    return None
+    match = _match_tab(list(walk(tabs)), tab_name)
+    return match["raw"] if match is not None else None
 
 
 def add_tab(doc_id: str, title: str) -> dict:

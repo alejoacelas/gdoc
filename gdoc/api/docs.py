@@ -1937,6 +1937,10 @@ def _build_replacement_requests(
                 if match_tab:
                     target["tabId"] = match_tab
                 fields = style["fields"]
+                if any("updateParagraphStyle" in request for request in requests):
+                    fields = ",".join(sorted(
+                        set(filter(None, fields.split(","))) | style["textStyle"].keys()
+                    ))
                 if fields:
                     updates.append({"updateTextStyle": {
                         "range": target,
@@ -1961,7 +1965,14 @@ def _build_replacement_requests(
                                 "range": {**target, "startIndex": lo, "endIndex": hi},
                                 "textStyle": decor, "fields": ",".join(sorted(decor)),
                             }})
-            requests[1:1] = updates
+            # Paragraph changes re-resolve direct text styles. Restore the
+            # baseline after them, but before explicit inline styles/bullets.
+            before_inline = next(
+                (i for i, req in enumerate(requests)
+                 if "updateTextStyle" in req or "createParagraphBullets" in req),
+                len(requests),
+            )
+            requests[before_inline:before_inline] = updates
         if segment_id:
             for request in requests:
                 operation = next(iter(request.values()))

@@ -248,3 +248,17 @@ def test_fenced_inline_text_uses_target_style_before_explicit_code_font(
     assert _replacement_styles(requests, {"bold": True}) == [{
         **RED, "weightedFontFamily": {"fontFamily": "Courier New"},
     }] * len("Revised")
+
+
+def test_cell_list_reset_precedes_target_style_restoration(mocker):
+    body = _body(("Old value", LINK), ("\n", LINK))
+    paragraph = body["content"][0]["paragraph"]
+    paragraph["bullet"] = {"listId": "synthetic-list"}
+    body = {"content": [{"table": {"tableRows": [{"tableCells": [body]}]}}]}
+    requests = _batch(mocker, body, "Old value", "Confirmed", replace_paragraphs=True)
+    kinds = [next(iter(request)) for request in requests]
+    assert kinds.index("updateParagraphStyle") < kinds.index("updateTextStyle")
+    baseline = requests[kinds.index("updateTextStyle")]["updateTextStyle"]
+    assert baseline["textStyle"] == RED
+    assert baseline["fields"] == "foregroundColor,link,underline"
+    assert _replacement_styles(requests, LINK) == [RED] * len("Confirmed")

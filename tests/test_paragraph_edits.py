@@ -7,7 +7,6 @@ from types import SimpleNamespace
 import pytest
 
 from gdoc.api.docs import (
-    _build_cleanup_requests,
     find_text_in_document,
     insert_markdown_into_tab,
     replace_formatted,
@@ -242,15 +241,6 @@ def test_insertion_styles_only_new_paragraphs(mocker, position, markdown, bullet
         assert lower <= target["startIndex"] < target["endIndex"] <= upper
 
 
-def test_cleanup_cannot_delete_image_only_paragraph():
-    """An object plus newline is not an empty disposable paragraph."""
-    body = _body(("", "HEADING_1", False), ("After", "NORMAL_TEXT", False))
-    body["content"][0]["paragraph"]["elements"].insert(0, {
-        "inlineObjectElement": {"inlineObjectId": "synthetic-image"},
-    })
-    assert _build_cleanup_requests(body, 1) == []
-
-
 def test_code_span_closer_ignores_backslash_inside_span():
     """Escapes outside code must not hide a raw backtick closer inside code."""
     text, styles = parse_inline("`a\\`b`")
@@ -316,7 +306,7 @@ def test_cell_blockquote_keeps_explicit_indent(mocker):
 
 
 def _apply_text_requests(body, requests):
-    """Replay UTF-16 text operations, rejecting out-of-range deletions."""
+    """Replay UTF-16 text operations, rejecting out-of-range edits."""
     text = ''.join(e['textRun']['content'] for p in body['content']
                    for e in p['paragraph']['elements']).encode('utf-16-le')
     for request in requests:
@@ -328,6 +318,8 @@ def _apply_text_requests(body, requests):
         elif 'insertText' in request:
             insert = request['insertText']
             start = (insert['location']['index'] - 1) * 2
+            # Insertion may precede the mandatory final newline, never follow it.
+            assert 0 <= start <= len(text) - 2
             text = text[:start] + insert['text'].encode('utf-16-le') + text[start:]
     return text.decode('utf-16-le')
 

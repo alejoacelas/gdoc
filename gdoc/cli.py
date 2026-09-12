@@ -4027,8 +4027,10 @@ def build_parser() -> GdocArgumentParser:
         epilog="Like `edit`, but the change is made in suggest mode (Docs API "
                "Developer Preview): the original text stays until a reviewer "
                "accepts it. Replacement text supports inline markdown only "
-               "(bold, italic, strikethrough, code, links); headings, lists, "
-               "and tables are rejected. Needs comment or edit access on the "
+               "(bold, italic, strikethrough, code, links). Inside a "
+               "paragraph, block markers are literal text; a replacement that "
+               "covers complete paragraphs rejects headings, lists, and "
+               "tables. Needs comment or edit access on the "
                "doc and an OAuth client from a preview-enrolled Cloud "
                "project; never falls back to a direct edit.",
     )

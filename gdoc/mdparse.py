@@ -226,9 +226,15 @@ def _scan(text: str, masked: str) -> tuple[str, list[StyleRange]]:
 
         seg_start = offset
         if kind == "code":
-            # Code spans are literal — content kept verbatim (backslashes too).
+            # Code spans are literal (backslashes kept), normalised per
+            # CommonMark 6.1: line endings become spaces, and one leading
+            # plus one trailing space is dropped when both are present and
+            # the content is not all spaces.
             a, b = _grp(2)
-            inner = text[a:b]
+            inner = text[a:b].replace("\n", " ")
+            if len(inner) >= 2 and inner[0] == inner[-1] == " " \
+                    and inner.strip(" "):
+                inner = inner[1:-1]
             plain_parts.append(inner)
             offset += len(inner)
             styles.append(StyleRange(seg_start, offset, _CODE_FONT, "text_style"))

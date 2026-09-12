@@ -833,10 +833,14 @@ _STRIKE = {"strikethrough": True}
     # content is verbatim and only an equal-length string closes the span.
     ("`code`", "code", [(0, 4, _CODE)]),
     ("``co`de``", "co`de", [(0, 5, _CODE)]),
-    ("`` `x` ``", " `x` ", [(0, 5, _CODE)]),
-    ("```\ncode\n```", "\ncode\n", [(0, 6, _CODE)]),
-    ("```python\nx = 1\n```", "python\nx = 1\n", [(0, 13, _CODE)]),
-    ("```\n**code** `x`\n```", "\n**code** `x`\n", [(0, 14, _CODE)]),
+    # Content is normalised per CommonMark 6.1: line endings become spaces
+    # and one leading plus one trailing space is dropped when both exist.
+    ("`` `x` ``", "`x`", [(0, 3, _CODE)]),
+    ("```\ncode\n```", "code", [(0, 4, _CODE)]),
+    ("```python\nx = 1\n```", "python x = 1 ", [(0, 13, _CODE)]),
+    ("```\n**code** `x`\n```", "**code** `x`", [(0, 12, _CODE)]),
+    ("` `", " ", [(0, 1, _CODE)]),
+    ("` a`", " a", [(0, 2, _CODE)]),
     ("`a` and ``b`` and ```c```", "a and b and c",
      [(0, 1, _CODE), (6, 7, _CODE), (12, 13, _CODE)]),
     # Escapes are not processed inside a code span (CommonMark 6.1): the first
@@ -851,8 +855,8 @@ _STRIKE = {"strikethrough": True}
     ("``", "``", []),
     # Equal-length strings match wherever they sit, so a mid-line run closes
     # a span opened at the start; what follows parses normally.
-    ("```\nfirst ``` literal\n**second**", "\nfirst  literal\nsecond",
-     [(0, 7, _CODE), (16, 22, _BOLD)]),
+    ("```\nfirst ``` literal\n**second**", "first literal\nsecond",
+     [(0, 5, _CODE), (14, 20, _BOLD)]),
     # Tildes are strikethrough only in pairs (GFM); longer runs are literal.
     ("~~s~~", "s", [(0, 1, _STRIKE)]),
     ("~~~s~~~", "~~~s~~~", []),

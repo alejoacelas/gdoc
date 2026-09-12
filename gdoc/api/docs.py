@@ -1299,31 +1299,6 @@ def add_tab(doc_id: str, title: str) -> dict:
         _translate_http_error(e, doc_id)
 
 
-def _build_cleanup_requests(
-    body: dict, position: int, tab_id: str | None = None,
-) -> list[dict]:
-    """Remove an explicitly identified empty paragraph, never its neighbor.
-
-    Call only for a separator created by the current operation. The segment's
-    final newline is mandatory, and non-text elements are never scaffolding.
-    """
-    content = body.get("content", [])
-    for element in content:
-        if element.get("startIndex") != position:
-            continue
-        paragraph = element.get("paragraph", {})
-        elements = paragraph.get("elements", [])
-        if (not elements or any("textRun" not in e for e in elements)
-                or "".join(e["textRun"]["content"] for e in elements) != "\n"
-                or element is content[-1]):
-            return []
-        target = {"startIndex": position, "endIndex": position + 1}
-        if tab_id:
-            target["tabId"] = tab_id
-        return [{"deleteContentRange": {"range": target}}]
-    return []
-
-
 def _tab_body_range(body: dict) -> tuple[int, int]:
     """Return (startIndex, endIndex_exclusive_final_newline) for a tab body.
 

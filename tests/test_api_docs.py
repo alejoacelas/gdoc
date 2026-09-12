@@ -211,183 +211,62 @@ class TestGetDocumentWithTabs:
             get_document_with_tabs("doc1")
 
 
-class TestBuildCleanupRequests:
-    def test_final_empty_heading_is_retained(self):
-        from gdoc.api.docs import _build_cleanup_requests
+class TestReplaceFormattedRequests:
+    """Wording edits issue one batch with the delete and insert requests."""
 
-        body = {"content": [
-            {
-                "paragraph": {
-                    "elements": [{"textRun": {"content": "text\n"}}],
-                    "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
-                },
-                "startIndex": 1,
-                "endIndex": 6,
-            },
-            {
-                "paragraph": {
-                    "elements": [{"textRun": {"content": "\n"}}],
-                    "paragraphStyle": {"namedStyleType": "HEADING_1"},
-                },
-                "startIndex": 6,
-                "endIndex": 7,
-            },
-        ]}
-        reqs = _build_cleanup_requests(body, 6)
-        assert reqs == []  # Final newline is mandatory.
+    @staticmethod
+    def _run(mock_svc, matches, markdown):
+        from gdoc.api.docs import replace_formatted
 
-    def test_normal_text_noop(self):
-        from gdoc.api.docs import _build_cleanup_requests
+        captured = _capture_batch_updates(mock_svc)
+        mock_svc.return_value.documents.return_value \
+            .get.return_value.execute.return_value = {"body": {"content": []}}
+        count = replace_formatted("doc1", matches, markdown, "rev1")
+        assert len(captured) == 1
+        return count, captured[0]["requests"]
 
-        body = {"content": [{
-            "paragraph": {
-                "elements": [{"textRun": {"content": "\n"}}],
+    @patch("gdoc.api.docs.get_docs_service")
+    def test_single_match_requests(self, mock_svc):
+        count, reqs = self._run(mock_svc, [{"startIndex": 10, "endIndex": 13}],
+                                "foobar")
+        assert count == 1
+        # Without a body the block path styles the inserted paragraph.
+        assert reqs == [
+            {"deleteContentRange": {"range": {"startIndex": 10, "endIndex": 13}}},
+            {"insertText": {"location": {"index": 10}, "text": "foobar"}},
+            {"updateParagraphStyle": {
+                "range": {"startIndex": 10, "endIndex": 16},
                 "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
-            },
-            "startIndex": 1,
-            "endIndex": 2,
-        }]}
-        assert _build_cleanup_requests(body, 1) == []
+                "fields": "namedStyleType",
+            }},
+        ]
 
-    def test_no_element_at_position_noop(self):
-        from gdoc.api.docs import _build_cleanup_requests
-
-        body = {"content": []}
-        assert _build_cleanup_requests(body, 99) == []
-
-    def test_non_empty_heading_noop(self):
-        from gdoc.api.docs import _build_cleanup_requests
-
-        body = {"content": [{
-            "paragraph": {
-                "elements": [{"textRun": {"content": "Title\n"}}],
-                "paragraphStyle": {"namedStyleType": "HEADING_1"},
-            },
-            "startIndex": 1,
-            "endIndex": 7,
-        }]}
-        assert _build_cleanup_requests(body, 1) == []
-
-    def test_tab_id_included(self):
-        from gdoc.api.docs import _build_cleanup_requests
-
-        body = {"content": [
-            {
-                "paragraph": {
-                    "elements": [{"textRun": {"content": "x\n"}}],
-                    "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
-                },
-                "startIndex": 1,
-                "endIndex": 3,
-            },
-            {
-                "paragraph": {
-                    "elements": [{"textRun": {"content": "\n"}}],
-                    "paragraphStyle": {"namedStyleType": "HEADING_2"},
-                },
-                "startIndex": 3,
-                "endIndex": 4,
-            },
-        ]}
-        body["content"].append({"startIndex": 4, "endIndex": 9,
-                                "paragraph": {"elements": [
-                                    {"textRun": {"content": "next\n"}},
-                                ]}})
-        reqs = _build_cleanup_requests(body, 3, tab_id="tab1")
-        assert reqs == [{"deleteContentRange": {"range": {
-            "startIndex": 3, "endIndex": 4, "tabId": "tab1",
-        }}}]
-
-    def test_heading_never_promotes_previous_paragraph(self):
-        from gdoc.api.docs import _build_cleanup_requests
-
-        body = {"content": [
-            {
-                "paragraph": {
-                    "elements": [{"textRun": {"content": "text\n"}}],
-                    "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
-                },
-                "startIndex": 1,
-                "endIndex": 6,
-            },
-            {
-                "paragraph": {
-                    "elements": [{"textRun": {"content": "\n"}}],
-                    "paragraphStyle": {"namedStyleType": "HEADING_3"},
-                },
-                "startIndex": 6,
-                "endIndex": 7,
-            },
-        ]}
-        reqs = _build_cleanup_requests(body, 6)
-        assert not any("updateParagraphStyle" in req for req in reqs)
-
-
-class TestReplaceFormattedNoSpeculativeCleanup:
-    """Wording edits never trigger a second mutation of guessed scaffolding."""
-
-    @patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
     @patch("gdoc.api.docs.get_docs_service")
-    def test_single_match_cleanup_position(self, mock_svc, mock_cleanup):
-        """Single match: cleanup pos = startIndex + len(new_text)."""
-        from gdoc.api.docs import replace_formatted
-
-        mock_svc.return_value.documents.return_value \
-            .batchUpdate.return_value.execute.return_value = {}
-        mock_svc.return_value.documents.return_value \
-            .get.return_value.execute.return_value = {"body": {"content": []}}
-
-        matches = [{"startIndex": 10, "endIndex": 13}]  # 3-char match
-        replace_formatted("doc1", matches, "foobar", "rev1")  # 6-char plain_text
-
-        mock_cleanup.assert_not_called()
-
-    @patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
-    @patch("gdoc.api.docs.get_docs_service")
-    def test_multi_match_cleanup_positions(self, mock_svc, mock_cleanup):
-        """Multiple matches: higher-index matches get delta shift from
-        lower-index replacements that occur before them in the document."""
-        from gdoc.api.docs import replace_formatted
-
-        mock_svc.return_value.documents.return_value \
-            .batchUpdate.return_value.execute.return_value = {}
-        mock_svc.return_value.documents.return_value \
-            .get.return_value.execute.return_value = {"body": {"content": []}}
-
-        # 3 matches of 3-char text, replaced with "foobar" (plain_text
-        # is "foobar" = 6 chars after trailing \n strip, delta = 6 - 3 = 3)
+    def test_multi_match_requests_run_last_to_first(self, mock_svc):
         matches = [
             {"startIndex": 10, "endIndex": 13},
             {"startIndex": 50, "endIndex": 53},
             {"startIndex": 100, "endIndex": 103},
         ]
-        replace_formatted("doc1", matches, "foobar", "rev1")
+        count, reqs = self._run(mock_svc, matches, "foobar")
+        assert count == 3
+        deletes = [r["deleteContentRange"]["range"]["startIndex"]
+                   for r in reqs if "deleteContentRange" in r]
+        assert deletes == [100, 50, 10]
+        assert [r["insertText"]["text"] for r in reqs if "insertText" in r] \
+            == ["foobar"] * 3
 
-        mock_cleanup.assert_not_called()
-
-    @patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
     @patch("gdoc.api.docs.get_docs_service")
-    def test_cleanup_position_counts_emoji_as_two_units(self, mock_svc, mock_cleanup):
-        """Docs indexes are UTF-16: a non-BMP emoji in the replacement
-        grows the document by 2, so the cleanup position must reflect it."""
-        from gdoc.api.docs import replace_formatted
-
-        mock_svc.return_value.documents.return_value \
-            .batchUpdate.return_value.execute.return_value = {}
-        mock_svc.return_value.documents.return_value \
-            .get.return_value.execute.return_value = {"body": {"content": []}}
-
-        matches = [{"startIndex": 10, "endIndex": 13}]
-        replace_formatted("doc1", matches, "\U0001F600ab", "rev1")  # 3 chars, 4 units
-
-        mock_cleanup.assert_not_called()
+    def test_emoji_replacement_is_inserted_verbatim(self, mock_svc):
+        count, reqs = self._run(mock_svc, [{"startIndex": 10, "endIndex": 13}],
+                                "\U0001F600ab")
+        assert count == 1
+        assert [r["insertText"]["text"] for r in reqs if "insertText" in r] \
+            == ["\U0001F600ab"]
 
     @patch("gdoc.api.docs._insert_table")
-    @patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
     @patch("gdoc.api.docs.get_docs_service")
-    def test_table_index_after_emoji_is_utf16(
-        self, mock_svc, _cleanup, mock_table,
-    ):
+    def test_table_index_after_emoji_is_utf16(self, mock_svc, mock_table):
         from gdoc.api.docs import replace_formatted
 
         mock_svc.return_value.documents.return_value \
@@ -402,25 +281,17 @@ class TestReplaceFormattedNoSpeculativeCleanup:
         # points but 5 UTF-16 units.
         assert mock_table.call_args[0][1] == 5 + 5
 
-    @patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
     @patch("gdoc.api.docs.get_docs_service")
-    def test_same_length_replacement_no_drift(self, mock_svc, mock_cleanup):
-        """When replacement is same length as original, delta=0."""
-        from gdoc.api.docs import replace_formatted
-
-        mock_svc.return_value.documents.return_value \
-            .batchUpdate.return_value.execute.return_value = {}
-        mock_svc.return_value.documents.return_value \
-            .get.return_value.execute.return_value = {"body": {"content": []}}
-
-        # 3-char match, "bar" -> plain_text "bar" (3 chars), delta=0
+    def test_same_length_replacement(self, mock_svc):
         matches = [
             {"startIndex": 10, "endIndex": 13},
             {"startIndex": 50, "endIndex": 53},
         ]
-        replace_formatted("doc1", matches, "bar", "rev1")
+        count, reqs = self._run(mock_svc, matches, "bar")
+        assert count == 2
+        assert [r["insertText"]["text"] for r in reqs if "insertText" in r] \
+            == ["bar", "bar"]
 
-        mock_cleanup.assert_not_called()
 
 
 class TestFindTextBody:
@@ -686,9 +557,8 @@ class TestZeroWidthReplace:
     """Zero-width matches in replace_formatted act as pure inserts \u2014 no
     deleteContentRange is emitted (Docs API rejects empty ranges)."""
 
-    @patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
     @patch("gdoc.api.docs.get_docs_service")
-    def test_zero_width_match_skips_delete(self, mock_svc, _cleanup):
+    def test_zero_width_match_skips_delete(self, mock_svc):
         from gdoc.api.docs import replace_formatted
 
         captured = _capture_batch_updates(mock_svc)

@@ -943,7 +943,8 @@ class TestNativeImageGuard:
         self._refuses("Text <img src=\"x.png\"> more\n")
 
     def test_bare_opener_is_literal(self):
-        assert parse_markdown("Use ![ literally in prose\n").plain_text.startswith("Use ![")
+        parsed = parse_markdown("Use ![ literally in prose\n")
+        assert parsed.plain_text.startswith("Use ![")
 
     def test_undefined_reference_is_literal(self):
         parsed = parse_markdown("An unmatched ![alt] marker\n")

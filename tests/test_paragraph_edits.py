@@ -161,13 +161,13 @@ def test_multiline_count_mismatch_refuses_before_service_access(mocker):
 
 
 @pytest.mark.parametrize("new", ["Plain", "## Heading", "", "- item"])
-def test_cell_replacement_changes_list_only_for_explicit_markdown(mocker, new):
-    """Cell wording preserves lists; explicit structural Markdown can restyle."""
+def test_cell_replacement_removes_inherited_list_unless_requested(mocker, new):
+    """Whole-cell prose removes lists; list Markdown recreates membership."""
     body = _body(("Old", "NORMAL_TEXT", True))
     body = {"content": [{"table": {"tableRows": [{"tableCells": [body]}]}}]}
     requests = _requests(mocker, body, "Old", new, replace_paragraphs=True)
     resets = [req for req in requests if "deleteParagraphBullets" in req]
-    assert len(resets) == (1 if new in ("## Heading", "- item") else 0)
+    assert len(resets) == 1
     if new == "- item":
         assert any("createParagraphBullets" in req for req in requests)
     else:
@@ -295,14 +295,14 @@ def test_empty_multiline_replacement_retains_only_mandatory_mark(mocker):
 
 
 def test_explicit_multiline_cell_can_remove_paragraphs(mocker):
-    """Whole-cell wording can collapse list items while inheriting their style."""
+    """Whole-cell prose collapses list items and removes list membership."""
     body = _body(("Alpha", "NORMAL_TEXT", True), ("Beta", "NORMAL_TEXT", True))
     body = {"content": [{"table": {"tableRows": [{"tableCells": [body]}]}}]}
     requests = _requests(mocker, body, "Alpha\nBeta", "Prose", replace_paragraphs=True)
     assert requests[0]["deleteContentRange"]["range"] == {
         "startIndex": 1, "endIndex": 11, "tabId": "synthetic-tab",
     }
-    assert len(requests) == 2
+    assert len(requests) == 4
     assert requests[1]["insertText"]["text"] == "Prose"
 
 
@@ -494,11 +494,10 @@ def test_replay_insert_preserves_heading_and_avoids_unneeded_indents(
 
 
 @pytest.mark.parametrize('count', [1, 2])
-@pytest.mark.parametrize('bullet', [False, True])
 def test_replay_191840_cell_wording_retains_custom_paragraph_properties(
-    mocker, count, bullet,
+    mocker, count,
 ):
-    cell = _body(*[('Pending confirmation', 'NORMAL_TEXT', bullet)] * count)
+    cell = _body(*[('Pending confirmation', 'NORMAL_TEXT', False)] * count)
     for paragraph in cell['content']:
         paragraph['paragraph']['paragraphStyle'].update(
             lineSpacing=100, indentStart={'magnitude': 36, 'unit': 'PT'},
@@ -564,3 +563,87 @@ def test_single_paragraph_cannot_bypass_unmatched_newline_check(mocker, new):
     with pytest.raises(GdocError, match='paragraph count mismatch'):
         replace_formatted('doc', matches, new, 'rev', body=body)
     service.assert_not_called()
+
+
+@pytest.mark.parametrize("count", [1, 2])
+@pytest.mark.parametrize("new", ["Prose 😀", "", "- Item", "First\nSecond"])
+@pytest.mark.parametrize("bullet", [False, True])
+def test_whole_cell_list_removal_request_ranges(mocker, count, new, bullet):
+    """Prose, empty, Markdown lists and non-list cells keep scoped requests."""
+    from gdoc.cli import build_parser, cmd_edit
+
+    cell = _body(*[("Old", "HEADING_2", bullet)] * count)
+    neighbor = _body(("Witness", "TITLE", True))
+    for paragraph in neighbor["content"]:
+        for indexed in [paragraph, *paragraph["paragraph"]["elements"]]:
+            indexed["startIndex"] += 100
+            indexed["endIndex"] += 100
+    body = {"content": [{"table": {"tableRows": [{
+        "tableCells": [cell, neighbor],
+    }]}}]}
+    original = deepcopy(body)
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    mocker.patch("gdoc.notify.pre_flight", return_value=None)
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "revisionId": "rev", "tabs": [{
+            "tabProperties": {"tabId": "tab", "title": "Notes", "index": 0},
+            "documentTab": {"body": body},
+        }],
+    })
+    mocker.patch("gdoc.api.drive.get_file_version", return_value={"version": 1})
+    mocker.patch("gdoc.state.update_state_after_command")
+    args = build_parser().parse_args([
+        "edit", "doc", "--cell", "0,0", "--tab", "Notes", "--", new,
+    ])
+    assert cmd_edit(args) == 0
+    requests = service.documents.return_value.batchUpdate.call_args.kwargs[
+        "body"]["requests"]
+    assert body == original
+    rendered = new.removeprefix("- ")
+    assert _apply_text_requests(cell, requests) == rendered + "\n"
+    resets = [r["deleteParagraphBullets"]["range"] for r in requests
+              if "deleteParagraphBullets" in r]
+    styles = [r["updateParagraphStyle"] for r in requests
+              if "updateParagraphStyle" in r]
+    creates = [r for r in requests if "createParagraphBullets" in r]
+    assert bool(creates) == new.startswith("- ")
+    if not bullet and not creates and new:
+        assert resets == styles == []
+        return
+    expected_ranges = ([{"startIndex": 5, "endIndex": 11, "tabId": "tab"},
+                        {"startIndex": 1, "endIndex": 6, "tabId": "tab"}]
+                       if count == 2 and new == "First\nSecond" else
+                       [{"startIndex": 1,
+                         "endIndex": 1 + max(1, utf16_len(rendered)),
+                         "tabId": "tab"}])
+    assert [s["range"] for s in styles] == expected_ranges
+    if bullet or not new or count != len(new.split("\n")):
+        assert resets == expected_ranges
+    for style in styles:
+        assert style["paragraphStyle"]["namedStyleType"] == "NORMAL_TEXT"
+        assert "alignment" not in style["fields"]
+        if bullet and not creates:
+            for field in ("indentStart", "indentFirstLine"):
+                assert field in style["fields"]
+
+
+def test_delete_nonfinal_heading_leaves_later_inline_image_untouched(mocker):
+    """Deleting one heading shifts later objects without consuming their marks."""
+    body = _body(("Context", "NORMAL_TEXT", False),
+                 ("Heading", "HEADING_2", False),
+                 ("Following", "NORMAL_TEXT", False),
+                 ("X", "NORMAL_TEXT", False),
+                 ("Remote", "NORMAL_TEXT", False))
+    image = body["content"][3]
+    image["paragraph"]["elements"] = [
+        {"startIndex": 27, "endIndex": 28,
+         "inlineObjectElement": {"inlineObjectId": "synthetic-image"}},
+        {"startIndex": 28, "endIndex": 29, "textRun": {"content": "\n"}},
+    ]
+    original = deepcopy(body)
+    requests = _requests(mocker, body, "Heading", "")
+    assert requests == [{"deleteContentRange": {"range": {
+        "startIndex": 9, "endIndex": 17, "tabId": "synthetic-tab",
+    }}}]
+    assert body == original
+    assert image["startIndex"] == 27

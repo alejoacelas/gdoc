@@ -1793,7 +1793,8 @@ def replace_formatted(
         tab_id: Optional tab ID for targeting a specific tab.
         body: Original body with paragraph and direct run styles for inline edits.
         replace_paragraphs: Whole-cell replacement may change paragraph count.
-            Plain wording preserves native paragraph styles and list membership.
+            Plain prose replaces list items with NORMAL_TEXT; non-list prose
+            preserves native paragraph styles.
 
     Returns:
         Number of replacements made.
@@ -1813,8 +1814,8 @@ def replace_formatted(
     planned = []
     reset_bullets = set()
     for match in matches:
-        # Whole-cell selection permits structural changes, but an equal-count
-        # wording edit has the same preservation contract as text targeting.
+        # Whole-cell selection permits structural changes. Equal-count edits
+        # retain native marks, with list removal handled explicitly below.
         native = (list(_replacement_paragraphs(body.get("content", []), match))
                   if body is not None else [])
         contextual = body is not None and (
@@ -1847,7 +1848,20 @@ def replace_formatted(
                      if body is not None else None)
             explicit = any(s.type in ("paragraph_style", "bullets")
                            for s in context[0].styles)
-            if explicit and (
+            if replace_paragraphs and not explicit and native and (
+                not new_markdown or (found and found[0].get("bullet"))
+                or (not contextual and all(p.get("bullet") for p, _, _ in native))
+            ):
+                # Plain whole-cell prose is the explicit list-removal route.
+                # Keep non-list paragraph properties and ordinary edits intact.
+                from gdoc.mdparse import StyleRange
+                context[0].styles.append(StyleRange(
+                    0, len(context[0].plain_text),
+                    {"namedStyleType": "NORMAL_TEXT"}, "paragraph_style",
+                ))
+                reset_bullets.add(part["startIndex"])
+                _reset_list_indents(context[0])
+            elif explicit and (
                 (replace_paragraphs and not contextual)
                 or (found and found[0].get("bullet"))
             ):

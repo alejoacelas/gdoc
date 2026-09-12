@@ -3977,7 +3977,11 @@ def build_parser() -> GdocArgumentParser:
                "(bold, italic, strikethrough, links and CommonMark code spans); "
                "block markers are literal. A complete paragraph can explicitly "
                "change its heading, list or quote style. Use --cell for whole-cell "
-               "replacement, including tables and intentional list removal.",
+               "replacement, including tables. Plain prose replacing cell list items "
+               "removes their bullets and sets NORMAL_TEXT; an empty replacement "
+               "leaves one NORMAL_TEXT paragraph. Markdown list markers request "
+               "a list. "
+               "Plain prose in non-list cells preserves paragraph styles.",
     )
     edit_p.add_argument("doc", help="Document ID or URL")
     edit_p.add_argument("old_text", nargs="?", default=None, help="Text to find")

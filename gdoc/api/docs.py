@@ -1667,7 +1667,7 @@ def _empty_paragraph_range(content: list[dict], match: dict):
     if match["startIndex"] != first[1] or match["endIndex"] < last[2]:
         return None
     for i, element in enumerate(content):
-        if element.get("startIndex") == last[1] and "paragraph" in element:
+        if element.get("startIndex", 0) == last[1] and "paragraph" in element:
             start, end = first[1], last[2] + 1
             if i == len(content) - 1:
                 end -= 1

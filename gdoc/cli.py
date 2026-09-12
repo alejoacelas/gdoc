@@ -1224,9 +1224,17 @@ def _prepare_text_replacement(
             msg = "no match found" + (f"; {reason}" if reason else "")
             raise GdocError(msg, exit_code=3)
         if not replace_all and len(matches) > 1:
+            match_tab_ids = {m.get("tabId") for m in matches}
+            matching_tabs = [t for t in tabs if t["id"] in match_tab_ids]
+            guidance = "Use --all or more specific text"
+            if len(matching_tabs) > 1:
+                labels = ", ".join(f"{t['title']} ({t['id']})" for t in matching_tabs)
+                guidance = (
+                    f"Matching tabs: {labels}. "
+                    "Use --all or --tab to narrow scope"
+                )
             raise GdocError(
-                f"multiple matches ({len(matches)} found). "
-                "Use --all or --tab to narrow scope",
+                f"multiple matches ({len(matches)} found). {guidance}",
                 exit_code=3,
             )
 

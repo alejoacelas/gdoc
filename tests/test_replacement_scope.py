@@ -114,6 +114,19 @@ def test_unscoped_ambiguity_and_explicit_tab_are_enforced(services, command):
     with pytest.raises(GdocError, match="multiple matches.*--tab") as error:
         command(_args(all=False))
     assert error.value.exit_code == 3
+    for label in ("Overview (first)", "Appendix (second)"):
+        assert label in str(error.value)
+    batch.assert_not_called()
+
+
+@pytest.mark.parametrize("command", [cmd_edit, cmd_suggest])
+def test_same_tab_ambiguity_requires_all_or_more_specific_text(services, command):
+    _, batch = services
+    with pytest.raises(GdocError, match="multiple matches.*Use --all") as error:
+        command(_args(all=False, tab="Overview"))
+    assert error.value.exit_code == 3
+    assert "--tab" not in str(error.value)
+    assert "more specific text" in str(error.value)
     batch.assert_not_called()
 
 
@@ -195,6 +208,32 @@ def test_empty_replacement_does_not_merge_independent_ranges(services):
     assert len(requests) == 6
     assert all("deleteContentRange" in r for r in requests)
     assert len({_address(r) for r in requests}) == 6
+
+
+@pytest.mark.parametrize("segment", ["headers", "footers", "footnotes"])
+@pytest.mark.parametrize("implicit_zero", [False, True])
+@pytest.mark.parametrize("last", [False, True])
+def test_empty_segment_paragraph_removes_its_mark_except_final_lf(
+    services, segment, implicit_zero, last,
+):
+    _, batch = services
+    first = _content(0, implicit_zero=implicit_zero)["content"][0]
+    second = _content(6)["content"][0]
+    content = [first, second]
+    scope = {"id": "tab", "body": {}, segment: {"segment": {"content": content}}}
+    start, end = (6, 11) if last else (0, 5)
+    # Fixed coordinates keep this planner regression independent of the matcher.
+    match = {"startIndex": start, "endIndex": end,
+             "tabId": "tab", "segmentId": "segment"}
+    replace_formatted("doc-one", [match], "", "revision-source", body=scope)
+    requests = batch.call_args.kwargs["body"]["requests"]
+    expected_start, expected_end = (5, 11) if last else (0, 6)
+    assert requests == [{"deleteContentRange": {"range": {
+        "startIndex": expected_start, "endIndex": expected_end,
+        "tabId": "tab", "segmentId": "segment",
+    }}}]
+    text = "TOKEN\nTOKEN\n"
+    assert text[:expected_start] + text[expected_end:] == "TOKEN\n"
 
 
 @pytest.mark.parametrize("command", ["edit", "suggest"])

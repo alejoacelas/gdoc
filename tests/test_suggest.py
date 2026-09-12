@@ -143,6 +143,7 @@ class TestSuggestRequestShape:
     )
     @patch("gdoc.api.docs.get_docs_service")
     def test_write_control_has_revision_and_suggest_mode(self, mock_svc, _rb):
+        """Suggestion writes retain revision control and execute without retries."""
         service = _service(_ok_response())
         mock_svc.return_value = service
 

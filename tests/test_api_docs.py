@@ -960,6 +960,7 @@ class TestReplaceFormattedNoSpeculativeCleanup:
     }),
 ])
 def test_document_reads_retry(mocker, name, options, expected_kwargs):
+    """All document GET wrappers preserve options and request two retries."""
     from gdoc.api import docs
 
     service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
@@ -979,6 +980,7 @@ def test_document_reads_retry(mocker, name, options, expected_kwargs):
     "disconnects, through_cli", [(1, False), (3, False), (3, True)],
 )
 def test_document_read_transport_disconnect(mocker, capsys, disconnects, through_cli):
+    """A disconnected GET recovers or stops after three attempts with an error."""
     import json
     from http.client import RemoteDisconnected
 
@@ -1023,3 +1025,49 @@ def test_document_read_transport_disconnect(mocker, capsys, disconnects, through
         assert get_document("sample-doc") == document
         assert transport.request.call_count == 2
     resource.batchUpdate.assert_not_called()
+
+
+@pytest.mark.parametrize("module, name, resource_name, method, args", [
+    ("docs", "replace_all_text", "documents", "batchUpdate",
+     ("sample-doc", "apple", "pear")),
+    ("drive", "update_doc_content", "files", "update",
+     ("sample-doc", "Sample text.")),
+    ("drive", "create_doc_from_markdown", "files", "create",
+     ("Sample title", "Sample text.")),
+    ("comments", "create_comment", "comments", "create",
+     ("sample-doc", "Sample comment.")),
+])
+def test_mutation_disconnect_is_not_retried(
+    mocker, module, name, resource_name, method, args,
+):
+    """A lost mutation response propagates after exactly one transport attempt."""
+    import json
+    from http.client import RemoteDisconnected
+    from importlib import import_module
+
+    from googleapiclient.http import HttpRequest
+
+    api = import_module(f"gdoc.api.{module}")
+    transport = mocker.Mock()
+    transport.request.side_effect = [
+        RemoteDisconnected("response lost"),
+        (httplib2.Response({"status": "200"}), b'{}'),
+    ]
+    request = HttpRequest(
+        transport, lambda response, content: json.loads(content),
+        "https://example.invalid/mutation", method="POST",
+    )
+    execute = mocker.spy(request, "execute")
+    sleep = mocker.patch.object(request, "_sleep")
+    factory = "get_docs_service" if module == "docs" else "get_drive_service"
+    service = mocker.patch.object(api, factory).return_value
+    operation = getattr(getattr(service, resource_name).return_value, method)
+    operation.return_value = request
+
+    with pytest.raises(RemoteDisconnected, match="response lost"):
+        getattr(api, name)(*args)
+
+    operation.assert_called_once()
+    execute.assert_called_once_with()
+    transport.request.assert_called_once()
+    sleep.assert_not_called()

@@ -785,6 +785,7 @@ def test_edit_uses_match_tab_when_no_fallback_tab_is_given(mocker):
 
 
 def test_post_write_read_retries_without_retrying_batch(mocker):
+    """The edit executes once before its retried document readback."""
     resource = mocker.patch(
         "gdoc.api.docs.get_docs_service",
     ).return_value.documents.return_value

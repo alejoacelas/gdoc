@@ -623,7 +623,8 @@ def _text_style_fields(style: dict) -> str:
 
 # ParagraphStyle keys this module emits, each a valid Docs API field name.
 _PARAGRAPH_STYLE_FIELDS = frozenset({
-    "namedStyleType", "indentStart", "indentFirstLine", "borderBottom",
+    "namedStyleType", "indentStart", "indentEnd", "indentFirstLine",
+    "borderBottom",
 })
 
 

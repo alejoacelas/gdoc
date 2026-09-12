@@ -623,7 +623,7 @@ def test_whole_cell_list_removal_request_ranges(mocker, count, new, bullet):
         assert style["paragraphStyle"]["namedStyleType"] == "NORMAL_TEXT"
         assert "alignment" not in style["fields"]
         if bullet and not creates:
-            for field in ("indentStart", "indentFirstLine"):
+            for field in ("indentStart", "indentEnd", "indentFirstLine"):
                 assert field in style["fields"]
 
 

@@ -460,3 +460,31 @@ The user wanted PR #70's native replacement route to reject incoming ordered lis
 
 Agent session ctx_529391b69e60 · Commits d0b5495, 89eee48
 Agent session 01a070b6-163b-7f01-b21a-99985daa2388 · Commits b69bd3a, 5504542
+
+# Verify the read-only retry boundary
+
+The user wanted PR #64 retained with bounded read retries and proof that mutations remain single-shot.
+
+- Rebased `alejoacelas/fix-docs-get-retry` in
+  `/Users/alejo/best/tools/active/gdoc/pr64-read-retries`; it was already based on
+  `origin/main` at `dbfa4c34`, so the existing implementation stayed unchanged.
+- Retained tests proving all four document GET wrappers request two retries and
+  preserve field/tab/suggestion options; an actual client request over a mocked
+  transport recovers from one disconnect and stops after three failed attempts.
+  The exhaustion tests preserve the exception and CLI exit 1 without any write.
+- Added four transport-disconnect cases proving Docs `batchUpdate`, Drive Markdown
+  update/create uploads, and Drive comment creation each execute once, never sleep
+  for a retry, and propagate the lost-response error. Existing edit/suggestion
+  tests retain exact write bodies and non-retried execution; post-edit readback
+  still requests two retries.
+- All 1,576 tests and the no-stubs gate pass. Full Ruff still exits 1 with 196
+  findings, exactly matching main by file, rule and message, with none added or
+  removed. Repository-wide lint cleanup remains outside this PR.
+- Read PR comments and inline reviews: no actionable review threads were open.
+  Added short docstrings to all four test functions touched by the existing PR
+  and the new regression, addressing the bot's test-docstring coverage warning.
+- Did not change inline-edit formatting, concurrency recovery, or ambiguous write
+  handling. No push, PR edits, live API calls, or campaign changes were made;
+  coordinator review, live replay, and publication remain pending.
+
+Agent session 01a09703-2c7d-79a1-b813-a95a3b053ff4 · Commits c2814dc

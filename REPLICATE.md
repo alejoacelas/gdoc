@@ -493,3 +493,22 @@ and no additional Google-client retries for mutations.
   coordinator review, live replay, and publication remain pending.
 
 Agent session 01a09703-2c7d-79a1-b813-a95a3b053ff4 · Commits c2814dc
+
+# Clarify the retry boundary
+
+The user wanted both PR #64 review findings fixed while retaining bounded Google-client read retries.
+
+- Renamed and documented tests and corrected earlier claims: reads allow two
+  additional Google-client retries; mutations add no Google-client retries.
+  An offline generated Docs service with real httplib2 and an injected connection
+  proves that distinction while allowing httplib2's internal BadStatusLine retry;
+  the tests do not promise exact wire-send counts.
+- Kept `num_retries=2` and documented its broader retry policy, including 5xx/429
+  and rate-limit 403 responses. Sixteen generated-client cases cover 429/503
+  recovery and exhaustion across all four read wrappers.
+- All 1,594 tests and the no-stubs gate pass. Ruff reports 196 diagnostics,
+  exactly matching `origin/main` by file, rule, message, and multiplicity, with
+  none added or removed. Existing mutation transport behavior remains unchanged.
+- Committed locally without pushing; coordinator review and publication remain.
+
+Agent session 01a09708-ad21-7cb1-a989-f26ca5d4d829 · Commits b4cb261

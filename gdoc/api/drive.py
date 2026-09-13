@@ -161,7 +161,7 @@ def get_file_info(doc_id: str) -> dict:
 
 def update_doc_content(
     doc_id: str, content: str, *, expected_version: int | None = None,
-    document: dict | None = None,
+    document: dict | None = None, allow_lossy: bool = False,
 ) -> int:
     """Replace content without overwriting changes since the guard read.
 
@@ -196,7 +196,8 @@ def update_doc_content(
     if len(tabs) == 1:
         require_write_version(doc_id, expected_version)
         insert_markdown_into_tab(
-            doc_id, tabs[0]["id"], content, replace=True, document=document,
+            doc_id, tabs[0]["id"], content, replace=True,
+            allow_lossy=allow_lossy, document=document,
         )
         with _StagedWrite(doc_id, applied=["document content replaced"]) as progress:
             progress.stage = "reading the resulting version"

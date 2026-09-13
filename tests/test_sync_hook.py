@@ -168,7 +168,10 @@ class TestSyncHookMultiTabSafety:
 
 @pytest.mark.parametrize("scope", [
     {"body": {"content": [{"paragraph": {"elements": [{"person": {}}]}}]}},
-    {"tabs": [{"documentTab": {"headers": {"h": {"content": []}}}}]},
+    # One tab is replaced natively, body only: a rich body still refuses.
+    {"tabs": [{"documentTab": {"body": {"content": [
+        {"paragraph": {"elements": [{"person": {}}]}},
+    ]}}}]},
 ])
 def test_sync_refuses_lossy_scope(mocker, tmp_path, capsys, scope):
     f = tmp_path / "spec.md"

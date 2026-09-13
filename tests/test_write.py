@@ -83,7 +83,7 @@ class TestWriteBasic:
         cmd_write(args)
         mock_update_doc.assert_called_once_with(
             "abc123", "# My Document\n\nContent here.",
-            expected_version=10, document={"tabs": [{}]},
+            expected_version=10, document={"tabs": [{}]}, allow_lossy=False,
         )
 
     @patch("gdoc.state.update_state_after_command")
@@ -125,6 +125,7 @@ class TestWriteBasic:
         cmd_write(args)
         mock_update_doc.assert_called_once_with(
             "abc123", "content", expected_version=10, document={"tabs": [{}]},
+            allow_lossy=False,
         )
 
 
@@ -171,6 +172,7 @@ class TestWriteFileErrors:
         assert rc == 0
         mock_update_doc.assert_called_once_with(
             "abc123", "", expected_version=10, document={"tabs": [{}]},
+            allow_lossy=False,
         )
 
 

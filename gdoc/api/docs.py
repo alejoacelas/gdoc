@@ -1873,22 +1873,7 @@ def insert_markdown_into_tab(
         requests.append({"deleteContentRange": {"range": delete_range}})
 
     if replace:
-        from gdoc.lossy import check_markdown_replacement
-
-        # Lists live beside the body; include only definitions used by its
-        # paragraphs (including cells), not header/footer-only lists.
-        list_ids = {
-            paragraph.get("bullet", {}).get("listId")
-            for paragraph, _, _ in _replacement_paragraphs(
-                body.get("content", []),
-                {"startIndex": body_start, "endIndex": body_end + 1},
-            )
-        }
-        scope = {"body": body, "lists": {
-            key: value for key, value in tab_match["lists"].items()
-            if key in list_ids
-        }}
-        check_markdown_replacement(scope, tab_body=True, allow_lossy=allow_lossy)
+        check_tab_body_replacement(tab_match, allow_lossy=allow_lossy)
         # Deletion retains the native final paragraph. Reset that paragraph
         # before insertion so its bullets, heading, alignment and spacing do
         # not become the initial state of every new paragraph.
@@ -1975,6 +1960,31 @@ def insert_markdown_into_tab(
         "tab_title": tab_match["title"],
         "insert_index": insert_index,
     }
+
+
+def check_tab_body_replacement(tab: dict, *, allow_lossy: bool = False) -> None:
+    """Refuse native losses within one tab body before it is replaced.
+
+    ``tab`` is a flattened tab (``body`` and ``lists`` keys). Lists live
+    beside the body; only definitions used by its paragraphs (including
+    cells) are inspected, not header/footer-only lists.
+    """
+    from gdoc.lossy import check_markdown_replacement
+
+    body = tab.get("body", {})
+    body_start, body_end = _tab_body_range(body)
+    list_ids = {
+        paragraph.get("bullet", {}).get("listId")
+        for paragraph, _, _ in _replacement_paragraphs(
+            body.get("content", []),
+            {"startIndex": body_start, "endIndex": body_end + 1},
+        )
+    }
+    scope = {"body": body, "lists": {
+        key: value for key, value in tab.get("lists", {}).items()
+        if key in list_ids
+    }}
+    check_markdown_replacement(scope, tab_body=True, allow_lossy=allow_lossy)
 
 
 def _replacement_paragraphs(content: list[dict], match: dict):

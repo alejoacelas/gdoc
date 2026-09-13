@@ -270,7 +270,8 @@ def test_nested_list_table_insertion_uses_post_bullet_coordinates(mocker):
 @pytest.mark.parametrize("command", ["write", "push"])
 @pytest.mark.parametrize("allow_lossy", [False, True])
 @pytest.mark.parametrize("native,loss", [
-    ({"tabs": [_tab({})]}, "tab title 'Draft'"),
+    # A single tab is replaced natively, so its title survives: no loss.
+    ({"tabs": [_tab({})]}, None),
     ({"documentStyle": {"useCustomHeaderFooterMargins": True}}, "page setup"),
 ])
 def test_f6_write_and_push_refuse_before_upload_or_warn_on_opt_in(
@@ -289,11 +290,15 @@ def test_f6_write_and_push_refuse_before_upload_or_warn_on_opt_in(
     upload = mocker.patch("gdoc.api.drive.update_doc_content", return_value=11)
     state = mocker.patch("gdoc.state.update_state_after_command")
     handler = cmd_write if command == "write" else cmd_push
-    if allow_lossy:
+    if allow_lossy or loss is None:
         assert handler(args) == 0
         upload.assert_called_once_with("doc", "New text\n", expected_version=10,
-                                       document=native)
-        assert loss in capsys.readouterr().err
+                                       document=native, allow_lossy=allow_lossy)
+        err = capsys.readouterr().err
+        if loss is None:
+            assert "discard" not in err
+        else:
+            assert loss in err
     else:
         with pytest.raises(GdocError, match=loss):
             handler(args)

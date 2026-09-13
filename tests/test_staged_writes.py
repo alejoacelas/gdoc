@@ -853,3 +853,17 @@ def test_prose_replacement_resets_then_styles_retained_paragraph(api, mocker):
     assert styles[0]["range"]["startIndex"] == 1
     assert styles[1]["range"]["endIndex"] >= 1 + utf16_len("Plain prose")
 
+
+@pytest.mark.parametrize("allow_lossy", [False, True])
+def test_single_tab_whole_write_passes_loss_consent(mocker, drive_api, allow_lossy):
+    """--allow-lossy reaches the native single-tab replacement."""
+    files, _, _ = drive_api
+    insert = mocker.patch("gdoc.api.docs.insert_markdown_into_tab")
+    update_doc_content(
+        "synthetic", "New body", expected_version=10, allow_lossy=allow_lossy
+    )
+    insert.assert_called_once()
+    assert insert.call_args.kwargs["allow_lossy"] is allow_lossy
+    assert insert.call_args.kwargs["replace"] is True
+    files.update.assert_not_called()
+

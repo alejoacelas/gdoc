@@ -72,6 +72,7 @@ class TestPushBasic:
         cmd_push(args)
         mock_update_doc.assert_called_once_with(
             "abc123", "# Hello\n", expected_version=10, document={"tabs": [{}]},
+            allow_lossy=False,
         )
 
     @patch("gdoc.state.update_state_after_command")
@@ -112,6 +113,7 @@ class TestPushBasic:
         cmd_push(args)
         mock_update_doc.assert_called_once_with(
             "abc123", "Body", expected_version=10, document={"tabs": [{}]},
+            allow_lossy=False,
         )
 
 

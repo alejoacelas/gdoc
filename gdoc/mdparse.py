@@ -363,8 +363,22 @@ def _image_constructs(text: str):
         alt = text[i + 2:end]
         k = end + 1
         if k < n and text[k] == "(":
-            close = text.find(")", k)
-            if close >= 0:
+            # Same rule as _find_link: balanced parentheses on one line,
+            # and a non-empty destination; otherwise the text is literal.
+            depth = 1
+            close = -1
+            for j in range(k + 1, n):
+                char = text[j]
+                if char == "\n":
+                    break
+                if char == "(":
+                    depth += 1
+                elif char == ")":
+                    depth -= 1
+                    if depth == 0:
+                        close = j
+                        break
+            if close > k + 1:
                 yield "inline", alt
                 i = close + 1
                 continue

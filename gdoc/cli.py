@@ -1607,17 +1607,24 @@ def _check_document_replacement(
     from gdoc.lossy import check_markdown_replacement
 
     doc = get_document_with_tabs(doc_id)
-    if not force_collapse_tabs:
-        tab_count = len(flatten_tabs(doc.get("tabs", [])))
-        if tab_count > 1:
-            raise GdocError(
-                f"{command} would collapse {tab_count} tabs into 1 "
-                "(multi-tab document). Use `gdoc write --tab NAME DOC FILE` "
-                "for per-tab replacement, `gdoc insert --tab NAME DOC FILE` "
-                "to add content, or pass --force-collapse-tabs to confirm.",
-                exit_code=3,
-            )
-    check_markdown_replacement(doc, allow_lossy=allow_lossy)
+    tabs = flatten_tabs(doc.get("tabs", []))
+    if not force_collapse_tabs and len(tabs) > 1:
+        raise GdocError(
+            f"{command} would collapse {len(tabs)} tabs into 1 "
+            "(multi-tab document). Use `gdoc write --tab NAME DOC FILE` "
+            "for per-tab replacement, `gdoc insert --tab NAME DOC FILE` "
+            "to add content, or pass --force-collapse-tabs to confirm.",
+            exit_code=3,
+        )
+    if len(tabs) == 1:
+        # A single-tab document is replaced natively, tab body only: headers,
+        # footers, the tab title and page setup survive, so only the body
+        # inventory applies (the replacement re-checks it before mutating).
+        from gdoc.api.docs import check_tab_body_replacement
+
+        check_tab_body_replacement(tabs[0], allow_lossy=allow_lossy)
+    else:
+        check_markdown_replacement(doc, allow_lossy=allow_lossy)
     return doc
 
 
@@ -1690,7 +1697,7 @@ def cmd_write(args) -> int:
         from gdoc.api.drive import update_doc_content
         command_version = update_doc_content(
             doc_id, content, expected_version=change_info.current_version,
-            document=document,
+            document=document, allow_lossy=getattr(args, "allow_lossy", False),
         )
 
         if mode == "json":
@@ -1862,7 +1869,7 @@ def cmd_push(args) -> int:
 
     command_version = update_doc_content(
         doc_id, body, expected_version=change_info.current_version,
-        document=document,
+        document=document, allow_lossy=getattr(args, "allow_lossy", False),
     )
 
     # Output

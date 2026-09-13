@@ -968,6 +968,21 @@ class TestNativeImageGuard:
         parsed = parse_markdown("![a [b](https://example.com) tail\n")
         assert "tail" in parsed.plain_text
 
+    def test_unbalanced_destination_is_literal(self):
+        parsed = parse_markdown("Malformed ![x](foo(bar) example\n")
+        assert "![x](foo(bar)" in parsed.plain_text
+
+    def test_multiline_destination_is_literal(self):
+        parsed = parse_markdown("![x](first\nsecond) tail\n")
+        assert "tail" in parsed.plain_text
+
+    def test_balanced_parenthesised_destination_refused(self):
+        self._refuses("![x](https://example.com/a_(b).png)\n")
+
+    def test_empty_destination_is_literal(self):
+        parsed = parse_markdown("An empty ![x]() marker\n")
+        assert "![x]()" in parsed.plain_text
+
     def test_nested_bracket_without_destination_is_literal(self):
         parsed = parse_markdown("An ![a [nested] label] marker\n")
         assert "![a [nested] label]" in parsed.plain_text

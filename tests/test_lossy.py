@@ -700,9 +700,8 @@ def test_table_cell_named_styles_require_opt_in(mocker, capsys, named_style, row
         "startIndex": 7, "endIndex": 30, "table": {"tableRows": rows},
     }]})
     if named_style is not None:
-        rows[row_index]["tableCells"][0]["content"][0]["paragraph"]["paragraphStyle"] = {
-            "namedStyleType": named_style,
-        }
+        paragraph = rows[row_index]["tableCells"][0]["content"][0]["paragraph"]
+        paragraph["paragraphStyle"] = {"namedStyleType": named_style}
     markdown = get_tab_text(target["documentTab"], markdown=True)
     assert markdown == "| **header** |\n| --- |\n| item |\n"
     mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
@@ -712,7 +711,8 @@ def test_table_cell_named_styles_require_opt_in(mocker, capsys, named_style, row
     table_insert = mocker.patch("gdoc.api.docs._insert_table")
     lossy = named_style not in (None, "NORMAL_TEXT")
     if lossy:
-        with pytest.raises(GdocError, match="table at index 7.*named paragraph styles") as exc:
+        hazard = "table at index 7.*named paragraph styles"
+        with pytest.raises(GdocError, match=hazard) as exc:
             insert_markdown_into_tab("doc", "target", markdown, replace=True)
         assert exc.value.exit_code == 3
         assert "--allow-lossy" in str(exc.value)

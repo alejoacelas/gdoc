@@ -187,6 +187,8 @@ def check_markdown_replacement(
             for field, label in _PARAGRAPH_STYLE_LOSSES.items():
                 if field in value.get("paragraphStyle", {}):
                     styles.add(label)
+            if "borderBottom" in value.get("paragraphStyle", {}):
+                hazards.add("border-bottom paragraphs (rules or borders are lost)")
             if value.get("listProperties"):
                 styles.add("list glyphs and list styling")
             for key, child in value.items():
@@ -228,6 +230,18 @@ def check_markdown_replacement(
                         hazards.add(
                             f"table at index {index} "
                             "(list paragraphs become plain text)"
+                        )
+                    if any(
+                        block.get("paragraph", {}).get("paragraphStyle", {}).get(
+                            "namedStyleType", "NORMAL_TEXT",
+                        ) != "NORMAL_TEXT"
+                        for row in child.get("tableRows", [])
+                        for cell in row.get("tableCells", [])
+                        for block in cell.get("content", [])
+                    ):
+                        hazards.add(
+                            f"table at index {index} "
+                            "(named paragraph styles become plain text)"
                         )
                 if key in ("rowSpan", "columnSpan") and child > 1:
                     hazards.add("merged table cells")

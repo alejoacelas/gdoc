@@ -111,7 +111,8 @@ def _is_permission_rejection(e: HttpError) -> bool:
         return False
     if reasons:
         return True
-    text = f"{e.reason} {e.content!r}".lower()
+    # HttpError.reason can be the generic HTTP phrase "Forbidden".
+    text = repr(e.content).lower()
     return any(word in text for word in _PERMISSION_WORDS)
 
 

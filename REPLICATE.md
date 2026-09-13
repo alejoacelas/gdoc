@@ -327,3 +327,13 @@ The user wanted PR #65 to refuse table replacements that silently flatten bullet
 - All **2,609 tests pass**, including **147 guard tests**; no-stubs and whitespace checks pass. Ruff matches `origin/main` (`dbfa4c34`) exactly at **196 findings**, with zero additions or removals normalized by relative path, rule, message and source line. No live Google API calls were made.
 
 Agent session 01a09845-89a5-7a03-b27a-44b03364e759 · Commits 38bcb7c, 06d6e2b
+
+# Guard table headings and paragraph rules
+
+The user wanted PR #68's table-heading and border-bottom rule losses blocked in PR #65 before the next restack.
+
+- Observed 18 failing mocked cases before the fix. The guard now names tables containing non-normal named paragraph styles and requires `--allow-lossy`; absent and NORMAL_TEXT cell styles retain their behavior.
+- Border-bottom paragraphs now require the same opt-in: the existing exporter has no rule-rendering helper and emits only their text. Native horizontal-rule behavior and plain/bold-header table behavior remain covered and unchanged.
+- All **2,631 tests pass**, including **169 guard tests**; no-stubs and whitespace checks pass. Ruff matches `origin/main` (`dbfa4c34`) at **196 findings**, with zero additions or removals normalized by relative path, rule, message and source line. No live Google API calls were made.
+
+Agent session 01a09858-843f-7233-81d1-f32d3855d9f9 · Commits 9ac6af2, 9887431

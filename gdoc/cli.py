@@ -1927,7 +1927,14 @@ def cmd_sync_hook(args) -> int:
         doc_id = _resolve_doc_id(metadata["gdoc"])
 
         # Hooks cannot request consent; always fail closed and report a skip.
+        # The version is captured before the guard read so an edit landing
+        # between the two is refused by the write, not adopted.
         try:
+            from gdoc.api.drive import get_file_version
+
+            expected_version = get_file_version(doc_id).get("version")
+            if expected_version is None:
+                raise GdocError("cannot verify document version before writing")
             document = _check_document_replacement(doc_id, command="sync")
         except Exception as e:
             title = metadata.get("title", doc_id)
@@ -1937,7 +1944,9 @@ def cmd_sync_hook(args) -> int:
 
         from gdoc.api.drive import update_doc_content
 
-        command_version = update_doc_content(doc_id, body, document=document)
+        command_version = update_doc_content(
+            doc_id, body, expected_version=expected_version, document=document,
+        )
 
         title = metadata.get("title", doc_id)
         print(

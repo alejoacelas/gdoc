@@ -344,6 +344,7 @@ def test_table_layout_consumes_only_owned_scaffolding(mocker, collaborator, suff
     # The deletion and insertion relocate together under the same revision.
     if collaborator:
         before, after = table_batches
+        assert len(before["requests"]) == len(after["requests"])
         for request_before, request_after in zip(before["requests"], after["requests"]):
             if "deleteContentRange" in request_before:
                 for key in ("startIndex", "endIndex"):

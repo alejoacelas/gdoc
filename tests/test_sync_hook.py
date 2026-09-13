@@ -23,6 +23,8 @@ def _stdin_json(file_path):
 def _stub_single_tab(mocker):
     """Use a plain single-tab snapshot unless a test overrides the read."""
     mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={"tabs": [{}]})
+    # The hook pairs its safety snapshot with a version captured first.
+    mocker.patch("gdoc.api.drive.get_file_version", return_value={"version": 1})
 
 
 class TestSyncHookBasic:
@@ -39,7 +41,7 @@ class TestSyncHookBasic:
             rc = cmd_sync_hook(args)
         assert rc == 0
         mock_update_doc.assert_called_once_with(
-            "abc123", "# Hello\n", document={"tabs": [{}]},
+            "abc123", "# Hello\n", expected_version=1, document={"tabs": [{}]},
         )
         err = capsys.readouterr().err
         assert "SYNC:" in err
@@ -57,7 +59,7 @@ class TestSyncHookBasic:
         with patch("sys.stdin", _stdin_json(str(f))):
             cmd_sync_hook(args)
         mock_update_doc.assert_called_once_with(
-            "abc123", "Body text", document={"tabs": [{}]},
+            "abc123", "Body text", expected_version=1, document={"tabs": [{}]},
         )
 
     @patch("gdoc.state.update_state_after_command")

@@ -837,8 +837,16 @@ class TestBuildCleanupRequests:
                 "startIndex": 6,
                 "endIndex": 7,
             },
+            {
+                "paragraph": {"elements": [{"textRun": {"content": "next\n"}}]},
+                "startIndex": 7,
+                "endIndex": 12,
+            },
         ]}
         reqs = _build_cleanup_requests(body, 6)
+        assert reqs == [{"deleteContentRange": {"range": {
+            "startIndex": 6, "endIndex": 7,
+        }}}]
         assert not any("updateParagraphStyle" in req for req in reqs)
 
 
@@ -847,8 +855,7 @@ class TestReplaceFormattedNoSpeculativeCleanup:
 
     @patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
     @patch("gdoc.api.docs.get_docs_service")
-    def test_single_match_cleanup_position(self, mock_svc, mock_cleanup):
-        """Single match: cleanup pos = startIndex + len(new_text)."""
+    def test_single_match_wording_edit_skips_cleanup(self, mock_svc, mock_cleanup):
         from gdoc.api.docs import replace_formatted
 
         mock_svc.return_value.documents.return_value \
@@ -863,9 +870,7 @@ class TestReplaceFormattedNoSpeculativeCleanup:
 
     @patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
     @patch("gdoc.api.docs.get_docs_service")
-    def test_multi_match_cleanup_positions(self, mock_svc, mock_cleanup):
-        """Multiple matches: higher-index matches get delta shift from
-        lower-index replacements that occur before them in the document."""
+    def test_multi_match_wording_edit_skips_cleanup(self, mock_svc, mock_cleanup):
         from gdoc.api.docs import replace_formatted
 
         mock_svc.return_value.documents.return_value \
@@ -886,9 +891,7 @@ class TestReplaceFormattedNoSpeculativeCleanup:
 
     @patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
     @patch("gdoc.api.docs.get_docs_service")
-    def test_cleanup_position_counts_emoji_as_two_units(self, mock_svc, mock_cleanup):
-        """Docs indexes are UTF-16: a non-BMP emoji in the replacement
-        grows the document by 2, so the cleanup position must reflect it."""
+    def test_emoji_replacement_skips_cleanup(self, mock_svc, mock_cleanup):
         from gdoc.api.docs import replace_formatted
 
         mock_svc.return_value.documents.return_value \
@@ -904,8 +907,8 @@ class TestReplaceFormattedNoSpeculativeCleanup:
     @patch("gdoc.api.docs._insert_table")
     @patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
     @patch("gdoc.api.docs.get_docs_service")
-    def test_table_index_after_emoji_is_utf16(
-        self, mock_svc, _cleanup, mock_table,
+    def test_table_replacement_skips_cleanup(
+        self, mock_svc, mock_cleanup, mock_table,
     ):
         from gdoc.api.docs import replace_formatted
 
@@ -917,9 +920,10 @@ class TestReplaceFormattedNoSpeculativeCleanup:
         md = "\U0001F600 x\n| a | b |\n|---|---|\n| 1 | 2 |"
         replace_formatted("doc1", [{"startIndex": 5, "endIndex": 6}], md, "rev1")
 
-        # plain text before the table placeholder is "😀 x\n" = 4 code
-        # points but 5 UTF-16 units.
-        assert mock_table.call_args[0][1] == 5 + 5
+        # The table index itself is covered by TestReplaceFormattedRequests;
+        # here only the absence of speculative cleanup matters.
+        mock_table.assert_called_once()
+        mock_cleanup.assert_not_called()
 
     @patch("gdoc.api.docs._build_cleanup_requests", return_value=[])
     @patch("gdoc.api.docs.get_docs_service")

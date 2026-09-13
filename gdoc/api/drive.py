@@ -185,6 +185,13 @@ def update_doc_content(
     )
 
     if expected_version is None:
+        if document is not None:
+            # A snapshot read before its version was captured could already
+            # postdate a collaborator edit; the pair must be captured together.
+            raise GdocError(
+                "expected version is required with a supplied document snapshot",
+                exit_code=3,
+            )
         expected_version = get_file_version(doc_id).get("version")
     if expected_version is None:
         raise GdocError("cannot verify document version before writing", exit_code=3)

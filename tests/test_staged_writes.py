@@ -401,9 +401,9 @@ def test_cli_prints_partial_completion_and_exits_one(api, mocker, capsys):
         run_argv(["edit", "synthetic", "Old", MARKDOWN, "--quiet"], check_updates=False)
         == 1
     )
-    err = capsys.readouterr().err
+    out, err = capsys.readouterr()
     assert "Partial completion" in err and "completion uncertain" in err
-    assert "OK" not in err
+    assert "OK" not in out and "OK" not in err
 
 
 @pytest.fixture

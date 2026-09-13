@@ -87,7 +87,9 @@ def test_style_metadata_does_not_block_or_warn(capsys, in_tab, field, border):
     assert capsys.readouterr().err == ""
 
 
-@pytest.mark.parametrize("location", ["body", "headers", "footers", "footnotes", "table"])
+@pytest.mark.parametrize("location", [
+    "body", "headers", "footers", "footnotes", "table",
+])
 def test_content_styles_still_block_and_warn(capsys, location):
     content = body({"textRun": {
         "content": "old\n", "textStyle": {

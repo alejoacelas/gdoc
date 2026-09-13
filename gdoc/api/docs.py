@@ -658,7 +658,7 @@ def find_text_in_document(
         for content, coordinates in _search_containers(document):
             for match in find_text_in_document(
                 None, text, match_case=match_case, body=content,
-                normalize=normalize,
+                normalize=normalize, allow_native_gaps=allow_native_gaps,
             ):
                 # Preserve the legacy body shape when no tab was supplied.
                 if coordinates != {"container": "body"}:

@@ -731,3 +731,29 @@ The human wanted the adversarial comment review resolved, the branch stacked on 
 - No push or live document writes were performed. The coordinator must update its replay checkout/pin before testing this new commit against Google.
 
 Agent session 01a09718-b499-76d3-8e70-02ebf524d672 · Commits d6e86a8 (rebased comment implementation), d8a8b27 (rebased journal), d2f7f68 (single-send transport, output contract, and regression tests)
+
+## Restack PR 68 after native targets
+
+The user wanted PR #68 placed directly after #66, preserving the complete stack and passing offline gates before publication.
+
+- OLD matched `dbfa4c34bfa699ee8dd9839da85eea1fac177d44`; explicitly fetched TOP `bcff2b8a7d60629bb0d9f0455e56a406708feb7e` and verified it against PR #66's head through GitHub.
+- Replayed nine commits: `d6e86a8 → 6f70c35`, `d8a8b27 → 915e3ac`, `d2f7f68 → cb474f8`, `e934721 → a2e42f6`, `798d8ef → 1c5c98b`, `dbcb4ca → 9d12404`, `9ca90dd → 9b1de52`, `fc8c959 → ace6955`, `70d720f → 36adc43`. Six inherited #66 commits became empty because TOP already contained their code, tests and journals: `9791974`, `54a8e19`, `56987ae`, `9506961`, `e7f2070`, `bb62e71`.
+
+Conflict resolutions:
+
+1. `gdoc/api/docs.py` and `gdoc/cli.py`: retained the stack's native-target checks and complete label-collision help.
+   Kept #60's no-speculative-cleanup behavior and #70's staged writes, per-segment shifts and final-newline-safe cleanup helper.
+2. `tests/test_native_targets.py` and `tests/test_api_docs.py`: kept every integrated case, including native objects and unequal Unicode match widths.
+   Obsolete #66 cleanup expectations retain their #60/#70 counterparts asserting one batch, no neighbor promotion and mandatory-newline retention; #61's tab-aware read mocks remain.
+3. `tests/test_api_captures.py`: retained every capture case and #61's footnote matching with segment coordinates.
+   Applied #68's revision metadata and typed anchor-result assertions to the four comment capture cases.
+4. `gdoc/api/comment_transport.py`: retained #70's shared implementation unchanged, with one connection guard and the comment-specific wrapper.
+   It already contains #68's uncertain-response handling plus authentication errors and the on-send callback needed by staged writes; no duplicate implementation remains.
+5. `REPLICATE.md`: retained the entire stack journal first and appended #68's entries.
+   The two inherited #66 journal commits were already present, so their replay added no duplicate entries.
+
+- First full run exposed six fixture incompatibilities, now fixed in `12bbd3f`: five #68 uncertainty cases use a spec-constrained request mock to reach #70's real transport handler, and #64's Drive-comment disconnect case now expects #68's guarded transport and uncertainty error. All cases remain; production code needed no further changes.
+- **2,928 tests passed** using `uv run pytest tests/ -q` with an external socket-blocking plugin; no live Google API calls. No-stubs and whitespace checks passed. Ruff exactly matches `origin/main`: **196 findings**, zero additions or removals, compared as multisets of relative file, rule, message and stripped source line.
+- TOP is an ancestor and `git merge-tree --write-tree TOP HEAD` is clean. No unresolved behavioral decisions; live behavior remains untested. Publication targets only #68's fork branch with the explicit `70d720f` lease, followed by a Codex review request.
+
+Agent session 01a0981e-18c0-7533-81ba-78f8bf547373 · Commits 6f70c35, 915e3ac, cb474f8, a2e42f6, 1c5c98b, 9d12404, 9b1de52, ace6955, 36adc43, 12bbd3f

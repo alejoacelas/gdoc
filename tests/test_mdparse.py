@@ -953,6 +953,21 @@ class TestNativeImageGuard:
         )
         assert "![a [nested] label]" in parsed.plain_text
 
+    def test_deeply_nested_alt_inline_refused(self):
+        self._refuses("![a [b [c] d] e](https://example.com/i.png)\n")
+
+    def test_deeply_nested_alt_reference_refused(self):
+        self._refuses("![a [b [c] d] e][pic]\n\n[pic]: https://example.com/i.png\n")
+
+    def test_deeply_nested_alt_without_destination_is_literal(self):
+        parsed = parse_markdown("See ![a [b [c] d] e] here\n")
+        assert "![a [b [c] d] e]" in parsed.plain_text
+
+    def test_unbalanced_opener_is_not_an_image(self):
+        # `![a ` never closes, so the inner `[b](url)` is an ordinary link.
+        parsed = parse_markdown("![a [b](https://example.com) tail\n")
+        assert "tail" in parsed.plain_text
+
     def test_nested_bracket_without_destination_is_literal(self):
         parsed = parse_markdown("An ![a [nested] label] marker\n")
         assert "![a [nested] label]" in parsed.plain_text

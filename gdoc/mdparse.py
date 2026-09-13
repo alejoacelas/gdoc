@@ -325,17 +325,57 @@ def _list_level(indent: str) -> int:
     return min(columns // 2, 8)
 
 
-# Image descriptions may contain balanced brackets (one level, as CommonMark
-# link text does), so `![a [nested] label](url)` is still an image.
-_IMAGE_ALT = r"((?:[^\[\]]|\[[^\[\]]*\])*)"
-_IMAGE_INLINE_RE = re.compile(r"!\[" + _IMAGE_ALT + r"\]\([^)]*\)")
-_IMAGE_REF_RE = re.compile(r"!\[" + _IMAGE_ALT + r"\](?:\[([^\]]*)\])?")
 _REF_DEF_RE = re.compile(r"^ {0,3}\[([^\]]+)\]:\s*\S", re.MULTILINE)
 _HTML_IMG_RE = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
 
 
 def _ref_label(label: str) -> str:
     return " ".join(label.split()).casefold()
+
+
+def _image_constructs(text: str):
+    """Yield ("inline", alt) or ("reference", label) for each complete image.
+
+    The description may hold balanced brackets to any depth, as CommonMark
+    allows for link text; an unbalanced opener is literal text. Escaped
+    brackets are expected to be masked already.
+    """
+    i = 0
+    n = len(text)
+    while True:
+        i = text.find("![", i)
+        if i < 0:
+            return
+        depth = 0
+        end = -1
+        for j in range(i + 1, n):
+            char = text[j]
+            if char == "[":
+                depth += 1
+            elif char == "]":
+                depth -= 1
+                if depth == 0:
+                    end = j
+                    break
+        if end < 0:
+            i += 2
+            continue
+        alt = text[i + 2:end]
+        k = end + 1
+        if k < n and text[k] == "(":
+            close = text.find(")", k)
+            if close >= 0:
+                yield "inline", alt
+                i = close + 1
+                continue
+        if k < n and text[k] == "[":
+            close = text.find("]", k)
+            if close >= 0 and "[" not in text[k + 1:close]:
+                yield "reference", text[k + 1:close] or alt
+                i = close + 1
+                continue
+        yield "reference", alt
+        i = end + 1
 
 
 def _check_native_images(text: str) -> None:
@@ -363,15 +403,13 @@ def _check_native_images(text: str) -> None:
         if fence is None:
             visible.append(_CODE_RE.sub("", _mask_escapes(line)))
     joined = "\n".join(visible)
-    has_image = bool(_IMAGE_INLINE_RE.search(joined) or _HTML_IMG_RE.search(joined))
+    has_image = bool(_HTML_IMG_RE.search(joined))
     if not has_image:
         defined = {_ref_label(m.group(1)) for m in _REF_DEF_RE.finditer(joined)}
-        if defined:
-            for m in _IMAGE_REF_RE.finditer(joined):
-                label = m.group(2) if m.group(2) else m.group(1)
-                if _ref_label(label) in defined:
-                    has_image = True
-                    break
+        for kind, value in _image_constructs(joined):
+            if kind == "inline" or _ref_label(value) in defined:
+                has_image = True
+                break
     if has_image:
         raise GdocError(
             "native Markdown writes do not support images; content was not changed",

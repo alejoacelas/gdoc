@@ -278,3 +278,13 @@ The user wanted PR #65 directly on #69 at `5b41f05`, with only its own changes a
 - `5b41f05` is an ancestor and the merge-tree check is clean. No live Google API calls were made; remote review is requested separately after the push.
 
 Agent session 01a0980b-d970-7912-ad22-65aa64e40041 · Commits ef61d08, abf5359, 2f1ae73, f5ce96e, 6e43dcd, 7782b5e, 98a8e22, f46e482, 4045830
+
+# Guard numbered-list restarts
+
+The user wanted PR #65's numbered-list restart finding reproduced, fixed in the replacement guard, verified offline, and published for another Codex review.
+
+- Reproduced two adjacent native lists starting at 1: tab export emitted 1 then 2, and the original guard allowed replacement with only a style warning; the regression failed before the fix.
+- The guard now names adjacent or interleaved numbered list IDs, non-1 starts, and lists resumed after a paragraph break as hazards requiring `--allow-lossy`. Continuous numbering, bullets, separate fresh lists, unused levels, and per-tab list ownership retain their existing behavior. Exporter and insertion code are unchanged.
+- Added 14 cases; **2,576 tests pass**, including **122 guard tests**. No-stubs and whitespace checks pass; Ruff matches `origin/main` (`dbfa4c34`) at **196 findings**, zero additions or removals normalized by relative path, rule, message and source line. No live Google API calls were made.
+
+Agent session 01a09810-33a2-7360-a8f4-8f4207c85c57 · Commits c58fa14, 56f20f1

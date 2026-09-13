@@ -759,3 +759,13 @@ Conflict resolutions:
 Agent session 01a0981e-18c0-7533-81ba-78f8bf547373 · Commits 6f70c35, 915e3ac, cb474f8, a2e42f6, 1c5c98b, 9d12404, 9b1de52, ace6955, 36adc43, 12bbd3f
 
 The user wanted PR #68 restacked on #66 `16bf077`: retained both log sides with no code conflicts; 2,941 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_0212d4a76524 · Commits b0ead68, 44f8ec4, 14d2e8e, fcdb82b, bc0043d, 26ead8a, 5beb27e, e041040, 5423209, 2ddba09, a5e4f9c.
+
+## Refuse generic Forbidden comment failures
+
+The human wanted PR #68's generic HTTP reason classification fixed before another review.
+
+- Added four regressions first: quota, disabled API, empty and malformed response bodies with HTTP reason `Forbidden` all incorrectly created a Drive fallback before the fix.
+- Removed the transport reason from permission wording checks; structured reasons and response-body permission wording still allow definite capability fallback.
+- All 2,945 tests passed with an external socket-blocking plugin and no live Google API calls; no-stubs and whitespace checks passed. Ruff matched `origin/main` at 196 findings, with zero added or removed findings after normalizing relative file, rule, message and source line.
+
+Agent session 01a09834-0055-74f3-a059-50fdd0b19160 · Commits 9936468 (failing regressions), c01cb37 (permission classification fix)

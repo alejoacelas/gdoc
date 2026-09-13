@@ -7,6 +7,7 @@ import pytest
 from gdoc.api.docs import insert_markdown_into_tab
 from gdoc.cli import build_parser, cmd_push, cmd_write
 from gdoc.lossy import check_markdown_replacement
+from gdoc.notify import ChangeInfo
 from gdoc.util import GdocError
 
 
@@ -206,7 +207,8 @@ def test_full_write_scope(mocker, tmp_path, command, scope, mode):
         doc="doc", file=str(path), force=True, force_collapse_tabs=True,
         allow_lossy=mode == "opt-in", quiet=True,
     )
-    mocker.patch("gdoc.cli._check_write_conflict", return_value=(None, mode == "no-op"))
+    mocker.patch("gdoc.cli._check_write_conflict",
+                 return_value=(ChangeInfo(current_version=2), mode == "no-op"))
     noop = mocker.patch("gdoc.cli._finish_noop_write", return_value=0)
     fetch = mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value=scope)
     mutation = mocker.patch("gdoc.api.drive.update_doc_content", return_value=2)
@@ -223,7 +225,8 @@ def test_full_write_scope(mocker, tmp_path, command, scope, mode):
             mutation.assert_not_called()
             fetch.assert_not_called()
         else:
-            mutation.assert_called_once_with("doc", "new")
+            mutation.assert_called_once_with("doc", "new", expected_version=2,
+                                             document=scope)
 
 
 @pytest.mark.parametrize("command", ["write", "push"])
@@ -231,7 +234,8 @@ def test_lossy_opt_in_does_not_allow_tab_collapse(mocker, tmp_path, command):
     path = tmp_path / "draft.md"
     path.write_text("---\ngdoc: doc\n---\nnew", encoding="utf-8")
     args = SimpleNamespace(doc="doc", file=str(path), allow_lossy=True)
-    mocker.patch("gdoc.cli._check_write_conflict", return_value=(None, False))
+    mocker.patch("gdoc.cli._check_write_conflict",
+                 return_value=(ChangeInfo(current_version=2), False))
     mocker.patch("gdoc.api.docs.get_document_with_tabs",
                  return_value={"tabs": [{}, {}]})
     mutation = mocker.patch("gdoc.api.drive.update_doc_content")
@@ -252,7 +256,8 @@ def test_parser_opt_in_is_separate(argv):
 def test_structure_read_failure_propagates_before_upload(mocker, tmp_path):
     path = tmp_path / "draft.md"
     path.write_text("new", encoding="utf-8")
-    mocker.patch("gdoc.cli._check_write_conflict", return_value=(None, False))
+    mocker.patch("gdoc.cli._check_write_conflict",
+                 return_value=(ChangeInfo(current_version=2), False))
     mocker.patch(
         "gdoc.api.docs.get_document_with_tabs",
         side_effect=GdocError("unavailable"),
@@ -267,7 +272,8 @@ def test_structure_read_failure_propagates_before_upload(mocker, tmp_path):
 def test_full_write_uses_one_safety_snapshot(mocker, tmp_path, command):
     path = tmp_path / "draft.md"
     path.write_text("---\ngdoc: doc\n---\nnew", encoding="utf-8")
-    mocker.patch("gdoc.cli._check_write_conflict", return_value=(None, False))
+    mocker.patch("gdoc.cli._check_write_conflict",
+                 return_value=(ChangeInfo(current_version=2), False))
     fetch = mocker.patch("gdoc.api.docs.get_document_with_tabs", side_effect=[
         {"tabs": [tab("Tab 1", PLAIN)]},
         {"tabs": [tab("Tab 1", PLAIN), tab("new-tab", PLAIN)]},
@@ -325,7 +331,8 @@ def test_named_range_names_are_not_schema_fields(mocker, tmp_path, name, command
             "startIndex": 1, "endIndex": 3,
         }]}]},
     }}}]}
-    mocker.patch("gdoc.cli._check_write_conflict", return_value=(None, False))
+    mocker.patch("gdoc.cli._check_write_conflict",
+                 return_value=(ChangeInfo(current_version=2), False))
     mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value=doc)
     mutation = mocker.patch("gdoc.api.drive.update_doc_content", return_value=2)
     mocker.patch("gdoc.state.update_state_after_command")

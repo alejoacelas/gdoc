@@ -262,7 +262,7 @@ def test_cross_table_edit_refuses_before_mutation(mocker):
     document = {"body": {"content": [paragraph("Left\n", 1), middle,
                                        paragraph("Right\n", middle["endIndex"])]}}
     mocker.patch("gdoc.notify.pre_flight", return_value=None)
-    mocker.patch.object(docs, "get_document", return_value=document)
+    mocker.patch.object(docs, "get_document_with_tabs", return_value=document)
     replace = mocker.patch.object(docs, "replace_formatted")
     with pytest.raises(GdocError, match="no match found") as exc:
         cmd_edit(edit_args(cell=None, old_text="Left\nRight", new_text="Joined"))
@@ -331,7 +331,7 @@ def test_unicode_edit_does_not_delete_paragraph_mark(mocker):
     document = {"body": {"content": [paragraph("İ PLAN\n", 1),
                                        paragraph("Keep\n", 8)]}}
     mocker.patch("gdoc.notify.pre_flight", return_value=None)
-    mocker.patch.object(docs, "get_document", return_value=document)
+    mocker.patch.object(docs, "get_document_with_tabs", return_value=document)
     replace = mocker.patch.object(docs, "replace_formatted", return_value=1)
     mocker.patch("gdoc.api.drive.get_file_version", return_value={"version": 1})
     mocker.patch("gdoc.state.update_state_after_command")

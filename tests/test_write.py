@@ -3,7 +3,8 @@
 import json
 import os
 from types import SimpleNamespace
-from unittest.mock import ANY, patch, MagicMock
+from unittest.mock import ANY
+from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -82,7 +83,7 @@ class TestWriteBasic:
         cmd_write(args)
         mock_update_doc.assert_called_once_with(
             "abc123", "# My Document\n\nContent here.",
-            expected_version=10, document={},
+            expected_version=10, document={"tabs": [{}]},
         )
 
     @patch("gdoc.state.update_state_after_command")
@@ -123,7 +124,7 @@ class TestWriteBasic:
         )
         cmd_write(args)
         mock_update_doc.assert_called_once_with(
-            "abc123", "content", expected_version=10, document={},
+            "abc123", "content", expected_version=10, document={"tabs": [{}]},
         )
 
 
@@ -169,7 +170,7 @@ class TestWriteFileErrors:
         rc = cmd_write(args)
         assert rc == 0
         mock_update_doc.assert_called_once_with(
-            "abc123", "", expected_version=10, document={},
+            "abc123", "", expected_version=10, document={"tabs": [{}]},
         )
 
 
@@ -401,7 +402,7 @@ class TestWriteQuietNoForce:
         mock_ver.return_value = {"version": 10}
         args = _make_args(file=str(f), quiet=True)
         cmd_write(args)
-        assert mock_ver.call_count == 2  # Conflict check, then no-op export.
+        assert mock_ver.call_count == 1  # #70 reuses the preflight version.
 
     @patch("gdoc.api.drive.get_file_version")
     @patch("gdoc.state.load_state")
@@ -799,7 +800,8 @@ class TestWriteTabScoped:
         rc = cmd_write(args)
         assert rc == 0
         mock_insert.assert_called_once_with(
-            "abc123", "TODO for Mark", "# New body\n", replace=True, allow_lossy=False, document=ANY,
+            "abc123", "TODO for Mark", "# New body\n", replace=True,
+            allow_lossy=False, document=ANY,
         )
 
     @patch("gdoc.state.update_state_after_command")
@@ -824,9 +826,8 @@ class TestWriteTabScoped:
         args = _make_args(file=str(f), tab="TODO")
         cmd_write(args)
         mock_update_doc.assert_not_called()
-        # The tab-count safety check runs only on the full-doc path;
-        # --tab writes must not invoke it.
-        mock_tabs.assert_not_called()
+        # #70 reads one snapshot to pin the tab write; it never uploads via Drive.
+        mock_tabs.assert_called_once_with("abc123")
 
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.api.drive.get_file_version",

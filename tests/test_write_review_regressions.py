@@ -49,7 +49,7 @@ def args_for(tmp_path, quiet=False, force=False, collapse=False):
     path.write_text("---\ngdoc: synthetic\n---\nNew body")
     return SimpleNamespace(doc="synthetic", file=str(path), quiet=quiet, force=force,
                            tab=None, force_collapse_tabs=collapse, json=False,
-                           plain=False, verbose=False)
+                           plain=False, verbose=False, allow_lossy=True)
 
 
 @pytest.mark.parametrize("command", [cmd_write, cmd_push])
@@ -59,6 +59,7 @@ def args_for(tmp_path, quiet=False, force=False, collapse=False):
 def test_first_docs_snapshot_is_the_only_whole_write_authority(
     mocker, tmp_path, command, quiet, force, collapse,
 ):
+    mocker.patch.object(drive, "export_doc", return_value="Original")
     service = MagicMock()
     api = service.documents.return_value
     mocker.patch.object(docs, "get_docs_service", return_value=service)
@@ -103,7 +104,7 @@ def test_second_write_refuses_unseen_edit_after_first_write(mocker, tmp_path,
     mocker.patch("gdoc.state.save_state", side_effect=save)
     mocker.patch("gdoc.notify.pre_flight", side_effect=lambda *a, **k: ChangeInfo(
         current_version=version, last_read_version=state.last_read_version))
-    mocker.patch("gdoc.cli._doc_matches", return_value=False)
+    mocker.patch("gdoc.cli._doc_matches", return_value=None)
     mocker.patch.object(drive, "get_file_version", side_effect=lambda _: {
         "version": version,
     })

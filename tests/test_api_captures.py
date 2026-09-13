@@ -166,7 +166,10 @@ def test_footnote_body_is_not_document_body():
     reference = document['body']['content'][1]['paragraph']['elements'][1]
     footnote = document['footnotes'][reference['footnoteReference']['footnoteId']]
     assert footnote['footnoteId'] == 'footnote-1'
-    assert docs.find_text_in_document(document, 'Note.') == []
+    # #61 includes footnotes with their own segment coordinates.
+    assert docs.find_text_in_document(document, 'Note.') == [
+        {'startIndex': 0, 'endIndex': 5, 'segmentId': 'footnote-1',
+         'container': 'footnote'}]
     assert docs.find_text_in_document(None, 'Note.', body=footnote) == [
         {'startIndex': 0, 'endIndex': 5}]
 

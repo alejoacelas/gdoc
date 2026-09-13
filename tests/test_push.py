@@ -71,7 +71,7 @@ class TestPushBasic:
         args = _make_args(file=str(f))
         cmd_push(args)
         mock_update_doc.assert_called_once_with(
-            "abc123", "# Hello\n", expected_version=10, document={},
+            "abc123", "# Hello\n", expected_version=10, document={"tabs": [{}]},
         )
 
     @patch("gdoc.state.update_state_after_command")
@@ -111,7 +111,7 @@ class TestPushBasic:
         args = _make_args(file=str(f))
         cmd_push(args)
         mock_update_doc.assert_called_once_with(
-            "abc123", "Body", expected_version=10, document={},
+            "abc123", "Body", expected_version=10, document={"tabs": [{}]},
         )
 
 
@@ -243,7 +243,7 @@ class TestPushQuiet:
         args = _make_args(file=str(f), quiet=True)
         cmd_push(args)
         mock_pf.assert_not_called()
-        assert mock_ver.call_count == 2  # Conflict check, then no-op export.
+        assert mock_ver.call_count == 1  # #70 reuses the preflight version.
 
     @patch("gdoc.api.drive.get_file_version")
     @patch("gdoc.state.load_state")

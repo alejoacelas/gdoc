@@ -137,15 +137,15 @@ def test_table_only_empty_tab_pins_the_first_table_batch(api, mocker):
     mocker.patch(
         "gdoc.api.docs.get_document_with_tabs", return_value=snapshot(prefix="")
     )
-    api.batchUpdate.return_value.execute.side_effect = [response("r2"), response("r3")]
-    api.get.return_value.execute.return_value = snapshot("r2", "", table=True)
+    api.get.return_value.execute.return_value = snapshot("r3", "", table=True)
     insert_markdown_into_tab(
         "synthetic", "Notes", "| A |\n|---|\n| B |", position="end"
     )
-    assert "insertTable" in batches(api)[0]["requests"][0]
+    assert "insertTable" in batches(api)[1]["requests"][0]
     assert [b["writeControl"]["requiredRevisionId"] for b in batches(api)] == [
         "r1",
         "r2",
+        "r3",
     ]
 
 
@@ -475,6 +475,7 @@ def test_cli_carries_pre_guard_version_even_when_forced(
         force=force,
         tab=None,
         force_collapse_tabs=False,
+        allow_lossy=True,
         json=False,
         plain=False,
         verbose=False,
@@ -730,18 +731,21 @@ def test_replacement_clears_bullet_inherited_from_final_paragraph(
     resets = [r["deleteParagraphBullets"]["range"] for r in requests
               if "deleteParagraphBullets" in r]
     assert resets == [
-        {"startIndex": 1, "endIndex": 1 + utf16_len(markdown) + 1, "tabId": "t1"}
+        {"startIndex": 1, "endIndex": 2, "tabId": "t1"}
     ]
     assert kinds[0] == "deleteContentRange"
     if markdown:
-        assert kinds[1:3] == ["insertText", "deleteParagraphBullets"]
+        assert kinds[1:5] == ["deleteParagraphBullets", "updateParagraphStyle",
+                              "updateTextStyle", "insertText"]
     assert not any("createParagraphBullets" in r for r in requests)
 
 
-def test_replacement_without_inherited_bullet_adds_no_reset(api):
+def test_replacement_without_inherited_bullet_resets_retained_mark(api):
     insert_markdown_into_tab("synthetic", "Notes", "Plain prose", replace=True)
     requests = batches(api)[0]["requests"]
-    assert not any("deleteParagraphBullets" in r for r in requests)
+    assert [r["deleteParagraphBullets"]["range"] for r in requests
+            if "deleteParagraphBullets" in r] == [
+                {"startIndex": 1, "endIndex": 2, "tabId": "t1"}]
 
 
 def test_replacement_ignores_bullet_on_deleted_first_paragraph(api, mocker):
@@ -751,7 +755,9 @@ def test_replacement_ignores_bullet_on_deleted_first_paragraph(api, mocker):
     mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value=doc)
     insert_markdown_into_tab("synthetic", "Notes", "Plain prose", replace=True)
     requests = batches(api)[0]["requests"]
-    assert not any("deleteParagraphBullets" in r for r in requests)
+    assert [r["deleteParagraphBullets"]["range"] for r in requests
+            if "deleteParagraphBullets" in r] == [
+                {"startIndex": 1, "endIndex": 2, "tabId": "t1"}]
 
 
 def tab_write_args(path, **overrides):
@@ -820,15 +826,16 @@ def test_empty_replacement_normalizes_retained_heading(api, mocker):
     assert styles == [{
         "range": {"startIndex": 1, "endIndex": 2, "tabId": "t1"},
         "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
-        "fields": "namedStyleType,indentStart,indentEnd,indentFirstLine",
+        "fields": "*",
     }]
     assert [next(iter(r)) for r in requests] == [
-        "deleteContentRange", "updateParagraphStyle"
+        "deleteContentRange", "deleteParagraphBullets", "updateParagraphStyle",
+        "updateTextStyle"
     ]
 
 
-def test_prose_replacement_styles_retained_paragraph_once(api, mocker):
-    """Inserted prose already stamps NORMAL_TEXT onto the retained mark."""
+def test_prose_replacement_resets_then_styles_retained_paragraph(api, mocker):
+    """#65 resets the retained mark before styling newly inserted prose."""
     doc = snapshot()
     body(doc)["content"][-1]["paragraph"]["paragraphStyle"] = {
         "namedStyleType": "HEADING_1"
@@ -838,8 +845,8 @@ def test_prose_replacement_styles_retained_paragraph_once(api, mocker):
     requests = batches(api)[0]["requests"]
     styles = [r["updateParagraphStyle"] for r in requests
               if "updateParagraphStyle" in r]
-    assert len(styles) == 1
+    assert len(styles) == 2  # #65 resets before insertion, then styles the prose.
     assert styles[0]["paragraphStyle"] == {"namedStyleType": "NORMAL_TEXT"}
     assert styles[0]["range"]["startIndex"] == 1
-    assert styles[0]["range"]["endIndex"] >= 1 + utf16_len("Plain prose")
+    assert styles[1]["range"]["endIndex"] >= 1 + utf16_len("Plain prose")
 

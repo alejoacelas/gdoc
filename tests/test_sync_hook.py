@@ -38,7 +38,9 @@ class TestSyncHookBasic:
         with patch("sys.stdin", _stdin_json(str(f))):
             rc = cmd_sync_hook(args)
         assert rc == 0
-        mock_update_doc.assert_called_once_with("abc123", "# Hello\n", document={})
+        mock_update_doc.assert_called_once_with(
+            "abc123", "# Hello\n", document={"tabs": [{}]},
+        )
         err = capsys.readouterr().err
         assert "SYNC:" in err
         assert "My Doc" in err
@@ -54,7 +56,9 @@ class TestSyncHookBasic:
         args = _make_args()
         with patch("sys.stdin", _stdin_json(str(f))):
             cmd_sync_hook(args)
-        mock_update_doc.assert_called_once_with("abc123", "Body text", document={})
+        mock_update_doc.assert_called_once_with(
+            "abc123", "Body text", document={"tabs": [{}]},
+        )
 
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.api.drive.get_drive_service")

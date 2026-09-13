@@ -958,3 +958,14 @@ def test_fenced_replacement_preserves_blank_paragraph_after_closer(mocker, comma
     planner = _requests if command == "edit" else _suggest_requests
     requests = planner(mocker, body, "Alpha\nBeta\n", "```\ncode\n```\n\n")
     assert _apply_text_requests(body, requests) == "code\n\n"
+
+
+def test_cleanup_cannot_delete_image_only_paragraph():
+    """An object plus newline is not an empty disposable paragraph."""
+    from gdoc.api.docs import _build_cleanup_requests
+
+    body = _body(("", "HEADING_1", False), ("After", "NORMAL_TEXT", False))
+    body["content"][0]["paragraph"]["elements"].insert(0, {
+        "inlineObjectElement": {"inlineObjectId": "synthetic-image"},
+    })
+    assert _build_cleanup_requests(body, 1) == []

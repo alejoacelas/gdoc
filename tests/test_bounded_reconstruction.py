@@ -263,7 +263,8 @@ def test_nested_list_table_insertion_uses_post_bullet_coordinates(mocker):
     assert doc_id == "doc"
     assert index == 1 + utf16_len("Parent 😀\nChild\nGrandchild\nSibling\n\n")
     assert table.rows == [["Key", "Value"], ["A", "B"]]
-    assert insert_table.call_args.kwargs == {"tab_id": "draft"}
+    assert insert_table.call_args.kwargs["tab_id"] == "draft"
+    assert insert_table.call_args.kwargs["ordinal"] == 1
 
 
 @pytest.mark.parametrize("command", ["write", "push"])
@@ -290,7 +291,8 @@ def test_f6_write_and_push_refuse_before_upload_or_warn_on_opt_in(
     handler = cmd_write if command == "write" else cmd_push
     if allow_lossy:
         assert handler(args) == 0
-        upload.assert_called_once_with("doc", "New text\n")
+        upload.assert_called_once_with("doc", "New text\n", expected_version=10,
+                                       document=native)
         assert loss in capsys.readouterr().err
     else:
         with pytest.raises(GdocError, match=loss):

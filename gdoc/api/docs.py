@@ -1695,13 +1695,10 @@ def add_tab(doc_id: str, title: str) -> dict:
 def _build_cleanup_requests(
     body: dict, position: int, tab_id: str | None = None,
 ) -> list[dict]:
-    """Build batchUpdate requests to clean up an empty heading paragraph.
+    """Remove an explicitly identified empty paragraph, never its neighbor.
 
-    Pure function \u2014 inspects body content and returns request dicts
-    without making API calls. When the deleted text was the entire
-    content of a heading paragraph, an empty "\\n" with the heading
-    style remains. This returns requests that transfer that style to
-    the preceding paragraph (if NORMAL_TEXT) and delete the empty one.
+    Call only for a separator created by the current operation. The segment's
+    final newline is mandatory, and non-text elements are never scaffolding.
     """
     content = body.get("content", [])
     for element in content:
@@ -2656,9 +2653,12 @@ def replace_formatted(
                         - table.removed_tabs_before + shift
                     )
                     revision_id = _insert_table(
-                        doc_id, idx, table, tab_id=match.get("tabId", tab_id), revision_id=revision_id,
+                        doc_id, idx, table, tab_id=match.get("tabId", tab_id),
+                        revision_id=revision_id,
                         progress=progress,
-                        resolve_index=_table_position_resolver(parsed, table, match.get("tabId", tab_id)),
+                        resolve_index=_table_position_resolver(
+                            parsed, table, match.get("tabId", tab_id),
+                        ),
                         ordinal=ordinal, scaffolding=_table_scaffolding(parsed, table),
                     )
 

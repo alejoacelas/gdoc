@@ -307,3 +307,13 @@ The user wanted PR #65's three new review findings reproduced and fixed without 
 - Offline suite: **2,593 passed**, including **131 guard tests**. No-stubs and whitespace checks pass; Ruff matches `origin/main` (`dbfa4c34`) exactly at **196 findings**, with zero additions or removals normalized by relative file, rule, message and source line. No live Google API calls were made.
 
 Agent session 01a09820-f492-7843-8f86-b82d6aa599e7 · Commits c38d48b
+
+
+# Guard first-row table formatting
+
+The user wanted PR #65 to refuse table round trips that silently turn ordinary first-row text bold.
+
+- Added six mocked regression cases and observed them fail before the fix. The replacement guard now names each pipe table whose first-row text would gain bold and requires `--allow-lossy`; bold headers, empty cells, and exporter-rejected tables retain their behavior.
+- All **2,599 tests pass**, including **137 guard tests**; no-stubs and whitespace checks pass. Ruff matches `origin/main` (`dbfa4c34`) exactly at **196 findings**, with zero additions or removals normalized by relative path, rule, message and source line. No live Google API calls were made.
+
+Agent session 01a09833-b1de-7371-bed9-2578bccc6b9d · Commits 81393a0, 313164b

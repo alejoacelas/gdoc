@@ -202,3 +202,14 @@ The user wanted PR #69 based on #63 at `28c4ba9`, independently green, with nati
 - Full offline suite: **2,400 passed**. No-stubs and whitespace checks pass; Ruff matches origin/main's **196** findings exactly by relative file, rule, message and source line, with zero additions or removals. `28c4ba9` is an ancestor and the merge-tree check is conflict-free. No live Google API calls were made.
 
 Agent session 01a09807-e6f3-7b51-833a-9956262d8538 · Commits b2de1a4, 148c655, 7a406bc
+
+# Babysit PR 69 through Codex and CodeRabbit
+
+The user wanted PR #69 watched until CI, Codex and CodeRabbit were green and quiet, with real findings fixed on the branch and out-of-scope requests deferred.
+
+- Codex approved the first head with no findings. After the coordinator relinearized the branch onto #63 and added pipe-table export, its second pass raised two P2 findings on the new table path, both confirmed against the code.
+- A data row of dashes (`---`) exported as a header separator, so the parser split one table into two and dropped the row. The exporter now escapes the first dash of a separator-shaped cell; the parser already strips that escape.
+- Cells with leading or trailing whitespace lost it, because the parser strips pipe-delimiter padding. Such tables keep the tab-joined text export. Eight round-trip and fallback cases cover both; the suite is **2,408 passed** with zero added Ruff findings.
+- CodeRabbit's free OSS plan allows one review per hour for the whole organisation, and five PRs were competing. The coordinator serialised the summons; PR 69 took the 01:17 UTC slot.
+
+Agent session 5fa61d47-3ed3-4232-bab5-5fd92e4c4185 · Commits 9250ffd

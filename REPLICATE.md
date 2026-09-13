@@ -629,3 +629,5 @@ The human wanted PR #66 to delete paragraph wording without discarding positione
 - All 2,841 tests passed with network connections blocked; no live Google API calls occurred. The no-stubs check passed, and normalized Ruff findings exactly matched origin/main: 196 each, zero additions or removals.
 
 Agent session ctx_09e67e8836d6 · Commits 276ab28, e6b80b5
+
+The user wanted PR #66 restacked on #64 `0f56d7c`: preserved both log sides and all code/tests including positioned-object marks; 2,858 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_a0c743256dab · Commits f7e87355402af84d51012496d33527a4c0171b1b.

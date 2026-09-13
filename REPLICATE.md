@@ -769,3 +769,5 @@ The human wanted PR #68's generic HTTP reason classification fixed before anothe
 - All 2,945 tests passed with an external socket-blocking plugin and no live Google API calls; no-stubs and whitespace checks passed. Ruff matched `origin/main` at 196 findings, with zero added or removed findings after normalizing relative file, rule, message and source line.
 
 Agent session 01a09834-0055-74f3-a059-50fdd0b19160 · Commits 9936468 (failing regressions), c01cb37 (permission classification fix)
+
+The user wanted PR #68 restacked on #66 `e2318e3`: preserved both log sides and all code/tests including the 403 classifier fix; 2,970 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_a0c743256dab · Commits 531d350f9e1a0732619f9036de29cfae15cfd008.

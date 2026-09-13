@@ -59,6 +59,66 @@ def test_ordinary_formatting_and_metadata_allowed():
     })
 
 
+@pytest.mark.parametrize("in_tab", [False, True])
+@pytest.mark.parametrize("field", [
+    "namedStyles", "documentStyle", "lists",
+    "suggestedNamedStylesChanges", "suggestedDocumentStyleChanges",
+])
+@pytest.mark.parametrize("border", [False, True])
+def test_style_metadata_does_not_block_or_warn(capsys, in_tab, field, border):
+    style = {
+        "textStyle": {"fontSize": {"magnitude": 12, "unit": "PT"}},
+        "paragraphStyle": {"spaceAbove": {"magnitude": 6, "unit": "PT"}},
+        "listProperties": {"nestingLevels": [{"glyphSymbol": "★"}]},
+    }
+    if border:
+        style["paragraphStyle"]["borderBottom"] = {}
+    metadata = {
+        "namedStyles": {"styles": [style]},
+        "documentStyle": style,
+        "lists": {"unused": style},
+        "suggestedNamedStylesChanges": {"s": {"namedStyles": {"styles": [style]}}},
+        "suggestedDocumentStyleChanges": {"s": {"documentStyle": style}},
+    }
+    scope = {"body": PLAIN, field: metadata[field]}
+    if in_tab:
+        scope = {"tabs": [{"documentTab": scope}]}
+    check_markdown_replacement(scope)
+    assert capsys.readouterr().err == ""
+
+
+@pytest.mark.parametrize("location", ["body", "headers", "footers", "footnotes", "table"])
+def test_content_styles_still_block_and_warn(capsys, location):
+    content = body({"textRun": {
+        "content": "old\n", "textStyle": {
+            "bold": True, "fontSize": {"magnitude": 12, "unit": "PT"},
+        },
+    }})
+    paragraph = content["content"][0]["paragraph"]
+    paragraph["paragraphStyle"] = {
+        "borderBottom": {}, "spaceAbove": {"magnitude": 6, "unit": "PT"},
+    }
+    paragraph["bullet"] = {"listId": "used"}
+    scope = {"lists": {"used": {"listProperties": {
+        "nestingLevels": [{"glyphSymbol": "★"}],
+    }}}}
+    if location == "table":
+        scope["body"] = {"content": [{"table": {
+            "tableRows": [{"tableCells": [content]}],
+        }}]}
+    elif location == "body":
+        scope["body"] = content
+    else:
+        scope[location] = {"segment": content}
+    with pytest.raises(GdocError, match="border-bottom paragraphs"):
+        check_markdown_replacement(scope)
+    check_markdown_replacement(scope, allow_lossy=True)
+    warning = capsys.readouterr().err
+    for loss in ("border-bottom paragraphs", "font size", "paragraph spacing",
+                 "list glyphs and list styling"):
+        assert loss in warning
+
+
 @pytest.mark.parametrize("structure", [
     {"paragraph": {"positionedObjectIds": ["obj"]}},
     {"tableOfContents": {}},

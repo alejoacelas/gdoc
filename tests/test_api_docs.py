@@ -1085,17 +1085,19 @@ def test_mutation_disconnect_adds_no_google_client_retries(
             {"tabProperties": {"tabId": "tab-two"}, "documentTab": {}},
         ]}}
         mocker.patch.object(api, "require_write_version")
+    if name in {"update_doc_content", "create_comment"}:
+        # #68 also routes Drive comments through #70's single-send transport.
         mocker.patch(
             "gdoc.api.comment_transport._SingleSendHttp", return_value=transport,
         )
         expected_error = GdocError
-        expected_message = "Write outcome is uncertain"
+        expected_message = "outcome is uncertain"
 
     with pytest.raises(expected_error, match=expected_message):
         getattr(api, name)(*args, **options)
 
     operation.assert_called_once()
-    if name == "update_doc_content":
+    if name in {"update_doc_content", "create_comment"}:
         execute.assert_called_once_with(http=mocker.ANY, num_retries=0)
     else:
         execute.assert_called_once_with()

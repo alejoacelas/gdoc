@@ -810,6 +810,8 @@ def test_uncertain_success_response_never_creates_second_comment(
     _http_error(503, b"temporarily unavailable"),
 ])
 def test_uncertain_write_never_retries_or_falls_back(comment_command, error):
+    from googleapiclient.http import HttpRequest
+
     read, batch, fallback = comment_command
     saved_comments = []
 
@@ -817,7 +819,12 @@ def test_uncertain_write_never_retries_or_falls_back(comment_command, error):
         saved_comments.append("c_saved")
         raise error
 
-    batch.return_value.execute.side_effect = save_then_lose_response
+    # #70's shared fixture bypasses transport for API-shape mocks; this case
+    # needs the real error handler around the simulated request execution.
+    request = MagicMock(spec=HttpRequest)
+    request.http = MagicMock()
+    request.execute.side_effect = save_then_lose_response
+    batch.return_value = request
     with pytest.raises(GdocError, match="outcome is uncertain"):
         cmd_comment(_make_args(quote="quick brown"))
     assert saved_comments == ["c_saved"]

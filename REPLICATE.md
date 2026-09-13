@@ -805,3 +805,28 @@ The user wanted PR #68's table-heading and border-bottom rule losses blocked in 
 Agent session 01a09858-843f-7233-81d1-f32d3855d9f9 · Commits 9ac6af2, 9887431
 
 The user wanted PR #68 restacked on #66 `ee092b1`: preserved all code/tests and restored inherited log entries removed by historical deduplication patches; 3,016 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_d7e4f02b9a08 · Commits b957499fbc6d5c7acffde18cc417d92f8eedd974.
+
+- Thirteen regressions failed before the fix: standalone triple-backtick spans lost their text, empty fences silently deleted existing content, and full-document anchors could not span images or footnote references.
+- The standalone-fence portion was superseded by PR #70; its duplicate parser changes, empty-replacement guards, and associated tests were removed during restacking. Legacy, raw-tab, and flattened-tab searches retain the non-destructive native-gap forwarding fix and its six regressions, with strict defaults unchanged.
+- Updated two older refusal cases that encoded the parser bug and added a successful non-body code-span case. All 2,890 tests pass with network connections blocked; no live Google API calls occurred, no-stubs passes, and normalized Ruff findings match origin/main exactly at 196 each, with zero additions or removals.
+
+- Observed 18 failing mocked cases before the fix. The guard now names tables containing non-normal named paragraph styles and requires `--allow-lossy`; absent and NORMAL_TEXT cell styles retain their behavior.
+- Border-bottom paragraphs now require the same opt-in: the existing exporter has no rule-rendering helper and emits only their text. Native horizontal-rule behavior and plain/bold-header table behavior remain covered and unchanged.
+- All **2,631 tests pass**, including **169 guard tests**; no-stubs and whitespace checks pass. Ruff matches `origin/main` (`dbfa4c34`) at **196 findings**, with zero additions or removals normalized by relative path, rule, message and source line. No live Google API calls were made.
+
+# Keep style metadata outside replacement content
+
+The user wanted PR #65's metadata false positives fixed and its quiet-mode safety description corrected without rebasing the stack.
+
+- Added 25 regression cases: 20 reproduced metadata refusals or false warnings before the fix; five controls retained border and style detection in body, header, footer, footnote and table paragraphs.
+- Skip named-style and document-style defaults, their suggested changes, and the list registry during content traversal. Referenced list definitions still receive styling and suggestion checks, and explicit page-setup checks remain active.
+- Clarified that quiet mode skips conflict and awareness checks while whole-document write and push retain no-op and lossiness safety checks.
+- All **2,656 tests pass**, including **194 guard tests**; no-stubs and whitespace checks pass. Ruff matches `origin/main` (`dbfa4c34`) exactly at **196 findings**, with zero additions or removals normalized by relative path, rule, message and source line. No live Google API calls were made.
+
+Agent session 01a098a0-f49b-7770-840c-f6e0ef9917a5 · Commits 4f89128, cb633b3, 5a2a356, b3d4f7d
+
+The user wanted PR #70 restacked on #65 `1ffd817`: retained revision-safety and no-op/lossiness README guidance, both log histories and all code/tests; 2,880 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_8027a7d4ae60 · Commits e3b1e372582ebe1e82bc70c58971399856cde10d.
+
+The user wanted PR #64 restacked on #70 `4eeab26`: preserved both log histories and all code/tests; 2,915 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_8027a7d4ae60 · Commits bd9b54589a12a0f3c1168e7631639a0462de1b14.
+
+The user wanted PR #66 restacked on #64 `0313169`: preserved both log histories and all code/tests; 2,929 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_8027a7d4ae60 · Commits fe876c0b2eb8228c2fc3b69f175ccec0f67bd7fb.

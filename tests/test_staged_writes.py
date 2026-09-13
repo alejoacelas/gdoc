@@ -725,7 +725,10 @@ def test_replacement_clears_bullet_inherited_from_final_paragraph(
     doc = snapshot()
     body(doc)["content"][-1]["paragraph"]["bullet"] = {"listId": "kix.list"}
     mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value=doc)
-    insert_markdown_into_tab("synthetic", "Notes", markdown, replace=True)
+    # The retained mark is an empty list item, requiring explicit loss consent.
+    insert_markdown_into_tab(
+        "synthetic", "Notes", markdown, replace=True, allow_lossy=True
+    )
     requests = batches(api)[0]["requests"]
     kinds = [next(iter(r)) for r in requests]
     resets = [r["deleteParagraphBullets"]["range"] for r in requests

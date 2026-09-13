@@ -605,3 +605,53 @@ def test_plain_or_mixed_table_header_requires_opt_in(
         table_insert.assert_not_called()
         with pytest.raises(GdocError, match="table at index 7.*header"):
             check_markdown_replacement(scope)
+
+
+@pytest.mark.parametrize("glyph_type,level", [
+    (None, 0), ("GLYPH_TYPE_UNSPECIFIED", 0), ("DECIMAL", 0),
+    ("GLYPH_TYPE_UNSPECIFIED", 3), ("DECIMAL", 3),
+])
+@pytest.mark.parametrize("row_index", [0, 1])
+def test_table_cell_lists_require_opt_in(mocker, capsys, glyph_type, level, row_index):
+    from gdoc.api.docs import get_tab_text
+
+    header = body({"textRun": {
+        "content": "header\n", "textStyle": {"bold": True},
+    }})
+    cell = body({"textRun": {"content": "item\n"}})
+    rows = [{"tableCells": [header]}, {"tableCells": [cell]}]
+    target = tab("target", {"content": [{
+        "startIndex": 7, "endIndex": 30, "table": {"tableRows": rows},
+    }]})
+    if glyph_type is not None:
+        rows[row_index]["tableCells"][0]["content"][0]["paragraph"]["bullet"] = {
+            "listId": "L", "nestingLevel": level,
+        }
+        target["documentTab"]["lists"] = {"L": {"listProperties": {
+            "nestingLevels": [{"glyphType": glyph_type}] * (level + 1),
+        }}}
+    markdown = get_tab_text(target["documentTab"], markdown=True)
+    assert markdown == "| **header** |\n| --- |\n| item |\n"
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "revisionId": "r", "tabs": [target],
+    })
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    table_insert = mocker.patch("gdoc.api.docs._insert_table")
+    if glyph_type is not None:
+        with pytest.raises(GdocError, match="table at index 7.*list paragraphs") as exc:
+            insert_markdown_into_tab("doc", "target", markdown, replace=True)
+        assert exc.value.exit_code == 3
+        assert "--allow-lossy" in str(exc.value)
+        service.documents.return_value.batchUpdate.assert_not_called()
+        table_insert.assert_not_called()
+        with pytest.raises(GdocError, match="table at index 7.*list paragraphs"):
+            check_markdown_replacement(target["documentTab"])
+    else:
+        check_markdown_replacement(target["documentTab"])
+    insert_markdown_into_tab(
+        "doc", "target", markdown, replace=True, allow_lossy=glyph_type is not None,
+    )
+    service.documents.return_value.batchUpdate.assert_called_once()
+    table_insert.assert_called_once()
+    warning = capsys.readouterr().err
+    assert ("table at index 7 (list paragraphs" in warning) == (glyph_type is not None)

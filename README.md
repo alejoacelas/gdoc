@@ -386,7 +386,7 @@ gdoc cat DOC               # re-read to update baseline
 gdoc write DOC draft.md    # OK written
 ```
 
-Use `--force` to skip conflict detection. Use `--quiet` to skip pre-flight checks entirely (saves 2 API calls).
+Use `--force` to skip conflict detection. Use `--quiet` to skip conflict and awareness checks. Whole-document `write` and `push` still perform no-op and lossiness safety checks.
 
 ### Markdown replacement safety
 

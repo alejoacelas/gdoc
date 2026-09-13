@@ -89,19 +89,25 @@ _PARAGRAPH_STYLE_LOSSES = {
 
 def _numbered_list_hazards(content: list, lists: dict) -> set[str]:
     """Find numbering boundaries and starts reconstruction cannot preserve."""
-    from gdoc.api.docs import _list_is_ordered
+    from gdoc.api.docs import _list_is_ordered, _runs_markdown
 
     hazards = set()
     run = set()
     seen = set()
     for element in content:
-        bullet = element.get("paragraph", {}).get("bullet")
+        paragraph = element.get("paragraph", {})
+        bullet = paragraph.get("bullet")
         if bullet is None:
             run.clear()
             continue
         list_id = bullet.get("listId", "")
+        if not _runs_markdown(paragraph.get("elements", [])).strip():
+            hazards.add(f"empty list item in list {list_id!r} (omitted by export)")
+            run.clear()
+            continue
         level = bullet.get("nestingLevel", 0)
         if not _list_is_ordered(lists, list_id, level):
+            run.clear()
             continue
         start = lists[list_id]["listProperties"]["nestingLevels"][level].get(
             "startNumber", 1,
@@ -122,6 +128,8 @@ def check_markdown_replacement(
     scope: dict, *, tab_body: bool = False, allow_lossy: bool = False,
 ) -> None:
     """Refuse known lossy structures in a body or a complete Docs response."""
+    from gdoc.api.docs import _table_markdown
+
     hazards: set[str] = set()
     styles: set[str] = set()
 
@@ -181,8 +189,14 @@ def check_markdown_replacement(
                     )
                 ):
                     hazards.add("internal document links")
-                if key == "table" and table_depth:
-                    hazards.add("nested tables")
+                if key == "table":
+                    if table_depth:
+                        hazards.add("nested tables")
+                    if _table_markdown(child) is None:
+                        index = value.get("startIndex", "unknown")
+                        hazards.add(
+                            f"table at index {index} (cannot export as a pipe table)"
+                        )
                 if key in ("rowSpan", "columnSpan") and child > 1:
                     hazards.add("merged table cells")
                 if not tab_body and key in ("headers", "footers", "footnotes"):

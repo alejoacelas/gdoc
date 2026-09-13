@@ -75,7 +75,7 @@ def test_structural_hazards(structure):
 
 
 def test_simple_tables_round_trip_in_both_paths():
-    scope = {"content": [{"table": {"rows": 1, "columns": 1}}]}
+    scope = {"content": [{"table": {"tableRows": [{"tableCells": [PLAIN]}]}}]}
     check_markdown_replacement(scope)
     check_markdown_replacement(scope, tab_body=True)
 
@@ -499,3 +499,56 @@ def test_numbered_restart_override_permits_tab_mutation(mocker, capsys):
     service.documents.return_value.batchUpdate.assert_called_once()
     warning = capsys.readouterr().err
     assert "will discard:" in warning and "'first', 'second'" in warning
+
+
+@pytest.mark.parametrize("cell_text", [" leading\n", "trailing \n", "\tleading\n"])
+@pytest.mark.parametrize("tab_body", [False, True])
+def test_unrenderable_table_refuses_and_names_table(capsys, cell_text, tab_body):
+    from gdoc.api.docs import get_tab_text
+
+    scope = {"body": {"content": [{"startIndex": 7, "table": {
+        "tableRows": [{"tableCells": [
+            body({"textRun": {"content": cell_text}}), PLAIN,
+        ]}],
+    }}]}}
+    assert "\told\n" in get_tab_text(scope, markdown=True)
+    with pytest.raises(GdocError, match="table at index 7"):
+        check_markdown_replacement(scope, tab_body=tab_body)
+    check_markdown_replacement(scope, tab_body=tab_body, allow_lossy=True)
+    assert "will discard: table at index 7" in capsys.readouterr().err
+
+
+def test_numbering_resumed_after_unordered_item_refuses(mocker):
+    from gdoc.api.docs import get_tab_text
+
+    target = numbered_tab(["first", "bullet", "first"])
+    scope = target["documentTab"]
+    scope["lists"]["bullet"]["listProperties"]["nestingLevels"] = [{}]
+    markdown = get_tab_text(scope, markdown=True)
+    assert markdown == "1. item\n- item\n1. item\n"
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "revisionId": "r", "tabs": [target],
+    })
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    with pytest.raises(GdocError, match="numbered list 'first' resumes"):
+        insert_markdown_into_tab("doc", "target", markdown, replace=True)
+    service.documents.return_value.batchUpdate.assert_not_called()
+
+
+@pytest.mark.parametrize("glyph_type", ["GLYPH_TYPE_UNSPECIFIED", "DECIMAL"])
+def test_empty_list_item_refuses_before_mutation(mocker, glyph_type):
+    from gdoc.api.docs import get_tab_text
+
+    target = numbered_tab(["empty"], glyph_type=glyph_type)
+    scope = target["documentTab"]
+    scope["body"]["content"][0]["paragraph"]["elements"] = [
+        {"textRun": {"content": "\n"}},
+    ]
+    assert get_tab_text(scope, markdown=True) == "\n"
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "revisionId": "r", "tabs": [target],
+    })
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    with pytest.raises(GdocError, match="empty list item.*empty"):
+        insert_markdown_into_tab("doc", "target", "new", replace=True)
+    service.documents.return_value.batchUpdate.assert_not_called()

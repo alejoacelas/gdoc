@@ -413,3 +413,5 @@ The user wanted PR #70 rebased onto the updated #65 and #69 stack, verified offl
 - **2,785 tests passed** with socket connections blocked by an external pytest plugin. No-stubs, whitespace and merge-tree checks pass; Ruff matches `origin/main` (`dbfa4c34`) exactly at **196 findings**, zero added or removed by relative path, rule, message and source line. No live Google API calls were made.
 
 Agent session 01a09814-54e2-79c3-a9c7-130b072201ef · Commits 72dfd74, 7d8c0a1, 6262abc, c4be3b1, 3a8d7f0, 0c0b655, 4c52792, 601439d, b821267, 54d1e23, 3cebb5c, 029b727, 26f2b9d, 1b589c9, f2f8849, 93d775c, b0a92e1, b5040f2, dd15b4a, d35f6a4, 65e0f83
+
+The user wanted PR #70 restacked on #65 `e8a935c`: preserved both log sides and all tests, added explicit loss consent to the empty-list bullet-reset fixture; 2,798 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_0212d4a76524 · Commits b8f439e, 146e7b9.

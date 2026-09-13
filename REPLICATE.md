@@ -645,3 +645,13 @@ Agent session ctx_09e67e8836d6 · Commits 276ab28, e6b80b5
 The user wanted PR #66 restacked on #64 `0f56d7c`: preserved both log sides and all code/tests including positioned-object marks; 2,858 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_a0c743256dab · Commits f7e87355402af84d51012496d33527a4c0171b1b.
 
 The user wanted PR #66 restacked on #64 `144f18b`: preserved both log histories and all code/tests; 2,874 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_098f9adc04f1 · Commits 3c2d0b626546d07d6b4710fa1131de8548f8680e.
+
+## Forward full-document native anchor gaps
+
+The human wanted PR #66's empty-write and full-document anchor findings fixed and the three affected review threads settled.
+
+- Thirteen regressions failed before the fix: standalone triple-backtick spans lost their text, empty fences silently deleted existing content, and full-document anchors could not span images or footnote references.
+- The standalone-fence portion was superseded by PR #70; its duplicate parser changes, empty-replacement guards, and associated tests were removed during restacking. Legacy, raw-tab, and flattened-tab searches retain the non-destructive native-gap forwarding fix and its six regressions, with strict defaults unchanged.
+- Updated two older refusal cases that encoded the parser bug and added a successful non-body code-span case. All 2,890 tests pass with network connections blocked; no live Google API calls occurred, no-stubs passes, and normalized Ruff findings match origin/main exactly at 196 each, with zero additions or removals.
+
+Agent session ctx_5a3ab7345292 · Commits 711729d, 736e9d9

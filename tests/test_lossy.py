@@ -398,3 +398,34 @@ def test_keep_lines_together_warns_about_paragraph_layout(capsys):
         "paragraphStyle": {"keepLinesTogether": True},
     }}]}, tab_body=True)
     assert "may reset styles: paragraph layout" in capsys.readouterr().err
+
+
+def numbered_tab(list_ids, start=1, glyph_type="DECIMAL"):
+    target = tab("target", {"content": [{
+        "startIndex": 1 + i * 5, "endIndex": 6 + i * 5,
+        "paragraph": {
+            "elements": [{"textRun": {"content": "item\n"}}],
+            "bullet": {"listId": list_id},
+        },
+    } for i, list_id in enumerate(list_ids)]})
+    target["documentTab"]["lists"] = {list_id: {"listProperties": {
+        "nestingLevels": [{"glyphType": glyph_type, "startNumber": start}],
+    }} for list_id in list_ids}
+    return target
+
+
+def test_adjacent_numbered_restarts_refuse_before_mutation(mocker):
+    from gdoc.api.docs import get_tab_text
+
+    target = numbered_tab(["first", "second"])
+    markdown = get_tab_text(target["documentTab"], markdown=True)
+    # The native lists each start at 1; export loses the second restart.
+    assert markdown == "1. item\n2. item\n"
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "revisionId": "r", "tabs": [target],
+    })
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    with pytest.raises(GdocError, match="numbered list") as exc:
+        insert_markdown_into_tab("doc", "target", markdown, replace=True)
+    assert "first" in str(exc.value) and "second" in str(exc.value)
+    service.documents.return_value.batchUpdate.assert_not_called()

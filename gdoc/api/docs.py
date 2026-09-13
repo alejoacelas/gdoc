@@ -2138,10 +2138,14 @@ def _wording_contexts(body: dict, match: dict, markdown: str):
 
 
 def _empty_paragraph_range(content: list[dict], match: dict):
-    """Remove complete paragraphs, retaining the segment's mandatory last LF."""
+    """Remove complete paragraphs, retaining native anchors and the final LF."""
     paragraphs = list(_replacement_paragraphs(content, match))
     if not paragraphs:
         return match
+    # Positioned objects have no searchable character; their paragraph mark
+    # must survive even when all of the paragraph's wording is deleted.
+    if any(p.get("positionedObjectIds") for p, _, _ in paragraphs):
+        return None
     first, last = paragraphs[0], paragraphs[-1]
     if match["startIndex"] != first[1] or match["endIndex"] < last[2]:
         return None
@@ -2153,7 +2157,8 @@ def _empty_paragraph_range(content: list[dict], match: dict):
                 previous = next((e for e in content
                                  if e.get("endIndex") == start), None)
                 if previous and "paragraph" in previous:
-                    start -= 1
+                    if not previous["paragraph"].get("positionedObjectIds"):
+                        start -= 1
                 elif previous and "table" in previous:
                     raise GdocError(
                         "cannot remove the mandatory final paragraph after a table; "

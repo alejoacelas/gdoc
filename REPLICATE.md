@@ -655,3 +655,7 @@ The human wanted PR #66's empty-write and full-document anchor findings fixed an
 - Updated two older refusal cases that encoded the parser bug and added a successful non-body code-span case. All 2,890 tests pass with network connections blocked; no live Google API calls occurred, no-stubs passes, and normalized Ruff findings match origin/main exactly at 196 each, with zero additions or removals.
 
 Agent session ctx_5a3ab7345292 · Commits 711729d, 736e9d9
+
+The user wanted PR #64 restacked on #70 `52a8ad8`: preserved both log histories and all code/tests; 2,890 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_d7e4f02b9a08 · Commits 62e11f306fec5eb379bd08c4267dced728d1f217.
+
+The user wanted PR #66 restacked on #64 `bb68329`: split `711729d` and `736e9d9` to retain only the native-gap regression and forwarding fix, dropped their duplicate fence/empty-guard portions (no whole commits dropped), preserved earlier commits and both log histories, and marked the fence record superseded by #70; 2,904 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_d7e4f02b9a08 · Commits 2cace51, 5e09c63, 3f2edea35fba57abc1ecfc37e8175473ca34478d.

@@ -333,6 +333,33 @@ def _ref_label(label: str) -> str:
     return " ".join(label.split()).casefold()
 
 
+def _without_link_destinations(masked: str) -> str:
+    """Blank link destinations so URL text resembling an image is not one.
+
+    Uses the same balanced, single-line destination rule as ``_find_link``;
+    an image's own ``[alt](src)`` (preceded by ``!``) is left in place.
+    """
+    out = list(masked)
+    for opener in re.finditer(r"\[[^\]]+\]\(", masked):
+        if opener.start() > 0 and masked[opener.start() - 1] == "!":
+            continue
+        depth = 1
+        for end in range(opener.end(), len(masked)):
+            char = masked[end]
+            if char == "\n":
+                break
+            if char == "(":
+                depth += 1
+            elif char == ")":
+                depth -= 1
+                if depth == 0:
+                    if end > opener.end():
+                        for i in range(opener.end(), end):
+                            out[i] = " "
+                    break
+    return "".join(out)
+
+
 def _image_constructs(text: str):
     """Yield ("inline", alt) or ("reference", label) for each complete image.
 
@@ -415,7 +442,9 @@ def _check_native_images(text: str) -> None:
                 fence = None
             continue
         if fence is None:
-            visible.append(_CODE_RE.sub("", _mask_escapes(line)))
+            visible.append(_without_link_destinations(
+                _CODE_RE.sub("", _mask_escapes(line))
+            ))
     joined = "\n".join(visible)
     has_image = bool(_HTML_IMG_RE.search(joined))
     if not has_image:

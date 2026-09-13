@@ -243,7 +243,8 @@ def test_unchanged_upload_skips_even_rich_page_state(
     inspect.assert_not_called()
     upload.assert_not_called()
     assert state.call_args.kwargs["command_version"] == 10
-    assert version.call_count == int(quiet_force)
+    # Baseline read only when the caller has none, plus the post-read recheck.
+    assert version.call_count == int(quiet_force) + 1
     assert "already in sync" in capsys.readouterr().out
 
 

@@ -1473,6 +1473,11 @@ def _doc_matches(doc_id: str, body: str, version: int | None = None) -> int | No
         # for the whole document (even with --force-collapse-tabs).
         if count_document_tabs(doc_id) > 1:
             return None
+        # The export and tab-count reads are not pinned to the baseline; an
+        # edit landing after it would hide behind an "already in sync" verdict
+        # and heal the read baseline over content nobody has seen.
+        if get_file_version(doc_id).get("version") != version:
+            return None
     except GdocError:
         return None
     return version

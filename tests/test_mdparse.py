@@ -983,6 +983,17 @@ class TestNativeImageGuard:
         parsed = parse_markdown("An empty ![x]() marker\n")
         assert "![x]()" in parsed.plain_text
 
+    def test_image_like_text_inside_link_destination_is_a_link(self):
+        parsed = parse_markdown("See [link](https://example.com/![a](b)) now\n")
+        assert "link" in parsed.plain_text
+        assert any(s.style.get("link") for s in parsed.styles)
+
+    def test_linked_image_still_refused(self):
+        self._refuses("[![img](https://x.test/i.png)](https://x.test/)\n")
+
+    def test_image_after_link_still_refused(self):
+        self._refuses("See [x](https://x.test/) then ![a](https://x.test/i.png)\n")
+
     def test_nested_bracket_without_destination_is_literal(self):
         parsed = parse_markdown("An ![a [nested] label] marker\n")
         assert "![a [nested] label]" in parsed.plain_text

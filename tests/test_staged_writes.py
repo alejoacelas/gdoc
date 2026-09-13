@@ -867,3 +867,31 @@ def test_single_tab_whole_write_passes_loss_consent(mocker, drive_api, allow_los
     assert insert.call_args.kwargs["replace"] is True
     files.update.assert_not_called()
 
+
+@pytest.mark.parametrize("after", [10, 11])
+def test_noop_match_requires_unchanged_version_after_reads(mocker, after):
+    """An edit landing after the baseline read is never reported in sync."""
+    from gdoc.cli import _doc_matches
+
+    version = mocker.patch(
+        "gdoc.api.drive.get_file_version", side_effect=[{"version": after}]
+    )
+    mocker.patch("gdoc.api.drive.export_doc", return_value="Same body")
+    mocker.patch("gdoc.api.docs.count_document_tabs", return_value=1)
+    result = _doc_matches("synthetic", "Same body", version=10)
+    assert result == (10 if after == 10 else None)
+    assert version.call_count == 1
+
+
+def test_noop_match_reads_baseline_then_rechecks(mocker):
+    version = mocker.patch(
+        "gdoc.api.drive.get_file_version",
+        side_effect=[{"version": 10}, {"version": 11}],
+    )
+    mocker.patch("gdoc.api.drive.export_doc", return_value="Same body")
+    mocker.patch("gdoc.api.docs.count_document_tabs", return_value=1)
+    from gdoc.cli import _doc_matches
+
+    assert _doc_matches("synthetic", "Same body") is None
+    assert version.call_count == 2
+

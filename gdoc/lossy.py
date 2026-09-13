@@ -191,7 +191,18 @@ def check_markdown_replacement(
                 hazards.add("border-bottom paragraphs (rules or borders are lost)")
             if value.get("listProperties"):
                 styles.add("list glyphs and list styling")
+            if "bullet" in value:
+                # Inspect definitions only when content references the list.
+                visit(lists.get(value["bullet"].get("listId"), {}),
+                      table_depth, document_style, lists)
             for key, child in value.items():
+                # Defaults are metadata, not replaceable content. Page setup
+                # is checked above; referenced list definitions are checked
+                # at their paragraphs instead of scanning the whole registry.
+                if key in ("namedStyles", "documentStyle", "lists",
+                           "suggestedNamedStylesChanges",
+                           "suggestedDocumentStyleChanges"):
+                    continue
                 # Empty objects are valid paragraph-element markers (equation,
                 # pageBreak, etc.); empty reference lists are not hazards.
                 if key in _ELEMENTS and child is not None and child != []:

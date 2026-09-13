@@ -268,7 +268,9 @@ class TableDocument:
         self.batches = []
         self.table_layout = None
 
-    def snapshot(self):
+    def snapshot(self, *, num_retries=0):
+        # PR #64 adds the generated-client retry option to PR #70 staged reads.
+        assert num_retries in (0, 2)
         content = []
         text = self.text
         index = 1

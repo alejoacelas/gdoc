@@ -784,8 +784,8 @@ def test_edit_uses_match_tab_when_no_fallback_tab_is_given(mocker):
     service.documents.return_value.get.assert_not_called()
 
 
-def test_post_write_read_adds_google_client_retries_only_to_readback(mocker):
-    """Readback adds two Google-client retries; the preceding edit adds none."""
+def test_wording_edit_does_not_restore_cleanup_readback(mocker):
+    """PR #60 removed speculative cleanup; wording edits need no readback."""
     resource = mocker.patch(
         "gdoc.api.docs.get_docs_service",
     ).return_value.documents.return_value
@@ -811,8 +811,56 @@ def test_post_write_read_adds_google_client_retries_only_to_readback(mocker):
         },
     )
     resource.batchUpdate.return_value.execute.assert_called_once_with()
-    resource.get.assert_called_once_with(documentId="sample-doc")
-    resource.get.return_value.execute.assert_called_once_with(num_retries=2)
-    assert resource.mock_calls.index(mocker.call.batchUpdate().execute()) < (
-        resource.mock_calls.index(mocker.call.get(documentId="sample-doc"))
+    resource.get.assert_not_called()
+
+
+@pytest.mark.parametrize("tab_id", [None, "tab-one"])
+@pytest.mark.parametrize("disconnects", [1, 3])
+def test_staged_read_retries_without_replaying_completed_batch(
+    mocker, tab_id, disconnects,
+):
+    """PR #70 staged reads inherit #64 retries without replaying a write."""
+    import json
+    from http.client import RemoteDisconnected
+
+    import httplib2
+    from googleapiclient.http import HttpRequest
+
+    from gdoc.api.docs import _StagedWrite
+
+    resource = mocker.patch(
+        "gdoc.api.docs.get_docs_service",
+    ).return_value.documents.return_value
+    document = {"revisionId": "revision-two", "tabs": []}
+    resource.batchUpdate.return_value.execute.return_value = {
+        "writeControl": {"requiredRevisionId": "revision-two"},
+    }
+    transport = mocker.Mock()
+    transport.request.side_effect = [
+        RemoteDisconnected("response lost") for _ in range(disconnects)
+    ] + [(httplib2.Response({"status": "200"}), json.dumps(document).encode())]
+    request = HttpRequest(
+        transport, lambda response, content: json.loads(content),
+        "https://example.invalid/document", method="GET",
     )
+    mocker.patch.object(request, "_sleep")
+    resource.get.return_value = request
+
+    def write_then_read():
+        with _StagedWrite("sample-doc") as progress:
+            progress.batch("text written", [{"insertText": {}}], "revision-one")
+            return progress.read("reading inserted cells", tab_id)
+
+    if disconnects == 3:
+        with pytest.raises(
+            GdocError, match="Partial completion: applied: text written",
+        ):
+            write_then_read()
+    else:
+        assert write_then_read() == document
+    assert transport.request.call_count == min(disconnects + 1, 3)
+    resource.get.assert_called_once_with(
+        documentId="sample-doc", **({"includeTabsContent": True} if tab_id else {}),
+    )
+    resource.batchUpdate.assert_called_once()
+    resource.batchUpdate.return_value.execute.assert_called_once_with()

@@ -1075,11 +1075,30 @@ def test_mutation_disconnect_adds_no_google_client_retries(
     operation = getattr(getattr(service, resource_name).return_value, method)
     operation.return_value = request
 
-    with pytest.raises(RemoteDisconnected, match="response lost"):
-        getattr(api, name)(*args)
+    options = {}
+    expected_error = RemoteDisconnected
+    expected_message = "response lost"
+    if name == "update_doc_content":
+        # PR #70 routes single-tab writes through Docs and guards imports.
+        options = {"expected_version": 1, "document": {"tabs": [
+            {"tabProperties": {"tabId": "tab-one"}, "documentTab": {}},
+            {"tabProperties": {"tabId": "tab-two"}, "documentTab": {}},
+        ]}}
+        mocker.patch.object(api, "require_write_version")
+        mocker.patch(
+            "gdoc.api.comment_transport._SingleSendHttp", return_value=transport,
+        )
+        expected_error = GdocError
+        expected_message = "Write outcome is uncertain"
+
+    with pytest.raises(expected_error, match=expected_message):
+        getattr(api, name)(*args, **options)
 
     operation.assert_called_once()
-    execute.assert_called_once_with()
+    if name == "update_doc_content":
+        execute.assert_called_once_with(http=mocker.ANY, num_retries=0)
+    else:
+        execute.assert_called_once_with()
     transport.request.assert_called_once()
     sleep.assert_not_called()
 

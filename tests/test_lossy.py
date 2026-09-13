@@ -75,7 +75,14 @@ def test_structural_hazards(structure):
 
 
 def test_simple_tables_round_trip_in_both_paths():
-    scope = {"content": [{"table": {"tableRows": [{"tableCells": [PLAIN]}]}}]}
+    header = body({"textRun": {"content": "header", "textStyle": {"bold": True}}})
+    header["content"][0]["paragraph"]["elements"].append(
+        {"textRun": {"content": "\n"}},
+    )
+    empty = body({"textRun": {"content": "\n"}})
+    scope = {"content": [{"table": {"tableRows": [
+        {"tableCells": [header, empty]}, {"tableCells": [PLAIN, PLAIN]},
+    ]}}]}
     check_markdown_replacement(scope)
     check_markdown_replacement(scope, tab_body=True)
 
@@ -337,6 +344,9 @@ def test_referenced_list_inventory(mocker, capsys, in_cell, mode):
     content = body({"textRun": {"content": "old\n"}})
     content["content"][0]["paragraph"]["bullet"] = {"listId": "L"}
     if in_cell:
+        content["content"][0]["paragraph"]["elements"][0]["textRun"]["textStyle"] = {
+            "bold": True,
+        }
         content = {"content": [{"startIndex": 1, "endIndex": 9, "table": {
             "tableRows": [{"tableCells": [{"content": content["content"]}]}],
         }}]}

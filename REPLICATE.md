@@ -588,3 +588,32 @@ The human wanted PR #66's adversarial cleanup findings and the recorded value-co
 Agent session 01a0970f-266f-7581-8402-a834760ace1d · Commits e7f2070
 
 - Replacement and deletion matching stop at inline objects, footnote references, tables, and unexplained native-index gaps; only non-destructive anchor matching may opt into spanning native gaps. Whole-cell replacement refuses native content; the existing non-destructive inline-anchor behavior and synthetic API fixtures remain covered.
+
+## Restack PR 66 on the verified retry head
+
+The user wanted PR #66 placed after #64 with every stacked behavior preserved and offline gates checked before publication.
+
+- Used TOP `e8a9bfa1fabdbba2690633f71fd06451cd28ecb4`; OLD matched `dbfa4c34bfa699ee8dd9839da85eea1fac177d44`. The filtered fork fetch initially left a stale tracking ref at `cc48337`; an explicit branch fetch and PR #64 head lookup established the correct TOP.
+- Processed all seven original commits. `9791974`, `54a8e19`, `56987ae`, and `e7f2070` became empty because #70 already incorporated their code and tests; retained their integrated stack versions. Replayed `9506961` as `a7b93d2`, `bb62e71` as `fef126b`, and `0bbecb9` as `5925093`.
+- The final diff against TOP contains only session records: all native-target implementation and regression coverage was already present in the stack.
+
+Conflict resolutions:
+
+1. `gdoc/api/docs.py`: retained #70's one `_build_cleanup_requests` helper, protecting native elements and the mandatory final newline without promoting neighboring styles.
+   Kept `_StagedWrite.batch`, per-segment replacement shifts, #60's absence of speculative cleanup, and #66's already-integrated label, native-boundary, and Unicode checks.
+2. `gdoc/cli.py`: retained the stack's value-column collision refusal and its complete CLI help.
+   The incoming earlier help text omitted this later #66/#70 behavior.
+3. `tests/test_native_targets.py`: retained every stack case and the copies of all incoming native-target cases already incorporated by #70.
+   Preserved #61's tab-aware read mocks and #60's single-batch, no-cleanup heading expectations, including unequal UTF-16 match widths.
+4. `tests/test_api_captures.py`: retained all fourteen fixture cases, including the footnote assertion adapted for #61.
+   Footnotes now match with their own `segmentId` and container instead of being absent from document search.
+5. `tests/test_api_docs.py`: kept the stack's complete retry, replacement, cleanup-helper, and no-speculative-cleanup regression classes.
+   The old #66 cleanup expectations already have #60/#70 counterparts asserting final-newline retention, no style promotion, and no heuristic second batch.
+6. `REPLICATE.md`: retained all stack entries first and appended #66's historical entries.
+   Preserved historical hashes and recorded this restack separately.
+
+- Offline verification: **2,820 passed** with socket connections blocked by an external pytest plugin; no live Google API calls occurred. No-stubs and whitespace checks passed.
+- Ruff matches `origin/main` exactly: **196 findings**, zero additions or removals, compared as multisets of relative file, rule, message, and stripped source line. TOP is an ancestor and `git merge-tree --write-tree TOP HEAD` is clean.
+- No unresolved behavioral decisions; live behavior was not exercised. Publication is limited to #66's fork branch using the requested old-head lease.
+
+Agent session 01a0981a-afc2-7093-90fe-1a96a3aa7847 · Commits a7b93d2, fef126b, 5925093

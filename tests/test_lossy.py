@@ -218,11 +218,36 @@ def test_full_write_uses_one_safety_snapshot(mocker, tmp_path, command):
     mutation.assert_called_once()
 
 
-def test_markdown_horizontal_rule_border_is_allowed():
-    check_markdown_replacement({"content": [{"paragraph": {
-        "paragraphStyle": {"borderBottom": {"dashStyle": "SOLID"}},
-        "elements": [{"textRun": {"content": "\n"}}],
-    }}]}, tab_body=True)
+@pytest.mark.parametrize("text", ["\n", "underlined paragraph\n"])
+def test_markdown_horizontal_rule_border_requires_opt_in(mocker, capsys, text):
+    from gdoc.api.docs import get_tab_text
+
+    scope = body({"textRun": {"content": text}})
+    scope["content"][0]["paragraph"]["paragraphStyle"] = {
+        "borderBottom": {"dashStyle": "SOLID", "width": {"magnitude": 1, "unit": "PT"}},
+    }
+    target = tab("target", scope)
+    assert get_tab_text(target["documentTab"], markdown=True) == text
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "revisionId": "r", "tabs": [target],
+    })
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    with pytest.raises(GdocError, match="border-bottom paragraphs") as exc:
+        insert_markdown_into_tab("doc", "target", "new", replace=True)
+    assert exc.value.exit_code == 3
+    assert "--allow-lossy" in str(exc.value)
+    service.documents.return_value.batchUpdate.assert_not_called()
+    with pytest.raises(GdocError, match="border-bottom paragraphs"):
+        check_markdown_replacement(scope)
+    insert_markdown_into_tab(
+        "doc", "target", "new", replace=True, allow_lossy=True,
+    )
+    service.documents.return_value.batchUpdate.assert_called_once()
+    assert "will discard: border-bottom paragraphs" in capsys.readouterr().err
+
+
+def test_native_horizontal_rule_whole_document_behavior_is_unchanged():
+    check_markdown_replacement(body({"horizontalRule": {}}))
 
 
 @pytest.mark.parametrize("name", [
@@ -656,3 +681,50 @@ def test_table_cell_lists_require_opt_in(mocker, capsys, glyph_type, level, row_
     table_insert.assert_called_once()
     warning = capsys.readouterr().err
     assert ("table at index 7 (list paragraphs" in warning) == (glyph_type is not None)
+
+
+@pytest.mark.parametrize("named_style", [
+    None, "NORMAL_TEXT", "TITLE", "SUBTITLE",
+    "HEADING_1", "HEADING_2", "HEADING_3", "HEADING_4", "HEADING_5", "HEADING_6",
+])
+@pytest.mark.parametrize("row_index", [0, 1])
+def test_table_cell_named_styles_require_opt_in(mocker, capsys, named_style, row_index):
+    from gdoc.api.docs import get_tab_text
+
+    header = body({"textRun": {
+        "content": "header\n", "textStyle": {"bold": True},
+    }})
+    cell = body({"textRun": {"content": "item\n"}})
+    rows = [{"tableCells": [header]}, {"tableCells": [cell]}]
+    target = tab("target", {"content": [{
+        "startIndex": 7, "endIndex": 30, "table": {"tableRows": rows},
+    }]})
+    if named_style is not None:
+        rows[row_index]["tableCells"][0]["content"][0]["paragraph"]["paragraphStyle"] = {
+            "namedStyleType": named_style,
+        }
+    markdown = get_tab_text(target["documentTab"], markdown=True)
+    assert markdown == "| **header** |\n| --- |\n| item |\n"
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "revisionId": "r", "tabs": [target],
+    })
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    table_insert = mocker.patch("gdoc.api.docs._insert_table")
+    lossy = named_style not in (None, "NORMAL_TEXT")
+    if lossy:
+        with pytest.raises(GdocError, match="table at index 7.*named paragraph styles") as exc:
+            insert_markdown_into_tab("doc", "target", markdown, replace=True)
+        assert exc.value.exit_code == 3
+        assert "--allow-lossy" in str(exc.value)
+        service.documents.return_value.batchUpdate.assert_not_called()
+        table_insert.assert_not_called()
+        with pytest.raises(GdocError, match="table at index 7.*named paragraph styles"):
+            check_markdown_replacement(target["documentTab"])
+    else:
+        check_markdown_replacement(target["documentTab"])
+    insert_markdown_into_tab(
+        "doc", "target", markdown, replace=True, allow_lossy=lossy,
+    )
+    service.documents.return_value.batchUpdate.assert_called_once()
+    table_insert.assert_called_once()
+    assert ("named paragraph styles" in capsys.readouterr().err) == lossy

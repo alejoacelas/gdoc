@@ -421,3 +421,13 @@ The user wanted PR #70 restacked on #65 `e32729a`: preserved both log sides and 
 The user wanted PR #70 restacked on #65 `c5f4c6e`: preserved both log histories without duplicates and all code/tests; 2,831 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_098f9adc04f1 · Commits d72d4087eecde627791fc5792a57e23046193c06.
 
 The user wanted PR #70 restacked on #65 `116efd0`: preserved both log histories and all code/tests; 2,855 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_d7e4f02b9a08 · Commits 5a335477f87f0e9123dceb683f89e37f1ef28f7e.
+
+# Guard table headings and paragraph rules
+
+The user wanted PR #68's table-heading and border-bottom rule losses blocked in PR #65 before the next restack.
+
+- Observed 18 failing mocked cases before the fix. The guard now names tables containing non-normal named paragraph styles and requires `--allow-lossy`; absent and NORMAL_TEXT cell styles retain their behavior.
+- Border-bottom paragraphs now require the same opt-in: the existing exporter has no rule-rendering helper and emits only their text. Native horizontal-rule behavior and plain/bold-header table behavior remain covered and unchanged.
+- All **2,631 tests pass**, including **169 guard tests**; no-stubs and whitespace checks pass. Ruff matches `origin/main` (`dbfa4c34`) at **196 findings**, with zero additions or removals normalized by relative path, rule, message and source line. No live Google API calls were made.
+
+Agent session 01a09858-843f-7233-81d1-f32d3855d9f9 · Commits 9ac6af2, 9887431

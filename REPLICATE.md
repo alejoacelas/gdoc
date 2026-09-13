@@ -317,3 +317,13 @@ The user wanted PR #65 to refuse table round trips that silently turn ordinary f
 - All **2,599 tests pass**, including **137 guard tests**; no-stubs and whitespace checks pass. Ruff matches `origin/main` (`dbfa4c34`) exactly at **196 findings**, with zero additions or removals normalized by relative path, rule, message and source line. No live Google API calls were made.
 
 Agent session 01a09833-b1de-7371-bed9-2578bccc6b9d · Commits 81393a0, 313164b
+
+# Guard list paragraphs in table cells
+
+The user wanted PR #65 to refuse table replacements that silently flatten bulleted or numbered cell paragraphs.
+
+- Added ten mocked cases: eight reproduced lost bullets or numbering at nesting levels 0 and 3 in header and body cells, while two plain-cell controls passed. The guard now names the table and requires `--allow-lossy` before mutation; the opt-in path remains available.
+- Kept the fix in `gdoc/lossy.py`: the exporter has no reusable cell-walk helper, so the guard follows its row/cell/content traversal. Updated the existing cell-list inventory test to expect refusal rather than a style-only warning.
+- All **2,609 tests pass**, including **147 guard tests**; no-stubs and whitespace checks pass. Ruff matches `origin/main` (`dbfa4c34`) exactly at **196 findings**, with zero additions or removals normalized by relative path, rule, message and source line. No live Google API calls were made.
+
+Agent session 01a09845-89a5-7a03-b27a-44b03364e759 · Commits 38bcb7c, 06d6e2b

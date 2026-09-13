@@ -543,6 +543,191 @@ The user wanted PR #64 restacked on #70 `de9db12`: preserved both log sides and 
 
 The user wanted PR #64 restacked on #70 `4f6a560`: preserved both log sides and all code/tests; 2,866 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_098f9adc04f1 · Commits 7ff6566347f316dd0053d2b82a53c71ffedd706d.
 
+# Agent sessions
+
+## Safe native edit targets
+
+The human wanted PR #66 redone as three focused fixes for target identity, native deletion boundaries, and Unicode offsets.
+
+- Tab IDs now precede titles; exact titles precede case-insensitive fallback, and ambiguous titles identify every candidate before refusing. Cell labels identify a unique first-column row, retaining explicit column and table coordinates.
+- Text search stops at inline objects, footnote references, tables, and unexplained native-index gaps. Whole-cell replacement refuses native content; the existing non-destructive inline-anchor behavior and synthetic API fixtures remain covered.
+- Lowercase matching maps transformed characters back to original UTF-16 spans and rejects partial expansions. Fifteen new regression cases failed before the Unicode fix, including an edit whose range swallowed the paragraph mark.
+- All 1,626 tests pass, including 49 new native-target cases and 14 retained capture cases. Changed helpers and tests pass Ruff; the full check retains exactly 196 pre-existing diagnostics, with no additions, under the coordinator-approved baseline exception. The no-stubs check passes.
+- No live captures, push, or PR edits were performed; coordinator review and live replay remain pending. Paragraph formatting, full-document reconstruction guards, and unrelated lint cleanup remain outside scope.
+
+Agent session 01a09703-553d-7e60-ad28-5066d61bf1d4 · Commits 9791974, 54a8e19, 56987ae
+
+## Close the revision-safe write BLOCK review
+
+The human wanted every finding in the revision-safe writes review fixed, including the concurrent-table spacing replay and integration with PR #66, with offline gates and no push.
+
+- **P1 — First snapshot:** whole-document write, push, and sync retain the structural guard's Docs snapshot through native request planning; a collaborator revision cannot replace its `requiredRevisionId`, including forced and quiet variants.
+- **P1 — Hidden resend:** Docs mutation stages and Drive imports use the single-send transport from PR #68, generalized in `gdoc/api/comment_transport.py`; real HttpRequest/httplib2 fault injection proves one wire send and one applied mutation when the response is lost before a possible stale-revision 400.
+- **P1 — Unseen baseline:** native writes keep `last_read_version` unchanged; the post-write Drive version is display/last-seen metadata only, and the two-write regression refuses an unseen collaborator edit on the second write.
+- **P1 — Markdown images:** inline, reference, shortcut-reference, and HTML images refuse before deletion; native body replacement also refuses additional section breaks rather than discarding section-specific settings.
+- **P2 — Partial exit status:** conflicts after acknowledged work exit 1; an initial revision rejection with no applied or uncertain mutation exits 3.
+- **P2 — Table progress:** applied stages identify the source-table ordinal and target tab, including reverse-order insertion and failure after one table is filled and the next structure is inserted.
+- **Spacing replay:** table insertion consumes its parser-owned separator/placeholder in the same revision-pinned batch; both deletion bounds and insertion position relocate together after a concurrent prepend, with no extra blank paragraphs in the offline native-index model.
+- **PR #66 integration:** merged `e7f2070`, retaining native target validation and PR #60's contextual replacements; no heuristic heading cleanup was restored, and `_StagedWrite.batch` remains the common revision-bound stage helper; `git merge-tree --write-tree HEAD e7f2070` succeeds without conflicts.
+- **Verification:** `uv run pytest` with socket connections blocked and `UV_OFFLINE=1`: **1,898 passed**; the new 35-case regression file against `357616d`: **26 failed, 9 passing controls**; Ruff: **196 existing diagnostics and zero additions** versus local `origin/main` at `dbfa4c3`; `git diff --check` passes.
+- **Limits:** no live Google calls were made, so layout evidence is offline; deliberate multi-tab collapse still uses the documented non-atomic Drive import and retains its final-version-check race, though hidden transport resend is prevented; no commits were pushed.
+
+Agent session 01a09741-ca64-7e20-aaf3-f10ef172c4fa · Commits 7db25c8 (PR #66 integration), a119170 (review fixes and regressions)
+
+# Rebase revision-safe writes onto the final replacement stack
+
+The user wanted PR #70 directly on #65 at `7a1f44b`, preserving the earlier replacement and export fixes, correcting the README paragraph-boundary claim, and passing all offline gates before publication.
+
+- Confirmed old base `88165fc` and that `db3f658` (#60), `2dc05d3` (#61), `28c4ba9` (#63), and `5b41f05` (#69) are ancestors of `7a1f44b`. The old range contains 19 commits including merge `7db25c8`; ordinary rebase flattened that merge and replayed its 18 non-merge commits.
+- Original → replayed: `357616d` → `e0424c0`, `385379a` → `2852c84`, `9791974` → `111ee5b`, `54a8e19` → `69fe90f`, `56987ae` → `b7608eb`, `9506961` → `5a78f69`, `e7f2070` → `81dc539`, `a119170` → `392a040`, `60a3ea7` → `4ca0b6a`, `970e8e6` → `b2aea28`, `8858416` → `53d2371`, `52a0908` → `3d359f1`, `6442a50` → `223a210`, `77dff5f` → `16d9c88`, `7d0df7b` → `7c3fdf2`, `b474573` → `ef07a36`, `706c8f2` → `24ca1c4`, `3e40e65` → `fee07e3`.
+
+Conflict resolutions:
+
+1. Native writer signature and staged replacement: retained both `allow_lossy` and the guard-read `document`, and kept #61's per-address-space replacement shifts.
+   Added #70's revision progression, partial-completion tracking and table recovery using each match's actual tab ID.
+2. Upload guards and fixtures: made #65's shared replacement guard return its checked snapshot to write, push and sync, preserving loss and tab-collapse checks.
+   Kept the pytest-mock fixtures from #65 and passed the same snapshot into #70's revision-bound writer; tab writes retain both loss consent and the preflight version check.
+3. Cleanup integration: retained the helper incorporated through #66/`7db25c8`, with #70's final behavior and docstring from the old head, and retained the single-send transport from `a119170`.
+   Kept contextual replacements without speculative cleanup and restored the old head's helper/no-cleanup regression classes and image-only paragraph regression; the new base had no identical helper to reuse.
+4. Parser and image tests: combined #65's terminal-newline semantics with #70's complete-image-syntax guard.
+   Kept both #69's balanced-link tests and #70's image guard tests, including later bracket-description and reference-label fixes.
+5. Bullet and empty-paragraph resets: retained #65's reset of the surviving paragraph before insertion and #69's final-style and table-separator handling.
+   #70's later post-insertion reset code is redundant under #65, so its regression tests now assert the earlier reset, including empty replacement and deletion of a first-paragraph bullet.
+6. Session log conflicts: preserved all earlier stack entries before the appended #70 entries.
+   Kept historical hashes unchanged and recorded this rebase only after committing its substantive changes.
+
+- Cross-stack test expectations now reflect #61's footnote segment coordinates and tabs-aware unrestricted search, #65's loss consent, retained-paragraph reset and `None` no-op mismatch result, and #70's snapshot/version arguments and staged table revisions. Existing #60 link-label and contextual-suggestion expectations and #65 grouped-list expectations remain. No test from either final side was dropped; renamed tests retain the corresponding scenario, and cleanup coverage from the old merge was restored explicitly.
+- Corrected the README's stale “Newlines are fine” claim in the separate documentation-only commit `5fbc2aa`: replacements inside a paragraph cannot introduce paragraph breaks, and block Markdown requires a whole-paragraph target plus the command's supported-format rules.
+- Final offline gate: **2,763 passed** using `sandbox-exec` with network access denied around `uv run pytest tests/ -q`; no-stubs and whitespace checks passed. Initial failures exposed obsolete cross-stack fixtures and expectations, including missing read/export mocks; the network sandbox prevented live Google calls throughout.
+- Ruff matches `origin/main` at `dbfa4c34` exactly: **196 findings**, zero additions and zero removals, normalized by relative file, rule, message and stripped offending source line. `7a1f44b` is an ancestor and the merge-tree check is clean. Live API behavior was not exercised, as required; publication uses the explicit old-head lease and review is requested separately after pushing.
+
+Agent session 01a0980e-3161-76f2-a74b-88be63a8d985 · Commits e0424c0, 2852c84, 111ee5b, 69fe90f, b7608eb, 5a78f69, 81dc539, 392a040, 4ca0b6a, b2aea28, 53d2371, 3d359f1, 223a210, 16d9c88, 7c3fdf2, ef07a36, 24ca1c4, fee07e3, 5fbc2aa, a8674bc
+
+# Restack PR 70 on the updated reconstruction guard
+
+The user wanted PR #70 rebased onto the updated #65 and #69 stack, verified offline and published.
+
+- Replayed all 21 commits onto #65 `657362aa8f929d8daa6c6f8d056d1bfa5a3d8d0a`, which includes #69 `dd3a41c`. The sole conflict was in this log; retained the inherited entries and appended #70's entries.
+- Code and tests merged without conflicts. #65's numbered-list guard and #69's table export fixes required no changes to #70's test expectations; all inherited regressions remain.
+- **2,785 tests passed** with socket connections blocked by an external pytest plugin. No-stubs, whitespace and merge-tree checks pass; Ruff matches `origin/main` (`dbfa4c34`) exactly at **196 findings**, zero added or removed by relative path, rule, message and source line. No live Google API calls were made.
+
+Agent session 01a09814-54e2-79c3-a9c7-130b072201ef · Commits 72dfd74, 7d8c0a1, 6262abc, c4be3b1, 3a8d7f0, 0c0b655, 4c52792, 601439d, b821267, 54d1e23, 3cebb5c, 029b727, 26f2b9d, 1b589c9, f2f8849, 93d775c, b0a92e1, b5040f2, dd15b4a, d35f6a4, 65e0f83
+
+The user wanted PR #70 restacked on #65 `e8a935c`: preserved both log sides and all tests, added explicit loss consent to the empty-list bullet-reset fixture; 2,798 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_0212d4a76524 · Commits b8f439e, 146e7b9.
+
+The user wanted PR #70 restacked on #65 `e32729a`: preserved both log sides and all code/tests; 2,815 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_a0c743256dab · Commits 7036c893d42abb9c31f41792f8664fa208d43b8a.
+
+# Docs read retries
+
+The user wanted two additional Google-client retries for reads and no additional
+Google-client retries for mutations.
+
+- Added failing tests for exact read parameters, transport recovery and exhaustion,
+  post-write reads, and exact edit and suggestion request bodies with no additional
+  Google-client retries.
+- Enabled two generated-client retries on every Docs document GET and reused the
+  read wrappers after writes; exhausted reads retain the existing error behavior.
+- All 1,572 tests and the no-stubs gate pass. Ruff still reports the same 196
+  violations as base commit `dbfa4c3`, with no new violations; repository-wide lint
+  cleanup remains outside this change.
+- The live edit read path recovered after one injected disconnect and two transport
+  attempts on one synthetic document. No edit was issued; the document was trashed.
+- Committed locally without pushing or opening a pull request.
+
+Agent session 01a070b6-163b-7f01-b21a-99985daa2388 · Commits b69bd3a, 5504542
+
+# Verify the read-only retry boundary
+
+The user wanted PR #64 retained with two additional Google-client retries for reads
+and no additional Google-client retries for mutations.
+
+- Rebased `alejoacelas/fix-docs-get-retry` in
+  `/Users/alejo/best/tools/active/gdoc/pr64-read-retries`; it was already based on
+  `origin/main` at `dbfa4c34`, so the existing implementation stayed unchanged.
+- Retained tests proving all four document GET wrappers request two retries and
+  preserve field/tab/suggestion options; an actual client request over a mocked
+  transport recovers from one disconnect and exhausts two additional Google-client
+  retries on persistent disconnects. These counts do not describe wire sends.
+  The exhaustion tests preserve the exception and CLI exit 1 without any write.
+- Added four mocked-transport disconnect cases proving Docs `batchUpdate`, Drive
+  Markdown update/create, and Drive comment creation add no Google-client retries
+  and propagate transport errors. These use synthetic requests, not generated
+  upload paths; httplib2 may itself retry a first BadStatusLine, so this is not a
+  single-send guarantee. Existing edit/suggestion tests retain exact write bodies
+  and no additional Google-client retries; post-edit readback still requests two.
+- All 1,576 tests and the no-stubs gate pass. Full Ruff still exits 1 with 196
+  findings, exactly matching main by file, rule and message, with none added or
+  removed. Repository-wide lint cleanup remains outside this PR.
+- Read PR comments and inline reviews: no actionable review threads were open.
+  Added short docstrings to all four test functions touched by the existing PR
+  and the new regression, addressing the bot's test-docstring coverage warning.
+- Did not change inline-edit formatting, concurrency recovery, or ambiguous write
+  handling. No push, PR edits, live API calls, or campaign changes were made;
+  coordinator review, live replay, and publication remain pending.
+
+Agent session 01a09703-2c7d-79a1-b813-a95a3b053ff4 · Commits c2814dc
+
+# Clarify the retry boundary
+
+The user wanted both PR #64 review findings fixed while retaining bounded Google-client read retries.
+
+- Renamed and documented tests and corrected earlier claims: reads allow two
+  additional Google-client retries; mutations add no Google-client retries.
+  An offline generated Docs service with real httplib2 and an injected connection
+  proves that distinction while allowing httplib2's internal BadStatusLine retry;
+  the tests do not promise exact wire-send counts.
+- Kept `num_retries=2` and documented its broader retry policy, including 5xx/429
+  and rate-limit 403 responses. Sixteen generated-client cases cover 429/503
+  recovery and exhaustion across all four read wrappers.
+- All 1,594 tests and the no-stubs gate pass. Ruff reports 196 diagnostics,
+  exactly matching `origin/main` by file, rule, message, and multiplicity, with
+  none added or removed. Existing mutation transport behavior remains unchanged.
+- Committed locally without pushing; coordinator review and publication remain.
+
+Agent session 01a09708-ad21-7cb1-a989-f26ca5d4d829 · Commits b4cb261
+
+# Restack PR 64 on revision-safe writes
+
+The user wanted PR #64 rebased onto PR #70, verified offline and published for review.
+
+- Used TOP `98fcd75dc30bb4a611ccd490d9bc172b66d0e97f`; confirmed OLD and `origin/main` are `dbfa4c34bfa699ee8dd9839da85eea1fac177d44`. The fork's narrow fetch configuration omitted #70, so fetched its exact branch explicitly after `git fetch fork`.
+- Replayed all seven commits: `b69bd3a` → `6b75e53`, `5504542` → `530497c`, `cc48337` → `6f74697`, `c2814dc` → `b3790dd`, `83b7fac` → `38729f3`, `b4cb261` → `f9b1c3b`, and `6335ce0` → `0b8cdf9`.
+
+Conflict resolutions:
+
+1. `gdoc/api/docs.py`: retained #70's revision-pinned table insertion, relocation and staged replacement; retained #60's removal of speculative cleanup.
+   Applied #64's two additional Google-client retries to all four public document readers and #70's staged reader; preserved mutation transport and partial-completion reporting.
+2. `tests/test_api_docs.py`: kept the stack's segment and cleanup regressions and appended #64's read and mutation retry tests.
+   Updated the Drive import test for #70's guarded multi-tab path and single-send transport, preserving disconnect coverage and the zero-client-retry assertion.
+3. `tests/test_docs_batch.py`: kept every stacked test while retaining #64's wording-edit batch scenario; its obsolete cleanup-read expectation now asserts #60's no-read behavior.
+   Added four staged-read recovery/exhaustion cases across default and explicit tabs, proving completed batches are not replayed; #70's table snapshot fixture now accepts #64's retry keyword.
+4. `REPLICATE.md`: kept all inherited stack entries first, then appended #64's original entries.
+   Preserved historical hashes and recorded this session after committing its substantive test updates.
+
+- Offline gate: **2,820 passed**, with socket connections blocked by an external pytest plugin around `uv run pytest tests/ -q`; no live Google API calls. The first run exposed a missing preflight mock in the old Drive test, which the network blocker caught before any connection.
+- No-stubs and whitespace checks passed. Ruff exactly matches `origin/main`: **196 findings**, zero additions or removals, compared as multisets of relative file, rule, message and stripped source line. TOP is an ancestor and `git merge-tree --write-tree TOP HEAD` is clean.
+- No unresolved behavioral decisions; live behavior remains untested as required. Publication targets only #64's fork branch with the explicit old-head lease; review is requested after pushing.
+
+Agent session 01a09816-f631-74a2-84f2-7227c0b628fc · Commits 6b75e53, 530497c, 6f74697, b3790dd, 38729f3, f9b1c3b, 0b8cdf9, a6723c7
+
+The user wanted PR #64 restacked on #70 `18c1ea4`: retained both log sides with no code conflicts; 2,833 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_0212d4a76524 · Commits e74cab7, e83999f, 8a31814, 22cc376, 6f189bb, 409eacb, fd47667, 2fe7fd5, b05c9a0.
+
+The user wanted PR #64 restacked on #70 `de9db12`: preserved both log sides and all code/tests; 2,850 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_a0c743256dab · Commits fa5674217fb00fa49684abeeb77ea715cc52f225.
+
+# Agent sessions
+
+## Safe native edit targets
+
+The human wanted PR #66 redone as three focused fixes for target identity, native deletion boundaries, and Unicode offsets.
+
+- Tab IDs now precede titles; exact titles precede case-insensitive fallback, and ambiguous titles identify every candidate before refusing. Cell labels identify a unique first-column row, retaining explicit column and table coordinates.
+- Replacement and deletion matching stop at inline objects, footnote references, tables, and unexplained native-index gaps; only non-destructive anchor matching may opt into spanning native gaps. Whole-cell replacement refuses native content; the existing non-destructive inline-anchor behavior and synthetic API fixtures remain covered.
+- Lowercase matching maps transformed characters back to original UTF-16 spans and rejects partial expansions. Fifteen new regression cases failed before the Unicode fix, including an edit whose range swallowed the paragraph mark.
+- All 1,626 tests pass, including 49 new native-target cases and 14 retained capture cases. Changed helpers and tests pass Ruff; the full check retains exactly 196 pre-existing diagnostics, with no additions, under the coordinator-approved baseline exception. The no-stubs check passes.
+- No live captures, push, or PR edits were performed; coordinator review and live replay remain pending. Paragraph formatting, full-document reconstruction guards, and unrelated lint cleanup remain outside scope.
+
+Agent session 01a09703-553d-7e60-ad28-5066d61bf1d4 · Commits 9791974, 54a8e19, 56987ae
+
 ## Heading cleanup and repeated cell labels
 
 
@@ -587,8 +772,6 @@ The human wanted PR #66's adversarial cleanup findings and the recorded value-co
 
 Agent session 01a0970f-266f-7581-8402-a834760ace1d · Commits e7f2070
 
-- Replacement and deletion matching stop at inline objects, footnote references, tables, and unexplained native-index gaps; only non-destructive anchor matching may opt into spanning native gaps. Whole-cell replacement refuses native content; the existing non-destructive inline-anchor behavior and synthetic API fixtures remain covered.
-
 ## Restack PR 66 on the verified retry head
 
 The user wanted PR #66 placed after #64 with every stacked behavior preserved and offline gates checked before publication.
@@ -631,3 +814,5 @@ The human wanted PR #66 to delete paragraph wording without discarding positione
 Agent session ctx_09e67e8836d6 · Commits 276ab28, e6b80b5
 
 The user wanted PR #66 restacked on #64 `0f56d7c`: preserved both log sides and all code/tests including positioned-object marks; 2,858 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_a0c743256dab · Commits f7e87355402af84d51012496d33527a4c0171b1b.
+
+The user wanted PR #66 restacked on #64 `144f18b`: preserved both log histories and all code/tests; 2,874 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_098f9adc04f1 · Commits 3c2d0b626546d07d6b4710fa1131de8548f8680e.

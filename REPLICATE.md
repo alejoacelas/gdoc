@@ -337,3 +337,14 @@ The user wanted PR #68's table-heading and border-bottom rule losses blocked in 
 - All **2,631 tests pass**, including **169 guard tests**; no-stubs and whitespace checks pass. Ruff matches `origin/main` (`dbfa4c34`) at **196 findings**, with zero additions or removals normalized by relative path, rule, message and source line. No live Google API calls were made.
 
 Agent session 01a09858-843f-7233-81d1-f32d3855d9f9 · Commits 9ac6af2, 9887431
+
+# Keep style metadata outside replacement content
+
+The user wanted PR #65's metadata false positives fixed and its quiet-mode safety description corrected without rebasing the stack.
+
+- Added 25 regression cases: 20 reproduced metadata refusals or false warnings before the fix; five controls retained border and style detection in body, header, footer, footnote and table paragraphs.
+- Skip named-style and document-style defaults, their suggested changes, and the list registry during content traversal. Referenced list definitions still receive styling and suggestion checks, and explicit page-setup checks remain active.
+- Clarified that quiet mode skips conflict and awareness checks while whole-document write and push retain no-op and lossiness safety checks.
+- All **2,656 tests pass**, including **194 guard tests**; no-stubs and whitespace checks pass. Ruff matches `origin/main` (`dbfa4c34`) exactly at **196 findings**, with zero additions or removals normalized by relative path, rule, message and source line. No live Google API calls were made.
+
+Agent session 01a098a0-f49b-7770-840c-f6e0ef9917a5 · Commits 4f89128, cb633b3, 5a2a356, b3d4f7d

@@ -853,6 +853,31 @@ def test_unstructured_403_without_permission_wording_never_falls_back(
     fallback.assert_not_called()
 
 
+@pytest.mark.parametrize("content", [
+    b"Quota exceeded",
+    b"Google Docs API is disabled for this project",
+    b"",
+    b'{"error":',
+])
+def test_transport_forbidden_reason_never_creates_fallback(
+    comment_command, capsys, content,
+):
+    read, batch, fallback = comment_command
+    resp = httplib2.Response({"status": "403"})
+    resp.reason = "Forbidden"
+    error = HttpError(resp, content, uri="")
+    assert error.reason == "Forbidden"
+    batch.return_value.execute.side_effect = error
+    with pytest.raises(GdocError, match="no fallback comment was created") as exc:
+        cmd_comment(_make_args(quote="quick brown", json=True))
+    assert exc.value.exit_code == 1
+    read.assert_called_once()
+    batch.assert_called_once()
+    batch.return_value.execute.assert_called_once()
+    fallback.assert_not_called()
+    assert capsys.readouterr().out == ""
+
+
 @pytest.mark.parametrize("selector", [
     {"tab": "Notes"}, {"occurrence": 1}, {"tab": "Notes", "occurrence": 2},
 ])

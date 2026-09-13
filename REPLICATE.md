@@ -757,3 +757,5 @@ Conflict resolutions:
 - TOP is an ancestor and `git merge-tree --write-tree TOP HEAD` is clean. No unresolved behavioral decisions; live behavior remains untested. Publication targets only #68's fork branch with the explicit `70d720f` lease, followed by a Codex review request.
 
 Agent session 01a0981e-18c0-7533-81ba-78f8bf547373 · Commits 6f70c35, 915e3ac, cb474f8, a2e42f6, 1c5c98b, 9d12404, 9b1de52, ace6955, 36adc43, 12bbd3f
+
+The user wanted PR #68 restacked on #66 `16bf077`: retained both log sides with no code conflicts; 2,941 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_0212d4a76524 · Commits b0ead68, 44f8ec4, 14d2e8e, fcdb82b, bc0043d, 26ead8a, 5beb27e, e041040, 5423209, 2ddba09, a5e4f9c.

@@ -243,7 +243,7 @@ class TestInsertComment:
         with pytest.raises(GdocError, match="No fallback") as exc:
             insert_comment("doc1", "hello", 10, 25)
         assert not isinstance(exc.value, PreviewUnavailableError)
-        assert not isinstance(exc.value, PreviewUnavailableError)
+        assert exc.value.exit_code == 1
 
 
 def _tab(tab_id, text, start=1):

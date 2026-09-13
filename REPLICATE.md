@@ -403,3 +403,13 @@ Conflict resolutions:
 - Ruff matches `origin/main` at `dbfa4c34` exactly: **196 findings**, zero additions and zero removals, normalized by relative file, rule, message and stripped offending source line. `7a1f44b` is an ancestor and the merge-tree check is clean. Live API behavior was not exercised, as required; publication uses the explicit old-head lease and review is requested separately after pushing.
 
 Agent session 01a0980e-3161-76f2-a74b-88be63a8d985 · Commits e0424c0, 2852c84, 111ee5b, 69fe90f, b7608eb, 5a78f69, 81dc539, 392a040, 4ca0b6a, b2aea28, 53d2371, 3d359f1, 223a210, 16d9c88, 7c3fdf2, ef07a36, 24ca1c4, fee07e3, 5fbc2aa, a8674bc
+
+# Restack PR 70 on the updated reconstruction guard
+
+The user wanted PR #70 rebased onto the updated #65 and #69 stack, verified offline and published.
+
+- Replayed all 21 commits onto #65 `657362aa8f929d8daa6c6f8d056d1bfa5a3d8d0a`, which includes #69 `dd3a41c`. The sole conflict was in this log; retained the inherited entries and appended #70's entries.
+- Code and tests merged without conflicts. #65's numbered-list guard and #69's table export fixes required no changes to #70's test expectations; all inherited regressions remain.
+- **2,785 tests passed** with socket connections blocked by an external pytest plugin. No-stubs, whitespace and merge-tree checks pass; Ruff matches `origin/main` (`dbfa4c34`) exactly at **196 findings**, zero added or removed by relative path, rule, message and source line. No live Google API calls were made.
+
+Agent session 01a09814-54e2-79c3-a9c7-130b072201ef · Commits 72dfd74, 7d8c0a1, 6262abc, c4be3b1, 3a8d7f0, 0c0b655, 4c52792, 601439d, b821267, 54d1e23, 3cebb5c, 029b727, 26f2b9d, 1b589c9, f2f8849, 93d775c, b0a92e1, b5040f2, dd15b4a, d35f6a4, 65e0f83

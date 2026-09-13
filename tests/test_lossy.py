@@ -429,3 +429,73 @@ def test_adjacent_numbered_restarts_refuse_before_mutation(mocker):
         insert_markdown_into_tab("doc", "target", markdown, replace=True)
     assert "first" in str(exc.value) and "second" in str(exc.value)
     service.documents.return_value.batchUpdate.assert_not_called()
+
+
+@pytest.mark.parametrize("list_ids,start", [
+    (["first", "second", "first"], 1),
+    (["first"], 3),
+    (["first"], 0),
+])
+@pytest.mark.parametrize("tab_body", [False, True])
+def test_numbered_sequence_hazards_name_lists_and_allow_override(
+    capsys, list_ids, start, tab_body,
+):
+    scope = numbered_tab(list_ids, start)["documentTab"]
+    with pytest.raises(GdocError, match="numbered list") as exc:
+        check_markdown_replacement(scope, tab_body=tab_body)
+    for list_id in list_ids:
+        assert list_id in str(exc.value)
+    check_markdown_replacement(scope, tab_body=tab_body, allow_lossy=True)
+    assert "will discard:" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("list_ids,glyph_type", [
+    (["first", "first", "first"], "DECIMAL"),
+    (["first", "second", "first"], "GLYPH_TYPE_UNSPECIFIED"),
+])
+def test_continuous_numbering_and_bullets_remain_allowed(list_ids, glyph_type):
+    scope = numbered_tab(list_ids, glyph_type=glyph_type)["documentTab"]
+    check_markdown_replacement(scope, tab_body=True)
+
+
+@pytest.mark.parametrize("same_list", [False, True])
+def test_numbering_after_plain_paragraph(same_list):
+    scope = numbered_tab(["first", "first" if same_list else "second"])["documentTab"]
+    scope["body"]["content"].insert(1, PLAIN["content"][0])
+    if same_list:
+        with pytest.raises(GdocError, match="numbered list 'first' resumes"):
+            check_markdown_replacement(scope, tab_body=True)
+    else:
+        check_markdown_replacement(scope, tab_body=True)
+
+
+def test_numbered_definitions_follow_owning_tab():
+    first = numbered_tab(["same"])
+    second = numbered_tab(["same"])
+    first["tabProperties"]["title"] = second["tabProperties"]["title"] = "Tab 1"
+    check_markdown_replacement({"tabs": [first, second]})
+
+
+def test_only_referenced_numbered_levels_are_checked():
+    scope = numbered_tab(["first"])["documentTab"]
+    scope["lists"]["unused"] = {"listProperties": {"nestingLevels": [
+        {"glyphType": "DECIMAL", "startNumber": 5},
+    ]}}
+    scope["lists"]["first"]["listProperties"]["nestingLevels"].append({
+        "glyphType": "DECIMAL", "startNumber": 3,
+    })
+    check_markdown_replacement(scope, tab_body=True)
+    scope["body"]["content"][0]["paragraph"]["bullet"]["nestingLevel"] = 1
+    with pytest.raises(GdocError, match="numbered list 'first' starts at 3"):
+        check_markdown_replacement(scope, tab_body=True)
+
+
+def test_numbered_restart_override_permits_tab_mutation(mocker, capsys):
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "revisionId": "r", "tabs": [numbered_tab(["first", "second"])],
+    })
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    insert_markdown_into_tab("doc", "target", "new", replace=True, allow_lossy=True)
+    service.documents.return_value.batchUpdate.assert_called_once()
+    warning = capsys.readouterr().err
+    assert "will discard:" in warning and "'first', 'second'" in warning

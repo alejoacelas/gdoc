@@ -87,6 +87,37 @@ _PARAGRAPH_STYLE_LOSSES = {
 }
 
 
+def _numbered_list_hazards(content: list, lists: dict) -> set[str]:
+    """Find numbering boundaries and starts reconstruction cannot preserve."""
+    from gdoc.api.docs import _list_is_ordered
+
+    hazards = set()
+    run = set()
+    seen = set()
+    for element in content:
+        bullet = element.get("paragraph", {}).get("bullet")
+        if bullet is None:
+            run.clear()
+            continue
+        list_id = bullet.get("listId", "")
+        level = bullet.get("nestingLevel", 0)
+        if not _list_is_ordered(lists, list_id, level):
+            continue
+        start = lists[list_id]["listProperties"]["nestingLevels"][level].get(
+            "startNumber", 1,
+        )
+        if start != 1:
+            hazards.add(f"numbered list {list_id!r} starts at {start} (reset to 1)")
+        if run - {list_id}:
+            names = ", ".join(repr(name) for name in sorted(run | {list_id}))
+            hazards.add(f"adjacent or interleaved numbered lists {names}")
+        if list_id in seen and list_id not in run:
+            hazards.add(f"numbered list {list_id!r} resumes after a break")
+        run.add(list_id)
+        seen.add(list_id)
+    return hazards
+
+
 def check_markdown_replacement(
     scope: dict, *, tab_body: bool = False, allow_lossy: bool = False,
 ) -> None:
@@ -94,15 +125,18 @@ def check_markdown_replacement(
     hazards: set[str] = set()
     styles: set[str] = set()
 
-    def visit(value, table_depth=0, document_style=None):
+    def visit(value, table_depth=0, document_style=None, lists=None):
         """Collect known hazards recursively, tracking nested table depth."""
         if isinstance(value, list):
             for item in value:
-                visit(item, table_depth, document_style)
+                visit(item, table_depth, document_style, lists)
         elif isinstance(value, dict):
             # Each documentTab owns its defaults; recursive calls keep them
             # local so a sibling or child tab cannot inherit the wrong style.
             document_style = value.get("documentStyle", document_style or {})
+            lists = value.get("lists", {} if "body" in value else lists or {})
+            if "content" in value and isinstance(value["content"], list):
+                hazards.update(_numbered_list_hazards(value["content"], lists))
             if "sectionBreak" in value:
                 # Tab deletion starts at 1: the initial [0, 1) marker and
                 # its section style survive, even in an otherwise blank tab.
@@ -159,9 +193,9 @@ def check_markdown_replacement(
                 ):
                     # Map entry names are arbitrary, including "person" or
                     # "rowSpan"; only their values have Docs schema fields.
-                    visit(list(child.values()), table_depth, document_style)
+                    visit(list(child.values()), table_depth, document_style, lists)
                 else:
-                    visit(child, table_depth + (key == "table"), document_style)
+                    visit(child, table_depth + (key == "table"), document_style, lists)
 
     visit(scope)
     if hazards and not allow_lossy:

@@ -442,3 +442,5 @@ The user wanted PR #65's metadata false positives fixed and its quiet-mode safet
 - All **2,656 tests pass**, including **194 guard tests**; no-stubs and whitespace checks pass. Ruff matches `origin/main` (`dbfa4c34`) exactly at **196 findings**, with zero additions or removals normalized by relative path, rule, message and source line. No live Google API calls were made.
 
 Agent session 01a098a0-f49b-7770-840c-f6e0ef9917a5 · Commits 4f89128, cb633b3, 5a2a356, b3d4f7d
+
+The user wanted PR #70 restacked on #65 `1ffd817`: retained revision-safety and no-op/lossiness README guidance, both log histories and all code/tests; 2,880 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_8027a7d4ae60 · Commits e3b1e372582ebe1e82bc70c58971399856cde10d.

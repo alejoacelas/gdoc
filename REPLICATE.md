@@ -619,3 +619,13 @@ Conflict resolutions:
 Agent session 01a0981a-afc2-7093-90fe-1a96a3aa7847 · Commits a7b93d2, fef126b, 5925093
 
 The user wanted PR #66 restacked on #64 `b196f7a`: retained both log sides with no code conflicts; 2,833 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_0212d4a76524 · Commits 4f559a7, 036d009, 155cdc0, 0cf58e4.
+
+## Preserve positioned drawings during empty edits
+
+The human wanted PR #66 to delete paragraph wording without discarding positioned drawings anchored to its paragraph mark.
+
+- Added eight mocked edit/suggest cases for the anchored non-final paragraph and its final neighbour, both in the body and in a table cell; four edit cases failed before the fix, while suggestions already retained the marks.
+- Empty edits now retain positioned-object paragraph marks, including when final-paragraph deletion would borrow the preceding mark, following the existing native-object preservation policy.
+- All 2,841 tests passed with network connections blocked; no live Google API calls occurred. The no-stubs check passed, and normalized Ruff findings exactly matched origin/main: 196 each, zero additions or removals.
+
+Agent session ctx_09e67e8836d6 · Commits 276ab28, e6b80b5

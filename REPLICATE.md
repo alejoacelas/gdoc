@@ -374,3 +374,32 @@ The human wanted every finding in the revision-safe writes review fixed, includi
 - **Limits:** no live Google calls were made, so layout evidence is offline; deliberate multi-tab collapse still uses the documented non-atomic Drive import and retains its final-version-check race, though hidden transport resend is prevented; no commits were pushed.
 
 Agent session 01a09741-ca64-7e20-aaf3-f10ef172c4fa · Commits 7db25c8 (PR #66 integration), a119170 (review fixes and regressions)
+
+# Rebase revision-safe writes onto the final replacement stack
+
+The user wanted PR #70 directly on #65 at `7a1f44b`, preserving the earlier replacement and export fixes, correcting the README paragraph-boundary claim, and passing all offline gates before publication.
+
+- Confirmed old base `88165fc` and that `db3f658` (#60), `2dc05d3` (#61), `28c4ba9` (#63), and `5b41f05` (#69) are ancestors of `7a1f44b`. The old range contains 19 commits including merge `7db25c8`; ordinary rebase flattened that merge and replayed its 18 non-merge commits.
+- Original → replayed: `357616d` → `e0424c0`, `385379a` → `2852c84`, `9791974` → `111ee5b`, `54a8e19` → `69fe90f`, `56987ae` → `b7608eb`, `9506961` → `5a78f69`, `e7f2070` → `81dc539`, `a119170` → `392a040`, `60a3ea7` → `4ca0b6a`, `970e8e6` → `b2aea28`, `8858416` → `53d2371`, `52a0908` → `3d359f1`, `6442a50` → `223a210`, `77dff5f` → `16d9c88`, `7d0df7b` → `7c3fdf2`, `b474573` → `ef07a36`, `706c8f2` → `24ca1c4`, `3e40e65` → `fee07e3`.
+
+Conflict resolutions:
+
+1. Native writer signature and staged replacement: retained both `allow_lossy` and the guard-read `document`, and kept #61's per-address-space replacement shifts.
+   Added #70's revision progression, partial-completion tracking and table recovery using each match's actual tab ID.
+2. Upload guards and fixtures: made #65's shared replacement guard return its checked snapshot to write, push and sync, preserving loss and tab-collapse checks.
+   Kept the pytest-mock fixtures from #65 and passed the same snapshot into #70's revision-bound writer; tab writes retain both loss consent and the preflight version check.
+3. Cleanup integration: retained the helper incorporated through #66/`7db25c8`, with #70's final behavior and docstring from the old head, and retained the single-send transport from `a119170`.
+   Kept contextual replacements without speculative cleanup and restored the old head's helper/no-cleanup regression classes and image-only paragraph regression; the new base had no identical helper to reuse.
+4. Parser and image tests: combined #65's terminal-newline semantics with #70's complete-image-syntax guard.
+   Kept both #69's balanced-link tests and #70's image guard tests, including later bracket-description and reference-label fixes.
+5. Bullet and empty-paragraph resets: retained #65's reset of the surviving paragraph before insertion and #69's final-style and table-separator handling.
+   #70's later post-insertion reset code is redundant under #65, so its regression tests now assert the earlier reset, including empty replacement and deletion of a first-paragraph bullet.
+6. Session log conflicts: preserved all earlier stack entries before the appended #70 entries.
+   Kept historical hashes unchanged and recorded this rebase only after committing its substantive changes.
+
+- Cross-stack test expectations now reflect #61's footnote segment coordinates and tabs-aware unrestricted search, #65's loss consent, retained-paragraph reset and `None` no-op mismatch result, and #70's snapshot/version arguments and staged table revisions. Existing #60 link-label and contextual-suggestion expectations and #65 grouped-list expectations remain. No test from either final side was dropped; renamed tests retain the corresponding scenario, and cleanup coverage from the old merge was restored explicitly.
+- Corrected the README's stale “Newlines are fine” claim in the separate documentation-only commit `5fbc2aa`: replacements inside a paragraph cannot introduce paragraph breaks, and block Markdown requires a whole-paragraph target plus the command's supported-format rules.
+- Final offline gate: **2,763 passed** using `sandbox-exec` with network access denied around `uv run pytest tests/ -q`; no-stubs and whitespace checks passed. Initial failures exposed obsolete cross-stack fixtures and expectations, including missing read/export mocks; the network sandbox prevented live Google calls throughout.
+- Ruff matches `origin/main` at `dbfa4c34` exactly: **196 findings**, zero additions and zero removals, normalized by relative file, rule, message and stripped offending source line. `7a1f44b` is an ancestor and the merge-tree check is clean. Live API behavior was not exercised, as required; publication uses the explicit old-head lease and review is requested separately after pushing.
+
+Agent session 01a0980e-3161-76f2-a74b-88be63a8d985 · Commits e0424c0, 2852c84, 111ee5b, 69fe90f, b7608eb, 5a78f69, 81dc539, 392a040, 4ca0b6a, b2aea28, 53d2371, 3d359f1, 223a210, 16d9c88, 7c3fdf2, ef07a36, 24ca1c4, fee07e3, 5fbc2aa, a8674bc

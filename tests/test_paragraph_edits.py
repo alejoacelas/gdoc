@@ -326,6 +326,30 @@ def _apply_text_requests(body, requests):
     return text.decode('utf-16-le')
 
 
+@pytest.mark.parametrize("command", ["edit", "suggest"])
+@pytest.mark.parametrize("in_cell", [False, True])
+@pytest.mark.parametrize("target", ["Drawing", "Following"])
+def test_empty_replacement_preserves_positioned_object_anchor(
+    mocker, command, in_cell, target,
+):
+    body = _body(("Drawing", "NORMAL_TEXT", False),
+                 ("Following", "NORMAL_TEXT", False))
+    body["content"][0]["paragraph"]["positionedObjectIds"] = ["drawing"]
+    text_body = deepcopy(body)
+    if in_cell:
+        body = {"content": [{"table": {"tableRows": [{"tableCells": [body]}]}}]}
+    original = deepcopy(body)
+    planner = _requests if command == "edit" else _suggest_requests
+    requests = planner(mocker, body, target, "")
+    expected = "\nFollowing\n" if target == "Drawing" else "Drawing\n\n"
+    assert _apply_text_requests(text_body, requests) == expected
+    assert body == original
+    deletions = [r["deleteContentRange"]["range"] for r in requests
+                 if "deleteContentRange" in r]
+    assert len(deletions) == 1
+    assert not deletions[0]["startIndex"] <= 8 < deletions[0]["endIndex"]
+
+
 def _suggest_requests(mocker, body, old, new):
     from gdoc.api.docs import suggest_replacement
 

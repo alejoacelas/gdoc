@@ -552,3 +552,46 @@ def test_empty_list_item_refuses_before_mutation(mocker, glyph_type):
     with pytest.raises(GdocError, match="empty list item.*empty"):
         insert_markdown_into_tab("doc", "target", "new", replace=True)
     service.documents.return_value.batchUpdate.assert_not_called()
+
+
+@pytest.mark.parametrize("header_styles", [({}, {}), ({"bold": True}, {}),
+                                           ({"bold": True}, {"bold": False})])
+@pytest.mark.parametrize("allow_lossy", [False, True])
+def test_plain_or_mixed_table_header_requires_opt_in(
+    mocker, capsys, header_styles, allow_lossy,
+):
+    from gdoc.api.docs import get_tab_text
+
+    header = body({"textRun": {"content": "first", "textStyle": header_styles[0]}})
+    header["content"][0]["paragraph"]["elements"].append(
+        {"textRun": {"content": " second\n", "textStyle": header_styles[1]}},
+    )
+    scope = {"content": [{"startIndex": 7, "endIndex": 30, "table": {
+        "tableRows": [{"tableCells": [header, body({"textRun": {
+            "content": "bold\n", "textStyle": {"bold": True},
+        }})]}, {"tableCells": [PLAIN, PLAIN]}],
+    }}]}
+    target = tab("target", scope)
+    markdown = get_tab_text(target["documentTab"], markdown=True)
+    assert "| --- | --- |" in markdown
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "revisionId": "r", "tabs": [target],
+    })
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    table_insert = mocker.patch("gdoc.api.docs._insert_table")
+    if allow_lossy:
+        insert_markdown_into_tab(
+            "doc", "target", markdown, replace=True, allow_lossy=True,
+        )
+        service.documents.return_value.batchUpdate.assert_called_once()
+        table_insert.assert_called_once()
+        assert "table at index 7" in capsys.readouterr().err
+    else:
+        with pytest.raises(GdocError, match="table at index 7.*header") as exc:
+            insert_markdown_into_tab("doc", "target", markdown, replace=True)
+        assert exc.value.exit_code == 3
+        assert "--allow-lossy" in str(exc.value)
+        service.documents.return_value.batchUpdate.assert_not_called()
+        table_insert.assert_not_called()
+        with pytest.raises(GdocError, match="table at index 7.*header"):
+            check_markdown_replacement(scope)

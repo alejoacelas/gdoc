@@ -512,3 +512,27 @@ The user wanted both PR #64 review findings fixed while retaining bounded Google
 - Committed locally without pushing; coordinator review and publication remain.
 
 Agent session 01a09708-ad21-7cb1-a989-f26ca5d4d829 · Commits b4cb261
+
+# Restack PR 64 on revision-safe writes
+
+The user wanted PR #64 rebased onto PR #70, verified offline and published for review.
+
+- Used TOP `98fcd75dc30bb4a611ccd490d9bc172b66d0e97f`; confirmed OLD and `origin/main` are `dbfa4c34bfa699ee8dd9839da85eea1fac177d44`. The fork's narrow fetch configuration omitted #70, so fetched its exact branch explicitly after `git fetch fork`.
+- Replayed all seven commits: `b69bd3a` → `6b75e53`, `5504542` → `530497c`, `cc48337` → `6f74697`, `c2814dc` → `b3790dd`, `83b7fac` → `38729f3`, `b4cb261` → `f9b1c3b`, and `6335ce0` → `0b8cdf9`.
+
+Conflict resolutions:
+
+1. `gdoc/api/docs.py`: retained #70's revision-pinned table insertion, relocation and staged replacement; retained #60's removal of speculative cleanup.
+   Applied #64's two additional Google-client retries to all four public document readers and #70's staged reader; preserved mutation transport and partial-completion reporting.
+2. `tests/test_api_docs.py`: kept the stack's segment and cleanup regressions and appended #64's read and mutation retry tests.
+   Updated the Drive import test for #70's guarded multi-tab path and single-send transport, preserving disconnect coverage and the zero-client-retry assertion.
+3. `tests/test_docs_batch.py`: kept every stacked test while retaining #64's wording-edit batch scenario; its obsolete cleanup-read expectation now asserts #60's no-read behavior.
+   Added four staged-read recovery/exhaustion cases across default and explicit tabs, proving completed batches are not replayed; #70's table snapshot fixture now accepts #64's retry keyword.
+4. `REPLICATE.md`: kept all inherited stack entries first, then appended #64's original entries.
+   Preserved historical hashes and recorded this session after committing its substantive test updates.
+
+- Offline gate: **2,820 passed**, with socket connections blocked by an external pytest plugin around `uv run pytest tests/ -q`; no live Google API calls. The first run exposed a missing preflight mock in the old Drive test, which the network blocker caught before any connection.
+- No-stubs and whitespace checks passed. Ruff exactly matches `origin/main`: **196 findings**, zero additions or removals, compared as multisets of relative file, rule, message and stripped source line. TOP is an ancestor and `git merge-tree --write-tree TOP HEAD` is clean.
+- No unresolved behavioral decisions; live behavior remains untested as required. Publication targets only #64's fork branch with the explicit old-head lease; review is requested after pushing.
+
+Agent session 01a09816-f631-74a2-84f2-7227c0b628fc · Commits 6b75e53, 530497c, 6f74697, b3790dd, 38729f3, f9b1c3b, 0b8cdf9, a6723c7

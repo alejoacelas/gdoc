@@ -444,3 +444,13 @@ The user wanted PR #65's metadata false positives fixed and its quiet-mode safet
 Agent session 01a098a0-f49b-7770-840c-f6e0ef9917a5 · Commits 4f89128, cb633b3, 5a2a356, b3d4f7d
 
 The user wanted PR #70 restacked on #65 `1ffd817`: retained revision-safety and no-op/lossiness README guidance, both log histories and all code/tests; 2,880 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_8027a7d4ae60 · Commits e3b1e372582ebe1e82bc70c58971399856cde10d.
+
+# Refuse incoming list-number loss
+
+The user wanted PR #70's native replacement route to reject incoming ordered lists whose starting number cannot be preserved.
+
+- Added 60 mocked cases across write, push and write --tab; 36 reproduced missing refusals or warnings before the fix. Coverage includes zero and 42 starts, nested lists and later lists, plus normal numbering, code fences and escaped-marker controls.
+- Retain non-default list starts during Markdown parsing and check them in the shared tab replacement function before any mutation. Refusals exit 3 and identify the list and source line; --allow-lossy permits replacement with a reset-to-1 warning.
+- All 2,940 tests pass with socket connections blocked; no-stubs and whitespace checks pass. Ruff matches origin/main at 196 findings, with zero added or removed findings normalized by relative path, rule, message and source line.
+
+Agent session ctx_529391b69e60 · Commits d0b5495, 89eee48

@@ -895,3 +895,52 @@ def test_noop_match_reads_baseline_then_rechecks(mocker):
     assert _doc_matches("synthetic", "Same body") is None
     assert version.call_count == 2
 
+
+
+@pytest.mark.parametrize("command", ["write", "push", "write-tab"])
+@pytest.mark.parametrize("allow_lossy", [False, True])
+@pytest.mark.parametrize("markdown,hazard", [
+    ("42. item", True),
+    ("0. item", True),
+    ("1. parent\n    42. item", True),
+    ("- parent\n    42. item", True),
+    ("1. parent\n    1. child\n2. parent\n    42. item", True),
+    ("1. earlier\n\n42. item", True),
+    ("1. item\n2. next", False),
+    ("1. parent\n    1. child\n    2. next\n2. parent", False),
+    ("```\n42. item\n```", False),
+    (r"42\. item", False),
+])
+def test_native_replacement_guards_incoming_list_starts(
+    api, drive_api, mocker, tmp_path, capsys, command, allow_lossy, markdown, hazard,
+):
+    files, _, _ = drive_api
+    mocker.patch(
+        "gdoc.cli._check_write_conflict",
+        return_value=(ChangeInfo(current_version=10, last_read_version=10), False),
+    )
+    mocker.patch("gdoc.cli._doc_matches", return_value=None)
+    update_state = mocker.patch("gdoc.state.update_state_after_command")
+    path = tmp_path / "body.md"
+    path.write_text("---\ngdoc: synthetic\n---\n" + markdown)
+    args = tab_write_args(
+        path, tab="Notes" if command == "write-tab" else None,
+        allow_lossy=allow_lossy,
+    )
+    handler = cmd_push if command == "push" else cmd_write
+    if hazard and not allow_lossy:
+        with pytest.raises(GdocError, match="--allow-lossy") as caught:
+            handler(args)
+        assert caught.value.exit_code == 3
+        assert "numbered list" in str(caught.value)
+        assert "item" in str(caught.value)
+        api.batchUpdate.assert_not_called()
+        update_state.assert_not_called()
+    else:
+        assert handler(args) == 0
+        assert len(batches(api)) == 1
+        err = capsys.readouterr().err
+        assert ("WARN:" in err) is hazard
+        if hazard:
+            assert "numbered list" in err and "reset to 1" in err
+    files.update.assert_not_called()

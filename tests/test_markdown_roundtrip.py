@@ -226,6 +226,8 @@ def _table(rows):
     [["", ""], ["", ""]],
     [["a|b", r"c\|d"], ["end\\", "|"], ["*literal*", "<br>"]],
     [["Heading", "Other"], ["first\nsecond", "line\\\nbreak"]],
+    [["H"], ["foo"], ["---"], ["bar"]],
+    [["---", ":---:"], ["x", "-- -"], ["- - -", ":--:"]],
 ])
 def test_native_rectangular_table_roundtrip(rows):
     table = _table(rows)
@@ -281,4 +283,14 @@ def test_irregular_tables_keep_text_fallback(kind):
     assert exported == get_tab_text(tab)
     tail = "\n" if kind == "ragged" else "\tTail\n"
     assert exported == "Header\tOther\nValue" + tail
+    assert not parse_markdown(exported).tables
+
+
+@pytest.mark.parametrize("cell", [" lead", "trail ", " ", "\t", "a\n ", " \nb"])
+def test_boundary_whitespace_cells_keep_text_fallback(cell):
+    table = _table([["Header", "Other"], [cell, "Tail"]])
+    tab = {"body": {"content": [table]}}
+    exported = get_tab_text(tab, markdown=True)
+    assert exported == get_tab_text(tab)
+    assert exported == f"Header\tOther\n{cell.strip()}\tTail\n"
     assert not parse_markdown(exported).tables

@@ -393,8 +393,16 @@ def _paragraph_markdown(
     return text + newline
 
 
+# One cell of a pipe-table header separator (``---``, ``:---:``).
+_TABLE_SEP_CELL_RE = re.compile(r"[\s:]*-{3,}[\s:]*")
+
+
 def _table_markdown(table: dict) -> str | None:
-    """Export rectangular, unmerged tables; retain the text fallback otherwise."""
+    """Export rectangular, unmerged tables; retain the text fallback otherwise.
+
+    Cells with leading or trailing whitespace also keep the text fallback,
+    because the parser strips pipe-delimiter padding from every cell.
+    """
     rows = [row.get("tableCells", []) for row in table.get("tableRows", [])]
     if not rows or not rows[0] or any(len(row) != len(rows[0]) for row in rows):
         return None
@@ -404,7 +412,7 @@ def _table_markdown(table: dict) -> str | None:
             if (style.get("rowSpan", 1) != 1 or style.get("columnSpan", 1) != 1
                     or any("table" in element for element in cell.get("content", []))):
                 return None
-    lines = []
+    grid = []
     for row in rows:
         cells = []
         for cell in row:
@@ -412,8 +420,18 @@ def _table_markdown(table: dict) -> str | None:
                 _runs_markdown(element["paragraph"].get("elements", []))
                 for element in cell.get("content", []) if "paragraph" in element
             ).removesuffix("\n")
-            cells.append(text.replace("|", "\\|").replace("\n", "<br>"))
-        lines.append("| " + " | ".join(cells) + " |\n")
+            if _TABLE_SEP_CELL_RE.fullmatch(text):
+                # A data row of dashes would read as the separator of a new
+                # table; the parser drops the escape again.
+                text = text.replace("-", "\\-", 1)
+            rendered = text.replace("|", "\\|").replace("\n", "<br>")
+            if rendered != rendered.strip():
+                # The parser strips delimiter padding, so boundary whitespace
+                # has no lossless pipe-table form.
+                return None
+            cells.append(rendered)
+        grid.append(cells)
+    lines = ["| " + " | ".join(cells) + " |\n" for cells in grid]
     lines.insert(1, "| " + " | ".join(["---"] * len(rows[0])) + " |\n")
     return "".join(lines)
 
@@ -428,8 +446,9 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
     (``**bold**``, ``*italic*``, ``~~strike~~``) and ``[links](url)``, so a
     tab's supported text and styles can be reconstructed with ``write --tab``.
     Rectangular, unmerged tables use pipe rows, with the first row as a header
-    and cell newlines as ``<br>``; irregular and nested tables keep the text
-    fallback. Table borders, widths and paragraph styles are not represented.
+    and cell newlines as ``<br>``; irregular and nested tables, and tables
+    with whitespace at a cell boundary, keep the text fallback. Table borders,
+    widths and paragraph styles are not represented.
 
     Markdown export escapes literal syntax: ``1. Hello`` becomes
     ``1\\. Hello``, and ``_``, ``[``, and ``<`` gain backslashes. It uses

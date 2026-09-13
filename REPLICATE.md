@@ -617,3 +617,5 @@ Conflict resolutions:
 - No unresolved behavioral decisions; live behavior was not exercised. Publication is limited to #66's fork branch using the requested old-head lease.
 
 Agent session 01a0981a-afc2-7093-90fe-1a96a3aa7847 · Commits a7b93d2, fef126b, 5925093
+
+The user wanted PR #66 restacked on #64 `b196f7a`: retained both log sides with no code conflicts; 2,833 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_0212d4a76524 · Commits 4f559a7, 036d009, 155cdc0, 0cf58e4.

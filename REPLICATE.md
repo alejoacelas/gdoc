@@ -536,3 +536,5 @@ Conflict resolutions:
 - No unresolved behavioral decisions; live behavior remains untested as required. Publication targets only #64's fork branch with the explicit old-head lease; review is requested after pushing.
 
 Agent session 01a09816-f631-74a2-84f2-7227c0b628fc · Commits 6b75e53, 530497c, 6f74697, b3790dd, 38729f3, f9b1c3b, 0b8cdf9, a6723c7
+
+The user wanted PR #64 restacked on #70 `18c1ea4`: retained both log sides with no code conflicts; 2,833 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_0212d4a76524 · Commits e74cab7, e83999f, 8a31814, 22cc376, 6f189bb, 409eacb, fd47667, 2fe7fd5, b05c9a0.

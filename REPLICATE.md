@@ -659,3 +659,17 @@ Agent session ctx_5a3ab7345292 · Commits 711729d, 736e9d9
 The user wanted PR #64 restacked on #70 `52a8ad8`: preserved both log histories and all code/tests; 2,890 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_d7e4f02b9a08 · Commits 62e11f306fec5eb379bd08c4267dced728d1f217.
 
 The user wanted PR #66 restacked on #64 `bb68329`: split `711729d` and `736e9d9` to retain only the native-gap regression and forwarding fix, dropped their duplicate fence/empty-guard portions (no whole commits dropped), preserved earlier commits and both log histories, and marked the fence record superseded by #70; 2,904 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_d7e4f02b9a08 · Commits 2cace51, 5e09c63, 3f2edea35fba57abc1ecfc37e8175473ca34478d.
+
+The user wanted PR #70 restacked on #65 `116efd0`: preserved both log histories and all code/tests; 2,855 offline tests passed, no-stubs and ancestry/merge-tree passed, Ruff matched origin/main at 196 findings (0 added/removed). Agent session ctx_d7e4f02b9a08 · Commits 5a335477f87f0e9123dceb683f89e37f1ef28f7e.
+
+# Guard table headings and paragraph rules
+
+The user wanted PR #68's table-heading and border-bottom rule losses blocked in PR #65 before the next restack.
+
+- Observed 18 failing mocked cases before the fix. The guard now names tables containing non-normal named paragraph styles and requires `--allow-lossy`; absent and NORMAL_TEXT cell styles retain their behavior.
+
+- Border-bottom paragraphs now require the same opt-in: the existing exporter has no rule-rendering helper and emits only their text. Native horizontal-rule behavior and plain/bold-header table behavior remain covered and unchanged.
+
+- All **2,631 tests pass**, including **169 guard tests**; no-stubs and whitespace checks pass. Ruff matches `origin/main` (`dbfa4c34`) at **196 findings**, with zero additions or removals normalized by relative path, rule, message and source line. No live Google API calls were made.
+
+Agent session 01a09858-843f-7233-81d1-f32d3855d9f9 · Commits 9ac6af2, 9887431

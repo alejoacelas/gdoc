@@ -98,6 +98,18 @@ _BLOCKQUOTE_RE = re.compile(r"^ {0,3}>\s?(.*)$")
 _HR_RE = re.compile(r"^ {0,3}([-*_])[ ]*(?:\1[ ]*){2,}$")
 _FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})\s*(\S*)\s*$")
 
+
+def _fence_open(line: str) -> re.Match | None:
+    """Match a fence opener; a backtick fence's info string holds no backtick.
+
+    CommonMark 4.5: ```` ```code``` ```` on one line is an inline code span,
+    not an opening fence, so it must never swallow the rest of the input.
+    """
+    match = _FENCE_RE.match(line)
+    if match and match.group(1)[0] == "`" and "`" in match.group(2):
+        return None
+    return match
+
 # Table patterns
 _TABLE_ROW_RE = re.compile(r"^\|(.+)\|$")
 _TABLE_SEP_RE = re.compile(r"^\|[\s:]*-{3,}[\s:]*(\|[\s:]*-{3,}[\s:]*)*\|$")
@@ -433,7 +445,7 @@ def _check_native_images(text: str) -> None:
     visible = []
     fence = None
     for line in text.splitlines():
-        match = _FENCE_RE.match(line)
+        match = _FENCE_RE.match(line) if fence is not None else _fence_open(line)
         if match:
             marker = match.group(1)
             if fence is None:
@@ -522,7 +534,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         line = lines[i]
 
         # Fenced code block: ``` (or ~~~) ... ```
-        fence_m = _FENCE_RE.match(line)
+        fence_m = _fence_open(line)
         if fence_m:
             fence = fence_m.group(1)
             fence_char = fence[0]

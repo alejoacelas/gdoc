@@ -1021,3 +1021,27 @@ class TestNativeImageGuard:
         parsed = parse_markdown("Type `![alt](url)` to embed\n")
         assert "![alt](url)" in parsed.plain_text
 
+
+class TestSingleLineTripleBacktickSpan:
+    """A backtick fence's info string holds no backtick (CommonMark 4.5)."""
+
+    def test_single_line_span_is_inline_code_not_a_fence(self):
+        parsed = parse_markdown("```code```\n")
+        assert parsed.plain_text == "code\n"
+        assert any(s.style == {"weightedFontFamily": {"fontFamily": "Courier New"}}
+                   or "fontFamily" in str(s.style) for s in parsed.styles)
+
+    def test_single_line_span_never_swallows_following_content(self):
+        parsed = parse_markdown("Intro\n```code```\nAfter\n")
+        assert parsed.plain_text == "Intro\ncode\nAfter\n"
+
+    def test_real_fence_still_opens(self):
+        parsed = parse_markdown("```python\nx = 1\n```\nAfter\n")
+        assert parsed.plain_text == "x = 1\nAfter\n"
+
+    def test_image_guard_does_not_treat_span_as_fence(self):
+        from gdoc.util import GdocError
+
+        with pytest.raises(GdocError):
+            parse_markdown("```code```\n![a](https://x.test/i.png)\n")
+

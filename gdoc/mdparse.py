@@ -40,6 +40,8 @@ class ParsedMarkdown:
     # removes them at apply time, so the document grows by len(plain_text)
     # minus this when the requests are applied.
     removed_tabs: int = 0
+    # Numbering starts that native createParagraphBullets would reset to 1.
+    non_default_list_starts: list[str] = field(default_factory=list)
 
 
 # Inline patterns — order matters (bold+italic before bold/italic)
@@ -492,6 +494,8 @@ def parse_markdown(text: str) -> ParsedMarkdown:
     all_tables: list[TableData] = []
     offset = 0
     removed_tabs = 0  # running count of leading list-indent tabs (see below)
+    list_levels: dict[int, str] = {}
+    non_default_list_starts: list[str] = []
 
     def emit_paragraph(
         content: str,
@@ -499,6 +503,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         para_style: dict,
         bullet_preset: str | None = None,
         leading_tabs: int = 0,
+        start_number: int = 1,
     ) -> None:
         """Append one paragraph (content + newline) and its style ranges.
 
@@ -506,6 +511,18 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         counts and removes them at apply time (tracked via ``removed_tabs``).
         """
         nonlocal offset, removed_tabs
+        if bullet_preset is None:
+            list_levels.clear()
+        else:
+            for level in list(list_levels):
+                if level > leading_tabs:
+                    del list_levels[level]
+            if list_levels.get(leading_tabs) != bullet_preset and start_number != 1:
+                non_default_list_starts.append(
+                    f"numbered list at line {i + 1} ({content!r}) "
+                    f"starts at {start_number} (reset to 1)"
+                )
+            list_levels[leading_tabs] = bullet_preset
         para_start = offset
         if leading_tabs:
             plain_parts.append("\t" * leading_tabs)
@@ -536,6 +553,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         # Fenced code block: ``` (or ~~~) ... ```
         fence_m = _fence_open(line)
         if fence_m:
+            list_levels.clear()
             fence = fence_m.group(1)
             fence_char = fence[0]
             i += 1
@@ -566,6 +584,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             and _TABLE_SEP_RE.match(lines[i + 1])
         ):
             table_rows: list[list[str]] = []
+            list_levels.clear()
             header_cells = _table_cells(line)
             table_rows.append(header_cells)
             num_cols = len(header_cells)
@@ -671,6 +690,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                 {"namedStyleType": "NORMAL_TEXT"},
                 bullet_preset="NUMBERED_DECIMAL_ALPHA_ROMAN",
                 leading_tabs=_list_level(numbered_m.group(1)),
+                start_number=int(line.lstrip().split(".", 1)[0]),
             )
             i += 1
             continue
@@ -688,6 +708,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         styles=all_styles,
         tables=all_tables,
         removed_tabs=removed_tabs,
+        non_default_list_starts=non_default_list_starts,
     )
 
 

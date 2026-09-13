@@ -1824,6 +1824,19 @@ def insert_markdown_into_tab(
         insert_index = body_start
 
     parsed = parse_markdown(markdown)
+    if replace and parsed.non_default_list_starts:
+        import sys
+
+        losses = ", ".join(parsed.non_default_list_starts)
+        if not allow_lossy:
+            raise GdocError(
+                "Markdown replacement refused: incoming " + losses
+                + ". No content was written. Pass --allow-lossy to knowingly "
+                "reset list numbering.",
+                exit_code=3,
+            )
+        print("WARN: Markdown replacement will reset incoming " + losses,
+              file=sys.stderr)
     requests: list[dict] = []
 
     at_end = replace or body_end == body_start or position == "end"

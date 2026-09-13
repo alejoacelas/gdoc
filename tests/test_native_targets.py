@@ -160,6 +160,31 @@ def test_inline_native_objects_split_search_segments(native):
     assert document == before
 
 
+@pytest.mark.parametrize("form", ["legacy", "raw-tabs", "flattened-tab"])
+@pytest.mark.parametrize("native", [
+    {"inlineObjectElement": {"inlineObjectId": "synthetic-image"}},
+    {"footnoteReference": {"footnoteId": "synthetic-footnote"}},
+])
+def test_full_document_anchor_can_span_native_objects(form, native):
+    body = {"content": [{"paragraph": {"elements": [
+        {"startIndex": 1, "endIndex": 5, "textRun": {"content": "Left"}},
+        {"startIndex": 5, "endIndex": 6, **native},
+        {"startIndex": 6, "endIndex": 12, "textRun": {"content": "Right\n"}},
+    ]}}]}
+    document = {"body": body}
+    expected = {"startIndex": 1, "endIndex": 11}
+    if form != "legacy":
+        tab = raw_tab("a", "A")
+        tab["documentTab"]["body"] = body
+        document = ({"tabs": [tab]} if form == "raw-tabs"
+                    else docs.flatten_tabs([tab])[0])
+        expected.update(container="body", tabId="a")
+    assert docs.find_text_in_document(document, "LeftRight") == []
+    assert docs.find_text_in_document(
+        document, "LeftRight", allow_native_gaps=True,
+    ) == [expected]
+
+
 @pytest.mark.parametrize("allow_native_gaps", [False, True])
 def test_table_splits_outer_paragraphs_and_cells(allow_native_gaps):
     middle = table([["Cell\n"]], start=6)

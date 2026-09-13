@@ -297,3 +297,13 @@ The user wanted PR #65 rebased onto #69's latest table fixes before restacking #
 - Offline suite: **2,584 passed**; no-stubs, whitespace and merge-tree checks pass. Ruff matches `origin/main` (`dbfa4c34`) exactly: **196 findings**, zero additions or removals normalized by relative path, rule, message and source line. No live Google API calls were made.
 
 Agent session 01a09814-54e2-79c3-a9c7-130b072201ef · Commits aea61da, b9cb99a, 2269874, cb651ec, e842448, ec055c3, 3687458, d217988, 539d944, 126b445, e63599b, 8a615c9, e7aedac
+
+# Close table and list reconstruction guard gaps
+
+The user wanted PR #65's three new review findings reproduced and fixed without rebasing the stacked branch.
+
+- Added nine failing regression cases, then reused the exporter's table-rendering decision to block tables that fall back to prose, identifying each by its native index. Replaced the empty simple-table fixture with a real rectangular table.
+- Unordered items now end the active ordered run, so resumed numbered lists are refused; empty ordered and unordered items are also refused before mutation. Continuous numbering, plain bullets and supported tables remain allowed.
+- Offline suite: **2,593 passed**, including **131 guard tests**. No-stubs and whitespace checks pass; Ruff matches `origin/main` (`dbfa4c34`) exactly at **196 findings**, with zero additions or removals normalized by relative file, rule, message and source line. No live Google API calls were made.
+
+Agent session 01a09820-f492-7843-8f86-b82d6aa599e7 · Commits c38d48b

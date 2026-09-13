@@ -288,3 +288,12 @@ The user wanted PR #65's numbered-list restart finding reproduced, fixed in the 
 - Added 14 cases; **2,576 tests pass**, including **122 guard tests**. No-stubs and whitespace checks pass; Ruff matches `origin/main` (`dbfa4c34`) at **196 findings**, zero additions or removals normalized by relative path, rule, message and source line. No live Google API calls were made.
 
 Agent session 01a09810-33a2-7360-a8f4-8f4207c85c57 · Commits c58fa14, 56f20f1
+
+# Restack PR 65 on the reviewed table exporter
+
+The user wanted PR #65 rebased onto #69's latest table fixes before restacking #70.
+
+- Used #69 `dd3a41cd0cf43cfbffc42569d74de2064e72867f`; the fork fetch filter required fetching that branch explicitly. Replayed all 13 commits; the sole conflict was in this log, where both entries were retained. Code and tests merged without conflicts, preserving the table fixes and numbered-list guard.
+- Offline suite: **2,584 passed**; no-stubs, whitespace and merge-tree checks pass. Ruff matches `origin/main` (`dbfa4c34`) exactly: **196 findings**, zero additions or removals normalized by relative path, rule, message and source line. No live Google API calls were made.
+
+Agent session 01a09814-54e2-79c3-a9c7-130b072201ef · Commits aea61da, b9cb99a, 2269874, cb651ec, e842448, ec055c3, 3687458, d217988, 539d944, 126b445, e63599b, 8a615c9, e7aedac

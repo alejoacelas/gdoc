@@ -217,6 +217,18 @@ def check_markdown_replacement(
                         hazards.add(
                             f"table at index {index} (header row gains bold formatting)"
                         )
+                    # The exporter renders cell runs without paragraph bullets;
+                    # pipe-table reconstruction parses only inline formatting.
+                    if any(
+                        "bullet" in block.get("paragraph", {})
+                        for row in child.get("tableRows", [])
+                        for cell in row.get("tableCells", [])
+                        for block in cell.get("content", [])
+                    ):
+                        hazards.add(
+                            f"table at index {index} "
+                            "(list paragraphs become plain text)"
+                        )
                 if key in ("rowSpan", "columnSpan") and child > 1:
                     hazards.add("merged table cells")
                 if not tab_body and key in ("headers", "footers", "footnotes"):

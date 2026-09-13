@@ -366,8 +366,9 @@ def test_referenced_list_inventory(mocker, capsys, in_cell, mode):
     service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
     table_insert = mocker.patch("gdoc.api.docs._insert_table")
     markdown = "| New |\n| --- |\n| value |"
-    if mode == "refuse":
-        with pytest.raises(GdocError, match="pending suggestions") as exc:
+    if mode == "refuse" or (in_cell and mode == "style-only"):
+        hazard = "pending suggestions" if mode == "refuse" else "list paragraphs"
+        with pytest.raises(GdocError, match=hazard) as exc:
             insert_markdown_into_tab("doc", "target", markdown, replace=True)
         assert exc.value.exit_code == 3
         service.documents.return_value.batchUpdate.assert_not_called()

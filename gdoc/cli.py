@@ -649,12 +649,22 @@ def cmd_insert(args) -> int:
     if not content.strip():
         raise GdocError("input file has no content to insert", exit_code=3)
 
-    change_info, _ = _check_write_conflict(doc_id, quiet, force)
+    from gdoc.notify import pre_flight
+    from gdoc.api.docs import (
+        flatten_tabs, get_document_with_tabs, insert_markdown_into_tab, resolve_tab,
+    )
+    from gdoc.state import record_content_write, require_content_baseline
 
-    from gdoc.api.docs import insert_markdown_into_tab
+    change_info = pre_flight(doc_id, quiet=quiet)
+    _require_doc(doc_id, change_info)
+    document = get_document_with_tabs(doc_id)
+    selected = resolve_tab(flatten_tabs(document.get("tabs", [])), tab_name)
+    require_content_baseline(
+        doc_id, [selected["id"]], document.get("revisionId", ""), force=force,
+    )
 
     result = insert_markdown_into_tab(
-        doc_id, tab_name, content, position=position, replace=False,
+        doc_id, selected["id"], content, position=position, replace=False, document=document,
     )
 
     from gdoc.api.drive import get_file_version
@@ -671,6 +681,11 @@ def cmd_insert(args) -> int:
     update_state_after_command(
         doc_id, change_info, command="insert",
         quiet=quiet, command_version=command_version,
+    )
+    record_content_write(
+        doc_id, input_revision_id=result.get("input_revision_id", document.get("revisionId", "")),
+        acknowledged_revision_id=result.get("acknowledged_revision_id", ""),
+        rebased=result.get("rebased", False),
     )
     return 0
 
@@ -1061,8 +1076,13 @@ def _resolve_replacement_text(args, cell) -> tuple[str | None, str | None]:
                 exit_code=3,
             )
     # Input transport must not decide whether a paragraph mark is edited.
-    return (old_text.removesuffix("\n") if old_text is not None else None,
-            new_text.removesuffix("\n") if new_text is not None else None)
+    def normalize(text):
+        if text is None:
+            return None
+        return text.replace("\r\n", "\n").replace("\r", "\n").removesuffix("\n")
+
+    return normalize(old_text), normalize(new_text)
+
 
 
 def _prepare_text_replacement(
@@ -3276,7 +3296,13 @@ def cmd_structure(args) -> int:
                     if style.startswith("HEADING_") and text == heading:
                         matches.append((candidate, element))
             if len(matches) > 1:
-                raise GdocError("heading is ambiguous; use --tab to narrow scope", 3)
+                locations = ", ".join(
+                    f"{tab['title']} ({tab['id']}) at {element.get('startIndex', 0)}"
+                    for tab, element in matches
+                )
+                raise GdocError(
+                    f"heading is ambiguous: {locations}; use --tab to narrow scope", 3,
+                )
             if not matches:
                 raise GdocError(f"heading not found: {heading}", 3)
         else:

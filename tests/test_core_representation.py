@@ -145,3 +145,90 @@ def test_code_span_ending_backslash_does_not_hide_image():
     parsed = parse_markdown('`path\\` ![drawing](https://example.org/d.png)\n')
     assert parsed.plain_text == 'path\\  \n'
     assert parsed.images[0].alt == 'drawing'
+
+
+def test_list_ids_starts_and_resumption_remain_distinct():
+    def item(list_id, level=0):
+        return {'paragraph': {'bullet': {'listId': list_id, 'nestingLevel': level},
+                              'elements': [{'textRun': {'content': 'item\n'}}]}}
+    content = [item('first'), item('second'),
+               {'paragraph': {'elements': [{'textRun': {'content': 'pause\n'}}]}},
+               item('first')]
+    lists = {key: {'listProperties': {'nestingLevels': [{
+        'glyphType': 'DECIMAL', 'startNumber': start,
+    }]}} for key, start in [('first', 4), ('second', 1)]}
+    assert get_tab_text({'body': {'content': content}, 'lists': lists}, True) == (
+        '4. item\n1. item\npause\n5. item\n'
+    )
+
+
+def test_code_pipe_and_literal_entities_in_table_cells():
+    from gdoc.api.docs import _table_markdown
+
+    table = {'tableRows': [{'tableCells': [{'content': [{'paragraph': {'elements': [
+        {'textRun': {'content': 'a|b', 'textStyle': {
+            'weightedFontFamily': {'fontFamily': 'Courier New'},
+        }}}, {'textRun': {'content': ' &#32;\n'}},
+    ]}}]}]}]}
+    rendered = _table_markdown(table)
+    cell = parse_markdown(rendered).tables[0].rows[0][0]
+    assert parse_inline(cell)[0] == 'a|b &#32;'
+
+
+def test_supported_core_styles_and_images_need_no_loss_override(capsys):
+    from gdoc.lossy import check_markdown_replacement
+
+    scope = {'body': {'content': [{'paragraph': {
+        'paragraphStyle': {'indentStart': {'magnitude': 36, 'unit': 'PT'},
+                           'indentFirstLine': {'magnitude': 36, 'unit': 'PT'}},
+        'elements': [{'textRun': {'content': 'literal\n', 'textStyle': {
+            'weightedFontFamily': {'fontFamily': 'Courier New'},
+        }}}, {'inlineObjectElement': {'inlineObjectId': 'picture'}}],
+    }}]}, 'inlineObjects': {'picture': {'inlineObjectProperties': {
+        'embeddedObject': {'imageProperties': {'contentUri': 'https://example.org/x'}},
+    }}}, 'namedRanges': {'gdoc:code:v1': {'namedRanges': [{
+        'name': 'gdoc:code:v1', 'ranges': [{'startIndex': 1, 'endIndex': 9}],
+    }]}}}
+    check_markdown_replacement(scope, tab_body=True)
+    assert capsys.readouterr().err == ''
+    scope['inlineObjects']['picture']['inlineObjectProperties']['embeddedObject'] = {}
+    with pytest.raises(Exception, match='embedded objects'):
+        check_markdown_replacement(scope, tab_body=True)
+
+
+@pytest.mark.parametrize('literal', ['a**b', 'a~~b', '[x](y)', '![x](y)', '`x`'])
+@pytest.mark.parametrize('style', [
+    {'bold': True}, {'italic': True}, {'bold': True, 'italic': True},
+    {'strikethrough': True}, {'link': {'url': 'https://example.org/a_(b)'}},
+])
+def test_code_punctuation_cannot_close_surrounding_formatting(literal, style):
+    style = {**style, 'weightedFontFamily': {'fontFamily': 'Courier New'}}
+    rendered = _style_run_markdown(literal, style)
+    plain, ranges = parse_inline(rendered)
+    assert plain == literal
+    actual = [{} for _ in plain]
+    for span in ranges:
+        for offset in range(span.start, span.end):
+            actual[offset].update(span.style)
+    assert actual == [style] * len(literal)
+
+
+def test_code_styled_terminal_newline_does_not_create_literal_delimiters():
+    code = {'weightedFontFamily': {'fontFamily': 'Courier New'}}
+    assert _style_run_markdown('\n', code) == '\n'
+
+
+def test_html_break_spelling_inside_table_code_is_literal():
+    parsed = parse_markdown('| `a<br>b` |\n| --- |\n| first<br>second |\n')
+    assert parse_inline(parsed.tables[0].rows[0][0])[0] == 'a<br>b'
+    assert parse_inline(parsed.tables[0].rows[1][0])[0] == 'first\nsecond'
+
+
+@pytest.mark.parametrize('literal', ['+ item', '+', '1.', '42.', '1. ', '---'])
+def test_new_empty_list_grammar_never_consumes_exported_literal_text(literal):
+    tab = {'body': {'content': [{'paragraph': {'elements': [
+        {'textRun': {'content': literal + '\n'}},
+    ]}}]}}
+    parsed = parse_markdown(get_tab_text(tab, True))
+    assert parsed.plain_text == literal + '\n'
+    assert not [style for style in parsed.styles if style.type == 'bullets']

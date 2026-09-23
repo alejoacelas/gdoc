@@ -89,7 +89,7 @@ _PARAGRAPH_STYLE_LOSSES = {
 
 def _numbered_list_hazards(content: list, lists: dict) -> set[str]:
     """Find numbering boundaries and starts reconstruction cannot preserve."""
-    from gdoc.api.docs import _list_is_ordered, _runs_markdown
+    from gdoc.api.docs import _list_is_ordered
 
     hazards = set()
     run = set()
@@ -101,10 +101,6 @@ def _numbered_list_hazards(content: list, lists: dict) -> set[str]:
             run.clear()
             continue
         list_id = bullet.get("listId", "")
-        if not _runs_markdown(paragraph.get("elements", [])).strip():
-            hazards.add(f"empty list item in list {list_id!r} (omitted by export)")
-            run.clear()
-            continue
         level = bullet.get("nestingLevel", 0)
         if not _list_is_ordered(lists, list_id, level):
             run.clear()
@@ -124,21 +120,6 @@ def _numbered_list_hazards(content: list, lists: dict) -> set[str]:
     return hazards
 
 
-def _table_header_adds_bold(table: dict) -> bool:
-    """Pipe-table reconstruction bolds all text except the final cell newline."""
-    for cell in table["tableRows"][0]["tableCells"]:
-        runs = [element["textRun"]
-                for block in cell.get("content", [])
-                for element in block.get("paragraph", {}).get("elements", [])
-                if element.get("textRun", {}).get("content")]
-        for index, run in enumerate(runs):
-            text = run["content"]
-            if index == len(runs) - 1:
-                text = text.removesuffix("\n")
-            if text and not run.get("textStyle", {}).get("bold"):
-                return True
-    return False
-
 
 def check_markdown_replacement(
     scope: dict, *, tab_body: bool = False, allow_lossy: bool = False,
@@ -148,19 +129,21 @@ def check_markdown_replacement(
 
     hazards: set[str] = set()
     styles: set[str] = set()
+    numbering: set[str] = set()
 
-    def visit(value, table_depth=0, document_style=None, lists=None):
+    def visit(value, table_depth=0, document_style=None, lists=None, images=None):
         """Collect known hazards recursively, tracking nested table depth."""
         if isinstance(value, list):
             for item in value:
-                visit(item, table_depth, document_style, lists)
+                visit(item, table_depth, document_style, lists, images)
         elif isinstance(value, dict):
             # Each documentTab owns its defaults; recursive calls keep them
             # local so a sibling or child tab cannot inherit the wrong style.
             document_style = value.get("documentStyle", document_style or {})
             lists = value.get("lists", {} if "body" in value else lists or {})
+            images = value.get("inlineObjects", images or {})
             if "content" in value and isinstance(value["content"], list):
-                hazards.update(_numbered_list_hazards(value["content"], lists))
+                numbering.update(_numbered_list_hazards(value["content"], lists))
             if "sectionBreak" in value:
                 # Tab deletion starts at 1: the initial [0, 1) marker and
                 # its section style survive, even in an otherwise blank tab.
@@ -183,18 +166,42 @@ def check_markdown_replacement(
                                 "(import resets page size, margins or page mode)")
             for field, label in _TEXT_STYLE_LOSSES.items():
                 if field in value.get("textStyle", {}):
+                    if field == "weightedFontFamily" and value["textStyle"][field].get(
+                        "fontFamily",
+                    ) in ("Courier New", "Consolas", "monospace"):
+                        continue
                     styles.add(label)
+            paragraph_style = value.get("paragraphStyle", {})
+            quote = all(paragraph_style.get(key) == {"magnitude": 36, "unit": "PT"}
+                        for key in ("indentStart", "indentFirstLine"))
             for field, label in _PARAGRAPH_STYLE_LOSSES.items():
-                if field in value.get("paragraphStyle", {}):
-                    styles.add(label)
-            if "borderBottom" in value.get("paragraphStyle", {}):
-                hazards.add("border-bottom paragraphs (rules or borders are lost)")
+                if field not in paragraph_style:
+                    continue
+                if field in ("indentStart", "indentFirstLine") and (
+                    quote or "bullet" in value
+                ):
+                    continue
+                if field == "alignment" and table_depth and paragraph_style[field] in (
+                    "START", "CENTER", "END",
+                ):
+                    continue
+                styles.add(label)
+            if "borderBottom" in paragraph_style:
+                text = "".join(e.get("textRun", {}).get("content", "")
+                               for e in value.get("elements", []))
+                if text.removesuffix("\n") or not paragraph_style["borderBottom"]:
+                    hazards.add("border-bottom paragraphs (custom borders are lost)")
             if value.get("listProperties"):
-                styles.add("list glyphs and list styling")
+                levels = value["listProperties"].get("nestingLevels", [])
+                if any(level.get("glyphSymbol", "") not in ("", "●", "○", "■", "•")
+                       or level.get("glyphType", "DECIMAL") not in (
+                           "DECIMAL", "ALPHA", "ROMAN", "GLYPH_TYPE_UNSPECIFIED",
+                       ) for level in levels):
+                    styles.add("list glyphs and list styling")
             if "bullet" in value:
                 # Inspect definitions only when content references the list.
                 visit(lists.get(value["bullet"].get("listId"), {}),
-                      table_depth, document_style, lists)
+                      table_depth, document_style, lists, images)
             for key, child in value.items():
                 # Defaults are metadata, not replaceable content. Page setup
                 # is checked above; referenced list definitions are checked
@@ -206,11 +213,23 @@ def check_markdown_replacement(
                 # Empty objects are valid paragraph-element markers (equation,
                 # pageBreak, etc.); empty reference lists are not hazards.
                 if key in _ELEMENTS and child is not None and child != []:
-                    hazards.add(_ELEMENTS[key])
-                if tab_body and key == "horizontalRule":
-                    hazards.add("native horizontal rules (omitted by tab export)")
+                    supported_image = False
+                    if key == "inlineObjectElement":
+                        embedded = images.get(child.get("inlineObjectId"), {}).get(
+                            "inlineObjectProperties", {},
+                        ).get("embeddedObject", {})
+                        supported_image = "imageProperties" in embedded
+                    if not supported_image:
+                        hazards.add(_ELEMENTS[key])
                 if key.startswith("suggested") and child:
                     hazards.add("pending suggestions")
+                if key == "namedRanges" and isinstance(child, dict):
+                    for group in child.values():
+                        for named in group.get("namedRanges", []):
+                            if named.get("ranges") and named.get(
+                                "name", group.get("name"),
+                            ) != "gdoc:code:v1":
+                                hazards.add("custom named ranges")
                 if key == "link" and isinstance(child, dict) and any(
                     k in child for k in (
                         "bookmarkId", "headingId", "tabId",
@@ -225,10 +244,6 @@ def check_markdown_replacement(
                     if _table_markdown(child) is None:
                         hazards.add(
                             f"table at index {index} (cannot export as a pipe table)"
-                        )
-                    elif _table_header_adds_bold(child):
-                        hazards.add(
-                            f"table at index {index} (header row gains bold formatting)"
                         )
                     # The exporter renders cell runs without paragraph bullets;
                     # pipe-table reconstruction parses only inline formatting.
@@ -264,9 +279,11 @@ def check_markdown_replacement(
                 ):
                     # Map entry names are arbitrary, including "person" or
                     # "rowSpan"; only their values have Docs schema fields.
-                    visit(list(child.values()), table_depth, document_style, lists)
+                    visit(list(child.values()), table_depth,
+                          document_style, lists, images)
                 else:
-                    visit(child, table_depth + (key == "table"), document_style, lists)
+                    visit(child, table_depth + (key == "table"),
+                          document_style, lists, images)
 
     visit(scope)
     if hazards and not allow_lossy:
@@ -280,6 +297,9 @@ def check_markdown_replacement(
             "allows tab collapse.",
             exit_code=3,
         )
+    if numbering:
+        print("WARN: Native numbering may reset on reconstruction: " +
+              "; ".join(sorted(numbering)), file=sys.stderr)
     if hazards:
         print("WARN: Markdown replacement will discard: " +
               ", ".join(sorted(hazards)), file=sys.stderr)

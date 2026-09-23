@@ -20,14 +20,10 @@ exact assertions, baseline results and integrated results. F8 remains an
 observation, D03 is a now-corrected parser comment, and D04 is a test-library
 style preference; those three do not need runtime fix assertions.
 
-`baseline-results.json` preserves the original `90c10f0` measurements and
-failures. `integration-results.json` records the integrated product checkpoint,
-test-file hashes, outcomes, command sequences and output measurements. Run the
-command above to retain complete captured output; the compact committed files
-retain byte counts and hashes instead of repeated raw documents. Timings are
-single-run offline Python measurements, not Google latency or agent reasoning
-time. Docs execute counts and mocked Drive/comment helper counts are separate;
-they are not a combined HTTP-attempt estimate. This worker made no live calls.
+Run reports are generated on demand with `--acceptance-results`; they are not
+product fixtures. Timings are single-run offline Python measurements, not Google
+latency or agent reasoning time. Mocked helper counts are diagnostics, not actual
+HTTP attempts. Live verification is reported separately in the release PR.
 
 | Task | Independent evidence | Remaining limit |
 | --- | --- | --- |

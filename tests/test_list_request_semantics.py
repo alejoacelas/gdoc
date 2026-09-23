@@ -242,3 +242,29 @@ def test_native_nested_restart_has_no_loss_warning():
     }} for identity, depth in [('parent', 0), ('child-a', 1), ('child-b', 1),
                               ('parent', 0)]]
     assert not _numbered_list_hazards(content, lists)
+
+
+def test_separated_numbering_does_not_clear_unrelated_quote_indentation():
+    from gdoc.mdparse import list_requests, parse_markdown
+
+    parsed = parse_markdown("> Protected quote\n\n1. Parent\n  1. Child\n"
+                            "  1. Restart\n2. Parent next\n")
+    requests = list_requests(parsed, 1)
+    quote_end = len("Protected quote\n") + 1
+    assert not any(
+        request.get("deleteParagraphBullets", {}).get("range", {}).get(
+            "startIndex", quote_end,
+        ) < quote_end for request in requests
+    )
+
+
+def test_quote_spanned_by_numbered_continuation_restores_its_style():
+    from gdoc.mdparse import list_requests, parse_markdown
+
+    parsed = parse_markdown("1. First\n> Quoted interruption\n2. Second\n")
+    requests = list_requests(parsed, 1)
+    assert any(
+        request.get("updateParagraphStyle", {}).get("paragraphStyle", {}).get(
+            "indentFirstLine",
+        ) == {"magnitude": 36, "unit": "PT"} for request in requests
+    )

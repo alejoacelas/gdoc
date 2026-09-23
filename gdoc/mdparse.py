@@ -1183,11 +1183,22 @@ def _separated_list_requests(parsed: ParsedMarkdown, insert_index: int,
 
     # Spanning a continuation temporarily bullets intervening prose/blank lines.
     for style in parsed.styles:
-        if style.type == "paragraph_style" and not any(
+        if (style.type == "paragraph_style" and not any(
             item.start == style.start for item in items
-        ):
-            requests.append({"deleteParagraphBullets": {
-                "range": span(coordinate(style.start), coordinate(style.end)),
+        ) and any(group[0].start <= style.start < group[-1].end
+                  for group in groups.values())):
+            target = span(coordinate(style.start), coordinate(style.end))
+            requests.append({"deleteParagraphBullets": {"range": target}})
+            # Removing native bullets also alters indentation. Restore the
+            # requested non-list paragraph style only where a group spanned it.
+            paragraph_style = {
+                "indentStart": {"magnitude": 0, "unit": "PT"},
+                "indentFirstLine": {"magnitude": 0, "unit": "PT"},
+                **style.style,
+            }
+            requests.append({"updateParagraphStyle": {
+                "range": target, "paragraphStyle": paragraph_style,
+                "fields": _paragraph_style_fields(paragraph_style),
             }})
     for item in items:
         start, end = coordinate(item.start), coordinate(item.end)

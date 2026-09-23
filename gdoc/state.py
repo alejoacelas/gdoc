@@ -18,6 +18,8 @@ class DocState:
     last_comment_check: str = ""                 # ISO timestamp for comments.list
     known_comment_ids: list[str] = field(default_factory=list)
     known_resolved_ids: list[str] = field(default_factory=list)
+    # Only content actually exposed to the caller establishes these baselines.
+    read_revision_ids: dict[str, str] = field(default_factory=dict)
 
 
 def _state_path(doc_id: str) -> Path:
@@ -89,13 +91,12 @@ def update_state_after_command(
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
     state.last_seen = now
 
-    is_read = command in ("cat", "info", "pull", "export", "structure")
+    is_read = command in ("cat", "pull", "export", "structure")
 
     if quiet:
         # Decision #14: --quiet state update rules
         if command == "info" and command_version is not None:
             state.last_version = command_version
-            state.last_read_version = command_version
     elif change_info is not None:
         # Normal (non-quiet) run: update from pre-flight data
         if change_info.current_version is not None:
@@ -162,3 +163,62 @@ def update_state_after_command(
             state.known_resolved_ids = [x for x in state.known_resolved_ids if x != cid]
 
     save_state(doc_id, state)
+
+
+def record_content_read(doc_id: str, tab_ids: list[str], revision_id: str) -> None:
+    """Record complete exposed tab content from one native snapshot."""
+    if not isinstance(revision_id, str) or not revision_id:
+        return
+    state = load_state(doc_id) or DocState()
+    for tab_id in tab_ids:
+        if isinstance(tab_id, str) and tab_id:
+            state.read_revision_ids[tab_id] = revision_id
+    save_state(doc_id, state)
+
+
+def record_content_write(
+    doc_id: str, *, input_revision_id: str, acknowledged_revision_id: str,
+    replaced_tab_ids: list[str] | None = None, rebased: bool = False,
+) -> None:
+    """Carry known content through an acknowledged, revision-pinned write.
+
+    A complete tab replacement also exposes the content sent by the caller.
+    An uncertain write or sampled Drive version supplies no acknowledgement.
+    """
+    if not isinstance(acknowledged_revision_id, str) or not acknowledged_revision_id:
+        return
+    state = load_state(doc_id) or DocState()
+    if not rebased and isinstance(input_revision_id, str) and input_revision_id:
+        state.read_revision_ids = {
+            tab_id: (acknowledged_revision_id if revision == input_revision_id
+                     else revision)
+            for tab_id, revision in state.read_revision_ids.items()
+        }
+    for tab_id in replaced_tab_ids or []:
+        if isinstance(tab_id, str) and tab_id:
+            state.read_revision_ids[tab_id] = acknowledged_revision_id
+    save_state(doc_id, state)
+
+
+def require_content_baseline(
+    doc_id: str, tab_ids: list[str], revision_id: str, *, force: bool = False,
+) -> None:
+    """Require complete tab exposure at the exact revision about to be written."""
+    from gdoc.util import GdocError
+
+    if not isinstance(revision_id, str) or not revision_id:
+        raise GdocError("missing document revision; refusing an unpinned write", 3)
+    if force:
+        return
+    state = load_state(doc_id) or DocState()
+    if any(not state.read_revision_ids.get(tab_id) for tab_id in tab_ids):
+        raise GdocError(
+            "no complete read baseline for the selected tab. Run 'gdoc cat' "
+            "with the same --tab and without --max-bytes/--no-images, "
+            "or use --force to intentionally overwrite.", exit_code=3,
+        )
+    if any(state.read_revision_ids[tab_id] != revision_id for tab_id in tab_ids):
+        raise GdocError(
+            "doc changed since last read. Read the selected tab again, "
+            "or use --force to intentionally overwrite.", exit_code=3,
+        )

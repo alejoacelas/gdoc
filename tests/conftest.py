@@ -50,3 +50,17 @@ def _mock_mutation_transport(monkeypatch):
         return request.execute()
 
     monkeypatch.setattr(comment_transport, "execute_mutation_request", dispatch)
+
+
+@pytest.fixture(autouse=True)
+def _block_network(monkeypatch, tmp_path):
+    """Unit tests must never read credentials or mutate live documents by accident."""
+    import socket
+
+    monkeypatch.setattr("gdoc.state.STATE_DIR", tmp_path / "state")
+
+    def denied(*args, **kwargs):
+        raise AssertionError("Network is prohibited in the offline test suite")
+
+    monkeypatch.setattr(socket.socket, "connect", denied)
+    monkeypatch.setattr(socket, "create_connection", denied)

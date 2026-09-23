@@ -694,3 +694,21 @@ def test_serve_protects_the_protocol_stream_from_stray_prints(mocker):
     # Every line on the protocol stream is still valid JSON-RPC.
     for line in stdout.getvalue().splitlines():
         assert json.loads(line)["jsonrpc"] == "2.0"
+
+
+@pytest.mark.parametrize("body", ["  indented\n\n", "\n", "", "\tcode  "])
+def test_mcp_preserves_document_whitespace_from_cli(mocker, body):
+    from gdoc import cli
+
+    def emit_content(args):
+        print(body, end="")
+        return 0
+
+    mocker.patch.object(cli, "cmd_cat", side_effect=emit_content)
+    stdout, _, code = mcp.call_command("cat", {"doc": "synthetic"})
+    result = mcp.MCPServer().handle_tools_call({
+        "name": "gdoc_cat", "arguments": {"doc": "synthetic"},
+    })
+    assert code == 0
+    assert result["isError"] is False
+    assert result["content"][0]["text"] == stdout == body

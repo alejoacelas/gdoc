@@ -672,7 +672,9 @@ class MCPServer:
 
         # Notes travel as a second content item so machine-readable stdout
         # (e.g. `json: true`) stays parseable on its own.
-        content = [{"type": "text", "text": stdout.strip() or "OK"}]
+        # Whitespace and empty output can be document content. Preserve the
+        # exact CLI output so a read-modify-write over MCP has the same input.
+        content = [{"type": "text", "text": stdout}]
         notes = _clean_notes(stderr)
         if notes:
             content.append({"type": "text", "text": f"--- notes ---\n{notes}"})

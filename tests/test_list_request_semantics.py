@@ -45,8 +45,13 @@ def apply_list_requests(requests):
             for start, end, paragraph in coordinates():
                 if start <= index < end:
                     at = position(paragraph['text'], index - start)
-                    paragraph['text'] = (paragraph['text'][:at] + data['text']
-                                         + paragraph['text'][at:])
+                    replacement = (paragraph['text'][:at] + data['text']
+                                   + paragraph['text'][at:])
+                    slot = next(i for i, p in enumerate(paragraphs) if p is paragraph)
+                    paragraphs[slot:slot + 1] = [
+                        dict(paragraph, text=line)
+                        for line in replacement.splitlines(True)
+                    ]
                     break
             else:
                 raise AssertionError('Insert outside paragraphs')
@@ -57,6 +62,10 @@ def apply_list_requests(requests):
                     a = position(paragraph['text'], target['startIndex'] - start)
                     b = position(paragraph['text'], target['endIndex'] - start)
                     paragraph['text'] = paragraph['text'][:a] + paragraph['text'][b:]
+                    if not paragraph['text']:
+                        slot = next(i for i, p in enumerate(paragraphs)
+                                    if p is paragraph)
+                        paragraphs.pop(slot)
                     break
         elif 'createParagraphBullets' in request:
             data = request['createParagraphBullets']
@@ -152,7 +161,7 @@ def test_literal_tabs_keep_following_image_table_and_code_coordinates():
     assert code['endIndex'] == code['startIndex'] + len('code\n')
 
 
-def test_only_blank_continuation_and_root_restarts_stop_warning():
+def test_continuation_and_restarts_stop_warning():
     def paragraph(identity=None, text='item\n'):
         result = {'elements': [{'textRun': {'content': text}}]}
         if identity:
@@ -164,7 +173,7 @@ def test_only_blank_continuation_and_root_restarts_stop_warning():
     assert not _numbered_list_hazards([paragraph('a'), paragraph('b')], lists)
     assert not _numbered_list_hazards(
         [paragraph('a'), paragraph(text='\n'), paragraph('a')], lists)
-    assert _numbered_list_hazards(
+    assert not _numbered_list_hazards(
         [paragraph('a'), paragraph(text='Prose\n'), paragraph('a')], lists)
     assert _numbered_list_hazards(
         [paragraph('a'), paragraph('b'), paragraph('a')], lists)
@@ -186,3 +195,50 @@ def test_mixed_child_restores_literal_tab_after_both_bullet_operations():
     assert paragraphs[1]['text'] == '\tChild\n'
     assert paragraphs[1]['depth'] == 1
     assert paragraphs[0]['list'] == paragraphs[2]['list']
+
+
+@pytest.mark.parametrize('builder', [to_docs_requests, _native_docs_requests])
+@pytest.mark.parametrize('source,expected', [
+    ('1. Parent\n  1. A\n  2. B\n  1. C\n  2. D\n2. End', [1, 1, 2, 1, 2, 2]),
+    ('1. A\n- Bullet\n2. B\n- Other\n3. C', [1, 1, 2, 1, 3]),
+    ('1. Parent\n  1. A\n  - Bullet\n  2. B\n2. End', [1, 1, 1, 2, 2]),
+    ('1. A\nprose\n2. B', [1, 2]),
+    ('1. Parent😀\n  1. \tA\n  1. \tB\n2. End', [1, 1, 1, 2]),
+])
+def test_nested_restarts_and_interleaved_continuity(builder, source, expected):
+    parsed = parse_markdown(source)
+    _strip_trailing_newline_unless_hr(parsed)
+    paragraphs = apply_list_requests(builder(parsed, 1, 't'))
+    assert labels(paragraphs) == expected
+    expected_text = parsed.plain_text
+    for item in reversed([s for s in parsed.styles if s.type == 'bullets']):
+        expected_text = (expected_text[:item.start]
+                         + expected_text[item.start + item.list_depth:])
+    assert ''.join(p['text'] for p in paragraphs) == expected_text + '\n'
+    assert not parsed.non_default_list_starts
+
+
+def test_isolated_child_restart_retains_parent_and_continuing_child_ids():
+    source = ('1. Parent😀\n  1. First\n  - Bullet\n  2. Second\n'
+              '  1. Restart\n  2. Continued\n2. Parent end')
+    parsed = parse_markdown(source)
+    _strip_trailing_newline_unless_hr(parsed)
+    paragraphs = apply_list_requests(_native_docs_requests(parsed, 1, 't'))
+    assert labels(paragraphs) == [1, 1, 1, 2, 1, 2, 2]
+    assert paragraphs[0]['list'] == paragraphs[6]['list']
+    assert paragraphs[1]['list'] == paragraphs[3]['list']
+    assert paragraphs[4]['list'] == paragraphs[5]['list']
+    assert len({paragraphs[i]['list'] for i in [0, 1, 2, 4]}) == 4
+    assert [p['depth'] for p in paragraphs] == [0, 1, 1, 1, 1, 1, 0]
+
+
+def test_native_nested_restart_has_no_loss_warning():
+    lists = {key: {'listProperties': {'nestingLevels': [
+        {'glyphType': 'DECIMAL'}, {'glyphType': 'ALPHA'}
+    ]}} for key in ['parent', 'child-a', 'child-b']}
+    content = [{'paragraph': {
+        'elements': [{'textRun': {'content': 'Item\n'}}],
+        'bullet': {'listId': identity, 'nestingLevel': depth},
+    }} for identity, depth in [('parent', 0), ('child-a', 1), ('child-b', 1),
+                              ('parent', 0)]]
+    assert not _numbered_list_hazards(content, lists)

@@ -566,7 +566,7 @@ def numbered_tab(list_ids, start=1, glyph_type="DECIMAL"):
     return target
 
 
-def test_adjacent_numbered_restarts_export_separately_and_warn(capsys):
+def test_adjacent_numbered_restarts_export_separately_without_warning(capsys):
     from gdoc.api.docs import get_tab_text
 
     target = numbered_tab(["first", "second"])
@@ -574,8 +574,7 @@ def test_adjacent_numbered_restarts_export_separately_and_warn(capsys):
     assert markdown == "1. item\n1. item\n"
     check_markdown_replacement(target["documentTab"], tab_body=True)
     warning = capsys.readouterr().err
-    assert "numbering may reset" in warning
-    assert "'first', 'second'" in warning
+    assert warning == ""
 
 
 @pytest.mark.parametrize("list_ids,start", [
@@ -590,8 +589,7 @@ def test_numbering_warning_names_lists_without_opt_in(
     scope = numbered_tab(list_ids, start)["documentTab"]
     check_markdown_replacement(scope, tab_body=tab_body)
     warning = capsys.readouterr().err
-    for list_id in list_ids:
-        assert list_id in warning
+    assert list_ids[0] in warning
     assert "numbering may reset" in warning
     assert "--allow-lossy" not in warning
 
@@ -643,7 +641,7 @@ def test_numbered_restart_override_permits_tab_mutation(mocker, capsys):
     insert_markdown_into_tab("doc", "target", "new", replace=True, allow_lossy=True)
     service.documents.return_value.batchUpdate.assert_called_once()
     warning = capsys.readouterr().err
-    assert "numbering may reset" in warning and "'first', 'second'" in warning
+    assert warning == ""
 
 
 @pytest.mark.parametrize("cell_text", [" leading\n", "trailing \n", "\tleading\n"])

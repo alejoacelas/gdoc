@@ -363,3 +363,115 @@ def test_segment_block_punctuation_is_literal_inline_text(mocker, text):
     assert not any(
         "updateParagraphStyle" in r or "createParagraphBullets" in r for r in requests
     )
+
+
+def _apply_text_and_images(text, requests):
+    """Check only character placement in a single batch, not Docs structure/style."""
+    data = text.encode("utf-16-le")
+    for request in requests:
+        if "deleteContentRange" in request:
+            span = request["deleteContentRange"]["range"]
+            start, end = (span["startIndex"] - 1) * 2, (span["endIndex"] - 1) * 2
+            assert 0 <= start < end <= len(data) - 2
+            data = data[:start] + data[end:]
+        elif "insertText" in request or "insertInlineImage" in request:
+            operation = request.get("insertText", request.get("insertInlineImage"))
+            start = (operation["location"]["index"] - 1) * 2
+            assert 0 <= start <= len(data) - 2
+            inserted = operation.get("text", "\ufffc").encode("utf-16-le")
+            data = data[:start] + inserted + data[start:]
+    return data.decode("utf-16-le")
+
+
+@pytest.mark.parametrize(
+    "markdown,expected,uri",
+    [
+        (
+            "Revised ![](gdoc-image:original)",
+            "Revised \ufffc\n",
+            "https://example.org/fresh",
+        ),
+        (
+            "![](gdoc-image:original) moved",
+            "\ufffc moved\n",
+            "https://example.org/fresh",
+        ),
+        (
+            "![](https://example.org/new) replaced",
+            "\ufffc replaced\n",
+            "https://example.org/new",
+        ),
+        ("Image removed", "Image removed\n", None),
+    ],
+)
+def test_existing_image_changed_rewrite_preserves_moves_replaces_or_removes(
+    mocker,
+    markdown,
+    expected,
+    uri,
+):
+    document = snapshot()
+    tab = document["tabs"][0]["documentTab"]
+    tab["inlineObjects"] = {
+        "original": {
+            "inlineObjectProperties": {
+                "embeddedObject": {
+                    "imageProperties": {"contentUri": "https://example.org/fresh"}
+                },
+            }
+        }
+    }
+    tab["body"]["content"] = [
+        {
+            "startIndex": 1,
+            "endIndex": 6,
+            "paragraph": {
+                "elements": [
+                    {"startIndex": 1, "endIndex": 4, "textRun": {"content": "Old"}},
+                    {
+                        "startIndex": 4,
+                        "endIndex": 5,
+                        "inlineObjectElement": {"inlineObjectId": "original"},
+                    },
+                    {"startIndex": 5, "endIndex": 6, "textRun": {"content": "\n"}},
+                ],
+            },
+        }
+    ]
+    chain = service(mocker)
+    insert_markdown_into_tab("doc", "Notes", markdown, replace=True, document=document)
+    requests = chain.batchUpdate.call_args.kwargs["body"]["requests"]
+    assert _apply_text_and_images("Old\ufffc\n", requests) == expected
+    assert [
+        r["insertInlineImage"]["uri"] for r in requests if "insertInlineImage" in r
+    ] == ([uri] if uri else [])
+    chain.batchUpdate.assert_called_once()
+
+
+def test_existing_nondefault_list_supports_general_and_targeted_edit(mocker, capsys):
+    document = snapshot()
+    tab = document["tabs"][0]["documentTab"]
+    tab["body"]["content"][0]["paragraph"]["bullet"] = {"listId": "ordered"}
+    tab["lists"] = {
+        "ordered": {
+            "listProperties": {
+                "nestingLevels": [
+                    {"glyphType": "DECIMAL", "startNumber": 9},
+                ]
+            }
+        }
+    }
+    chain = service(mocker)
+    replace_formatted(
+        "doc", [{"startIndex": 1, "endIndex": 4}], "Revised", "before", body=tab["body"]
+    )
+    targeted = chain.batchUpdate.call_args.kwargs["body"]["requests"]
+    assert not any(
+        "createParagraphBullets" in r or "deleteParagraphBullets" in r for r in targeted
+    )
+    insert_markdown_into_tab(
+        "doc", "Notes", "9. Revised", replace=True, document=document
+    )
+    assert "starts at 9 (reset to 1)" in capsys.readouterr().err
+    general = chain.batchUpdate.call_args.kwargs["body"]["requests"]
+    assert any("createParagraphBullets" in r for r in general)

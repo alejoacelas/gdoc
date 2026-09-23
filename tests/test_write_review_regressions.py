@@ -177,7 +177,7 @@ class LostResponseConnection:
         return result
 
 
-@pytest.mark.parametrize("operation", ["table", "import"])
+@pytest.mark.parametrize("operation", ["table", "native-rewrite"])
 def test_wire_disconnect_cannot_be_hidden_by_retry_400(mocker, operation):
     connection = LostResponseConnection()
     # Preserve the installed _conn_request retry loop and real HttpRequest.
@@ -202,8 +202,8 @@ def test_wire_disconnect_cannot_be_hidden_by_retry_400(mocker, operation):
                 progress.batch("table structure inserted", [{"insertTable": {}}],
                                "r1", retry)
     else:
-        mocker.patch.object(drive, "get_drive_service", return_value=service)
-        service.files.return_value.update.side_effect = build
+        mocker.patch.object(docs, "get_docs_service", return_value=service)
+        service.documents.return_value.batchUpdate.side_effect = build
         mocker.patch.object(drive, "get_file_version", return_value={"version": 10})
         doc = snapshot()
         other = deepcopy(doc["tabs"][0])

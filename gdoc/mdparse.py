@@ -14,7 +14,7 @@ class StyleRange:
     start: int
     end: int
     style: dict
-    type: str  # "text_style", "paragraph_style", or "bullets"
+    type: str  # "text_style", "paragraph_style", "bullets", or inline "image"
 
 
 @dataclass
@@ -24,7 +24,7 @@ class TableData:
     rows: list[list[str]]
     num_rows: int
     num_cols: int
-    plain_text_offset: int  # byte offset in plain_text where placeholder sits
+    plain_text_offset: int  # code-point offset of the plain_text placeholder
     # Leading list-indent tabs inserted before this table. createParagraphBullets
     # removes those tabs, shifting the table's real position left by this many.
     removed_tabs_before: int = 0
@@ -222,7 +222,10 @@ def parse_inline(text: str) -> tuple[str, list[StyleRange]]:
     For callers (e.g. table-cell rendering and partial-paragraph edits) that
     need inline parsing without the block-level handling of `parse_markdown`.
     Only inline Markdown applies: bold, italic, strikethrough, CommonMark code
-    spans and links. Every block-level construct (fences, list markers,
+    spans, links and images. Image annotations use type="image", one space
+    placeholder, and style={"uri": ..., "alt": ...}; native callers consume
+    those separately from text-style requests. Every block-level construct
+    (fences, list markers,
     headings, blockquotes, thematic breaks) is literal text, because inline
     content cannot start a block. Returns (plain_text, style_ranges) with
     offsets relative to plain_text.
@@ -476,137 +479,9 @@ def _list_level(indent: str) -> int:
     return min(columns // 2, 8)
 
 
-_REF_DEF_RE = re.compile(r"^ {0,3}\[([^\]]+)\]:\s*\S", re.MULTILINE)
-_HTML_IMG_RE = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
-
-
 def _ref_label(label: str) -> str:
     return " ".join(label.split()).casefold()
 
-
-def _without_link_destinations(masked: str) -> str:
-    """Blank link destinations so URL text resembling an image is not one.
-
-    Uses the same balanced, single-line destination rule as ``_find_link``;
-    an image's own ``[alt](src)`` (preceded by ``!``) is left in place.
-    """
-    out = list(masked)
-    stack = []
-    closes = {}
-    for index, char in enumerate(masked):
-        if char == "\n":
-            stack.clear()
-        elif char == "(":
-            stack.append(index)
-        elif char == ")" and stack:
-            closes[stack.pop()] = index
-    for opener in re.finditer(r"\[[^\[\]\n]+\]\(", masked):
-        if opener.start() > 0 and masked[opener.start() - 1] == "!":
-            continue
-        end = closes.get(opener.end() - 1)
-        if end is not None:
-            out[opener.end():end] = " " * (end - opener.end())
-    return "".join(out)
-
-
-def _image_constructs(text: str):
-    """Yield ("inline", alt) or ("reference", label) for each complete image.
-
-    The description may hold balanced brackets to any depth, as CommonMark
-    allows for link text; an unbalanced opener is literal text. Escaped
-    brackets are expected to be masked already.
-    """
-    i = 0
-    n = len(text)
-    while True:
-        i = text.find("![", i)
-        if i < 0:
-            return
-        depth = 0
-        end = -1
-        for j in range(i + 1, n):
-            char = text[j]
-            if char == "[":
-                depth += 1
-            elif char == "]":
-                depth -= 1
-                if depth == 0:
-                    end = j
-                    break
-        if end < 0:
-            i += 2
-            continue
-        alt = text[i + 2:end]
-        k = end + 1
-        if k < n and text[k] == "(":
-            # Same rule as _find_link: balanced parentheses on one line,
-            # and a non-empty destination; otherwise the text is literal.
-            depth = 1
-            close = -1
-            for j in range(k + 1, n):
-                char = text[j]
-                if char == "\n":
-                    break
-                if char == "(":
-                    depth += 1
-                elif char == ")":
-                    depth -= 1
-                    if depth == 0:
-                        close = j
-                        break
-            if close > k + 1:
-                yield "inline", alt
-                i = close + 1
-                continue
-        if k < n and text[k] == "[":
-            close = text.find("]", k)
-            if close >= 0 and "[" not in text[k + 1:close]:
-                yield "reference", text[k + 1:close] or alt
-                i = close + 1
-                continue
-        yield "reference", alt
-        i = end + 1
-
-
-def _check_native_images(text: str) -> None:
-    """Refuse image syntax before a native write can delete existing content.
-
-    Only complete image syntax is refused: an inline image ``![alt](url)``,
-    a reference image whose label has a definition in the same text, or an
-    HTML ``<img>`` tag. A bare ``![`` in prose is literal text.
-    """
-    from gdoc.util import GdocError
-
-    # Code examples are literal; image, reference-image and HTML image inputs
-    # outside code are unsupported by this renderer.
-    visible = []
-    fence = None
-    for line in text.splitlines():
-        match = _FENCE_RE.match(line) if fence is not None else _fence_open(line)
-        if match:
-            marker = match.group(1)
-            if fence is None:
-                fence = marker
-            elif marker[0] == fence[0] and len(marker) >= len(fence):
-                fence = None
-            continue
-        if fence is None:
-            visible.append(_without_link_destinations(
-                _CODE_RE.sub("", _mask_escapes(line))
-            ))
-    joined = "\n".join(visible)
-    has_image = bool(_HTML_IMG_RE.search(joined))
-    if not has_image:
-        defined = {_ref_label(m.group(1)) for m in _REF_DEF_RE.finditer(joined)}
-        for kind, value in _image_constructs(joined):
-            if kind == "inline" or _ref_label(value) in defined:
-                has_image = True
-                break
-    if has_image:
-        raise GdocError(
-            "native Markdown writes do not support images; content was not changed",
-            exit_code=3,
-        )
 
 
 def parse_markdown(text: str) -> ParsedMarkdown:

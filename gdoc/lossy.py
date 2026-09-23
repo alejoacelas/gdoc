@@ -120,21 +120,6 @@ def _numbered_list_hazards(content: list, lists: dict) -> set[str]:
     return hazards
 
 
-def _table_header_adds_bold(table: dict) -> bool:
-    """Pipe-table reconstruction bolds all text except the final cell newline."""
-    for cell in table["tableRows"][0]["tableCells"]:
-        runs = [element["textRun"]
-                for block in cell.get("content", [])
-                for element in block.get("paragraph", {}).get("elements", [])
-                if element.get("textRun", {}).get("content")]
-        for index, run in enumerate(runs):
-            text = run["content"]
-            if index == len(runs) - 1:
-                text = text.removesuffix("\n")
-            if text and not run.get("textStyle", {}).get("bold"):
-                return True
-    return False
-
 
 def check_markdown_replacement(
     scope: dict, *, tab_body: bool = False, allow_lossy: bool = False,

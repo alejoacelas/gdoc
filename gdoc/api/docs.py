@@ -396,7 +396,7 @@ def _runs_markdown(elements: list[dict]) -> str:
         if "inlineObjectElement" in pe:
             object_id = pe["inlineObjectElement"].get("inlineObjectId", "")
             alt = pe.get("_markdown_image_alt", "")
-            alt = re.sub(r"([\\\[\]])", r"\\\1", alt)
+            alt = re.sub(r"([\\\[\]<>])", r"\\\1", alt)
             parts.append(f"![{alt}](gdoc-image:{object_id})")
             continue
         if text_run is None:

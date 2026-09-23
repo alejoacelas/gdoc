@@ -1,0 +1,4114 @@
+{
+  "product_checkpoint": "91bbea6",
+  "tested_head": "93c8662123ca918238cf5d7c8cbc6a041a6dcdc0",
+  "timing_kind": "offline_scripted",
+  "test_file_sha256": {
+    "tests/acceptance/test_workflows.py": "e0e9b6859d39abff68471239cde7e3fadf120d6fb3c6de7827346bc246ea09f0",
+    "tests/acceptance/conftest.py": "769f664433b8a38eb2537d34bcb13f823ec8bf8582898da97ded968b00a067f4",
+    "tests/acceptance/test_readback.py": "44c484072587b428146e75fdc30434b4997af801a6269071054cbf240a531186",
+    "tests/acceptance/run_bindings.py": "7d736891e96a59f35774f90d938dfd50a02932194043d392a1dd09c2f6de6f39",
+    "tests/acceptance/test_bindings.py": "0fff567f9fbbc6a5fee9d2382095c954f7359c5c041f93ff0eaafb9512cca0e6",
+    "tests/test_write.py": "fff7473088fd65a6644d7e11d8cf34040288a4cd2e8bd88631881baa0ed19c3c",
+    "tests/test_push.py": "a0a8ce1412e68d0ac8cfe6bbbb7680aac2226578d13e18337e9e55578c1b10fc",
+    "tests/test_edit.py": "d7f2e4fa582e7827fc2d9037b8116c6124d1999c40473830e50613b3cb360970"
+  },
+  "full_suite": {
+    "passed": 3291,
+    "failed": 0
+  },
+  "owned_suite": {
+    "passed": 217,
+    "failed": 0
+  },
+  "acceptance_suite": {
+    "passed": 89,
+    "failed": 0
+  },
+  "selected_existing_binding_cases": {
+    "passed": 485,
+    "failed": 0
+  },
+  "evidence_limit": "Offline request application and fixed table scaffolding; no live fidelity claim.",
+  "numbering": "New non-1 starts/restarts are explicit native-1 best effort, not full support.",
+  "records": [
+    {
+      "test": "tests/acceptance/test_bindings.py::test_inventory_has_exact_families_and_deferred_items",
+      "interface": "unit",
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.13764758300385438,
+      "commands": []
+    },
+    {
+      "test": "tests/acceptance/test_readback.py::test_t04_changed_combination_has_request_applied_native_readback[cli]",
+      "interface": "cli",
+      "evidence": "request_applied_paragraph_text_styles_bullets_code_quote_rule_then_public_native_read",
+      "retries": 0,
+      "docs_api_attempts": 8,
+      "mocked_boundary_calls": {
+        "get_file_version": 7,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 7
+      },
+      "command_count": 7,
+      "refusals_or_errors": 0,
+      "gap": "Table/image combination and physical Google behavior are separate evidence",
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.024483167006110307,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0034703330020420253,
+          "output_bytes": 175,
+          "stderr_bytes": 87,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "# Harbor\nRead ***[Original guide](https://example.invalid/a_(b))***.\n- Cargo\n> Keep the note\n```\n`closed span`\n# literal heading\n\nlast line\n```\n---\nClosing text.\n",
+          "exit_code": 0,
+          "elapsed_seconds": 0.00347137499920791,
+          "output_bytes": 31,
+          "stderr_bytes": 19,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        },
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0028197499996167608,
+          "output_bytes": 334,
+          "stderr_bytes": 19,
+          "output_sha256": "e59f4c4dce6a1b50f3e27e17682d185982edb8fcc7b4f2fa327ab3ac6fc48037",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "# Harbor\nRead [***Original guide***](https://example.invalid/a_\\(b\\)).\n- Cargo\n> Keep the note\n```\n`closed span`\n# literal heading\n\nlast line\n```\n---\nClosing text.\n",
+          "exit_code": 0,
+          "elapsed_seconds": 0.002611208998132497,
+          "output_bytes": 60,
+          "stderr_bytes": 19,
+          "output_sha256": "f4e80121574934930fef79888ae7d134385e8484a80d554dced7b3a715683677",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        },
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0027439159966888838,
+          "output_bytes": 334,
+          "stderr_bytes": 19,
+          "output_sha256": "e59f4c4dce6a1b50f3e27e17682d185982edb8fcc7b4f2fa327ab3ac6fc48037",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "# Harbor\nRead [***Revised guide***](https://example.invalid/a_\\(b\\)).\n- Cargo\n> Keep the note\n```\n`closed span`\n# literal heading\n\nlast line\n```\n---\nClosing text.\n",
+          "exit_code": 0,
+          "elapsed_seconds": 0.003200665996700991,
+          "output_bytes": 31,
+          "stderr_bytes": 82,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "9087968a67687ef21402eab136ff640c9052fcc950ec2a0665dc2ea90e2a7560"
+        },
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.002812709004501812,
+          "output_bytes": 333,
+          "stderr_bytes": 19,
+          "output_sha256": "a4ea092297badaaac139b152c07da0fe51227c30de5992f2fcf8cad50a328d7f",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_readback.py::test_t04_changed_combination_has_request_applied_native_readback[mcp]",
+      "interface": "mcp",
+      "evidence": "request_applied_paragraph_text_styles_bullets_code_quote_rule_then_public_native_read",
+      "retries": 0,
+      "docs_api_attempts": 8,
+      "mocked_boundary_calls": {
+        "get_file_version": 7,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 7
+      },
+      "command_count": 7,
+      "refusals_or_errors": 0,
+      "gap": "Table/image combination and physical Google behavior are separate evidence",
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.06489945799694397,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007987249999132473,
+          "output_bytes": 175,
+          "stderr_bytes": 95,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "# Harbor\nRead ***[Original guide](https://example.invalid/a_(b))***.\n- Cargo\n> Keep the note\n```\n`closed span`\n# literal heading\n\nlast line\n```\n---\nClosing text.\n"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.00768574999528937,
+          "output_bytes": 31,
+          "stderr_bytes": 0,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.014988167000410613,
+          "output_bytes": 334,
+          "stderr_bytes": 0,
+          "output_sha256": "e59f4c4dce6a1b50f3e27e17682d185982edb8fcc7b4f2fa327ab3ac6fc48037",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "# Harbor\nRead [***Original guide***](https://example.invalid/a_\\(b\\)).\n- Cargo\n> Keep the note\n```\n`closed span`\n# literal heading\n\nlast line\n```\n---\nClosing text.\n"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007853582996176556,
+          "output_bytes": 60,
+          "stderr_bytes": 0,
+          "output_sha256": "f4e80121574934930fef79888ae7d134385e8484a80d554dced7b3a715683677",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007330166998144705,
+          "output_bytes": 334,
+          "stderr_bytes": 0,
+          "output_sha256": "e59f4c4dce6a1b50f3e27e17682d185982edb8fcc7b4f2fa327ab3ac6fc48037",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "# Harbor\nRead [***Revised guide***](https://example.invalid/a_\\(b\\)).\n- Cargo\n> Keep the note\n```\n`closed span`\n# literal heading\n\nlast line\n```\n---\nClosing text.\n"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.008444708000752144,
+          "output_bytes": 31,
+          "stderr_bytes": 76,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "4bb61a86499df35d18d719d8225cc1aa2919508aee68b65096716ea47aa70686"
+        },
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.008171917004801799,
+          "output_bytes": 333,
+          "stderr_bytes": 0,
+          "output_sha256": "a4ea092297badaaac139b152c07da0fe51227c30de5992f2fcf8cad50a328d7f",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_readback.py::test_t03_move_table_section_and_insert_section_with_readback[cli]",
+      "interface": "cli",
+      "evidence": "request_applied_text_and_cell_styles_with_fixed_API_table_scaffold_then_public_read",
+      "retries": 0,
+      "docs_api_attempts": 7,
+      "mocked_boundary_calls": {
+        "get_file_version": 3,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 3
+      },
+      "command_count": 3,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.012580125003296416,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.00298145799752092,
+          "output_bytes": 235,
+          "stderr_bytes": 87,
+          "output_sha256": "8db06c3f4f147536797298cd597a48fb6fa04505fa6004bc9150428617fb0c87",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "## Arrival\n## Departure\nCheck loads.\n- Cargo\n| Port |\n|:---|\n| **East** |\n## Sign-off\nConfirm.\n",
+          "exit_code": 0,
+          "elapsed_seconds": 0.00398887500341516,
+          "output_bytes": 31,
+          "stderr_bytes": 19,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        },
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0031140420032897964,
+          "output_bytes": 261,
+          "stderr_bytes": 19,
+          "output_sha256": "72edf06e86a2e238b8292eebea5bb02303c564139cc1fc8c91c458f0a5299ea0",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_readback.py::test_t03_move_table_section_and_insert_section_with_readback[mcp]",
+      "interface": "mcp",
+      "evidence": "request_applied_text_and_cell_styles_with_fixed_API_table_scaffold_then_public_read",
+      "retries": 0,
+      "docs_api_attempts": 7,
+      "mocked_boundary_calls": {
+        "get_file_version": 3,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 3
+      },
+      "command_count": 3,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.02651479100313736,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.008059749998210464,
+          "output_bytes": 235,
+          "stderr_bytes": 95,
+          "output_sha256": "8db06c3f4f147536797298cd597a48fb6fa04505fa6004bc9150428617fb0c87",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "## Arrival\n## Departure\nCheck loads.\n- Cargo\n| Port |\n|:---|\n| **East** |\n## Sign-off\nConfirm.\n"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.008545625001715962,
+          "output_bytes": 31,
+          "stderr_bytes": 0,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007572707996587269,
+          "output_bytes": 261,
+          "stderr_bytes": 0,
+          "output_sha256": "72edf06e86a2e238b8292eebea5bb02303c564139cc1fc8c91c458f0a5299ea0",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t01_targeted_edit_preserves_neighbors[cli]",
+      "interface": "cli",
+      "evidence": "text_replay_and_untouched_neighbor_ranges",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 3,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.006146374995296355,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0027741249941755086,
+          "output_bytes": 255,
+          "stderr_bytes": 87,
+          "output_sha256": "eb285ddf0f0d7a1c945c2787feed7ad7728453c4bdedb6f5f16e0b76d1c7d228",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "edit",
+            "synthetic",
+            "Original sentence.",
+            "Revised sentence.",
+            "--tab",
+            "draft"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.002910750001319684,
+          "output_bytes": 25,
+          "stderr_bytes": 53,
+          "output_sha256": "d6b7c98b61d83074f3af9c3537f98600619d329d74cfe8e3c3414212abf67452",
+          "stderr_sha256": "e171e30d6a6c0e8be35898d25c22b44d32074c2d1e9a2d780bd9f9e6d9167fad"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t01_targeted_edit_preserves_neighbors[mcp]",
+      "interface": "mcp",
+      "evidence": "text_replay_and_untouched_neighbor_ranges",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 3,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.01577533299860079,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007677874993532896,
+          "output_bytes": 255,
+          "stderr_bytes": 95,
+          "output_sha256": "eb285ddf0f0d7a1c945c2787feed7ad7728453c4bdedb6f5f16e0b76d1c7d228",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_edit",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "old_text": "Original sentence.",
+            "new_text": "Revised sentence."
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007677708999835886,
+          "output_bytes": 25,
+          "stderr_bytes": 47,
+          "output_sha256": "d6b7c98b61d83074f3af9c3537f98600619d329d74cfe8e3c3414212abf67452",
+          "stderr_sha256": "0145845140f658b8d984568c5f76da7ac81388d4860bc277b68e0c936ef8356f"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t02_split_and_merge_general_route[cli]",
+      "interface": "cli",
+      "evidence": "text_replay_only_paragraph_style_not_simulated",
+      "retries": 0,
+      "docs_api_attempts": 5,
+      "mocked_boundary_calls": {
+        "get_file_version": 4,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 4
+      },
+      "command_count": 4,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.012552416999824345,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0028454589992179535,
+          "output_bytes": 175,
+          "stderr_bytes": 87,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "Original\nsentence.\n",
+          "exit_code": 0,
+          "elapsed_seconds": 0.002863749999960419,
+          "output_bytes": 31,
+          "stderr_bytes": 19,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        },
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.003213957999832928,
+          "output_bytes": 176,
+          "stderr_bytes": 19,
+          "output_sha256": "772497aaa464e3589874906e0e5439da887de004e3365705f60ccb81a2724508",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "Original sentence.\n",
+          "exit_code": 0,
+          "elapsed_seconds": 0.002822708003805019,
+          "output_bytes": 31,
+          "stderr_bytes": 19,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t02_split_and_merge_general_route[mcp]",
+      "interface": "mcp",
+      "evidence": "text_replay_only_paragraph_style_not_simulated",
+      "retries": 0,
+      "docs_api_attempts": 5,
+      "mocked_boundary_calls": {
+        "get_file_version": 4,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 4
+      },
+      "command_count": 4,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.04174645799503196,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.017091250003431924,
+          "output_bytes": 175,
+          "stderr_bytes": 95,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "Original\nsentence.\n"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007539040998381097,
+          "output_bytes": 31,
+          "stderr_bytes": 0,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.008232334002968855,
+          "output_bytes": 176,
+          "stderr_bytes": 0,
+          "output_sha256": "772497aaa464e3589874906e0e5439da887de004e3365705f60ccb81a2724508",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "Original sentence.\n"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.00804375000006985,
+          "output_bytes": 31,
+          "stderr_bytes": 0,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t03_move_section_insert_section_request_order[cli]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "gap": "Section containing a table needs integrated structural readback",
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.0057234999985666946,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0027438329998403788,
+          "output_bytes": 175,
+          "stderr_bytes": 87,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "# Second\nMoved paragraph\n- Cargo\n# New\nNew paragraph\n# First\nTail\n",
+          "exit_code": 0,
+          "elapsed_seconds": 0.002900833002058789,
+          "output_bytes": 31,
+          "stderr_bytes": 19,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t03_move_section_insert_section_request_order[mcp]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "gap": "Section containing a table needs integrated structural readback",
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.01587054099945817,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007728999997198116,
+          "output_bytes": 175,
+          "stderr_bytes": 95,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "# Second\nMoved paragraph\n- Cargo\n# New\nNew paragraph\n# First\nTail\n"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.008066000002145302,
+          "output_bytes": 31,
+          "stderr_bytes": 0,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t04_combined_roundtrip_preserves_link_heading_list[cli-unchanged]",
+      "interface": "cli",
+      "evidence": "unchanged_noop_and_native_snapshot_read",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 3,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 3
+      },
+      "command_count": 3,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.008673458003613632,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.00272933400265174,
+          "output_bytes": 239,
+          "stderr_bytes": 87,
+          "output_sha256": "dee3b3ba4a3a0cb92c1cd5dbafce7fc63dbae45768fd9f40b9bc1d77cb989367",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "## Compass\n[***Original sentence.***](https://example.invalid/a_\\(b\\))\n- Cargo\n",
+          "exit_code": 0,
+          "elapsed_seconds": 0.0026151669953833334,
+          "output_bytes": 60,
+          "stderr_bytes": 19,
+          "output_sha256": "f4e80121574934930fef79888ae7d134385e8484a80d554dced7b3a715683677",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        },
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.003246957996452693,
+          "output_bytes": 239,
+          "stderr_bytes": 19,
+          "output_sha256": "dee3b3ba4a3a0cb92c1cd5dbafce7fc63dbae45768fd9f40b9bc1d77cb989367",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t04_combined_roundtrip_preserves_link_heading_list[cli-changed]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "gap": "Request assertions do not establish native combined roundtrip; code/table/image combination remains unverified",
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.0058929169972543605,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.002756374997261446,
+          "output_bytes": 239,
+          "stderr_bytes": 87,
+          "output_sha256": "dee3b3ba4a3a0cb92c1cd5dbafce7fc63dbae45768fd9f40b9bc1d77cb989367",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "## Compass\n[***Revised sentence.***](https://example.invalid/a_\\(b\\))\n- Cargo\n",
+          "exit_code": 0,
+          "elapsed_seconds": 0.003050166000321042,
+          "output_bytes": 31,
+          "stderr_bytes": 19,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t04_combined_roundtrip_preserves_link_heading_list[mcp-unchanged]",
+      "interface": "mcp",
+      "evidence": "unchanged_noop_and_native_snapshot_read",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 3,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 3
+      },
+      "command_count": 3,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.023528915997303557,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007842374994652346,
+          "output_bytes": 239,
+          "stderr_bytes": 95,
+          "output_sha256": "dee3b3ba4a3a0cb92c1cd5dbafce7fc63dbae45768fd9f40b9bc1d77cb989367",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "## Compass\n[***Original sentence.***](https://example.invalid/a_\\(b\\))\n- Cargo\n"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007884916005423293,
+          "output_bytes": 60,
+          "stderr_bytes": 0,
+          "output_sha256": "f4e80121574934930fef79888ae7d134385e8484a80d554dced7b3a715683677",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007714292005402967,
+          "output_bytes": 239,
+          "stderr_bytes": 0,
+          "output_sha256": "dee3b3ba4a3a0cb92c1cd5dbafce7fc63dbae45768fd9f40b9bc1d77cb989367",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t04_combined_roundtrip_preserves_link_heading_list[mcp-changed]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "gap": "Request assertions do not establish native combined roundtrip; code/table/image combination remains unverified",
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.015421958996739704,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007237000005261507,
+          "output_bytes": 239,
+          "stderr_bytes": 95,
+          "output_sha256": "dee3b3ba4a3a0cb92c1cd5dbafce7fc63dbae45768fd9f40b9bc1d77cb989367",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "## Compass\n[***Revised sentence.***](https://example.invalid/a_\\(b\\))\n- Cargo\n"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.008100792001641821,
+          "output_bytes": 31,
+          "stderr_bytes": 0,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t05_restyle_retarget_and_remove_stale_link[cli-***[Revised](https://example.invalid/b_(c))***]",
+      "interface": "cli",
+      "evidence": "text_style_mask_replay",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 3,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.0068277089958428405,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.002766083001915831,
+          "output_bytes": 210,
+          "stderr_bytes": 87,
+          "output_sha256": "707bc5f1732ea9c1fae265eeb5e4b13e7e5e26d48dc2d8ecb8f6e806ecb3866b",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "edit",
+            "synthetic",
+            "Original sentence.",
+            "***[Revised](https://example.invalid/b_(c))***",
+            "--tab",
+            "draft"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0036404589991434477,
+          "output_bytes": 25,
+          "stderr_bytes": 53,
+          "output_sha256": "d6b7c98b61d83074f3af9c3537f98600619d329d74cfe8e3c3414212abf67452",
+          "stderr_sha256": "e171e30d6a6c0e8be35898d25c22b44d32074c2d1e9a2d780bd9f9e6d9167fad"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t05_restyle_retarget_and_remove_stale_link[cli-Revised *literal punctuation?*]",
+      "interface": "cli",
+      "evidence": "text_style_mask_replay",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 3,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.005727291994844563,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.002651666000019759,
+          "output_bytes": 210,
+          "stderr_bytes": 87,
+          "output_sha256": "707bc5f1732ea9c1fae265eeb5e4b13e7e5e26d48dc2d8ecb8f6e806ecb3866b",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "edit",
+            "synthetic",
+            "Original sentence.",
+            "Revised *literal punctuation?*",
+            "--tab",
+            "draft"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0027101670057163574,
+          "output_bytes": 25,
+          "stderr_bytes": 53,
+          "output_sha256": "d6b7c98b61d83074f3af9c3537f98600619d329d74cfe8e3c3414212abf67452",
+          "stderr_sha256": "e171e30d6a6c0e8be35898d25c22b44d32074c2d1e9a2d780bd9f9e6d9167fad"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t05_restyle_retarget_and_remove_stale_link[mcp-***[Revised](https://example.invalid/b_(c))***]",
+      "interface": "mcp",
+      "evidence": "text_style_mask_replay",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 3,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.024636750000354368,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.016621750000922475,
+          "output_bytes": 210,
+          "stderr_bytes": 95,
+          "output_sha256": "707bc5f1732ea9c1fae265eeb5e4b13e7e5e26d48dc2d8ecb8f6e806ecb3866b",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_edit",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "old_text": "Original sentence.",
+            "new_text": "***[Revised](https://example.invalid/b_(c))***"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007634207999217324,
+          "output_bytes": 25,
+          "stderr_bytes": 47,
+          "output_sha256": "d6b7c98b61d83074f3af9c3537f98600619d329d74cfe8e3c3414212abf67452",
+          "stderr_sha256": "0145845140f658b8d984568c5f76da7ac81388d4860bc277b68e0c936ef8356f"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t05_restyle_retarget_and_remove_stale_link[mcp-Revised *literal punctuation?*]",
+      "interface": "mcp",
+      "evidence": "text_style_mask_replay",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 3,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.014960666005208623,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007483791996492073,
+          "output_bytes": 210,
+          "stderr_bytes": 95,
+          "output_sha256": "707bc5f1732ea9c1fae265eeb5e4b13e7e5e26d48dc2d8ecb8f6e806ecb3866b",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_edit",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "old_text": "Original sentence.",
+            "new_text": "Revised *literal punctuation?*"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007142832997487858,
+          "output_bytes": 25,
+          "stderr_bytes": 47,
+          "output_sha256": "d6b7c98b61d83074f3af9c3537f98600619d329d74cfe8e3c3414212abf67452",
+          "stderr_sha256": "0145845140f658b8d984568c5f76da7ac81388d4860bc277b68e0c936ef8356f"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t06_mixed_lists_empty_item_and_number_start[cli]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "outcome_kind": "agreed_api_best_effort_not_full_numbering",
+      "gap": "New non-1 starts/restarts cannot be claimed as full native support",
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.00562937500217231,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0026653329987311736,
+          "output_bytes": 175,
+          "stderr_bytes": 87,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "3. Cargo\n   - Fragile\n4. Dock\n\n7. Restart\n- \n",
+          "exit_code": 0,
+          "elapsed_seconds": 0.0028957920003449544,
+          "output_bytes": 31,
+          "stderr_bytes": 236,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "52e710aa696b68d22ae3af48963dd0c8972dd6f9396ca7796a6bc40782b178f6"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t06_mixed_lists_empty_item_and_number_start[mcp]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "outcome_kind": "agreed_api_best_effort_not_full_numbering",
+      "gap": "New non-1 starts/restarts cannot be claimed as full native support",
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.015481041999009904,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007610417000250891,
+          "output_bytes": 175,
+          "stderr_bytes": 95,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "3. Cargo\n   - Fragile\n4. Dock\n\n7. Restart\n- \n"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007796333004080225,
+          "output_bytes": 31,
+          "stderr_bytes": 230,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "4647260962b80c8f9228ee7c0bf1e0d49ae25e8b3ed4441e97c046d662b16c61"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t07_table_reorder_styled_cells_request_content[cli]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 6,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.006080416998884175,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0026694580010371283,
+          "output_bytes": 175,
+          "stderr_bytes": 87,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "| Port | **Load** |\n|:---|---:|\n| East | *Seven* |\n",
+          "exit_code": 0,
+          "elapsed_seconds": 0.003036166999663692,
+          "output_bytes": 31,
+          "stderr_bytes": 19,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t07_table_reorder_styled_cells_request_content[mcp]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 6,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.01602883300074609,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007709332996455487,
+          "output_bytes": 175,
+          "stderr_bytes": 95,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "| Port | **Load** |\n|:---|---:|\n| East | *Seven* |\n"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.008043041998462286,
+          "output_bytes": 31,
+          "stderr_bytes": 0,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t08_literal_fence_quote_rule[cli]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.005601000004389789,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0026556249940767884,
+          "output_bytes": 175,
+          "stderr_bytes": 87,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "> Harbor note\n\n```text\n`closed`\n# literal\n\nnext\n```\n\n---\n",
+          "exit_code": 0,
+          "elapsed_seconds": 0.002871333999792114,
+          "output_bytes": 31,
+          "stderr_bytes": 19,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t08_literal_fence_quote_rule[mcp]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.015238291001878679,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007134625004255213,
+          "output_bytes": 175,
+          "stderr_bytes": 95,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "> Harbor note\n\n```text\n`closed`\n# literal\n\nnext\n```\n\n---\n"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.008022875001188368,
+          "output_bytes": 31,
+          "stderr_bytes": 0,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t09_tab_id_precedes_title_for_read_and_edit[cli]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 3,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.005993833001411986,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.002723165998759214,
+          "output_bytes": 175,
+          "stderr_bytes": 87,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "edit",
+            "synthetic",
+            "Original",
+            "Revised",
+            "--tab",
+            "draft"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0032017080011428334,
+          "output_bytes": 25,
+          "stderr_bytes": 53,
+          "output_sha256": "d6b7c98b61d83074f3af9c3537f98600619d329d74cfe8e3c3414212abf67452",
+          "stderr_sha256": "e171e30d6a6c0e8be35898d25c22b44d32074c2d1e9a2d780bd9f9e6d9167fad"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t09_tab_id_precedes_title_for_read_and_edit[mcp]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 3,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.02369608399749268,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.0071259589967667125,
+          "output_bytes": 175,
+          "stderr_bytes": 95,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_edit",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "old_text": "Original",
+            "new_text": "Revised"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.016485125001054257,
+          "output_bytes": 25,
+          "stderr_bytes": 47,
+          "output_sha256": "d6b7c98b61d83074f3af9c3537f98600619d329d74cfe8e3c3414212abf67452",
+          "stderr_sha256": "0145845140f658b8d984568c5f76da7ac81388d4860bc277b68e0c936ef8356f"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t10_successive_writes_use_acknowledged_revision[cli]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 5,
+      "mocked_boundary_calls": {
+        "get_file_version": 3,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 3
+      },
+      "command_count": 3,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.008958958998846356,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.002717125003982801,
+          "output_bytes": 175,
+          "stderr_bytes": 87,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "First revision\n",
+          "exit_code": 0,
+          "elapsed_seconds": 0.0033786670028348453,
+          "output_bytes": 31,
+          "stderr_bytes": 19,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "Second revision\n",
+          "exit_code": 0,
+          "elapsed_seconds": 0.0027814579952973872,
+          "output_bytes": 31,
+          "stderr_bytes": 79,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "d5ce27bdd7337c675f221f63966bb38b070ecf98e2a7bf8e6d259a396b4e3aac"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t10_successive_writes_use_acknowledged_revision[mcp]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 5,
+      "mocked_boundary_calls": {
+        "get_file_version": 3,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 3
+      },
+      "command_count": 3,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.022845416999189183,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.0075161670029046945,
+          "output_bytes": 175,
+          "stderr_bytes": 95,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "First revision\n"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007378417001746129,
+          "output_bytes": 31,
+          "stderr_bytes": 0,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "Second revision\n"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.0078675420008949,
+          "output_bytes": 31,
+          "stderr_bytes": 88,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "0c2dadc9e40dfa9fb7c894ad0730a9390ccbb5505e11f31fb0a34173312bd2f9"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t10_collaborator_change_refuses[cli]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 2,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 1,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.0056611249965499155,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0026733330014394596,
+          "output_bytes": 175,
+          "stderr_bytes": 87,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "Overwrite\n",
+          "exit_code": 3,
+          "elapsed_seconds": 0.0029231669977889396,
+          "output_bytes": 0,
+          "stderr_bytes": 185,
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_sha256": "cf7703165e6d137cab6fa879e0c8817ca9a03329ffb8135f1823f7cc2fef0506"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t10_collaborator_change_refuses[mcp]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 2,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 1,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.014533250003296416,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007548499997938052,
+          "output_bytes": 175,
+          "stderr_bytes": 95,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "Overwrite\n"
+          },
+          "exit_code": 1,
+          "elapsed_seconds": 0.006917999999132007,
+          "output_bytes": 105,
+          "stderr_bytes": 0,
+          "output_sha256": "dbbacf419706a000581c7d57cac2bc4becc365fa8230059a003f14d1ab225566",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t10_lost_response_is_not_replayed[cli]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 1,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.005706791002012324,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.003185290996043477,
+          "output_bytes": 175,
+          "stderr_bytes": 87,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "Uncertain\n",
+          "exit_code": 1,
+          "elapsed_seconds": 0.0024559170051361434,
+          "output_bytes": 0,
+          "stderr_bytes": 250,
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_sha256": "15c1964d8328221b378e7c81f8f9c32d272576f1cf1e5d4b0d51e2dc4bb5d21d"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t10_lost_response_is_not_replayed[mcp]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 1,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.014413707998755854,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007425416995829437,
+          "output_bytes": 175,
+          "stderr_bytes": 95,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "Uncertain\n"
+          },
+          "exit_code": 1,
+          "elapsed_seconds": 0.006923207998625003,
+          "output_bytes": 230,
+          "stderr_bytes": 0,
+          "output_sha256": "000d3329557da514b60d93f7a3f32e7f5814b70e6ade303ca6fb721a1a9896ec",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t11_raw_and_selected_structure_burden[cli]",
+      "interface": "cli",
+      "evidence": "public_output_comparison",
+      "retries": 0,
+      "docs_api_attempts": 2,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "gap": "Within-one-long-tab target selection still needs candidate comparison",
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.010769624997919891,
+      "commands": [
+        {
+          "argv": [
+            "structure",
+            "synthetic",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.004579833002935629,
+          "output_bytes": 131252,
+          "stderr_bytes": 87,
+          "output_sha256": "d45d3f59bf5c2804d914f629ee83053ac1f348675af8717266e1dc9ff4242650",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "structure",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.004435416994965635,
+          "output_bytes": 391,
+          "stderr_bytes": 19,
+          "output_sha256": "14dffdcdeb10abed48305670f79f9c84194df0fe4e24753c6353e5b50901a41c",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t11_raw_and_selected_structure_burden[mcp]",
+      "interface": "mcp",
+      "evidence": "public_output_comparison",
+      "retries": 0,
+      "docs_api_attempts": 2,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "gap": "Within-one-long-tab target selection still needs candidate comparison",
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.030427958998188842,
+      "commands": [
+        {
+          "tool": "gdoc_structure",
+          "arguments": {
+            "doc": "synthetic",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.009298292003222741,
+          "output_bytes": 131252,
+          "stderr_bytes": 95,
+          "output_sha256": "d45d3f59bf5c2804d914f629ee83053ac1f348675af8717266e1dc9ff4242650",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_structure",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.019365000000107102,
+          "output_bytes": 391,
+          "stderr_bytes": 0,
+          "output_sha256": "14dffdcdeb10abed48305670f79f9c84194df0fe4e24753c6353e5b50901a41c",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t12_partial_read_cannot_authorize_whole_overwrite[cli-prefix]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 2,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 1,
+      "partial_output_marked": true,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.005388500001572538,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--max-bytes",
+            "8",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.002886165995732881,
+          "output_bytes": 163,
+          "stderr_bytes": 87,
+          "output_sha256": "67f105c6e3f36b19a65959426baeb08ebbbddda62c93a8fcf68a375657601516",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>"
+          ],
+          "input_markdown": "Replacement\n",
+          "exit_code": 3,
+          "elapsed_seconds": 0.0024376250003115274,
+          "output_bytes": 0,
+          "stderr_bytes": 187,
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_sha256": "5b72f0cd71fb84a66e4c4344958e9a641c2a838ae2c7c3dcbce86d9818533e42"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t12_partial_read_cannot_authorize_whole_overwrite[cli-tab]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 2,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 1,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.005240124999545515,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "unseen",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0026999580004485324,
+          "output_bytes": 174,
+          "stderr_bytes": 87,
+          "output_sha256": "2dcfaf9cbf9521294d02184f60ca145b3e9c6877e99dacf977b463f1c373430d",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>"
+          ],
+          "input_markdown": "Replacement\n",
+          "exit_code": 3,
+          "elapsed_seconds": 0.002475416004017461,
+          "output_bytes": 0,
+          "stderr_bytes": 187,
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_sha256": "5b72f0cd71fb84a66e4c4344958e9a641c2a838ae2c7c3dcbce86d9818533e42"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t12_partial_read_cannot_authorize_whole_overwrite[cli-metadata]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 2,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 1,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.004909959003271069,
+      "commands": [
+        {
+          "argv": [
+            "structure",
+            "synthetic",
+            "--fields",
+            "documentId,title,revisionId",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.002503333002096042,
+          "output_bytes": 74,
+          "stderr_bytes": 87,
+          "output_sha256": "7ef16049bc72572164840d79cb99ba305c6e4f614e7c2a0cf37c321bdf9653e5",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>"
+          ],
+          "input_markdown": "Replacement\n",
+          "exit_code": 3,
+          "elapsed_seconds": 0.002348417001485359,
+          "output_bytes": 0,
+          "stderr_bytes": 187,
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_sha256": "5b72f0cd71fb84a66e4c4344958e9a641c2a838ae2c7c3dcbce86d9818533e42"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t12_partial_read_cannot_authorize_whole_overwrite[mcp-prefix]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 2,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 1,
+      "partial_output_marked": true,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.014826790997176431,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "max_bytes": 8,
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.0074322919972473755,
+          "output_bytes": 163,
+          "stderr_bytes": 95,
+          "output_sha256": "67f105c6e3f36b19a65959426baeb08ebbbddda62c93a8fcf68a375657601516",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "text": "Replacement\n"
+          },
+          "exit_code": 1,
+          "elapsed_seconds": 0.0073312079985043965,
+          "output_bytes": 167,
+          "stderr_bytes": 0,
+          "output_sha256": "2d4cc955c9bcae782d9f2579f7d999c6f91eb49d8e3c281ab5428cbd1399ac4a",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t12_partial_read_cannot_authorize_whole_overwrite[mcp-tab]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 2,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 1,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.014943542002583854,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "unseen",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007135375002690125,
+          "output_bytes": 174,
+          "stderr_bytes": 95,
+          "output_sha256": "2dcfaf9cbf9521294d02184f60ca145b3e9c6877e99dacf977b463f1c373430d",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "text": "Replacement\n"
+          },
+          "exit_code": 1,
+          "elapsed_seconds": 0.007716957996308338,
+          "output_bytes": 167,
+          "stderr_bytes": 0,
+          "output_sha256": "2d4cc955c9bcae782d9f2579f7d999c6f91eb49d8e3c281ab5428cbd1399ac4a",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t12_partial_read_cannot_authorize_whole_overwrite[mcp-metadata]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 2,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 1,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.014719582999532577,
+      "commands": [
+        {
+          "tool": "gdoc_structure",
+          "arguments": {
+            "doc": "synthetic",
+            "fields": "documentId,title,revisionId",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.0073896659960155375,
+          "output_bytes": 74,
+          "stderr_bytes": 95,
+          "output_sha256": "7ef16049bc72572164840d79cb99ba305c6e4f614e7c2a0cf37c321bdf9653e5",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "text": "Replacement\n"
+          },
+          "exit_code": 1,
+          "elapsed_seconds": 0.007264290994498879,
+          "output_bytes": 167,
+          "stderr_bytes": 0,
+          "output_sha256": "2d4cc955c9bcae782d9f2579f7d999c6f91eb49d8e3c281ab5428cbd1399ac4a",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t13_local_edit_beside_native_object[cli-inlineObjectElement]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 2,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 1
+      },
+      "command_count": 1,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.0029205000028014183,
+      "commands": [
+        {
+          "argv": [
+            "edit",
+            "synthetic",
+            "Original",
+            "Revised",
+            "--tab",
+            "draft"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0028612079986487515,
+          "output_bytes": 25,
+          "stderr_bytes": 121,
+          "output_sha256": "d6b7c98b61d83074f3af9c3537f98600619d329d74cfe8e3c3414212abf67452",
+          "stderr_sha256": "f012019e30d9b5b8b6cf399e51713a50e81206f225a90e8f49ed08ea2416aca4"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t13_local_edit_beside_native_object[cli-footnoteReference]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 4,
+      "mocked_boundary_calls": {
+        "get_file_version": 4,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 3
+      },
+      "command_count": 3,
+      "refusals_or_errors": 1,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.008422709004662465,
+      "commands": [
+        {
+          "argv": [
+            "edit",
+            "synthetic",
+            "Original",
+            "Revised",
+            "--tab",
+            "draft"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0027259580019745044,
+          "output_bytes": 25,
+          "stderr_bytes": 121,
+          "output_sha256": "d6b7c98b61d83074f3af9c3537f98600619d329d74cfe8e3c3414212abf67452",
+          "stderr_sha256": "f012019e30d9b5b8b6cf399e51713a50e81206f225a90e8f49ed08ea2416aca4"
+        },
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0031740840058773756,
+          "output_bytes": 175,
+          "stderr_bytes": 19,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "Discard image\n",
+          "exit_code": 3,
+          "elapsed_seconds": 0.002435583002807107,
+          "output_bytes": 0,
+          "stderr_bytes": 291,
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_sha256": "7eeddb12d7faec3e6a95d4e97e4bc51aebacbace5712e0de6b0a1f61f122a43a"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t13_local_edit_beside_native_object[mcp-inlineObjectElement]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 2,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 1
+      },
+      "command_count": 1,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.007742209003481548,
+      "commands": [
+        {
+          "tool": "gdoc_edit",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "old_text": "Original",
+            "new_text": "Revised"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007686292003199924,
+          "output_bytes": 25,
+          "stderr_bytes": 130,
+          "output_sha256": "d6b7c98b61d83074f3af9c3537f98600619d329d74cfe8e3c3414212abf67452",
+          "stderr_sha256": "1ca1737518f56047514ecb97336144825cf42aee1eb4f9baa293868f7ff34833"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t13_local_edit_beside_native_object[mcp-footnoteReference]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 4,
+      "mocked_boundary_calls": {
+        "get_file_version": 4,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 3
+      },
+      "command_count": 3,
+      "refusals_or_errors": 1,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.03189829099574126,
+      "commands": [
+        {
+          "tool": "gdoc_edit",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "old_text": "Original",
+            "new_text": "Revised"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.00751466700603487,
+          "output_bytes": 25,
+          "stderr_bytes": 130,
+          "output_sha256": "d6b7c98b61d83074f3af9c3537f98600619d329d74cfe8e3c3414212abf67452",
+          "stderr_sha256": "1ca1737518f56047514ecb97336144825cf42aee1eb4f9baa293868f7ff34833"
+        },
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007082542004354764,
+          "output_bytes": 175,
+          "stderr_bytes": 0,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "Discard image\n"
+          },
+          "exit_code": 1,
+          "elapsed_seconds": 0.017201499998918734,
+          "output_bytes": 271,
+          "stderr_bytes": 0,
+          "output_sha256": "38d807af56c428a06a40d059f7dfa60ea7082b09f32c2583d70e1ae2104b4a9b",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t14_image_markdown_route[cli-insert-Before\\n![Map](https://example.invalid/map.png)\\nAfter\\n]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "gap": "Request-level only; source retrieval, move/removal and durable references need integrated native result evidence",
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.005693291997886263,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0026670000006561168,
+          "output_bytes": 175,
+          "stderr_bytes": 87,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "Before\n![Map](https://example.invalid/map.png)\nAfter\n",
+          "exit_code": 0,
+          "elapsed_seconds": 0.0029484579936251976,
+          "output_bytes": 31,
+          "stderr_bytes": 130,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "57fb5be5ab4408a90266ea072fbec248edc549902ffe948beb485caec25d5f51"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t14_image_markdown_route[cli-move-![Map](https://example.invalid/map.png)\\nBefore\\nAfter\\n]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "gap": "Request-level only; source retrieval, move/removal and durable references need integrated native result evidence",
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.005693749997590203,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.002707458996155765,
+          "output_bytes": 194,
+          "stderr_bytes": 87,
+          "output_sha256": "ae6ebb8802b010357f12c0eee6a64e13434d30bf35273d542d87c411ec01cb87",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "![Map](https://example.invalid/map.png)\nBefore\nAfter\n",
+          "exit_code": 0,
+          "elapsed_seconds": 0.0029097500009811483,
+          "output_bytes": 31,
+          "stderr_bytes": 130,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "57fb5be5ab4408a90266ea072fbec248edc549902ffe948beb485caec25d5f51"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t14_image_markdown_route[cli-replace-Before\\n![Map](https://example.invalid/new-map.png)\\nAfter\\n]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "gap": "Request-level only; source retrieval, move/removal and durable references need integrated native result evidence",
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.006142999998701271,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.002654040996276308,
+          "output_bytes": 194,
+          "stderr_bytes": 87,
+          "output_sha256": "ae6ebb8802b010357f12c0eee6a64e13434d30bf35273d542d87c411ec01cb87",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "Before\n![Map](https://example.invalid/new-map.png)\nAfter\n",
+          "exit_code": 0,
+          "elapsed_seconds": 0.0034193750034319237,
+          "output_bytes": 31,
+          "stderr_bytes": 130,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "57fb5be5ab4408a90266ea072fbec248edc549902ffe948beb485caec25d5f51"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t14_image_markdown_route[mcp-insert-Before\\n![Map](https://example.invalid/map.png)\\nAfter\\n]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "gap": "Request-level only; source retrieval, move/removal and durable references need integrated native result evidence",
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.019176792004145682,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.012031750004098285,
+          "output_bytes": 175,
+          "stderr_bytes": 95,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "Before\n![Map](https://example.invalid/map.png)\nAfter\n"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007076457994116936,
+          "output_bytes": 31,
+          "stderr_bytes": 124,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "0c5b1da569e5168eddb2e82dfb9efa6400faf7cfe2a827ddfa325ae09a97c9ba"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t14_image_markdown_route[mcp-move-![Map](https://example.invalid/map.png)\\nBefore\\nAfter\\n]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "gap": "Request-level only; source retrieval, move/removal and durable references need integrated native result evidence",
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.015435041997989174,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007558416997198947,
+          "output_bytes": 194,
+          "stderr_bytes": 95,
+          "output_sha256": "ae6ebb8802b010357f12c0eee6a64e13434d30bf35273d542d87c411ec01cb87",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "![Map](https://example.invalid/map.png)\nBefore\nAfter\n"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007805417000781745,
+          "output_bytes": 31,
+          "stderr_bytes": 124,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "0c5b1da569e5168eddb2e82dfb9efa6400faf7cfe2a827ddfa325ae09a97c9ba"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t14_image_markdown_route[mcp-replace-Before\\n![Map](https://example.invalid/new-map.png)\\nAfter\\n]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "gap": "Request-level only; source retrieval, move/removal and durable references need integrated native result evidence",
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.01519041700521484,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.00766687499708496,
+          "output_bytes": 194,
+          "stderr_bytes": 95,
+          "output_sha256": "ae6ebb8802b010357f12c0eee6a64e13434d30bf35273d542d87c411ec01cb87",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "Before\n![Map](https://example.invalid/new-map.png)\nAfter\n"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007442750000336673,
+          "output_bytes": 31,
+          "stderr_bytes": 124,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "0c5b1da569e5168eddb2e82dfb9efa6400faf7cfe2a827ddfa325ae09a97c9ba"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t15_unicode_space_fallback_visible_in_read[cli]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 1,
+      "mocked_boundary_calls": {
+        "get_file_version": 1,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 0
+      },
+      "command_count": 1,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.0034802500013029203,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--comments"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0034097090028808452,
+          "output_bytes": 111,
+          "stderr_bytes": 108,
+          "output_sha256": "e419d43522f4150fd66d4214590a7f9f02cfb200be2ba067d427f4c11f2ef118",
+          "stderr_sha256": "1b233a20d3f9af8d3c356ea58850904fb5bb951cbfd54d7174969d0e76b6911d"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t15_unicode_space_fallback_visible_in_read[mcp]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 1,
+      "mocked_boundary_calls": {
+        "get_file_version": 1,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 0
+      },
+      "command_count": 1,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.007196917002147529,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "comments": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007135749998269603,
+          "output_bytes": 111,
+          "stderr_bytes": 117,
+          "output_sha256": "e419d43522f4150fd66d4214590a7f9f02cfb200be2ba067d427f4c11f2ef118",
+          "stderr_sha256": "323823f0f384769317f8b6bd79f4a1e0b1c543df94cb95728dc2a9733257d8af"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t15_invalid_occurrence_is_local[cli]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 0,
+      "mocked_boundary_calls": {
+        "get_file_version": 0,
+        "get_file_info": 0,
+        "export_doc": 0,
+        "list_comments": 0
+      },
+      "command_count": 1,
+      "refusals_or_errors": 1,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.002333542004635092,
+      "commands": [
+        {
+          "argv": [
+            "comment",
+            "synthetic",
+            "Check manifest",
+            "--quote",
+            "Original",
+            "--occurrence",
+            "0"
+          ],
+          "exit_code": 3,
+          "elapsed_seconds": 0.0022730839991709217,
+          "output_bytes": 0,
+          "stderr_bytes": 55,
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_sha256": "21b0e7c4a6ba87f2c829329017f9efb58857556392f033011ef81cfb2b8cbc96"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t15_invalid_occurrence_is_local[mcp]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 0,
+      "mocked_boundary_calls": {
+        "get_file_version": 0,
+        "get_file_info": 0,
+        "export_doc": 0,
+        "list_comments": 0
+      },
+      "command_count": 1,
+      "refusals_or_errors": 1,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.007267082997714169,
+      "commands": [
+        {
+          "tool": "gdoc_comment",
+          "arguments": {
+            "doc": "synthetic",
+            "text": "Check manifest",
+            "quote": "Original",
+            "occurrence": 0
+          },
+          "exit_code": 1,
+          "elapsed_seconds": 0.007206959002360236,
+          "output_bytes": 54,
+          "stderr_bytes": 0,
+          "output_sha256": "0309b223b1db0dbf894e818ca1d150b6cc4507d002272ca388e2dad62e482ccd",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_d01_code_crlf_normalization",
+      "interface": "unit",
+      "outcome": "passed",
+      "test_elapsed_seconds": 4.5000000682193786e-05,
+      "commands": []
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_d12_closed_span_inside_fence_stays_literal",
+      "interface": "unit",
+      "outcome": "passed",
+      "test_elapsed_seconds": 3.929199738195166e-05,
+      "commands": []
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_d08_literal_list_whitespace_survives_export",
+      "interface": "unit",
+      "outcome": "passed",
+      "test_elapsed_seconds": 5.9250000049360096e-05,
+      "commands": []
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_helper_utf16_unit",
+      "interface": "unit",
+      "outcome": "passed",
+      "test_elapsed_seconds": 3.508300142129883e-05,
+      "commands": []
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t12_prefix_output_explicitly_identifies_partial_content[cli]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 1,
+      "mocked_boundary_calls": {
+        "get_file_version": 1,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 1
+      },
+      "command_count": 1,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.0026536250006756745,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--max-bytes",
+            "8",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0026051669992739335,
+          "output_bytes": 163,
+          "stderr_bytes": 87,
+          "output_sha256": "67f105c6e3f36b19a65959426baeb08ebbbddda62c93a8fcf68a375657601516",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t12_prefix_output_explicitly_identifies_partial_content[mcp]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 1,
+      "mocked_boundary_calls": {
+        "get_file_version": 1,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 1
+      },
+      "command_count": 1,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.007745459006400779,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "max_bytes": 8,
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007692999999562744,
+          "output_bytes": 163,
+          "stderr_bytes": 95,
+          "output_sha256": "67f105c6e3f36b19a65959426baeb08ebbbddda62c93a8fcf68a375657601516",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t12_full_read_authorizes_known_tab[cli]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.016561750002438203,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.002827749995049089,
+          "output_bytes": 175,
+          "stderr_bytes": 87,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "Known replacement\n",
+          "exit_code": 0,
+          "elapsed_seconds": 0.013652499997988343,
+          "output_bytes": 31,
+          "stderr_bytes": 19,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t12_full_read_authorizes_known_tab[mcp]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.015427375001308974,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007379249997029547,
+          "output_bytes": 175,
+          "stderr_bytes": 95,
+          "output_sha256": "dc7560c181664829d56db592ec0f3bbed73daff30b7cfe4756454b337bc75f24",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "Known replacement\n"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007970500002556946,
+          "output_bytes": 31,
+          "stderr_bytes": 0,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t15_duplicate_quote_refuses_without_comment[cli]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 1,
+      "mocked_boundary_calls": {
+        "get_file_version": 1,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 1
+      },
+      "command_count": 1,
+      "refusals_or_errors": 1,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.0025203339973813854,
+      "commands": [
+        {
+          "argv": [
+            "comment",
+            "synthetic",
+            "Check manifest",
+            "--quote",
+            "Original sentence."
+          ],
+          "exit_code": 3,
+          "elapsed_seconds": 0.002460791998601053,
+          "output_bytes": 0,
+          "stderr_bytes": 327,
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_sha256": "11c0848f3972f671c8bcb5baf2e6a1a9c7ea7de6798d3cb09f3fe4f15b1bcc06"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t15_duplicate_quote_refuses_without_comment[mcp]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 1,
+      "mocked_boundary_calls": {
+        "get_file_version": 1,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 1
+      },
+      "command_count": 1,
+      "refusals_or_errors": 1,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.006886750001285691,
+      "commands": [
+        {
+          "tool": "gdoc_comment",
+          "arguments": {
+            "doc": "synthetic",
+            "text": "Check manifest",
+            "quote": "Original sentence."
+          },
+          "exit_code": 1,
+          "elapsed_seconds": 0.006831833998148795,
+          "output_bytes": 239,
+          "stderr_bytes": 0,
+          "output_sha256": "9f2c1d94d703eb89d6f70809fceb5c935843748d1527ec8e5f01ab87977cc396",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_d02_positional_crlf_matches_file_normalization",
+      "interface": "unit",
+      "outcome": "passed",
+      "test_elapsed_seconds": 3.454199759289622e-05,
+      "commands": []
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_d07_heading_list_semantics_survive_roundtrip",
+      "interface": "unit",
+      "outcome": "passed",
+      "test_elapsed_seconds": 6.191599823068827e-05,
+      "commands": []
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_d13_image_after_backslash_code_span_is_not_literal",
+      "interface": "unit",
+      "outcome": "passed",
+      "test_elapsed_seconds": 7.270800415426493e-05,
+      "commands": []
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_d15_unmatched_link_openers_have_bounded_parse_time",
+      "interface": "unit",
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.0005830829977639951,
+      "commands": []
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_d05_inline_header_replacement_uses_inline_context[cli-# literal marker]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 2,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 1
+      },
+      "command_count": 1,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.003541999998560641,
+      "commands": [
+        {
+          "argv": [
+            "edit",
+            "synthetic",
+            "TOKEN",
+            "# literal marker",
+            "--tab",
+            "draft"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.003481790998193901,
+          "output_bytes": 25,
+          "stderr_bytes": 121,
+          "output_sha256": "d6b7c98b61d83074f3af9c3537f98600619d329d74cfe8e3c3414212abf67452",
+          "stderr_sha256": "f012019e30d9b5b8b6cf399e51713a50e81206f225a90e8f49ed08ea2416aca4"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_d05_inline_header_replacement_uses_inline_context[cli-`closed span`]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 2,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 1
+      },
+      "command_count": 1,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.002920165999967139,
+      "commands": [
+        {
+          "argv": [
+            "edit",
+            "synthetic",
+            "TOKEN",
+            "`closed span`",
+            "--tab",
+            "draft"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.002864082998712547,
+          "output_bytes": 25,
+          "stderr_bytes": 121,
+          "output_sha256": "d6b7c98b61d83074f3af9c3537f98600619d329d74cfe8e3c3414212abf67452",
+          "stderr_sha256": "f012019e30d9b5b8b6cf399e51713a50e81206f225a90e8f49ed08ea2416aca4"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_d05_inline_header_replacement_uses_inline_context[mcp-# literal marker]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 2,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 1
+      },
+      "command_count": 1,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.007906291000836063,
+      "commands": [
+        {
+          "tool": "gdoc_edit",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "old_text": "TOKEN",
+            "new_text": "# literal marker"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007849292000173591,
+          "output_bytes": 25,
+          "stderr_bytes": 130,
+          "output_sha256": "d6b7c98b61d83074f3af9c3537f98600619d329d74cfe8e3c3414212abf67452",
+          "stderr_sha256": "1ca1737518f56047514ecb97336144825cf42aee1eb4f9baa293868f7ff34833"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_d05_inline_header_replacement_uses_inline_context[mcp-`closed span`]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 2,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 1
+      },
+      "command_count": 1,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.007966375000250991,
+      "commands": [
+        {
+          "tool": "gdoc_edit",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "old_text": "TOKEN",
+            "new_text": "`closed span`"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007908749998023268,
+          "output_bytes": 25,
+          "stderr_bytes": 130,
+          "output_sha256": "d6b7c98b61d83074f3af9c3537f98600619d329d74cfe8e3c3414212abf67452",
+          "stderr_sha256": "1ca1737518f56047514ecb97336144825cf42aee1eb4f9baa293868f7ff34833"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t14_remove_image_via_explicit_rewrite[cli]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.005817207995278295,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0027756670024245977,
+          "output_bytes": 194,
+          "stderr_bytes": 87,
+          "output_sha256": "ae6ebb8802b010357f12c0eee6a64e13434d30bf35273d542d87c411ec01cb87",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "Before\nAfter\n",
+          "exit_code": 0,
+          "elapsed_seconds": 0.0029627920011989772,
+          "output_bytes": 31,
+          "stderr_bytes": 19,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t14_remove_image_via_explicit_rewrite[mcp]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.01548808300140081,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007208791997982189,
+          "output_bytes": 194,
+          "stderr_bytes": 95,
+          "output_sha256": "ae6ebb8802b010357f12c0eee6a64e13434d30bf35273d542d87c411ec01cb87",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "Before\nAfter\n"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.00819858299655607,
+          "output_bytes": 31,
+          "stderr_bytes": 0,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t11_locate_heading_within_long_tab[cli]",
+      "interface": "cli",
+      "evidence": "same_fixture_raw_and_direct_heading_formatting_match",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 3,
+        "get_file_info": 2,
+        "export_doc": 0,
+        "list_comments": 3
+      },
+      "command_count": 3,
+      "refusals_or_errors": 0,
+      "alternatives": {
+        "toc_then_raw": {
+          "command_indices": [
+            0,
+            1
+          ],
+          "task_commands": 2
+        },
+        "direct_heading": {
+          "command_indices": [
+            2
+          ],
+          "task_commands": 1
+        }
+      },
+      "gap": "Offline scripted comparison; no agent-driven latency measurement",
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.016226334002567455,
+      "commands": [
+        {
+          "argv": [
+            "toc",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.004354958000476472,
+          "output_bytes": 192,
+          "stderr_bytes": 87,
+          "output_sha256": "75f35d04a3f0ea4652b20700fc26a23af8b3738fd7f923a11b9320c7375dde5b",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "structure",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.004512667001108639,
+          "output_bytes": 133998,
+          "stderr_bytes": 19,
+          "output_sha256": "aaa5e4d9f89603a429edcca3ccab2e0ebb85210ee7526dbff560a0af8a1df688",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        },
+        {
+          "argv": [
+            "structure",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--heading",
+            "Departure checklist",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.004249042001902126,
+          "output_bytes": 399,
+          "stderr_bytes": 87,
+          "output_sha256": "0c668330b43af13bb58f80ca7642c63b6aa8b7048a30999e6035ba3e983dcf01",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t11_locate_heading_within_long_tab[mcp]",
+      "interface": "mcp",
+      "evidence": "same_fixture_raw_and_direct_heading_formatting_match",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 3,
+        "get_file_info": 2,
+        "export_doc": 0,
+        "list_comments": 3
+      },
+      "command_count": 3,
+      "refusals_or_errors": 0,
+      "alternatives": {
+        "toc_then_raw": {
+          "command_indices": [
+            0,
+            1
+          ],
+          "task_commands": 2
+        },
+        "direct_heading": {
+          "command_indices": [
+            2
+          ],
+          "task_commands": 1
+        }
+      },
+      "gap": "Offline scripted comparison; no agent-driven latency measurement",
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.03971349999483209,
+      "commands": [
+        {
+          "tool": "gdoc_toc",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.00859287500497885,
+          "output_bytes": 192,
+          "stderr_bytes": 95,
+          "output_sha256": "75f35d04a3f0ea4652b20700fc26a23af8b3738fd7f923a11b9320c7375dde5b",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_structure",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.019123875004879665,
+          "output_bytes": 133998,
+          "stderr_bytes": 0,
+          "output_sha256": "aaa5e4d9f89603a429edcca3ccab2e0ebb85210ee7526dbff560a0af8a1df688",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "tool": "gdoc_structure",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "heading": "Departure checklist",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.008935165998991579,
+          "output_bytes": 399,
+          "stderr_bytes": 95,
+          "output_sha256": "0c668330b43af13bb58f80ca7642c63b6aa8b7048a30999e6035ba3e983dcf01",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t11_direct_heading_selector_exposes_partial_scope[cli]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 2,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 1,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.005830667003465351,
+      "commands": [
+        {
+          "argv": [
+            "structure",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--heading",
+            "Departure checklist",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0030117089991108514,
+          "output_bytes": 357,
+          "stderr_bytes": 87,
+          "output_sha256": "e7d8d4df1c0997a189fe89da980bae6af373c62c33200acf2dbd7cb71b2402b1",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "Unseen replacement\n",
+          "exit_code": 3,
+          "elapsed_seconds": 0.002617915997689124,
+          "output_bytes": 0,
+          "stderr_bytes": 187,
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_sha256": "5b72f0cd71fb84a66e4c4344958e9a641c2a838ae2c7c3dcbce86d9818533e42"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t11_direct_heading_selector_exposes_partial_scope[mcp]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 2,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 1,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.014909042001818307,
+      "commands": [
+        {
+          "tool": "gdoc_structure",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "heading": "Departure checklist",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007565249994513579,
+          "output_bytes": 357,
+          "stderr_bytes": 95,
+          "output_sha256": "e7d8d4df1c0997a189fe89da980bae6af373c62c33200acf2dbd7cb71b2402b1",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "Unseen replacement\n"
+          },
+          "exit_code": 1,
+          "elapsed_seconds": 0.0071479170001111925,
+          "output_bytes": 167,
+          "stderr_bytes": 0,
+          "output_sha256": "2d4cc955c9bcae782d9f2579f7d999c6f91eb49d8e3c281ab5428cbd1399ac4a",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t11_direct_table_selector_exposes_only_requested_table[cli]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 1,
+      "mocked_boundary_calls": {
+        "get_file_version": 1,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 1
+      },
+      "command_count": 1,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.002977708005346358,
+      "commands": [
+        {
+          "argv": [
+            "structure",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--table",
+            "2",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0025979580022976734,
+          "output_bytes": 799,
+          "stderr_bytes": 87,
+          "output_sha256": "0c33f97303fe8ea4a66f05f645b2975ab1a7ad2bd5c4d843925485ad07484070",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t11_direct_table_selector_exposes_only_requested_table[mcp]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 1,
+      "mocked_boundary_calls": {
+        "get_file_version": 1,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 1
+      },
+      "command_count": 1,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.00790416700328933,
+      "commands": [
+        {
+          "tool": "gdoc_structure",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "table": 2,
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007610416003444698,
+          "output_bytes": 799,
+          "stderr_bytes": 95,
+          "output_sha256": "0c33f97303fe8ea4a66f05f645b2975ab1a7ad2bd5c4d843925485ad07484070",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t11_heading_collision_across_tabs_requires_selection[cli]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 1,
+      "mocked_boundary_calls": {
+        "get_file_version": 1,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 1
+      },
+      "command_count": 1,
+      "refusals_or_errors": 1,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.0024015829985728487,
+      "commands": [
+        {
+          "argv": [
+            "structure",
+            "synthetic",
+            "--heading",
+            "Departure checklist",
+            "--json"
+          ],
+          "exit_code": 3,
+          "elapsed_seconds": 0.002344250002352055,
+          "output_bytes": 0,
+          "stderr_bytes": 180,
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_sha256": "3ca3001882f8284a7b67140fa8bc74242b6588fff64c7ceddcfa5f92b7d7d3a5"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t11_heading_collision_across_tabs_requires_selection[mcp]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 1,
+      "mocked_boundary_calls": {
+        "get_file_version": 1,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 1
+      },
+      "command_count": 1,
+      "refusals_or_errors": 1,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.007600416996865533,
+      "commands": [
+        {
+          "tool": "gdoc_structure",
+          "arguments": {
+            "doc": "synthetic",
+            "heading": "Departure checklist",
+            "json": true
+          },
+          "exit_code": 1,
+          "elapsed_seconds": 0.007540291997429449,
+          "output_bytes": 92,
+          "stderr_bytes": 0,
+          "output_sha256": "a34df0fb2e2291e92cd073712097bbc95d62104793e90af310e04add8abb3f48",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t12_explicit_force_after_partial_read_remains_revision_pinned[cli]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 4,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.006200124997121748,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--max-bytes",
+            "8",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.002583791996585205,
+          "output_bytes": 163,
+          "stderr_bytes": 87,
+          "output_sha256": "67f105c6e3f36b19a65959426baeb08ebbbddda62c93a8fcf68a375657601516",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--force"
+          ],
+          "input_markdown": "Intentional replacement\n",
+          "exit_code": 0,
+          "elapsed_seconds": 0.0035480410006130114,
+          "output_bytes": 31,
+          "stderr_bytes": 19,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "77b92d9b5f3b377bffaae4eecad54135cc33e21e0ca47f20e4ec80507bd3b196"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t12_explicit_force_after_partial_read_remains_revision_pinned[mcp]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 4,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.015186750002612825,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "max_bytes": 8,
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007085249999363441,
+          "output_bytes": 163,
+          "stderr_bytes": 95,
+          "output_sha256": "67f105c6e3f36b19a65959426baeb08ebbbddda62c93a8fcf68a375657601516",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "text": "Intentional replacement\n",
+            "force": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.00803454199922271,
+          "output_bytes": 31,
+          "stderr_bytes": 0,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t12_image_filtered_read_does_not_authorize_rewrite[cli]",
+      "interface": "cli",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 2,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 1,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.005819291996886022,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--no-images",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.0026504160050535575,
+          "output_bytes": 173,
+          "stderr_bytes": 87,
+          "output_sha256": "403b586c75a858e775d030855af0fdb49ed82991158fd6e450c7a279560f5550",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>"
+          ],
+          "input_markdown": "Replacement\n",
+          "exit_code": 3,
+          "elapsed_seconds": 0.0030983329997980036,
+          "output_bytes": 0,
+          "stderr_bytes": 187,
+          "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stderr_sha256": "5b72f0cd71fb84a66e4c4344958e9a641c2a838ae2c7c3dcbce86d9818533e42"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t12_image_filtered_read_does_not_authorize_rewrite[mcp]",
+      "interface": "mcp",
+      "evidence": "request_assertions",
+      "retries": 0,
+      "docs_api_attempts": 2,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 1,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.014675666003313381,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "no_images": true,
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007443791997502558,
+          "output_bytes": 173,
+          "stderr_bytes": 95,
+          "output_sha256": "403b586c75a858e775d030855af0fdb49ed82991158fd6e450c7a279560f5550",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "text": "Replacement\n"
+          },
+          "exit_code": 1,
+          "elapsed_seconds": 0.007158334003179334,
+          "output_bytes": 167,
+          "stderr_bytes": 0,
+          "output_sha256": "2d4cc955c9bcae782d9f2579f7d999c6f91eb49d8e3c281ab5428cbd1399ac4a",
+          "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t14_unrelated_rewrite_uses_fresh_snapshot_image_uri[cli]",
+      "interface": "cli",
+      "evidence": "current_snapshot_reference_resolution_and_native_image_request",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.016590250001172535,
+      "commands": [
+        {
+          "argv": [
+            "cat",
+            "synthetic",
+            "--tab",
+            "draft",
+            "--json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 0.013450332997308578,
+          "output_bytes": 194,
+          "stderr_bytes": 87,
+          "output_sha256": "ae6ebb8802b010357f12c0eee6a64e13434d30bf35273d542d87c411ec01cb87",
+          "stderr_sha256": "3b2933746b0e9dd0ebd520e1be5f7bb64fa7d13a89a0085fa4f3d7dcb9a77717"
+        },
+        {
+          "argv": [
+            "write",
+            "synthetic",
+            "<temporary rewrite.md>",
+            "--tab",
+            "draft"
+          ],
+          "input_markdown": "Revised\n![Map](gdoc-image:map)\nAfter\n",
+          "exit_code": 0,
+          "elapsed_seconds": 0.003055165994737763,
+          "output_bytes": 31,
+          "stderr_bytes": 130,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "57fb5be5ab4408a90266ea072fbec248edc549902ffe948beb485caec25d5f51"
+        }
+      ]
+    },
+    {
+      "test": "tests/acceptance/test_workflows.py::test_t14_unrelated_rewrite_uses_fresh_snapshot_image_uri[mcp]",
+      "interface": "mcp",
+      "evidence": "current_snapshot_reference_resolution_and_native_image_request",
+      "retries": 0,
+      "docs_api_attempts": 3,
+      "mocked_boundary_calls": {
+        "get_file_version": 2,
+        "get_file_info": 1,
+        "export_doc": 0,
+        "list_comments": 2
+      },
+      "command_count": 2,
+      "refusals_or_errors": 0,
+      "outcome": "passed",
+      "test_elapsed_seconds": 0.015483333998417947,
+      "commands": [
+        {
+          "tool": "gdoc_cat",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "json": true
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007844416999432724,
+          "output_bytes": 194,
+          "stderr_bytes": 95,
+          "output_sha256": "ae6ebb8802b010357f12c0eee6a64e13434d30bf35273d542d87c411ec01cb87",
+          "stderr_sha256": "f5e634d1d597a455470f88539cc0fa905284598aea02d4fc9ecc7a8c5a2584d6"
+        },
+        {
+          "tool": "gdoc_write",
+          "arguments": {
+            "doc": "synthetic",
+            "tab": "draft",
+            "text": "Revised\n![Map](gdoc-image:map)\nAfter\n"
+          },
+          "exit_code": 0,
+          "elapsed_seconds": 0.007564416999230161,
+          "output_bytes": 31,
+          "stderr_bytes": 124,
+          "output_sha256": "835f1f12dcd2f2572ae28a559ee334f2a766be11c35dadd4ac561103a9fd13a5",
+          "stderr_sha256": "0c5b1da569e5168eddb2e82dfb9efa6400faf7cfe2a827ddfa325ae09a97c9ba"
+        }
+      ]
+    }
+  ]
+}

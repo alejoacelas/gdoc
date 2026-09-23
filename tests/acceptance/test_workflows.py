@@ -564,7 +564,7 @@ def test_t14_remove_image_via_explicit_rewrite(scenario):
     )
 
 
-def test_t11_locate_heading_within_long_tab(scenario):
+def test_t11_locate_heading_within_long_tab(scenario, monkeypatch):
     content = []
     index = 1
     for i in range(400):
@@ -596,12 +596,22 @@ def test_t11_locate_heading_within_long_tab(scenario):
     assert (
         paragraphs[200]["paragraph"]["paragraphStyle"]["namedStyleType"] == "HEADING_2"
     )
-    scenario.record["evidence"] = (
-        "heading_found_and_formatting_inspected_in_public_output"
+    monkeypatch.setattr(
+        "gdoc.state.STATE_DIR", scenario.tmp_path / "direct-heading-state"
     )
+    focused = json.loads(
+        scenario.ok("structure", tab="draft", heading="Departure checklist", json=True)
+    )["document"]
+    assert focused["content"] == [paragraphs[200]]
+    assert focused["scope"]["complete"] is False
+    assert focused["revisionId"] == "r1"
+    scenario.record["evidence"] = "same_fixture_raw_and_direct_heading_formatting_match"
+    scenario.record["alternatives"] = {
+        "toc_then_raw": {"command_indices": [0, 1], "task_commands": 2},
+        "direct_heading": {"command_indices": [2], "task_commands": 1},
+    }
     scenario.record["gap"] = (
-        "toc finds heading in one call; formatting inspection "
-        "still emits whole selected tab"
+        "Offline scripted comparison; no agent-driven latency measurement"
     )
 
 
@@ -655,3 +665,42 @@ def test_t11_heading_collision_across_tabs_requires_selection(scenario):
     assert "ambiguous" in (output + error).lower()
     assert "draft" in output + error and "other" in output + error
     assert not scenario.batches
+
+
+def test_t12_explicit_force_after_partial_read_remains_revision_pinned(scenario):
+    scenario.ok("cat", max_bytes=8, json=True)
+    scenario.ok("write", text="Intentional replacement\n", force=True)
+    assert scenario.batches[0]["writeControl"] == {"requiredRevisionId": "r1"}
+    assert any(
+        "Intentional replacement" in r.get("insertText", {}).get("text", "")
+        for r in requests(scenario)
+    )
+
+
+def test_t12_image_filtered_read_does_not_authorize_rewrite(scenario):
+    existing_image(scenario)
+    result = json.loads(scenario.ok("cat", no_images=True, json=True))
+    assert result["scope"]["complete"] is False
+    code, output, error = scenario.call("write", text="Replacement\n")
+    assert code != 0, output + error
+    assert not scenario.batches
+
+
+def test_t14_unrelated_rewrite_uses_fresh_snapshot_image_uri(scenario):
+    existing_image(scenario)
+    source = read(scenario)
+    assert "gdoc-image:map" in source
+    native = scenario.document["tabs"][0]["documentTab"]
+    native["inlineObjects"]["map"]["inlineObjectProperties"]["embeddedObject"][
+        "imageProperties"
+    ]["contentUri"] = "https://example.invalid/refreshed-image.png"
+    scenario.ok("write", tab="draft", text=source.replace("Before", "Revised"))
+    image_requests = [
+        r["insertInlineImage"] for r in requests(scenario) if "insertInlineImage" in r
+    ]
+    assert len(image_requests) == 1
+    assert image_requests[0]["uri"] == "https://example.invalid/refreshed-image.png"
+    assert image_requests[0]["location"] == {"index": 9, "tabId": "draft"}
+    scenario.record["evidence"] = (
+        "current_snapshot_reference_resolution_and_native_image_request"
+    )

@@ -1070,6 +1070,17 @@ def _revision_conflict(error: Exception) -> bool:
     ))
 
 
+class MutationResult(int):
+    """Compatible numeric result with provenance from acknowledged Docs writes."""
+
+    def __new__(cls, value, input_revision_id, acknowledged_revision_id, rebased=False):
+        result = super().__new__(cls, value)
+        result.input_revision_id = input_revision_id
+        result.acknowledged_revision_id = acknowledged_revision_id
+        result.rebased = rebased
+        return result
+
+
 @dataclass
 class _StagedWrite:
     """Track acknowledged stages separately from an unanswered mutation."""
@@ -1226,7 +1237,6 @@ def _table_at(body, index):
 def _table_cell_requests(cell_indices, table, tab_id):
     # Parse each cell's markdown to plain text + inline styles, once.
     from gdoc.mdparse import (
-        StyleRange,
         _utf16_prefix,
         parse_inline,
         text_style_fields,
@@ -1262,7 +1272,7 @@ def _table_cell_requests(cell_indices, table, tab_id):
                     }
                 })
 
-    # Apply inline styles (plus bold for the whole header row) in forward
+    # Apply only requested inline styles in forward
     # index order. Each cell's final position is its original index plus the
     # total length of all earlier (lower-index) cells already inserted.
     shift = 0
@@ -1271,11 +1281,17 @@ def _table_cell_requests(cell_indices, table, tab_id):
         for c_idx in range(len(row)):
             plain, cell_styles = parsed_cells[(r_idx, c_idx)]
             cell_styles = list(cell_styles)
-            if r_idx == 0 and plain:
-                cell_styles.append(StyleRange(
-                    0, len(plain), {"bold": True}, "text_style",
-                ))
             base = row[c_idx] + shift
+            alignment = (table.alignments[c_idx]
+                         if c_idx < len(table.alignments) else None)
+            if alignment:
+                span = {"startIndex": base, "endIndex": base + utf16_len(plain) + 1}
+                if tab_id:
+                    span["tabId"] = tab_id
+                text_requests.append({"updateParagraphStyle": {
+                    "range": span, "paragraphStyle": {"alignment": alignment},
+                    "fields": "alignment",
+                }})
             # Style offsets are code points; Docs indexes are UTF-16.
             utf16 = _utf16_prefix(plain)
             for s in cell_styles:
@@ -1884,6 +1900,31 @@ def _reset_list_indents(parsed) -> None:
                 style.style.setdefault(field, {"magnitude": 0, "unit": "PT"})
 
 
+def _code_range_requests(parsed, insert_index: int, tab_id: str | None) -> list[dict]:
+    """Mark complete code paragraphs before tables shift their native positions."""
+    from gdoc.mdparse import utf16_len
+
+    def coordinate(offset):
+        consumed = sum(
+            len(line) - len(line.lstrip("\t"))
+            for style in parsed.styles if style.type == "bullets"
+            for line in parsed.plain_text[style.start:min(style.end, offset)].split("\n")
+            if style.start < offset
+        )
+        # A final code range includes the mandatory retained paragraph newline.
+        return insert_index + utf16_len(parsed.plain_text[:offset]) + max(
+            0, offset - len(parsed.plain_text),
+        ) - consumed
+
+    requests = []
+    for block in parsed.code_blocks:
+        span = {"startIndex": coordinate(block.start), "endIndex": coordinate(block.end)}
+        if tab_id:
+            span["tabId"] = tab_id
+        requests.append({"createNamedRange": {"name": "gdoc:code:v1", "range": span}})
+    return requests
+
+
 def insert_markdown_into_tab(
     doc_id: str,
     tab_name: str,
@@ -1922,6 +1963,7 @@ def insert_markdown_into_tab(
 
     doc = document if document is not None else get_document_with_tabs(doc_id)
     revision_id = doc.get("revisionId", "")
+    input_revision_id = revision_id
     tabs = flatten_tabs(doc.get("tabs", []))
     tab_match = resolve_tab(tabs, tab_name)
     tab_id = tab_match["id"]
@@ -1943,19 +1985,12 @@ def insert_markdown_into_tab(
         insert_index = body_start
 
     parsed = parse_markdown(markdown)
-    if replace and parsed.non_default_list_starts:
+    if parsed.non_default_list_starts:
         import sys
 
-        losses = ", ".join(parsed.non_default_list_starts)
-        if not allow_lossy:
-            raise GdocError(
-                "Markdown replacement refused: incoming " + losses
-                + ". No content was written. Pass --allow-lossy to knowingly "
-                "reset list numbering.",
-                exit_code=3,
-            )
-        print("WARN: Markdown replacement will reset incoming " + losses,
-              file=sys.stderr)
+        print("WARN: Google Docs cannot set arbitrary native list starts; "
+              "the following lists will start at 1: "
+              + "; ".join(parsed.non_default_list_starts), file=sys.stderr)
     requests: list[dict] = []
 
     at_end = replace or body_end == body_start or position == "end"
@@ -2067,6 +2102,7 @@ def insert_markdown_into_tab(
             "paragraphStyle": final_style,
             "fields": _paragraph_style_fields(final_style),
         }})
+    insertion.extend(_code_range_requests(parsed, insert_index, tab_id))
     requests.extend(insertion)
 
     with _StagedWrite(doc_id) as progress:
@@ -2091,6 +2127,9 @@ def insert_markdown_into_tab(
         "tab_id": tab_id,
         "tab_title": tab_match["title"],
         "insert_index": insert_index,
+        "input_revision_id": input_revision_id,
+        "acknowledged_revision_id": revision_id,
+        "rebased": progress.rebased,
     }
 
 
@@ -2112,7 +2151,7 @@ def check_tab_body_replacement(tab: dict, *, allow_lossy: bool = False) -> None:
             {"startIndex": body_start, "endIndex": body_end + 1},
         )
     }
-    scope = {"body": body, "lists": {
+    scope = {**tab, "body": body, "lists": {
         key: value for key, value in tab.get("lists", {}).items()
         if key in list_ids
     }}
@@ -2649,6 +2688,7 @@ def replace_formatted(
     """
     from gdoc.mdparse import parse_markdown, utf16_len
 
+    input_revision_id = revision_id
     parsed = parse_markdown(new_markdown)
     check_segment_replacement(parsed, new_markdown, matches)
 
@@ -2764,7 +2804,7 @@ def replace_formatted(
     )
 
     if not all_requests:
-        return 0
+        return MutationResult(0, input_revision_id, input_revision_id)
 
     # Each lower replacement may have a different rendered length when
     # --all includes both partial and complete paragraph matches.
@@ -2809,7 +2849,8 @@ def replace_formatted(
                         ordinal=ordinal, scaffolding=_table_scaffolding(parsed, table),
                     )
 
-        return occurrence_count
+        return MutationResult(occurrence_count, input_revision_id, revision_id,
+                              progress.rebased)
 
 
 # ---------------------------------------------------------------------------

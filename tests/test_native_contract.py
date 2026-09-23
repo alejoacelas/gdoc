@@ -1,5 +1,7 @@
 """Synthetic request-level checks for native Markdown replacement."""
 
+import pytest
+
 from gdoc.api.docs import (
     _code_range_requests,
     _strip_trailing_newline_unless_hr,
@@ -314,3 +316,50 @@ def test_terminal_empty_list_styles_retained_native_mark(mocker):
         "endIndex": 2,
         "tabId": "tab-one",
     }
+
+
+def test_terminal_empty_item_after_worded_item_is_included(mocker):
+    chain = service(mocker)
+    insert_markdown_into_tab(
+        "doc", "Notes", "- words\n- ", replace=True, document=snapshot()
+    )
+    requests = chain.batchUpdate.call_args.kwargs["body"]["requests"]
+    assert next(
+        r["createParagraphBullets"]["range"]
+        for r in requests
+        if "createParagraphBullets" in r
+    ) == {
+        "startIndex": 1,
+        "endIndex": 8,
+        "tabId": "tab-one",
+    }
+
+
+def test_segment_inline_code_space_is_not_an_empty_rendering(mocker):
+    chain = service(mocker)
+    replace_formatted(
+        "doc",
+        [{"startIndex": 1, "endIndex": 2, "segmentId": "header"}],
+        "` `",
+        "before",
+    )
+    requests = chain.batchUpdate.call_args.kwargs["body"]["requests"]
+    assert next(r["insertText"] for r in requests if "insertText" in r) == {
+        "location": {"index": 1, "segmentId": "header"},
+        "text": " ",
+    }
+
+
+@pytest.mark.parametrize(
+    "text", ["# literal", "- literal", "1. literal", "> literal", "---"]
+)
+def test_segment_block_punctuation_is_literal_inline_text(mocker, text):
+    chain = service(mocker)
+    replace_formatted(
+        "doc", [{"startIndex": 1, "endIndex": 4, "segmentId": "header"}], text, "before"
+    )
+    requests = chain.batchUpdate.call_args.kwargs["body"]["requests"]
+    assert next(r["insertText"]["text"] for r in requests if "insertText" in r) == text
+    assert not any(
+        "updateParagraphStyle" in r or "createParagraphBullets" in r for r in requests
+    )

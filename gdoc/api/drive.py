@@ -162,21 +162,14 @@ def get_file_info(doc_id: str) -> dict:
 def update_doc_content(
     doc_id: str, content: str, *, expected_version: int | None = None,
     document: dict | None = None, allow_lossy: bool = False,
+    collapse_tabs: bool = False, result_details: dict | None = None,
 ) -> int:
-    """Replace content without overwriting changes since the guard read.
+    """Replace the first tab using the exact guard snapshot's Docs revision.
 
-    Single-tab documents use Docs batchUpdate with the supplied guard snapshot.
-    The returned Drive version is for display, not a read baseline: its GET
-    may observe collaborator edits after the acknowledged native mutation.
-    A deliberately requested multi-tab collapse still uses Drive import:
-    files.update exposes no revision/version precondition, so a final version
-    read minimizes, but cannot close, the read-to-upload race. Callers pass
-    the version captured before their structural/lossy guard, even with force.
+    Sibling tabs survive unless the caller explicitly authorizes collapse.
+    The numeric Drive version remains a display value; result_details carries
+    only the revision acknowledged by the native mutation response.
     """
-    import io
-
-    from googleapiclient.http import MediaIoBaseUpload
-
     from gdoc.api.docs import (
         _StagedWrite,
         flatten_tabs,
@@ -186,8 +179,6 @@ def update_doc_content(
 
     if expected_version is None:
         if document is not None:
-            # A snapshot read before its version was captured could already
-            # postdate a collaborator edit; the pair must be captured together.
             raise GdocError(
                 "expected version is required with a supplied document snapshot",
                 exit_code=3,
@@ -200,39 +191,25 @@ def update_doc_content(
     if not tabs:
         raise GdocError("cannot identify document tabs before writing", exit_code=3)
 
-    if len(tabs) == 1:
-        require_write_version(doc_id, expected_version)
-        insert_markdown_into_tab(
-            doc_id, tabs[0]["id"], content, replace=True,
-            allow_lossy=allow_lossy, document=document,
-        )
-        with _StagedWrite(doc_id, applied=["document content replaced"]) as progress:
-            progress.stage = "reading the resulting version"
-            return get_file_version(doc_id)["version"]
-
-    with _StagedWrite(doc_id) as progress:
-        progress.stage = "whole-document import"
-        service = get_drive_service()
-        media = MediaIoBaseUpload(
-            io.BytesIO(content.encode("utf-8")),
-            mimetype="text/markdown",
-            resumable=False,
-        )
-        request = service.files().update(
-            fileId=doc_id,
-            body={"mimeType": "application/vnd.google-apps.document"},
-            media_body=media,
-            fields="version",
-            supportsAllDrives=True,
-        )
-        # Keep this last: preparation and guard reads must precede the check.
-        require_write_version(doc_id, expected_version)
-        from gdoc.api.comment_transport import execute_mutation_request
-        result = execute_mutation_request(request, on_send=progress.mark_sent)
-        progress.sent = False
-        progress.applied.append("whole-document import")
+    require_write_version(doc_id, expected_version)
+    result = insert_markdown_into_tab(
+        doc_id, tabs[0]["id"], content, replace=True,
+        allow_lossy=allow_lossy, document=document,
+    )
+    with _StagedWrite(doc_id, applied=["first tab content replaced"]) as progress:
+        if collapse_tabs and len(tabs) > 1:
+            # Children precede parents; never silently collapse the siblings
+            # of an ordinary default-tab replacement.
+            result["acknowledged_revision_id"] = progress.batch(
+                "authorized sibling tabs removed",
+                [{"deleteTab": {"tabId": tab["id"]}} for tab in reversed(tabs[1:])],
+                result["acknowledged_revision_id"],
+            )
         progress.stage = "reading the resulting version"
-        return int(result["version"])
+        version = get_file_version(doc_id)["version"]
+    if result_details is not None:
+        result_details.update(result)
+    return version
 
 
 def require_write_version(doc_id: str, expected_version: int) -> None:

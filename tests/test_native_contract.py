@@ -1,8 +1,6 @@
 """Synthetic request-level checks for native Markdown replacement."""
-import json
 
 from gdoc.api.docs import (
-    MutationResult,
     _code_range_requests,
     _strip_trailing_newline_unless_hr,
     _table_cell_requests,
@@ -32,20 +30,14 @@ def service(mocker):
     return chain
 
 
-def test_numeric_provenance_is_backward_compatible():
-    result = MutationResult(2, "before", "after", True)
-    assert result == 2
-    assert json.dumps({"count": result}) == '{"count": 2}'
-    assert result.rebased and result.acknowledged_revision_id == "after"
-
-
 def test_targeted_revision_is_from_acknowledgment(mocker):
     service(mocker)
+    details = {}
     result = replace_formatted("doc", [{"startIndex": 1, "endIndex": 4}],
-                               "New", "before")
+                               "New", "before", result_details=details)
     assert result == 1
-    assert (result.input_revision_id, result.acknowledged_revision_id,
-            result.rebased) == ("before", "after", False)
+    assert (details["input_revision_id"], details["acknowledged_revision_id"],
+            details["rebased"]) == ("before", "after", False)
 
 
 def test_general_split_and_reorder_are_native(mocker):
@@ -89,3 +81,52 @@ def test_non_default_start_is_explicit_best_effort(mocker, capsys):
     assert "will start at 1" in capsys.readouterr().err
     assert any("createParagraphBullets" in r for r in
                chain.batchUpdate.call_args.kwargs["body"]["requests"])
+
+
+def test_multi_tab_default_preserves_siblings_and_uses_native_revision(mocker):
+    from copy import deepcopy
+
+    from gdoc.api.drive import update_doc_content
+
+    document = snapshot()
+    sibling = deepcopy(document["tabs"][0])
+    sibling["tabProperties"] = {"tabId": "sibling", "title": "Other"}
+    document["tabs"].append(sibling)
+    chain = service(mocker)
+    drive = mocker.patch("gdoc.api.drive.get_drive_service")
+    mocker.patch("gdoc.api.drive.require_write_version")
+    mocker.patch("gdoc.api.drive.get_file_version", return_value={"version": 99})
+    details = {}
+    assert update_doc_content("doc", "New", document=document, expected_version=1,
+                              result_details=details) == 99
+    drive.assert_not_called()
+    chain.batchUpdate.assert_called_once()
+    assert details["acknowledged_revision_id"] == "after"
+    assert not any("deleteTab" in r for r in
+                   chain.batchUpdate.call_args.kwargs["body"]["requests"])
+
+
+def test_authorized_collapse_pins_sibling_deletion_to_ack(mocker):
+    from copy import deepcopy
+
+    from gdoc.api.drive import update_doc_content
+
+    document = snapshot()
+    sibling = deepcopy(document["tabs"][0])
+    sibling["tabProperties"] = {"tabId": "sibling", "title": "Other"}
+    document["tabs"].append(sibling)
+    chain = service(mocker)
+    chain.batchUpdate.return_value.execute.side_effect = [
+        {"writeControl": {"requiredRevisionId": "after"}},
+        {"writeControl": {"requiredRevisionId": "collapsed"}},
+    ]
+    mocker.patch("gdoc.api.drive.require_write_version")
+    mocker.patch("gdoc.api.drive.get_file_version", return_value={"version": 99})
+    details = {}
+    update_doc_content("doc", "New", document=document, expected_version=1,
+                       collapse_tabs=True, result_details=details)
+    assert chain.batchUpdate.call_args.kwargs["body"] == {
+        "requests": [{"deleteTab": {"tabId": "sibling"}}],
+        "writeControl": {"requiredRevisionId": "after"},
+    }
+    assert details["acknowledged_revision_id"] == "collapsed"

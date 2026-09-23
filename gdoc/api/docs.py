@@ -1098,17 +1098,6 @@ def _revision_conflict(error: Exception) -> bool:
     ))
 
 
-class MutationResult(int):
-    """Compatible numeric result with provenance from acknowledged Docs writes."""
-
-    def __new__(cls, value, input_revision_id, acknowledged_revision_id, rebased=False):
-        result = super().__new__(cls, value)
-        result.input_revision_id = input_revision_id
-        result.acknowledged_revision_id = acknowledged_revision_id
-        result.rebased = rebased
-        return result
-
-
 @dataclass
 class _StagedWrite:
     """Track acknowledged stages separately from an unanswered mutation."""
@@ -2693,6 +2682,7 @@ def replace_formatted(
     revision_id: str,
     tab_id: str | None = None,
     *, body: dict | None = None, replace_paragraphs: bool = False,
+    result_details: dict | None = None,
 ) -> int:
     """Replace matched text ranges with formatted content.
 
@@ -2832,7 +2822,11 @@ def replace_formatted(
     )
 
     if not all_requests:
-        return MutationResult(0, input_revision_id, input_revision_id)
+        if result_details is not None:
+            result_details.update(input_revision_id=input_revision_id,
+                                  acknowledged_revision_id=input_revision_id,
+                                  rebased=False)
+        return 0
 
     # Each lower replacement may have a different rendered length when
     # --all includes both partial and complete paragraph matches.
@@ -2877,8 +2871,11 @@ def replace_formatted(
                         ordinal=ordinal, scaffolding=_table_scaffolding(parsed, table),
                     )
 
-        return MutationResult(occurrence_count, input_revision_id, revision_id,
-                              progress.rebased)
+        if result_details is not None:
+            result_details.update(input_revision_id=input_revision_id,
+                                  acknowledged_revision_id=revision_id,
+                                  rebased=progress.rebased)
+        return occurrence_count
 
 
 # ---------------------------------------------------------------------------

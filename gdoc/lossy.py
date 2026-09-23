@@ -92,7 +92,7 @@ def _numbered_list_hazards(content: list, lists: dict) -> set[str]:
     from gdoc.api.docs import _list_is_ordered
 
     hazards = set()
-    run = set()
+    run = {}
     seen = set()
     for element in content:
         paragraph = element.get("paragraph", {})
@@ -101,22 +101,32 @@ def _numbered_list_hazards(content: list, lists: dict) -> set[str]:
             run.clear()
             continue
         list_id = bullet.get("listId", "")
-        level = bullet.get("nestingLevel", 0)
-        if not _list_is_ordered(lists, list_id, level):
-            run.clear()
-            continue
-        start = lists[list_id]["listProperties"]["nestingLevels"][level].get(
-            "startNumber", 1,
+        native_level = bullet.get("nestingLevel", 0)
+        definitions = lists.get(list_id, {}).get("listProperties", {}).get(
+            "nestingLevels", [],
         )
+        definition = definitions[native_level] if native_level < len(definitions) else {}
+        indent = paragraph.get("paragraphStyle", {}).get(
+            "indentStart", definition.get("indentStart", {}),
+        )
+        level = max(native_level, round(indent.get("magnitude", 0) / 36) - 1)
+        for deeper in [key for key in run if key > level]:
+            del run[deeper]
+        if not _list_is_ordered(lists, list_id, native_level):
+            run.pop(level, None)
+            continue
+        start = definition.get("startNumber", 1)
         if start != 1:
             hazards.add(f"numbered list {list_id!r} starts at {start} (reset to 1)")
-        if run - {list_id}:
-            names = ", ".join(repr(name) for name in sorted(run | {list_id}))
+        previous = run.get(level)
+        if previous and previous != list_id:
+            names = ", ".join(repr(name) for name in sorted({previous, list_id}))
             hazards.add(f"adjacent or interleaved numbered lists {names}")
-        if list_id in seen and list_id not in run:
+        identity = (list_id, native_level)
+        if identity in seen and previous != list_id:
             hazards.add(f"numbered list {list_id!r} resumes after a break")
-        run.add(list_id)
-        seen.add(list_id)
+        run[level] = list_id
+        seen.add(identity)
     return hazards
 
 

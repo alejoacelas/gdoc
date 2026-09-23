@@ -429,7 +429,13 @@ def _paragraph_markdown(
     if bullet is not None:
         native_level = bullet.get("nestingLevel", 0)
         level = native_level
-        indent_start = paragraph.get("paragraphStyle", {}).get("indentStart", {})
+        definitions = lists.get(bullet.get("listId", ""), {}).get(
+            "listProperties", {},
+        ).get("nestingLevels", [])
+        inherited = definitions[native_level] if native_level < len(definitions) else {}
+        indent_start = paragraph.get("paragraphStyle", {}).get(
+            "indentStart", inherited.get("indentStart", {}),
+        )
         if indent_start.get("unit", "PT") == "PT":
             level = max(level, round(indent_start.get("magnitude", 0) / 36) - 1)
         list_id = bullet.get("listId", "")

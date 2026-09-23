@@ -173,3 +173,24 @@ def test_code_pipe_and_literal_entities_in_table_cells():
     rendered = _table_markdown(table)
     cell = parse_markdown(rendered).tables[0].rows[0][0]
     assert parse_inline(cell)[0] == 'a|b &#32;'
+
+
+def test_supported_core_styles_and_images_need_no_loss_override(capsys):
+    from gdoc.lossy import check_markdown_replacement
+
+    scope = {'body': {'content': [{'paragraph': {
+        'paragraphStyle': {'indentStart': {'magnitude': 36, 'unit': 'PT'},
+                           'indentFirstLine': {'magnitude': 36, 'unit': 'PT'}},
+        'elements': [{'textRun': {'content': 'literal\n', 'textStyle': {
+            'weightedFontFamily': {'fontFamily': 'Courier New'},
+        }}}, {'inlineObjectElement': {'inlineObjectId': 'picture'}}],
+    }}]}, 'inlineObjects': {'picture': {'inlineObjectProperties': {
+        'embeddedObject': {'imageProperties': {'contentUri': 'https://example.org/x'}},
+    }}}, 'namedRanges': {'gdoc:code:v1': {'namedRanges': [{
+        'name': 'gdoc:code:v1', 'ranges': [{'startIndex': 1, 'endIndex': 9}],
+    }]}}}
+    check_markdown_replacement(scope, tab_body=True)
+    assert capsys.readouterr().err == ''
+    scope['inlineObjects']['picture']['inlineObjectProperties']['embeddedObject'] = {}
+    with pytest.raises(Exception, match='embedded objects'):
+        check_markdown_replacement(scope, tab_body=True)

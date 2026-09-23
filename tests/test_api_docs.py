@@ -1037,7 +1037,7 @@ def test_document_read_google_client_disconnect_retries(
 @pytest.mark.parametrize("module, name, resource_name, method, args", [
     ("docs", "replace_all_text", "documents", "batchUpdate",
      ("sample-doc", "apple", "pear")),
-    ("drive", "update_doc_content", "files", "update",
+    ("drive", "update_doc_content", "documents", "batchUpdate",
      ("sample-doc", "Sample text.")),
     ("drive", "create_doc_from_markdown", "files", "create",
      ("Sample title", "Sample text.")),
@@ -1071,7 +1071,9 @@ def test_mutation_disconnect_adds_no_google_client_retries(
     execute = mocker.spy(request, "execute")
     sleep = mocker.patch.object(request, "_sleep")
     factory = "get_docs_service" if module == "docs" else "get_drive_service"
-    service = mocker.patch.object(api, factory).return_value
+    service = (mocker.patch("gdoc.api.docs.get_docs_service").return_value
+               if name == "update_doc_content"
+               else mocker.patch.object(api, factory).return_value)
     operation = getattr(getattr(service, resource_name).return_value, method)
     operation.return_value = request
 
@@ -1080,7 +1082,7 @@ def test_mutation_disconnect_adds_no_google_client_retries(
     expected_message = "response lost"
     if name == "update_doc_content":
         # PR #70 routes single-tab writes through Docs and guards imports.
-        options = {"expected_version": 1, "document": {"tabs": [
+        options = {"expected_version": 1, "document": {"revisionId": "r1", "tabs": [
             {"tabProperties": {"tabId": "tab-one"}, "documentTab": {}},
             {"tabProperties": {"tabId": "tab-two"}, "documentTab": {}},
         ]}}

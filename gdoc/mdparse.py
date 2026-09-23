@@ -329,6 +329,53 @@ def _find_image(masked: str, references: dict):
     return None
 
 
+def _protect_code(text: str, masked: str) -> str:
+    # Code is literal even inside emphasis/link labels. Hide its punctuation
+    # from other recognizers so an internal ** cannot close surrounding bold.
+    protected = list(masked)
+    code_end = 0
+    for opener in re.finditer(r"(?<!`)(`+)(?!`)", masked):
+        if opener.start() < code_end:
+            continue
+        code = _CODE_RE.match(text, opener.start())
+        if code:
+            protected[code.start():code.end()] = _MASK * (code.end() - code.start())
+            code_end = code.end()
+    return "".join(protected)
+
+
+def _expand_image_references(text: str, references: dict) -> str:
+    """Make table-cell images self-contained for the standalone inline parser."""
+    if not references:
+        return text
+    masked = _protect_code(text, _mask_escapes(text))
+    # A URL may itself contain image-looking text. Only labels are Markdown.
+    protected = list(masked)
+    cursor = 0
+    while link := _find_link(masked[cursor:]):
+        start, end = cursor + link.start(2), cursor + link.end(2)
+        protected[start:end] = _MASK * (end - start)
+        cursor += link.end()
+    masked = "".join(protected)
+    parts = []
+    cursor = 0
+    while found := _find_image(masked[cursor:], references):
+        match, kind = found
+        start, end = cursor + match.start(), cursor + match.end()
+        parts.append(text[cursor:start])
+        if kind == "image_ref":
+            alt = text[cursor + match.start(1):cursor + match.end(1)]
+            label = match.group(2) or _strip_escapes(alt)
+            uri = references[_ref_label(label)]
+            destination = "".join("\\" + c if c in "\\()" else c for c in uri)
+            parts.append(f"![{alt}]({destination})")
+        else:
+            parts.append(text[start:end])
+        cursor = end
+    parts.append(text[cursor:])
+    return "".join(parts)
+
+
 def _scan(
     text: str, masked: str, references: dict | None = None,
 ) -> tuple[str, list[StyleRange]]:
@@ -342,18 +389,7 @@ def _scan(
     Returns (plain_text, [StyleRange]) with offsets relative to plain_text.
     """
     references = references or {}
-    # Code is literal even inside emphasis/link labels. Hide its punctuation
-    # from other recognizers so an internal ** cannot close surrounding bold.
-    protected = list(masked)
-    code_end = 0
-    for opener in re.finditer(r"(?<!`)(`+)(?!`)", masked):
-        if opener.start() < code_end:
-            continue
-        code = _CODE_RE.match(text, opener.start())
-        if code:
-            protected[code.start():code.end()] = _MASK * (code.end() - code.start())
-            code_end = code.end()
-    protected = "".join(protected)
+    protected = _protect_code(text, masked)
     plain_parts: list[str] = []
     styles: list[StyleRange] = []
     offset = 0
@@ -656,6 +692,8 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                 table_rows.append(cells)
                 i += 1
 
+            table_rows = [[_expand_image_references(cell, references) for cell in row]
+                          for row in table_rows]
             para_start = offset
             all_tables.append(TableData(
                 rows=table_rows,

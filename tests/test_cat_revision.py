@@ -168,8 +168,15 @@ class TestPullRevision:
         self, _pf, _list, mock_export, _info, mock_update, tmp_path,
     ):
         with patch(
-            "gdoc.api.drive.export_doc", return_value="current body\n",
-        ) as mock_doc_export:
+            "gdoc.api.docs.get_tab_text", return_value="current body\n",
+        ) as mock_doc_export, patch(
+            "gdoc.api.docs.get_document_with_tabs", return_value={
+                "revisionId": "r1", "tabs": [{
+                    "tabProperties": {"tabId": "main", "title": "Main"},
+                    "documentTab": {"body": {"content": []}},
+                }],
+            },
+        ):
             out = tmp_path / "cur.md"
             rc = cmd_pull(_pull_args(file=str(out)))
             assert rc == 0
@@ -177,4 +184,4 @@ class TestPullRevision:
         mock_export.assert_not_called()
         content = out.read_text()
         assert "gdoc: abc123" in content
-        assert mock_update.call_args.kwargs.get("command") == "pull"
+        assert mock_update.call_args.kwargs.get("command") == "pull-content"

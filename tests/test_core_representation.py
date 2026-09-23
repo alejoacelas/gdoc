@@ -232,3 +232,52 @@ def test_new_empty_list_grammar_never_consumes_exported_literal_text(literal):
     parsed = parse_markdown(get_tab_text(tab, True))
     assert parsed.plain_text == literal + '\n'
     assert not [style for style in parsed.styles if style.type == 'bullets']
+
+
+def test_reference_images_in_table_cells_are_self_contained_for_native_writer():
+    from gdoc.api.docs import _table_cell_requests
+
+    parsed = parse_markdown(
+        '| Picture | Literal |\n| --- | --- |\n'
+        '| ![a [map]][drawing] | `![x][drawing]` |\n'
+        '[drawing]: https://example.org/map_(1).png\n'
+    )
+    table = parsed.tables[0]
+    assert table.rows[1][0] == r'![a [map]](https://example.org/map_\(1\).png)'
+    assert table.rows[1][1] == '`![x][drawing]`'
+    requests = _table_cell_requests([[5, 7], [11, 13]], table, 'tab-one')
+    images = [r['insertInlineImage'] for r in requests if 'insertInlineImage' in r]
+    assert len(images) == 1
+    assert images[0]['uri'] == 'https://example.org/map_(1).png'
+
+
+def test_image_reference_spelling_inside_link_url_stays_literal():
+    parsed = parse_markdown(
+        '| [site](https://example.org/![x][drawing]) |\n| --- |\n'
+        '[drawing]: https://example.org/map.png\n'
+    )
+    cell = parsed.tables[0].rows[0][0]
+    plain, styles = parse_inline(cell)
+    assert plain == 'site'
+    assert styles[0].style == {'link': {'url': 'https://example.org/![x][drawing]'}}
+
+
+def test_mixed_nested_child_does_not_warn_about_parent_numbering(capsys):
+    from gdoc.lossy import check_markdown_replacement
+
+    def item(list_id, indent):
+        return {'paragraph': {
+            'bullet': {'listId': list_id},
+            'paragraphStyle': {'indentStart': {'magnitude': indent, 'unit': 'PT'},
+                               'indentFirstLine': {'magnitude': indent - 18,
+                                                   'unit': 'PT'}},
+            'elements': [{'textRun': {'content': 'item\n'}}],
+        }}
+
+    scope = {'body': {'content': [item('parent', 36), item('child', 72),
+                                  item('parent', 36)]}, 'lists': {
+        'parent': {'listProperties': {'nestingLevels': [{'glyphType': 'DECIMAL'}]}},
+        'child': {'listProperties': {'nestingLevels': [{'glyphSymbol': '●'}]}},
+    }}
+    check_markdown_replacement(scope, tab_body=True)
+    assert capsys.readouterr().err == ''

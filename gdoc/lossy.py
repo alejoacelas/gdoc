@@ -98,7 +98,13 @@ def _numbered_list_hazards(content: list, lists: dict) -> set[str]:
         paragraph = element.get("paragraph", {})
         bullet = paragraph.get("bullet")
         if bullet is None:
-            run.clear()
+            elements = paragraph.get("elements", [])
+            blank = bool(elements) and all(
+                "textRun" in item and not item["textRun"].get("content", "").strip("\n")
+                for item in elements
+            )
+            if not blank:
+                run.clear()
             continue
         list_id = bullet.get("listId", "")
         native_level = bullet.get("nestingLevel", 0)
@@ -120,7 +126,7 @@ def _numbered_list_hazards(content: list, lists: dict) -> set[str]:
         if start != 1:
             hazards.add(f"numbered list {list_id!r} starts at {start} (reset to 1)")
         previous = run.get(level)
-        if previous and previous != list_id:
+        if level > 0 and previous and previous != list_id:
             names = ", ".join(repr(name) for name in sorted({previous, list_id}))
             hazards.add(f"adjacent or interleaved numbered lists {names}")
         identity = (list_id, native_level)

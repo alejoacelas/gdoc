@@ -140,7 +140,8 @@ def test_r4_f001_end_insert_styles_final_rule_on_retained_mark(
 @pytest.mark.parametrize("table", [False, True])
 def test_r4_f005_three_levels_share_range_and_keep_later_offsets(marker, preset, table):
     source = (f"{marker} Parent 😀\n  {marker} Child\n    {marker} Grandchild\n"
-              f"{marker} Sibling\n\n{marker} Next\n  {marker} Nested\n")
+              f"{'2.' if marker == '1.' else marker} Sibling\n\n"
+              f"{marker} Next\n  {marker} Nested\n")
     if table:
         source += "\n| Key | Value |\n| --- | --- |\n| A | B |\n"
     parsed = parse_markdown(source)
@@ -153,11 +154,11 @@ def test_r4_f005_three_levels_share_range_and_keep_later_offsets(marker, preset,
     first = "Parent 😀\n\tChild\n\t\tGrandchild\nSibling\n"
     second = "Next\n\tNested\n"
     assert parsed.plain_text.startswith(first + "\n" + second)
-    start = 7 + utf16_len(first + "\n") - 3
+    start = 7 + utf16_len(first + "\n")
     assert bullets == [
-        {"range": {"startIndex": 7, "endIndex": 7 + utf16_len(first),
-                   "tabId": "draft"}, "bulletPreset": preset},
         {"range": {"startIndex": start, "endIndex": start + utf16_len(second),
+                   "tabId": "draft"}, "bulletPreset": preset},
+        {"range": {"startIndex": 7, "endIndex": 7 + utf16_len(first),
                    "tabId": "draft"}, "bulletPreset": preset},
     ]
     assert parsed.removed_tabs == 4
@@ -170,9 +171,9 @@ def test_mixed_list_types_start_separate_ranges():
     bullets = [r["createParagraphBullets"] for r in requests
                if "createParagraphBullets" in r]
     assert [r["bulletPreset"] for r in bullets] == [
-        "BULLET_DISC_CIRCLE_SQUARE", "NUMBERED_DECIMAL_ALPHA_ROMAN",
+        "NUMBERED_DECIMAL_ALPHA_ROMAN", "BULLET_DISC_CIRCLE_SQUARE",
     ]
-    assert bullets[1]["range"]["startIndex"] == 14  # One nesting tab removed.
+    assert bullets[0]["range"]["startIndex"] == 15  # Before earlier tabs are removed.
 
 
 @pytest.mark.parametrize("native,loss", [

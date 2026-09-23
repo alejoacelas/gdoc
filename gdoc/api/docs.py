@@ -1957,73 +1957,10 @@ def _reset_list_indents(parsed) -> None:
 
 
 def _mixed_list_requests(parsed, insert_index, tab_id):
-    """Keep parent list identity across children with different bullet presets."""
-    from gdoc.mdparse import utf16_len
+    """Compile list boundaries, continuation, nesting and literal content tabs."""
+    from gdoc.mdparse import list_requests
 
-    items = sorted((s for s in parsed.styles if s.type == "bullets"),
-                   key=lambda s: s.start)
-    blocks = []
-    for item in items:
-        if blocks and blocks[-1][-1].end == item.start:
-            blocks[-1].append(item)
-        else:
-            blocks.append([item])
-    requests = []
-    removed = 0
-
-    def span(start, end):
-        target = {"startIndex": start, "endIndex": max(start + 1, end)}
-        if tab_id:
-            target["tabId"] = tab_id
-        return target
-
-    for block in blocks:
-        first, last = block[0], block[-1]
-        root_preset = first.style["bulletPreset"]
-        block_start = (insert_index
-                       + utf16_len(parsed.plain_text[:first.start]) - removed)
-        block_end = insert_index + utf16_len(parsed.plain_text[:last.end]) - removed
-        if last.start == last.end:
-            block_end += 1  # Include a final empty item on the retained mark.
-        requests.append({"createParagraphBullets": {
-            "range": span(block_start, block_end),
-            "bulletPreset": root_preset,
-        }})
-        for item in block:
-            text = parsed.plain_text[item.start:item.end]
-            depth = len(text) - len(text.lstrip("\t"))
-            start = insert_index + utf16_len(parsed.plain_text[:item.start]) - removed
-            removed += depth
-            end = insert_index + utf16_len(parsed.plain_text[:item.end]) - removed
-            # The terminal retained newline also represents an empty list item.
-            end = max(start + 1, end)
-            target = span(start, end)
-            if item.style["bulletPreset"] != root_preset:
-                requests.append({"deleteParagraphBullets": {"range": target}})
-                if depth:
-                    location = {"index": start}
-                    if tab_id:
-                        location["tabId"] = tab_id
-                    requests.append({"insertText": {"location": location,
-                                                     "text": "\t" * depth}})
-                requests.append({"createParagraphBullets": {
-                    "range": span(start, end + depth),
-                    "bulletPreset": item.style["bulletPreset"],
-                }})
-            # Explicit physical depth is also the semantic export convention
-            # for a carved child's native level zero.
-            if len({item.style["bulletPreset"] for item in block}) > 1:
-                requests.append({"updateParagraphStyle": {
-                    "range": target,
-                    "paragraphStyle": {
-                        "indentStart": {"magnitude": 36 * (depth + 1), "unit": "PT"},
-                        "indentFirstLine": {
-                            "magnitude": 36 * (depth + 1) - 18, "unit": "PT",
-                        },
-                    },
-                    "fields": "indentStart,indentFirstLine",
-                }})
-    return requests
+    return list_requests(parsed, insert_index, tab_id)
 
 
 def _parsed_images(parsed):
@@ -2135,8 +2072,8 @@ def _image_requests(images, text, insert_index, tab_id):
 def _native_docs_requests(parsed, insert_index, tab_id=None):
     from gdoc.mdparse import to_docs_requests
 
-    requests = [r for r in to_docs_requests(parsed, insert_index, tab_id=tab_id)
-                if "createParagraphBullets" not in r]
+    requests = to_docs_requests(parsed, insert_index, tab_id=tab_id,
+                                include_lists=False)
     requests.extend(_mixed_list_requests(parsed, insert_index, tab_id))
     requests.extend(_image_requests(_parsed_images(parsed), parsed.plain_text,
                                     insert_index, tab_id))
@@ -2149,12 +2086,8 @@ def _code_range_requests(parsed, insert_index: int, tab_id: str | None) -> list[
 
     def coordinate(offset):
         consumed = sum(
-            len(line) - len(line.lstrip("\t"))
-            for style in parsed.styles if style.type == "bullets"
-            for line in parsed.plain_text[
-                style.start:min(style.end, offset)
-            ].split("\n")
-            if style.start < offset
+            style.list_depth for style in parsed.styles
+            if style.type == "bullets" and style.start < offset
         )
         # A final code range includes the mandatory retained paragraph newline.
         return insert_index + utf16_len(parsed.plain_text[:offset]) + max(

@@ -197,9 +197,11 @@ def test_t06_mixed_lists_empty_item_and_number_start(scenario):
     write(scenario, "3. Cargo\n   - Fragile\n4. Dock\n\n7. Restart\n- \n")
     reqs = requests(scenario)
     assert any("createParagraphBullets" in r for r in reqs)
+    output = scenario.record["commands"][-1]
+    assert "will start at 1" in output["output"] + output["stderr"]
+    scenario.record["outcome_kind"] = "agreed_api_best_effort_not_full_numbering"
     scenario.record["gap"] = (
-        "Displayed starts/restarts require agreed API "
-        "best-effort contract and native readback"
+        "New non-1 starts/restarts cannot be claimed as full native support"
     )
 
 

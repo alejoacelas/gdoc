@@ -1198,9 +1198,7 @@ def test_edit_cross_container_ambiguity_never_writes(segment_edit, tab):
     segment_edit.assert_not_called()
 
 
-@pytest.mark.parametrize(
-    "markdown", ["# Heading", "- Item", "```\ncode\n```", "| A |\n| --- |\n| B |"]
-)
+@pytest.mark.parametrize("markdown", ["```\ncode\n```", "| A |\n| --- |\n| B |"])
 def test_edit_segment_structure_never_calls_replacement(segment_edit, markdown):
     with pytest.raises(GdocError) as error:
         cmd_edit(
@@ -1242,4 +1240,57 @@ def test_default_tab_segment_edit_carries_explicit_tab_and_fresh_revision(
         "tab_id": None,
         "body": segment_edit.source_document,
         "result_details": {},
+    }
+
+
+@pytest.mark.parametrize(
+    "acknowledged,rebased", [("r11", False), ("r11", True), ("", False)]
+)
+def test_edit_advances_only_acknowledged_previously_read_revisions(
+    mocker, acknowledged, rebased
+):
+    from gdoc import state
+
+    state.record_content_read("abc123", ["first", "sibling"], "r10")
+    state.record_content_read("abc123", ["older"], "r9")
+    mocker.patch("gdoc.notify.pre_flight", return_value=None)
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value=_mock_doc("r10"))
+    mocker.patch("gdoc.api.docs.find_text_in_document", return_value=_single_match())
+    mocker.patch("gdoc.api.drive.get_file_version", return_value={"version": 999})
+
+    def replace(*args, result_details, **kwargs):
+        result_details.update(
+            input_revision_id="r10",
+            acknowledged_revision_id=acknowledged,
+            rebased=rebased,
+        )
+        return 1
+
+    mocker.patch("gdoc.api.docs.replace_formatted", side_effect=replace)
+    assert cmd_edit(_make_args()) == 0
+    expected = "r11" if acknowledged and not rebased else "r10"
+    assert state.load_state("abc123").read_revision_ids == {
+        "first": expected,
+        "sibling": expected,
+        "older": "r9",
+    }
+
+
+@pytest.mark.parametrize(
+    "markdown", ["# Literal heading marker", "- Literal list marker"]
+)
+def test_edit_partial_segment_markers_use_inline_context(segment_edit, markdown):
+    assert (
+        cmd_edit(
+            _make_args(
+                tab="First", old_text="TOKEN", new_text=markdown, **{"all": True}
+            )
+        )
+        == 0
+    )
+    assert segment_edit.call_args.args[2] == markdown
+    assert {m.get("segmentId") for m in segment_edit.call_args.args[1]} == {
+        None,
+        "header-one",
+        "note-one",
     }

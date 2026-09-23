@@ -175,7 +175,9 @@ def check_markdown_replacement(
                     text_style = value["textStyle"]
                     if text_style[field] in (None, False, {}):
                         continue
-                    if field in ("foregroundColor", "underline") and text_style.get("link"):
+                    if field in ("foregroundColor", "underline") and text_style.get(
+                        "link",
+                    ):
                         continue
                     if field == "weightedFontFamily" and value["textStyle"][field].get(
                         "fontFamily",

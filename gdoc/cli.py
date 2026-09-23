@@ -1666,6 +1666,8 @@ def cmd_write(args) -> int:
 
 def _write_native_markdown(args, doc_id, content, *, command, tab_name=None):
     """Share full-content write semantics across CLI, MCP, push and hooks."""
+    import re
+
     from gdoc.api.docs import (
         flatten_tabs,
         get_document_with_tabs,
@@ -1682,8 +1684,6 @@ def _write_native_markdown(args, doc_id, content, *, command, tab_name=None):
         require_content_baseline,
         update_state_after_command,
     )
-
-    import re
 
     if len(re.findall(r"^=== Tab: .+ ===$", content, re.MULTILINE)) > 1:
         raise GdocError(

@@ -2023,7 +2023,9 @@ def _prepare_image_sources(parsed, snapshot):
                         source = style.style["uri"]
                         sources[source] = _resolve_image_uri(source, snapshot)
                         if source.startswith("gdoc-image:"):
-                            parsed.image_reference_sources[source[11:]] = sources[source]
+                            parsed.image_reference_sources[source[11:]] = (
+                                sources[source]
+                            )
                         sizes[source] = _image_reference_properties(
                             source, snapshot,
                         ).get("size")

@@ -342,7 +342,9 @@ class TestEditConflict:
         _update,
         capsys,
     ):
-        change_info = ChangeInfo(current_version=10, last_read_version=5, doc_edited=True)
+        change_info = ChangeInfo(
+            current_version=10, last_read_version=5, doc_edited=True,
+        )
         mock_pf.return_value = change_info
         args = _make_args()
         rc = cmd_edit(args)

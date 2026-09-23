@@ -393,6 +393,12 @@ def _runs_markdown(elements: list[dict]) -> str:
     parts = []
     for pe in elements:
         text_run = pe.get("textRun")
+        if "inlineObjectElement" in pe:
+            object_id = pe["inlineObjectElement"].get("inlineObjectId", "")
+            alt = pe.get("_markdown_image_alt", "")
+            alt = re.sub(r"([\\\[\]])", r"\\\1", alt)
+            parts.append(f"![{alt}](gdoc-image:{object_id})")
+            continue
         if text_run is None:
             continue
         content = text_run.get("content", "")
@@ -547,6 +553,28 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
     """
     body = tab.get("body", {})
     content = body.get("content", [])
+    if markdown and tab.get("inlineObjects"):
+        from copy import deepcopy
+
+        content = deepcopy(content)
+
+        def image_alts(value):
+            if isinstance(value, list):
+                for child in value:
+                    image_alts(child)
+            elif isinstance(value, dict):
+                if "inlineObjectElement" in value:
+                    object_id = value["inlineObjectElement"].get("inlineObjectId")
+                    embedded = tab["inlineObjects"].get(object_id, {}).get(
+                        "inlineObjectProperties", {},
+                    ).get("embeddedObject", {})
+                    value["_markdown_image_alt"] = (
+                        embedded.get("description") or embedded.get("title", "")
+                    )
+                for child in list(value.values()):
+                    image_alts(child)
+
+        image_alts(content)
     lists = tab.get("lists", {}) if markdown else {}
     parts = []
     ordered_counters: dict = {}

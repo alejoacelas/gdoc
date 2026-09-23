@@ -237,6 +237,15 @@ _TYPOGRAPHY_FOLD = str.maketrans({
 })
 
 
+def fold_unicode_spaces(text: str) -> str:
+    """Fold Unicode space separators without changing character offsets."""
+    import unicodedata
+
+    return "".join(
+        " " if unicodedata.category(char) == "Zs" else char for char in text
+    )
+
+
 def fold_typography(s: str) -> str:
     """Fold smart quotes and en/em dashes to their ASCII equivalents.
 

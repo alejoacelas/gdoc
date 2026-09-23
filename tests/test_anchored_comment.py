@@ -618,7 +618,7 @@ def test_selector_usage_error_precedes_pre_flight(mocker):
     read.assert_not_called()
 
 
-@pytest.mark.parametrize("occurrence", [0, 3, -1])
+@pytest.mark.parametrize("occurrence", [3])
 def test_occurrence_out_of_range_refuses_without_writing(comment_command, occurrence):
     read, batch, fallback = comment_command
     read.return_value = {"revisionId": "rev1", "tabs": [_tab("t1", "echo echo\n")]}
@@ -1049,3 +1049,14 @@ def test_public_comment_exit_codes(comment_command, capsys, mocker, kind, code):
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err.startswith("ERR:")
+
+
+@pytest.mark.parametrize("occurrence", [0, -1])
+def test_nonpositive_occurrence_fails_before_preflight(mocker, occurrence):
+    preflight = mocker.patch("gdoc.notify.pre_flight")
+    read = mocker.patch("gdoc.api.docs.get_document_with_tabs")
+    with pytest.raises(GdocError, match="must be positive") as exc:
+        cmd_comment(_make_args(quote="echo", occurrence=occurrence, quiet=False))
+    assert exc.value.exit_code == 3
+    preflight.assert_not_called()
+    read.assert_not_called()

@@ -2417,8 +2417,6 @@ def _try_anchored_comment(
     Only a definite preview rejection permits Drive fallback. Successful but
     incomplete responses and transport failures propagate without another write.
     """
-    import unicodedata
-
     from gdoc.api.docs import (
         CommentRevisionConflictError,
         find_text_in_document,
@@ -2426,15 +2424,13 @@ def _try_anchored_comment(
         insert_comment,
         resolve_tab,
     )
-    from gdoc.util import PreviewUnavailableError
+    from gdoc.util import PreviewUnavailableError, fold_unicode_spaces
 
     def fold_spaces(value):
         # One character stays one character: reuse the existing offset mapper.
         # Fold a copy of the body and the quote identically, including NBSP.
         if isinstance(value, str):
-            return "".join(
-                " " if unicodedata.category(ch) == "Zs" else ch for ch in value
-            )
+            return fold_unicode_spaces(value)
         if isinstance(value, dict):
             return {key: fold_spaces(item) for key, item in value.items()}
         if isinstance(value, list):
@@ -2525,6 +2521,11 @@ def cmd_comment(args) -> int:
 
     # Local usage errors come before any API call, including pre-flight.
     quote = getattr(args, "quote", "") or ""
+    occurrence = getattr(args, "occurrence", None)
+    if occurrence is not None and occurrence < 1:
+        raise GdocError(
+            "--occurrence must be positive; no comment created", exit_code=3,
+        )
     selectors = [
         flag for flag, value in (
             ("--tab", getattr(args, "tab", None)),

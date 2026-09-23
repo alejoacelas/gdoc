@@ -1,5 +1,7 @@
 """Line-numbered comment annotation engine for cat --comments."""
 
+from gdoc.util import fold_unicode_spaces
+
 
 def _format_author(author_dict: dict) -> str:
     """Format author for display: prefer email, fallback to name."""
@@ -110,14 +112,19 @@ def annotate_markdown(
             continue
 
         # Find anchor in full markdown string
-        pos = markdown.find(anchor_text)
+        search_text, search_anchor = markdown, anchor_text
+        pos = search_text.find(search_anchor)
+        if pos == -1:
+            search_text = fold_unicode_spaces(markdown)
+            search_anchor = fold_unicode_spaces(anchor_text)
+            pos = search_text.find(search_anchor)
         if pos == -1:
             # Anchor text deleted
             unanchored.append((c, "anchor deleted"))
             continue
 
         # Check for multiple matches
-        second_pos = markdown.find(anchor_text, pos + 1)
+        second_pos = search_text.find(search_anchor, pos + 1)
         if second_pos != -1:
             # Ambiguous
             unanchored.append((c, "anchor ambiguous"))

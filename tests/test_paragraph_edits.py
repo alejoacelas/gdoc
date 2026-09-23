@@ -837,7 +837,7 @@ def test_whole_cell_list_removal_request_ranges(mocker, count, new, bullet):
     mocker.patch("gdoc.api.drive.get_file_version", return_value={"version": 1})
     mocker.patch("gdoc.state.update_state_after_command")
     args = build_parser().parse_args([
-        "edit", "doc", "--cell", "0,0", "--tab", "Notes", "--", new,
+        "edit", "--cell", "0,0", "--tab", "Notes", "--", "doc", new,
     ])
     assert cmd_edit(args) == 0
     requests = service.documents.return_value.batchUpdate.call_args.kwargs[

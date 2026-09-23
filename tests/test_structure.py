@@ -189,7 +189,7 @@ class TestCmdStructure:
     def test_state_updated_as_structure(self, mock_get, mock_update):
         args = _make_args()
         cmd_structure(args)
-        assert mock_update.call_args.kwargs["command"] == "structure"
+        assert mock_update.call_args.kwargs["command"] == "structure-content"
 
     def test_spreadsheet_rejected(self, mock_get, _update):
         change_info = ChangeInfo(mime_type=SPREADSHEET_MIME)
@@ -199,3 +199,30 @@ class TestCmdStructure:
                 cmd_structure(args)
             assert e.value.exit_code == 3
         mock_get.assert_not_called()
+
+
+@pytest.mark.parametrize("selector", [{"heading": "Target"}, {"table": 1}])
+def test_direct_structure_selection_is_partial(mocker, capsys, selector):
+    from gdoc.state import load_state
+
+    document = {
+        "documentId": "synthetic", "revisionId": "r1", "tabs": [{
+            "tabProperties": {"tabId": "main", "title": "Main"},
+            "documentTab": {"body": {"content": [
+                {"paragraph": {"paragraphStyle": {"namedStyleType": "HEADING_2"},
+                               "elements": [{"textRun": {"content": "Target\n"}}]}},
+                {"paragraph": {"elements": [{"textRun": {"content": "Unrelated\n"}}]}},
+                {"table": {"rows": 1, "columns": 1, "tableRows": []}},
+            ]}},
+        }],
+    }
+    mocker.patch("gdoc.api.docs.get_document_structure", return_value=document)
+    mocker.patch("gdoc.notify.pre_flight", return_value=ChangeInfo(
+        mime_type="application/vnd.google-apps.document",
+    ))
+    cmd_structure(_make_args(doc="synthetic", json=True, **selector))
+    result = json.loads(capsys.readouterr().out)["document"]
+    assert result["revisionId"] == "r1"
+    assert result["scope"] == {"tab_ids": ["main"], "complete": False}
+    assert "Unrelated" not in json.dumps(result)
+    assert load_state("synthetic").read_revision_ids == {}

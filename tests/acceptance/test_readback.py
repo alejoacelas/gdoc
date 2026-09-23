@@ -12,8 +12,11 @@ from test_workflows import existing_helper, read, requests
 from gdoc.mdparse import parse_inline, parse_markdown, utf16_len
 
 
-def paragraph_rewrite_readback(original, batch):
+def paragraph_rewrite_readback(original, batch, *, tab_id="draft"):
     """Apply a full rewrite's text and masks, then expose a native read snapshot."""
+    for request in batch:
+        data = next(iter(request.values()))
+        assert data.get("range", data.get("location", {})).get("tabId") == tab_id
     text = existing_helper("test_paragraph_edits", "_apply_text_requests")(
         original, batch
     )
@@ -31,13 +34,14 @@ def paragraph_rewrite_readback(original, batch):
         "createNamedRange",
     }
     assert {next(iter(r)) for r in after} <= allowed
-    for request in after:
+    normalized = deepcopy(after)
+    for request in normalized:
         data = next(iter(request.values()))
         address = data.get("range", data.get("location", {}))
         if "tabId" in address:
             address["tabId"] = "tab"  # Existing helper's fixture name only.
     styles = existing_helper("test_replacement_styles", "_replacement_styles")(
-        after, {}
+        normalized, {}
     ) + [{}]
     assert len(styles) == utf16_len(text)
     content, cursor = [], 1
@@ -201,7 +205,9 @@ def fill_fixed_table(blank, batch):
                 local_address["tabId"] = "tab"
                 local.append(copied)
                 assigned_styles.append(index)
-        cell_result = paragraph_rewrite_readback({"content": [paragraph("\n")]}, local)
+        cell_result = paragraph_rewrite_readback(
+            {"content": [paragraph("\n")]}, local, tab_id="tab"
+        )
         cell["content"] = cell_result["body"]["content"]
         for p in cell["content"]:
             for node in [p, *p["paragraph"]["elements"]]:

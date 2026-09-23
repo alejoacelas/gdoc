@@ -31,7 +31,7 @@ def pytest_runtest_makereport(item, call):
     if report.when == "call":
         record = next((r for r in RECORDS if r["test"] == item.nodeid), None)
         if record is None:
-            record = {"test": item.nodeid, "interface": "parser", "commands": []}
+            record = {"test": item.nodeid, "interface": "unit", "commands": []}
             RECORDS.append(record)
         record["outcome"] = report.outcome
         record["failure"] = str(report.longrepr) if report.failed else None

@@ -232,3 +232,31 @@ def test_new_empty_list_grammar_never_consumes_exported_literal_text(literal):
     parsed = parse_markdown(get_tab_text(tab, True))
     assert parsed.plain_text == literal + '\n'
     assert not [style for style in parsed.styles if style.type == 'bullets']
+
+
+def test_reference_images_in_table_cells_are_self_contained_for_native_writer():
+    from gdoc.api.docs import _table_cell_requests
+
+    parsed = parse_markdown(
+        '| Picture | Literal |\n| --- | --- |\n'
+        '| ![a [map]][drawing] | `![x][drawing]` |\n'
+        '[drawing]: https://example.org/map_(1).png\n'
+    )
+    table = parsed.tables[0]
+    assert table.rows[1][0] == r'![a [map]](https://example.org/map_\(1\).png)'
+    assert table.rows[1][1] == '`![x][drawing]`'
+    requests = _table_cell_requests([[5, 7], [11, 13]], table, 'tab-one')
+    images = [r['insertInlineImage'] for r in requests if 'insertInlineImage' in r]
+    assert len(images) == 1
+    assert images[0]['uri'] == 'https://example.org/map_(1).png'
+
+
+def test_image_reference_spelling_inside_link_url_stays_literal():
+    parsed = parse_markdown(
+        '| [site](https://example.org/![x][drawing]) |\n| --- |\n'
+        '[drawing]: https://example.org/map.png\n'
+    )
+    cell = parsed.tables[0].rows[0][0]
+    plain, styles = parse_inline(cell)
+    assert plain == 'site'
+    assert styles[0].style == {'link': {'url': 'https://example.org/![x][drawing]'}}

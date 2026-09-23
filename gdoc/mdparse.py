@@ -27,6 +27,15 @@ class TableData:
     # Leading list-indent tabs inserted before this table. createParagraphBullets
     # removes those tabs, shifting the table's real position left by this many.
     removed_tabs_before: int = 0
+    alignments: list[str | None] = field(default_factory=list)
+
+
+@dataclass
+class CodeBlockData:
+    """Complete code paragraphs, in code points before list tabs are removed."""
+
+    start: int
+    end: int
 
 
 @dataclass
@@ -42,6 +51,7 @@ class ParsedMarkdown:
     removed_tabs: int = 0
     # Numbering starts that native createParagraphBullets would reset to 1.
     non_default_list_starts: list[str] = field(default_factory=list)
+    code_blocks: list[CodeBlockData] = field(default_factory=list)
 
 
 # Inline patterns — order matters (bold+italic before bold/italic)
@@ -51,7 +61,7 @@ _ITALIC_RE = re.compile(
     r"(?<!\*)\*(?![\s*])(.+?)(?<![\s*])\*(?!\*)"
     r"|(?<![\w_])_(?![\s_])(.+?)(?<![\s_])_(?![\w_])"
 )
-# Strikethrough is one or two tildes (GFM); a run of three or more is literal.
+# Strikethrough uses two tildes; a run of three or more is literal.
 _STRIKE_RE = re.compile(r"(?<!~)~~(?!~)(.+?)(?<!~)~~(?!~)")
 # Code spans follow CommonMark: a backtick string of length N (a run neither
 # preceded nor followed by a backtick) opens a span that only a backtick string
@@ -87,13 +97,13 @@ _STYLES_FOR_KIND = {
 _CODE_FONT = {"weightedFontFamily": {"fontFamily": "Courier New"}}
 
 # Heading pattern
-_HEADING_RE = re.compile(r"^(#{1,6})\s+(.+)$")
+_HEADING_RE = re.compile(r"^(#{1,6})[ \t](.*)$")
 # Docs has two named styles with no ordinary Markdown heading equivalent.
 _NAMED_STYLE_RE = re.compile(r"^<!-- gdoc:(TITLE|SUBTITLE) --> (.*)$")
 
 # List item patterns (capture leading indentation for nesting)
-_BULLET_RE = re.compile(r"^([ \t]*)[-*+](?:[ \t]+(.*)|$)")
-_NUMBERED_RE = re.compile(r"^([ \t]*)\d+\.(?:[ \t]+(.*)|$)")
+_BULLET_RE = re.compile(r"^([ \t]*)[-*+](?:[ \t](.*)|$)")
+_NUMBERED_RE = re.compile(r"^([ \t]*)\d+\.(?:[ \t](.*)|$)")
 
 # Block patterns
 _BLOCKQUOTE_RE = re.compile(r"^ {0,3}>\s?(.*)$")
@@ -493,6 +503,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
     plain_parts: list[str] = []
     all_styles: list[StyleRange] = []
     all_tables: list[TableData] = []
+    code_blocks: list[CodeBlockData] = []
     offset = 0
     removed_tabs = 0  # running count of leading list-indent tabs (see below)
     list_levels: dict[int, str] = {}
@@ -557,6 +568,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             list_levels.clear()
             fence = fence_m.group(1)
             fence_char = fence[0]
+            code_start = offset
             i += 1
             while i < len(lines):
                 close = _FENCE_CLOSE_RE.match(lines[i])
@@ -576,6 +588,9 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                     code_line, styles, {"namedStyleType": "NORMAL_TEXT"},
                 )
                 i += 1
+            if offset == code_start:
+                emit_paragraph("", [], {"namedStyleType": "NORMAL_TEXT"})
+            code_blocks.append(CodeBlockData(code_start, offset))
             continue
 
         # Table: header row + separator row + data rows
@@ -589,6 +604,17 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             header_cells = _table_cells(line)
             table_rows.append(header_cells)
             num_cols = len(header_cells)
+            alignments = []
+            for separator in _table_cells(lines[i + 1]):
+                if separator.startswith(":") and separator.endswith(":"):
+                    alignments.append("CENTER")
+                elif separator.startswith(":"):
+                    alignments.append("START")
+                elif separator.endswith(":"):
+                    alignments.append("END")
+                else:
+                    alignments.append(None)
+            alignments = (alignments + [None] * num_cols)[:num_cols]
             i += 2  # skip header + separator
             while i < len(lines) and _TABLE_ROW_RE.match(lines[i]):
                 if i + 1 < len(lines) and _TABLE_SEP_RE.match(lines[i + 1]):
@@ -608,6 +634,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                 num_cols=num_cols,
                 plain_text_offset=offset,
                 removed_tabs_before=removed_tabs,
+                alignments=alignments,
             ))
             plain_parts.append("\n")
             offset += 1
@@ -672,10 +699,20 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         # Bullet list item (indent-aware)
         bullet_m = _BULLET_RE.match(line)
         if bullet_m:
-            inline_text, inline_styles = _parse_inline(bullet_m.group(2) or "")
+            item = bullet_m.group(2) or ""
+            heading = _HEADING_RE.match(item)
+            named = _NAMED_STYLE_RE.match(item)
+            item_style = "NORMAL_TEXT"
+            if heading:
+                item_style = f"HEADING_{len(heading.group(1))}"
+                item = heading.group(2)
+            elif named:
+                item_style = named.group(1)
+                item = named.group(2)
+            inline_text, inline_styles = _parse_inline(item)
             emit_paragraph(
                 inline_text, inline_styles,
-                {"namedStyleType": "NORMAL_TEXT"},
+                {"namedStyleType": item_style},
                 bullet_preset="BULLET_DISC_CIRCLE_SQUARE",
                 leading_tabs=_list_level(bullet_m.group(1)),
             )
@@ -685,10 +722,20 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         # Numbered list item (indent-aware)
         numbered_m = _NUMBERED_RE.match(line)
         if numbered_m:
-            inline_text, inline_styles = _parse_inline(numbered_m.group(2) or "")
+            item = numbered_m.group(2) or ""
+            heading = _HEADING_RE.match(item)
+            named = _NAMED_STYLE_RE.match(item)
+            item_style = "NORMAL_TEXT"
+            if heading:
+                item_style = f"HEADING_{len(heading.group(1))}"
+                item = heading.group(2)
+            elif named:
+                item_style = named.group(1)
+                item = named.group(2)
+            inline_text, inline_styles = _parse_inline(item)
             emit_paragraph(
                 inline_text, inline_styles,
-                {"namedStyleType": "NORMAL_TEXT"},
+                {"namedStyleType": item_style},
                 bullet_preset="NUMBERED_DECIMAL_ALPHA_ROMAN",
                 leading_tabs=_list_level(numbered_m.group(1)),
                 start_number=int(line.lstrip().split(".", 1)[0]),
@@ -710,6 +757,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         tables=all_tables,
         removed_tabs=removed_tabs,
         non_default_list_starts=non_default_list_starts,
+        code_blocks=code_blocks,
     )
 
 

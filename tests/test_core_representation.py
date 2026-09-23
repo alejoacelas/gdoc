@@ -53,3 +53,56 @@ def test_empty_mixed_list_items_survive_export():
 def test_literal_image_opener_is_escaped_on_export():
     rendered = _style_run_markdown('![example](https://example.org/x)', {})
     assert parse_markdown(rendered).plain_text == '![example](https://example.org/x)\n'
+
+
+def test_code_block_marker_preserves_blank_paragraphs_and_literal_syntax():
+    code = '  *literal*\t \n\n``` inside\n'
+    offset = 1
+    paragraphs = []
+    for line in code.splitlines(keepends=True):
+        paragraphs.append({'startIndex': offset, 'endIndex': offset + len(line),
+                           'paragraph': {'elements': [
+                               {'textRun': {'content': line}},
+                           ]}})
+        offset += len(line)
+    tab = {'body': {'content': paragraphs}, 'namedRanges': {
+        'gdoc:code:v1': {'namedRanges': [{'name': 'gdoc:code:v1', 'ranges': [
+            {'startIndex': 1, 'endIndex': offset},
+        ]}]},
+    }}
+    rendered = get_tab_text(tab, markdown=True)
+    assert rendered.startswith('````\n')
+    parsed = parse_markdown(rendered)
+    assert parsed.plain_text == code
+    assert [(b.start, b.end) for b in parsed.code_blocks] == [(0, len(code))]
+
+
+def test_empty_fenced_code_has_a_marked_native_paragraph():
+    parsed = parse_markdown('```\n```\n')
+    assert parsed.plain_text == '\n'
+    assert [(block.start, block.end) for block in parsed.code_blocks] == [(0, 1)]
+
+
+def test_heading_list_and_content_whitespace_survive():
+    paragraph = {'bullet': {'listId': 'bullets'}, 'paragraphStyle': {
+        'namedStyleType': 'HEADING_2',
+    }, 'elements': [{'textRun': {'content': '  leading\t \n'}}]}
+    rendered = get_tab_text({'body': {'content': [{'paragraph': paragraph}]}}, True)
+    assert rendered == '- ##   leading\t \n'
+    parsed = parse_markdown(rendered)
+    assert parsed.plain_text == '  leading\t \n'
+    assert parsed.styles[0].style == {'namedStyleType': 'HEADING_2'}
+
+
+def test_table_alignment_and_quote_rule_recognition():
+    parsed = parse_markdown('| A | B | C |\n| :--- | :---: | ---: |\n| x | y | z |\n')
+    assert parsed.tables[0].alignments == ['START', 'CENTER', 'END']
+    content = [
+        {'paragraph': {'paragraphStyle': {
+            'indentStart': {'magnitude': 36, 'unit': 'PT'},
+            'indentFirstLine': {'magnitude': 36, 'unit': 'PT'},
+        }, 'elements': [{'textRun': {'content': 'quotation\n'}}]}},
+        {'paragraph': {'elements': [{'horizontalRule': {}},
+                                    {'textRun': {'content': '\n'}}]}},
+    ]
+    assert get_tab_text({'body': {'content': content}}, True) == '> quotation\n---\n'

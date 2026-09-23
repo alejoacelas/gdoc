@@ -284,7 +284,8 @@ def flatten_tabs(tabs: list[dict], _level: int = 0) -> list[dict]:
             # listId -> list definition; needed to tell ordered from bullet
             # lists when rendering a tab as markdown.
             "lists": doc_tab.get("lists", {}),
-            **{key: doc_tab[key] for key in ("headers", "footers", "footnotes")
+            **{key: doc_tab[key] for key in ("headers", "footers", "footnotes",
+                                                "namedRanges", "inlineObjects")
                if key in doc_tab},
         })
         for child in tab.get("childTabs", []):
@@ -431,20 +432,36 @@ def _paragraph_markdown(
         else:
             ordered_counters.pop(level, None)
             marker = "-"
-        item = text.lstrip(" \t")
+        item = text
+        named_style = paragraph.get("paragraphStyle", {}).get("namedStyleType", "")
+        heading = _HEADING_LEVELS.get(named_style)
+        if heading:
+            item = "#" * heading + " " + item
+        elif named_style in ("TITLE", "SUBTITLE"):
+            item = f"<!-- gdoc:{named_style} --> {item}"
+        else:
+            item = re.sub(r"^([#>])", r"\\\1", item)
         return f"{indent}{marker} {item}{newline}"
 
     # Not a list item: numbering restarts at the next list.
     ordered_counters.clear()
 
-    named_style = paragraph.get("paragraphStyle", {}).get("namedStyleType", "")
+    paragraph_style = paragraph.get("paragraphStyle", {})
+    if any("horizontalRule" in e for e in paragraph.get("elements", [])) or (
+        not text and paragraph_style.get("borderBottom")
+    ):
+        return "---" + newline
+    if all(paragraph_style.get(key) == {"magnitude": 36, "unit": "PT"}
+           for key in ("indentStart", "indentFirstLine")):
+        return "> " + text + newline
+    named_style = paragraph_style.get("namedStyleType", "")
     level = _HEADING_LEVELS.get(named_style)
     if named_style in ("TITLE", "SUBTITLE"):
         return f"<!-- gdoc:{named_style} --> {text}{newline}"
-    if level and text.strip():
+    if level:
         # lstrip leading spaces/tabs so the "# " prefix can't stack a
         # widening gap across read->write round-trips.
-        return "#" * level + " " + text.lstrip(" \t") + newline
+        return "#" * level + " " + text + newline
     # Inline escaping above handles stars, underscores, and code fences. Escape
     # remaining literal block openers only after adding genuine block syntax.
     text = re.sub(r"^([ \t]*)([-#>|])", r"\1\\\2", text)
@@ -491,7 +508,15 @@ def _table_markdown(table: dict) -> str | None:
             cells.append(rendered)
         grid.append(cells)
     lines = ["| " + " | ".join(cells) + " |\n" for cells in grid]
-    lines.insert(1, "| " + " | ".join(["---"] * len(rows[0])) + " |\n")
+    separators = []
+    for cell in rows[0]:
+        paragraphs = [e["paragraph"] for e in cell.get("content", [])
+                      if "paragraph" in e]
+        alignment = (paragraphs[0].get("paragraphStyle", {}).get("alignment")
+                     if paragraphs else None)
+        separators.append({"START": ":---", "CENTER": ":---:", "END": "---:"}
+                          .get(alignment, "---"))
+    lines.insert(1, "| " + " | ".join(separators) + " |\n")
     return "".join(lines)
 
 
@@ -525,7 +550,36 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
     lists = tab.get("lists", {}) if markdown else {}
     parts = []
     ordered_counters: dict = {}
+    # Named ranges distinguish fenced code from inline monospace formatting.
+    code_ranges = []
+    for group in tab.get("namedRanges", {}).values():
+        for named in group.get("namedRanges", []):
+            if named.get("name", group.get("name")) == "gdoc:code:v1":
+                code_ranges.extend(named.get("ranges", []))
+    code_parts = []
+    active_code = None
+
+    def flush_code():
+        if not code_parts:
+            return
+        literal = "".join(code_parts)
+        fence = "`" * max(3, 1 + max(
+            (len(m[0]) for m in re.finditer(r"`+", literal)), default=0,
+        ))
+        parts.append(fence + "\n" + literal + fence + "\n")
+        code_parts.clear()
+
     for element in content:
+        marker = next((index for index, r in enumerate(code_ranges)
+                       if r.get("startIndex", 0) <= element.get("startIndex", -1)
+                       < r.get("endIndex", 0)), None) if markdown else None
+        if marker != active_code or "paragraph" not in element:
+            flush_code()
+        active_code = marker
+        if marker is not None and "paragraph" in element:
+            code_parts.append(_extract_paragraphs_text([element]))
+            ordered_counters.clear()
+            continue
         if "paragraph" in element:
             if not markdown:
                 parts.append(_extract_paragraphs_text([element]))
@@ -547,6 +601,7 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
                     cell_text = _extract_paragraphs_text(cell_content).strip()
                     cells.append(cell_text)
                 parts.append("\t".join(cells) + "\n")
+    flush_code()
     return "".join(parts)
 
 

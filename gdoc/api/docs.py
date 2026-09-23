@@ -1126,6 +1126,7 @@ class _StagedWrite:
     stage: str = "preparing content"
     sent: bool = False
     rebased: bool = False
+    inserted_images: dict[str, list[str]] = field(default_factory=dict)
 
     def __enter__(self):
         return self
@@ -1204,6 +1205,11 @@ class _StagedWrite:
                 self.stage = stage
                 self.rebased = True
                 continue
+            for operation, reply in zip(requests, response.get("replies", [])):
+                uri = operation.get("insertInlineImage", {}).get("uri")
+                object_id = reply.get("insertInlineImage", {}).get("objectId")
+                if uri and isinstance(object_id, str) and object_id:
+                    self.inserted_images.setdefault(uri, []).append(object_id)
             self.applied.append(stage)
             self.sent = False
             return response.get("writeControl", {}).get("requiredRevisionId", "")
@@ -2067,6 +2073,7 @@ def _prepare_image_sources(parsed, snapshot):
 
     from gdoc.mdparse import parse_inline
 
+    parsed.image_reference_sources = {}
     has_alt = any(image.alt for image in _parsed_images(parsed))
     for table in parsed.tables:
         sources = {}
@@ -2078,6 +2085,8 @@ def _prepare_image_sources(parsed, snapshot):
                     if style.type == "image":
                         source = style.style["uri"]
                         sources[source] = _resolve_image_uri(source, snapshot)
+                        if source.startswith("gdoc-image:"):
+                            parsed.image_reference_sources[source[11:]] = sources[source]
                         sizes[source] = _image_reference_properties(
                             source, snapshot,
                         ).get("size")
@@ -2090,6 +2099,8 @@ def _prepare_image_sources(parsed, snapshot):
             image.uri, snapshot,
         ).get("size")
         resolved = _resolve_image_uri(image.uri, snapshot)
+        if image.uri.startswith("gdoc-image:"):
+            parsed.image_reference_sources[image.uri[11:]] = resolved
         image.uri = resolved
         for style in parsed.styles:
             if style.type == "image" and style.start == image.plain_text_offset:
@@ -2365,6 +2376,11 @@ def insert_markdown_into_tab(
         "input_revision_id": input_revision_id,
         "acknowledged_revision_id": revision_id,
         "rebased": progress.rebased,
+        "image_reference_ids": {
+            original: progress.inserted_images[uri][0]
+            for original, uri in parsed.image_reference_sources.items()
+            if len(progress.inserted_images.get(uri, [])) == 1
+        },
     }
 
 

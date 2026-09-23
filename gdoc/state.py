@@ -20,6 +20,7 @@ class DocState:
     known_resolved_ids: list[str] = field(default_factory=list)
     # Only content actually exposed to the caller establishes these baselines.
     read_revision_ids: dict[str, str] = field(default_factory=dict)
+    image_reference_ids: dict[str, str] = field(default_factory=dict)
 
 
 def _state_path(doc_id: str) -> Path:
@@ -179,6 +180,7 @@ def record_content_read(doc_id: str, tab_ids: list[str], revision_id: str) -> No
 def record_content_write(
     doc_id: str, *, input_revision_id: str, acknowledged_revision_id: str,
     replaced_tab_ids: list[str] | None = None, rebased: bool = False,
+    image_reference_ids: dict[str, str] | None = None,
 ) -> None:
     """Carry known content through an acknowledged, revision-pinned write.
 
@@ -194,6 +196,12 @@ def record_content_write(
                      else revision)
             for tab_id, revision in state.read_revision_ids.items()
         }
+    if not rebased and image_reference_ids:
+        state.image_reference_ids = {
+            original: image_reference_ids.get(current, current)
+            for original, current in state.image_reference_ids.items()
+        }
+        state.image_reference_ids.update(image_reference_ids)
     for tab_id in replaced_tab_ids or []:
         if isinstance(tab_id, str) and tab_id:
             state.read_revision_ids[tab_id] = acknowledged_revision_id

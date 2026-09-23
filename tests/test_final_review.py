@@ -32,3 +32,32 @@ def test_mcp_rejects_combined_tab_inspection_before_any_service_call(mocker, com
     assert code == 3
     assert "each tab separately" in stderr
     fetch.assert_not_called()
+
+
+def test_image_aliases_follow_only_acknowledged_replacements():
+    from gdoc.state import load_state, record_content_read, record_content_write
+
+    record_content_read("doc", ["main"], "r1")
+    record_content_write("doc", input_revision_id="r1", acknowledged_revision_id="r2",
+                         image_reference_ids={"original": "second"})
+    record_content_write("doc", input_revision_id="r2", acknowledged_revision_id="r3",
+                         image_reference_ids={"second": "third"})
+    assert load_state("doc").image_reference_ids["original"] == "third"
+    record_content_write("doc", input_revision_id="r3", acknowledged_revision_id="",
+                         image_reference_ids={"third": "uncertain"})
+    assert load_state("doc").image_reference_ids["original"] == "third"
+
+
+def test_native_image_aliases_come_from_actual_batch_replies(mocker):
+    from gdoc.api.docs import _StagedWrite
+
+    mocker.patch("gdoc.api.docs.get_docs_service")
+    mocker.patch("gdoc.api.comment_transport.execute_mutation_request", return_value={
+        "writeControl": {"requiredRevisionId": "r2"},
+        "replies": [{}, {"insertInlineImage": {"objectId": "new-image"}}],
+    })
+    stage = _StagedWrite("doc")
+    stage.batch("images", [{"deleteContentRange": {}}, {"insertInlineImage": {
+        "uri": "https://example.org/image.png", "location": {"index": 1},
+    }}], "r1")
+    assert stage.inserted_images == {"https://example.org/image.png": ["new-image"]}

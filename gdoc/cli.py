@@ -1691,6 +1691,16 @@ def _write_native_markdown(args, doc_id, content, *, command, tab_name=None):
         raise GdocError("document has no writable tabs", 3)
     selected = resolve_tab(tabs, tab_name) if tab_name else tabs[0]
     revision = document.get("revisionId", "")
+    from gdoc.state import load_state
+
+    known = load_state(doc_id)
+    if known and known.read_revision_ids.get(selected["id"]) == revision:
+        content = re.sub(
+            r"gdoc-image:([A-Za-z0-9_.-]+)",
+            lambda match: "gdoc-image:" + known.image_reference_ids.get(
+                match.group(1), match.group(1),
+            ), content,
+        )
     unchanged = (
         not (collapse and len(tabs) > 1)
         and _comparable_markdown(get_tab_text(selected, markdown=True))
@@ -1731,6 +1741,7 @@ def _write_native_markdown(args, doc_id, content, *, command, tab_name=None):
         doc_id, input_revision_id=details.get("input_revision_id", revision),
         acknowledged_revision_id=acknowledged,
         replaced_tab_ids=[selected["id"]], rebased=details.get("rebased", False),
+        image_reference_ids=details.get("image_reference_ids"),
     )
     if mode == "json":
         result = {

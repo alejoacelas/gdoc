@@ -86,8 +86,8 @@
       "tests/acceptance/test_workflows.py::test_t02_split_and_merge_general_route"
     ],
     "verifies": "General rewrite splits then merges with exact text replay.",
-    "gap": "Native end result and verified API exceptions require integration evidence.",
-    "evidence": "offline assertion; no live native evidence",
+    "gap": "Live combined rewrite verified a split; merge has offline replay coverage.",
+    "evidence": "Offline assertions below; bounded live evidence reported in https://github.com/LucaDeLeo/gdoc/pull/72",
     "baseline_results": {
       "tests/acceptance/test_workflows.py::test_t02_split_and_merge_general_route": {
         "passed": 2,
@@ -107,8 +107,8 @@
       "tests/acceptance/test_workflows.py::test_d07_heading_list_semantics_survive_roundtrip"
     ],
     "verifies": "Heading and bullet semantics coexist after export/parse.",
-    "gap": "Native end result and verified API exceptions require integration evidence.",
-    "evidence": "offline assertion; no live native evidence",
+    "gap": "Combined live readback retained headings and nested list semantics.",
+    "evidence": "Offline assertions below; bounded live evidence reported in https://github.com/LucaDeLeo/gdoc/pull/72",
     "baseline_results": {
       "tests/acceptance/test_workflows.py::test_d07_heading_list_semantics_survive_roundtrip": {
         "passed": 0,
@@ -191,8 +191,8 @@
       "tests/acceptance/test_workflows.py::test_t10_successive_writes_use_acknowledged_revision"
     ],
     "verifies": "Acknowledged revision permits second different write without reread.",
-    "gap": "Acknowledged own-write advancement passes offline; live behavior remains separately verified.",
-    "evidence": "offline assertion; no live native evidence",
+    "gap": "Live successive MCP and CLI writes passed without an intervening reread.",
+    "evidence": "Offline assertions below; bounded live evidence reported in https://github.com/LucaDeLeo/gdoc/pull/72",
     "baseline_results": {
       "tests/acceptance/test_workflows.py::test_t10_successive_writes_use_acknowledged_revision": {
         "passed": 0,
@@ -233,8 +233,8 @@
       "tests/acceptance/test_workflows.py::test_d13_image_after_backslash_code_span_is_not_literal"
     ],
     "verifies": "Image after closed code span is parsed as image.",
-    "gap": "Native end result and verified API exceptions require integration evidence.",
-    "evidence": "offline assertion; no live native evidence",
+    "gap": "Combined live readback verified supported neighbors; exact API exceptions remain documented in README.",
+    "evidence": "Offline assertions below; bounded live evidence reported in https://github.com/LucaDeLeo/gdoc/pull/72",
     "baseline_results": {
       "tests/acceptance/test_workflows.py::test_d13_image_after_backslash_code_span_is_not_literal": {
         "passed": 0,
@@ -432,8 +432,8 @@
       "tests/acceptance/test_readback.py::test_t03_move_table_section_and_insert_section_with_readback"
     ],
     "verifies": "Single-tab route preserves native topology through guarded Docs write.",
-    "gap": "Section readback uses a fixed 2x1 table scaffold; arbitrary table layout and live behavior remain unverified.",
-    "evidence": "offline assertion; no live native evidence",
+    "gap": "Live section movement and table-row expansion passed; arbitrary table layouts are not exhaustively verified.",
+    "evidence": "Offline assertions below; bounded live evidence reported in https://github.com/LucaDeLeo/gdoc/pull/72",
     "baseline_results": {
       "tests/test_staged_writes.py::test_single_tab_whole_write_uses_guard_snapshot_and_never_uploads": {
         "passed": 1,
@@ -775,8 +775,8 @@
       "tests/test_native_targets.py::test_cell_native_object_refuses_before_mutation"
     ],
     "verifies": "Whole-cell edits cannot delete object gaps.",
-    "gap": "Image requests now succeed separately; native object persistence has no new live evidence here.",
-    "evidence": "offline assertion; no live native evidence",
+    "gap": "Live insertion, movement and repeated image reconstruction passed; replacement/removal have offline request coverage.",
+    "evidence": "Offline assertions below; bounded live evidence reported in https://github.com/LucaDeLeo/gdoc/pull/72",
     "baseline_results": {
       "tests/test_native_targets.py::test_cell_native_object_refuses_before_mutation": {
         "passed": 6,
@@ -817,8 +817,8 @@
       "tests/test_bounded_reconstruction.py::test_r4_f005_three_levels_share_range_and_keep_later_offsets"
     ],
     "verifies": "Grouped bullet request keeps nesting and post-list offsets.",
-    "gap": "Native displayed nesting needs readback.",
-    "evidence": "offline assertion; no live native evidence",
+    "gap": "Mixed nesting, root and child restarts at 1, and literal tabs passed combined live readback. Non-1 starts retain the explicit API shortfall.",
+    "evidence": "Offline assertions below; bounded live evidence reported in https://github.com/LucaDeLeo/gdoc/pull/72",
     "baseline_results": {
       "tests/test_bounded_reconstruction.py::test_r4_f005_three_levels_share_range_and_keep_later_offsets": {
         "passed": 4,
@@ -860,8 +860,8 @@
       "tests/acceptance/test_readback.py::test_t04_changed_combination_has_request_applied_native_readback"
     ],
     "verifies": "Changed and unchanged rewrites emit heading, link, emphasis and bullet requests.",
-    "gap": "Full all-feature table/image combination and live Google behavior remain separate verification.",
-    "evidence": "offline assertion; no live native evidence",
+    "gap": "Combined live table/image/list/code/quote/rule readback passed after a changed write.",
+    "evidence": "Offline assertions below; bounded live evidence reported in https://github.com/LucaDeLeo/gdoc/pull/72",
     "baseline_results": {
       "tests/acceptance/test_workflows.py::test_t04_combined_roundtrip_preserves_link_heading_list": {
         "passed": 4,

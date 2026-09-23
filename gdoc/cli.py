@@ -327,119 +327,69 @@ def cmd_cat(args) -> int:
         )
         return 0
 
-    if tab or all_tabs:
-        from gdoc.api.docs import get_document_tabs, get_tab_text
+    from gdoc.api.docs import flatten_tabs, get_document_with_tabs, get_tab_text
+    from gdoc.api.docs import resolve_tab
+    from gdoc.format import format_json, get_output_mode
+    from gdoc.state import record_content_read, update_state_after_command
 
-        tabs = get_document_tabs(doc_id)
-
-        # Default view renders markdown (headings survive round-trips);
-        # --plain returns the verbatim text gdoc edit matches against.
-        want_md = not getattr(args, "plain", False)
-
-        if tab:
-            # Match by title (case-insensitive) first, then by ID
-            match = None
-            for t in tabs:
-                if t["title"].lower() == tab.lower():
-                    match = t
-                    break
-            if match is None:
-                for t in tabs:
-                    if t["id"] == tab:
-                        match = t
-                        break
-            if match is None:
-                raise GdocError(f"tab not found: {tab}", exit_code=3)
-            content = get_tab_text(match, markdown=want_md)
-            if no_images:
-                from gdoc.mdimport import strip_images
-                content = strip_images(content)
-            content = _truncate_bytes(content, max_bytes)
-
-            from gdoc.format import format_json, get_output_mode
-            mode = get_output_mode(args)
-            if mode == "json":
-                print(format_json(tab=match["title"], content=content))
-            else:
-                print(content, end="")
-        else:
-            # --all-tabs
-            parts = []
-            for t in tabs:
-                parts.append(f"=== Tab: {t['title']} ===\n")
-                parts.append(get_tab_text(t, markdown=want_md))
-            content = "".join(parts)
-            if no_images:
-                from gdoc.mdimport import strip_images
-                content = strip_images(content)
-            content = _truncate_bytes(content, max_bytes)
-
-            from gdoc.format import format_json, get_output_mode
-            mode = get_output_mode(args)
-            if mode == "json":
-                print(format_json(content=content))
-            else:
-                print(content, end="")
-
-        from gdoc.state import update_state_after_command
-        update_state_after_command(doc_id, change_info, command="cat", quiet=quiet)
-        return 0
-
-    if getattr(args, "comments", False):
-        # Annotated view: line-numbered content + inline comment annotations
-        from gdoc.api.drive import export_doc
-        markdown = export_doc(doc_id, mime_type="text/markdown")
-
-        if no_images:
-            from gdoc.mdimport import strip_images
-            markdown = strip_images(markdown)
-
-        from gdoc.api.comments import list_comments
-        include_resolved = getattr(args, "all", False)
-        comments = list_comments(
-            doc_id,
-            include_resolved=include_resolved,
-            include_anchor=True,
-        )
-
-        from gdoc.annotate import annotate_markdown
-        annotated = annotate_markdown(markdown, comments, show_resolved=include_resolved)
-        annotated = _truncate_bytes(annotated, max_bytes)
-
-        from gdoc.format import get_output_mode, format_json
-        mode = get_output_mode(args)
-        if mode == "json":
-            print(format_json(content=annotated))
-        else:
-            print(annotated, end="")
-
-        from gdoc.state import update_state_after_command
-        update_state_after_command(doc_id, change_info, command="cat", quiet=quiet)
-
-        return 0
-
-    mime_type = "text/plain" if getattr(args, "plain", False) else "text/markdown"
-
-    from gdoc.api.drive import export_doc
-
-    content = export_doc(doc_id, mime_type=mime_type)
+    document = get_document_with_tabs(doc_id)
+    tabs = flatten_tabs(document.get("tabs", []))
+    if not tabs:
+        raise GdocError("document has no readable tabs", exit_code=3)
+    selected = tabs if all_tabs else [resolve_tab(tabs, tab) if tab else tabs[0]]
+    want_markdown = not getattr(args, "plain", False)
+    parts = []
+    for selected_tab in selected:
+        if all_tabs:
+            parts.append(f"=== Tab: {selected_tab['title']} ===\n")
+        parts.append(get_tab_text(selected_tab, markdown=want_markdown))
+    content = "".join(parts)
     if no_images:
         from gdoc.mdimport import strip_images
         content = strip_images(content)
-    content = _truncate_bytes(content, max_bytes)
+    annotated = getattr(args, "comments", False)
+    if annotated:
+        from gdoc.annotate import annotate_markdown
+        from gdoc.api.comments import list_comments
+        include_resolved = getattr(args, "all", False)
+        comments = list_comments(
+            doc_id, include_resolved=include_resolved, include_anchor=True,
+        )
+        content = annotate_markdown(content, comments, show_resolved=include_resolved)
 
-    from gdoc.format import get_output_mode, format_json
-
-    mode = get_output_mode(args)
-    if mode == "json":
-        print(format_json(content=content))
+    total_bytes = len(content.encode("utf-8"))
+    displayed = _truncate_bytes(content, max_bytes)
+    truncated = displayed != content
+    # Plain text omits supported formatting, and no-images omits objects.
+    complete = not (truncated or no_images or not want_markdown or annotated)
+    scope = {
+        "tab_ids": [selected_tab["id"] for selected_tab in selected],
+        "complete": complete, "truncated": truncated,
+        "revision_id": document.get("revisionId", ""),
+        "total_bytes": total_bytes,
+    }
+    if get_output_mode(args) == "json":
+        extra = {"tab": selected[0]["title"]} if len(selected) == 1 else {}
+        print(format_json(content=displayed, scope=scope, **extra))
     else:
-        print(content, end="")
-
-    # Update state after success
-    from gdoc.state import update_state_after_command
-    update_state_after_command(doc_id, change_info, command="cat", quiet=quiet)
-
+        print(displayed, end="")
+        if len(tabs) > 1 and not all_tabs:
+            print(
+                f"NOTE: read tab {selected[0]['title']!r} ({selected[0]['id']}); "
+                f"{len(tabs)} tabs exist. Use --all-tabs or --tab to read others.",
+                file=sys.stderr,
+            )
+        if truncated:
+            print(
+                f"NOTE: partial output ({len(displayed.encode('utf-8'))} of "
+                f"{total_bytes} bytes). Use --max-bytes 0 for complete content.",
+                file=sys.stderr,
+            )
+    update_state_after_command(
+        doc_id, change_info, command="cat-content", quiet=quiet,
+    )
+    if complete:
+        record_content_read(doc_id, scope["tab_ids"], scope["revision_id"])
     return 0
 
 
@@ -1271,9 +1221,10 @@ def cmd_edit(args) -> int:
     # path; partial-paragraph matches insert the table source literally.
     from gdoc.api.docs import replace_formatted
 
+    result_details = {}
     occurrences = replace_formatted(
         doc_id, matches, new_text, plan.revision_id, tab_id=plan.tab_id,
-        body=plan.replacement_source,
+        body=plan.replacement_source, result_details=result_details,
         **({"replace_paragraphs": True} if cell is not None else {}),
     )
 
@@ -1312,6 +1263,13 @@ def cmd_edit(args) -> int:
     update_state_after_command(
         doc_id, plan.change_info, command="edit",
         quiet=plan.quiet, command_version=command_version,
+    )
+
+    from gdoc.state import record_content_write
+    record_content_write(
+        doc_id, input_revision_id=result_details.get("input_revision_id", ""),
+        acknowledged_revision_id=result_details.get("acknowledged_revision_id", ""),
+        rebased=result_details.get("rebased", False),
     )
 
     return 0
@@ -1659,70 +1617,95 @@ def cmd_write(args) -> int:
     from gdoc.frontmatter import parse_frontmatter
     _, content = parse_frontmatter(content)
 
-    # Conflict detection. Content comparison only applies to full-doc
-    # writes — a tab write's body never equals the whole-doc export.
-    change_info, in_sync = _check_write_conflict(
-        doc_id, quiet, force, body=None if tab_name else content,
+    return _write_native_markdown(
+        args, doc_id, content, command="write", tab_name=tab_name,
     )
-    matched = in_sync or (not tab_name and _doc_matches(
-        doc_id, content, change_info.current_version if change_info else None,
-    ))
-    if matched:
-        return _finish_noop_write(doc_id, change_info, args, quiet,
-                                  command="write", matched_version=matched)
 
+
+def _write_native_markdown(args, doc_id, content, *, command, tab_name=None):
+    """Share full-content write semantics across CLI, MCP, push and hooks."""
+    from gdoc.api.docs import (
+        flatten_tabs, get_document_with_tabs, get_tab_text,
+        insert_markdown_into_tab, resolve_tab,
+    )
+    from gdoc.api.drive import get_file_version, update_doc_content
     from gdoc.format import format_json, get_output_mode
+    from gdoc.notify import pre_flight
+    from gdoc.state import (
+        record_content_read, record_content_write, require_content_baseline,
+        update_state_after_command,
+    )
+
+    quiet = getattr(args, "quiet", False)
+    collapse = getattr(args, "force_collapse_tabs", False)
+    if collapse and tab_name:
+        raise GdocError("--tab cannot be combined with --force-collapse-tabs", 3)
+    change_info = pre_flight(doc_id, quiet=quiet)
+    _require_doc(doc_id, change_info)
+    expected_version = (change_info.current_version if change_info else None)
+    if expected_version is None:
+        expected_version = get_file_version(doc_id).get("version")
+    document = get_document_with_tabs(doc_id)
+    tabs = flatten_tabs(document.get("tabs", []))
+    if not tabs:
+        raise GdocError("document has no writable tabs", 3)
+    selected = resolve_tab(tabs, tab_name) if tab_name else tabs[0]
+    revision = document.get("revisionId", "")
+    unchanged = (
+        not (collapse and len(tabs) > 1)
+        and _comparable_markdown(get_tab_text(selected, markdown=True))
+        == _comparable_markdown(content)
+    )
     mode = get_output_mode(args)
-
+    if unchanged:
+        record_content_read(doc_id, [selected["id"]], revision)
+        if mode == "json":
+            print(format_json(in_sync=True, tab_id=selected["id"], revision_id=revision))
+        else:
+            print("OK already in sync (selected tab matches; nothing to write)")
+        return 0
+    require_content_baseline(
+        doc_id, [t["id"] for t in tabs] if collapse else [selected["id"]],
+        revision, force=getattr(args, "force", False),
+    )
+    details = {}
     if tab_name:
-        from gdoc.api.docs import get_document_with_tabs, insert_markdown_into_tab
-        from gdoc.api.drive import require_write_version
-
-        document = get_document_with_tabs(doc_id)
-        # Keep this last: the guard read must precede the version check so a
-        # collaborator edit made during the command is refused, not adopted.
-        require_write_version(doc_id, change_info.current_version)
-        result = insert_markdown_into_tab(
-            doc_id, tab_name, content, replace=True,
+        details = insert_markdown_into_tab(
+            doc_id, selected["id"], content, replace=True,
             allow_lossy=getattr(args, "allow_lossy", False), document=document,
         )
-
-        from gdoc.api.drive import get_file_version
-        version_data = get_file_version(doc_id)
-        command_version = version_data.get("version")
-
-        _print_tab_write_result(
-            mode, doc_id, result, command_version, verb="wrote",
-        )
+        version = None
     else:
-        document = _check_document_replacement(
-            doc_id, command="write",
+        version = update_doc_content(
+            doc_id, content, expected_version=expected_version, document=document,
             allow_lossy=getattr(args, "allow_lossy", False),
-            force_collapse_tabs=force_collapse,
+            collapse_tabs=collapse, result_details=details,
         )
-        from gdoc.api.drive import update_doc_content
-        command_version = update_doc_content(
-            doc_id, content, expected_version=change_info.current_version,
-            document=document, allow_lossy=getattr(args, "allow_lossy", False),
-        )
-
-        if mode == "json":
-            print(format_json(written=True, version=command_version))
-        elif mode == "plain":
-            print(f"id\t{doc_id}")
-            print("status\tupdated")
-        else:
-            print("OK written")
-
-    # Update state
-    from gdoc.state import update_state_after_command
-
+    acknowledged = details.get("acknowledged_revision_id", "")
     update_state_after_command(
-        doc_id, change_info, command="write",
-        quiet=quiet, command_version=command_version,
-        full_doc_write=False,
+        doc_id, change_info, command=command, quiet=quiet, command_version=version,
     )
-
+    record_content_write(
+        doc_id, input_revision_id=details.get("input_revision_id", revision),
+        acknowledged_revision_id=acknowledged,
+        replaced_tab_ids=[selected["id"]], rebased=details.get("rebased", False),
+    )
+    if mode == "json":
+        result = {
+            "pushed" if command == "push" else "written": True,
+            "tab_id": selected["id"], "tab_title": selected["title"],
+            "revision_id": acknowledged,
+        }
+        if version is not None:
+            result["version"] = version
+        if command == "push":
+            result["file"] = args.file
+        print(format_json(**result))
+    elif mode == "plain":
+        print(f"id\t{doc_id}\ntab_id\t{selected['id']}\nstatus\tupdated")
+    else:
+        verb = "pushed" if command == "push" else "written"
+        print(f"OK {verb} tab {selected['title']!r} ({selected['id']})")
     return 0
 
 
@@ -1855,51 +1838,9 @@ def cmd_push(args) -> int:
 
     doc_id = _resolve_doc_id(metadata["gdoc"])
 
-    # Conflict detection (reuse shared helper)
-    change_info, in_sync = _check_write_conflict(doc_id, quiet, force, body=body)
-    matched = in_sync or _doc_matches(
-        doc_id, body, change_info.current_version if change_info else None,
+    return _write_native_markdown(
+        args, doc_id, body, command="push", tab_name=metadata.get("tab"),
     )
-    if matched:
-        return _finish_noop_write(doc_id, change_info, args, quiet,
-                                  command="push", matched_version=matched)
-
-    document = _check_document_replacement(
-        doc_id, command="push",
-        allow_lossy=getattr(args, "allow_lossy", False),
-        force_collapse_tabs=force_collapse,
-    )
-
-    # Upload body (frontmatter stripped)
-    from gdoc.api.drive import update_doc_content
-
-    command_version = update_doc_content(
-        doc_id, body, expected_version=change_info.current_version,
-        document=document, allow_lossy=getattr(args, "allow_lossy", False),
-    )
-
-    # Output
-    from gdoc.format import format_json, get_output_mode
-
-    mode = get_output_mode(args)
-    if mode == "json":
-        print(format_json(pushed=True, file=file_path, version=command_version))
-    elif mode == "plain":
-        print(f"id\t{doc_id}")
-        print(f"status\tupdated")
-    else:
-        print(f"OK pushed {file_path}")
-
-    # Update state
-    from gdoc.state import update_state_after_command
-
-    update_state_after_command(
-        doc_id, change_info, command="push",
-        quiet=quiet, command_version=command_version,
-        full_doc_write=False,
-    )
-
-    return 0
 
 
 def cmd_sync_hook(args) -> int:
@@ -2417,8 +2358,6 @@ def _try_anchored_comment(
     Only a definite preview rejection permits Drive fallback. Successful but
     incomplete responses and transport failures propagate without another write.
     """
-    import unicodedata
-
     from gdoc.api.docs import (
         CommentRevisionConflictError,
         find_text_in_document,
@@ -2426,15 +2365,13 @@ def _try_anchored_comment(
         insert_comment,
         resolve_tab,
     )
-    from gdoc.util import PreviewUnavailableError
+    from gdoc.util import PreviewUnavailableError, fold_unicode_spaces
 
     def fold_spaces(value):
         # One character stays one character: reuse the existing offset mapper.
         # Fold a copy of the body and the quote identically, including NBSP.
         if isinstance(value, str):
-            return "".join(
-                " " if unicodedata.category(ch) == "Zs" else ch for ch in value
-            )
+            return fold_unicode_spaces(value)
         if isinstance(value, dict):
             return {key: fold_spaces(item) for key, item in value.items()}
         if isinstance(value, list):
@@ -2525,6 +2462,11 @@ def cmd_comment(args) -> int:
 
     # Local usage errors come before any API call, including pre-flight.
     quote = getattr(args, "quote", "") or ""
+    occurrence = getattr(args, "occurrence", None)
+    if occurrence is not None and occurrence < 1:
+        raise GdocError(
+            "--occurrence must be positive; no comment created", exit_code=3,
+        )
     selectors = [
         flag for flag, value in (
             ("--tab", getattr(args, "tab", None)),
@@ -3299,6 +3241,14 @@ def cmd_structure(args) -> int:
     fields = getattr(args, "fields", None)
     svm = getattr(args, "suggestions_view_mode", None)
     svm = svm.upper() if svm else None
+    heading = getattr(args, "heading", None)
+    table_index = getattr(args, "table", None)
+    if table_index is not None and table_index < 1:
+        raise GdocError("--table must be positive", exit_code=3)
+    if heading is not None and table_index is not None:
+        raise GdocError("--heading and --table are mutually exclusive", exit_code=3)
+    if fields and (heading is not None or table_index is not None):
+        raise GdocError("--fields cannot be combined with --heading/--table", 3)
 
     from gdoc.notify import pre_flight
 
@@ -3315,21 +3265,58 @@ def cmd_structure(args) -> int:
     if svm and "suggestionsViewMode" not in doc:
         doc = {**doc, "suggestionsViewMode": svm}
 
-    if tab_name:
-        from gdoc.api.docs import resolve_raw_tab
-
+    from gdoc.api.docs import flatten_tabs, resolve_raw_tab, resolve_tab
+    all_flat = flatten_tabs(doc.get("tabs", []))
+    covered_tabs = [item["id"] for item in all_flat]
+    partial = bool(fields or (svm and svm != "SUGGESTIONS_INLINE"))
+    if heading is not None or table_index is not None:
+        if not all_flat:
+            raise GdocError("document has no readable tabs", exit_code=3)
+        candidates = [resolve_tab(all_flat, tab_name)] if tab_name else all_flat
+        matches = []
+        if heading is not None:
+            for candidate in candidates:
+                for element in candidate.get("body", {}).get("content", []):
+                    paragraph = element.get("paragraph", {})
+                    style = paragraph.get("paragraphStyle", {}).get("namedStyleType", "")
+                    text = "".join(
+                        run.get("textRun", {}).get("content", "")
+                        for run in paragraph.get("elements", [])
+                    ).strip()
+                    if style.startswith("HEADING_") and text == heading:
+                        matches.append((candidate, element))
+            if len(matches) > 1:
+                raise GdocError("heading is ambiguous; use --tab to narrow scope", 3)
+            if not matches:
+                raise GdocError(f"heading not found: {heading}", 3)
+        else:
+            candidate = candidates[0]
+            tables = [element for element in candidate.get("body", {}).get("content", [])
+                      if "table" in element]
+            if table_index > len(tables):
+                raise GdocError(f"table {table_index} not found", 3)
+            matches = [(candidate, tables[table_index - 1])]
+        selected, element = matches[0]
+        covered_tabs = [selected["id"]]
+        partial = True
+        out = {
+            "documentId": doc.get("documentId", doc_id),
+            "revisionId": doc.get("revisionId", ""),
+            "tab_id": selected["id"], "content": [element],
+            "scope": {"tab_ids": covered_tabs, "complete": False},
+        }
+    elif tab_name:
         tab = resolve_raw_tab(doc.get("tabs", []), tab_name)
         if tab is None:
             raise GdocError(
                 f"tab not found: {tab_name} "
-                "(with --fields, the mask must keep tabProperties)",
-                exit_code=3,
+                "(with --fields, the mask must keep tabProperties)", exit_code=3,
             )
+        covered_tabs = [item["id"] for item in flatten_tabs([tab])]
         out = {
             "documentId": doc.get("documentId", doc_id),
             "title": doc.get("title", ""),
-            "revisionId": doc.get("revisionId", ""),
-            "tab": tab,
+            "revisionId": doc.get("revisionId", ""), "tab": tab,
         }
         if doc.get("suggestionsViewMode"):
             out["suggestionsViewMode"] = doc["suggestionsViewMode"]
@@ -3349,8 +3336,11 @@ def cmd_structure(args) -> int:
     from gdoc.state import update_state_after_command
 
     update_state_after_command(
-        doc_id, change_info, command="structure", quiet=quiet,
+        doc_id, change_info, command="structure-content", quiet=quiet,
     )
+    if not partial:
+        from gdoc.state import record_content_read
+        record_content_read(doc_id, covered_tabs, doc.get("revisionId", ""))
     return 0
 
 
@@ -4741,6 +4731,13 @@ def build_parser() -> GdocArgumentParser:
     )
     structure_p.add_argument(
         "--quiet", action="store_true", help="Skip pre-flight checks"
+    )
+    structure_target = structure_p.add_mutually_exclusive_group()
+    structure_target.add_argument(
+        "--heading", help="Inspect one exact heading, optionally limited by --tab",
+    )
+    structure_target.add_argument(
+        "--table", type=int, help="Inspect the 1-based table in the selected tab",
     )
     structure_p.set_defaults(func=cmd_structure)
 

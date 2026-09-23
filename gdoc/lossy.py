@@ -105,7 +105,8 @@ def _numbered_list_hazards(content: list, lists: dict) -> set[str]:
         definitions = lists.get(list_id, {}).get("listProperties", {}).get(
             "nestingLevels", [],
         )
-        definition = definitions[native_level] if native_level < len(definitions) else {}
+        definition = (definitions[native_level]
+                      if native_level < len(definitions) else {})
         indent = paragraph.get("paragraphStyle", {}).get(
             "indentStart", definition.get("indentStart", {}),
         )

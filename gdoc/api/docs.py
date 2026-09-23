@@ -1273,7 +1273,6 @@ def _table_at(body, index):
 def _table_cell_requests(cell_indices, table, tab_id):
     # Parse each cell's markdown to plain text + inline styles, once.
     from gdoc.mdparse import (
-        StyleRange,
         _utf16_prefix,
         parse_inline,
         text_style_fields,
@@ -1309,7 +1308,7 @@ def _table_cell_requests(cell_indices, table, tab_id):
                     }
                 })
 
-    # Apply inline styles (plus bold for the whole header row) in forward
+    # Apply only requested inline styles in forward
     # index order. Each cell's final position is its original index plus the
     # total length of all earlier (lower-index) cells already inserted.
     shift = 0
@@ -1318,14 +1317,22 @@ def _table_cell_requests(cell_indices, table, tab_id):
         for c_idx in range(len(row)):
             plain, cell_styles = parsed_cells[(r_idx, c_idx)]
             cell_styles = list(cell_styles)
-            if r_idx == 0 and plain:
-                cell_styles.append(StyleRange(
-                    0, len(plain), {"bold": True}, "text_style",
-                ))
             base = row[c_idx] + shift
+            alignment = (table.alignments[c_idx]
+                         if c_idx < len(table.alignments) else None)
+            if alignment:
+                span = {"startIndex": base, "endIndex": base + utf16_len(plain) + 1}
+                if tab_id:
+                    span["tabId"] = tab_id
+                text_requests.append({"updateParagraphStyle": {
+                    "range": span, "paragraphStyle": {"alignment": alignment},
+                    "fields": "alignment",
+                }})
             # Style offsets are code points; Docs indexes are UTF-16.
             utf16 = _utf16_prefix(plain)
             for s in cell_styles:
+                if s.type == "image":
+                    continue
                 style_range = {
                     "startIndex": base + utf16[s.start],
                     "endIndex": base + utf16[s.end],
@@ -1339,6 +1346,13 @@ def _table_cell_requests(cell_indices, table, tab_id):
                         "fields": text_style_fields(s.style),
                     }
                 })
+            from gdoc.mdparse import ImageData
+            images = [ImageData(style.start,
+                                getattr(table, "image_sources", {}).get(
+                                    style.style["uri"], style.style["uri"]),
+                                style.style["alt"])
+                      for style in cell_styles if style.type == "image"]
+            text_requests.extend(_image_requests(images, plain, base, tab_id))
             shift += utf16_len(plain)
 
     return text_requests
@@ -1931,6 +1945,192 @@ def _reset_list_indents(parsed) -> None:
                 style.style.setdefault(field, {"magnitude": 0, "unit": "PT"})
 
 
+def _mixed_list_requests(parsed, insert_index, tab_id):
+    """Keep parent list identity across children with different bullet presets."""
+    from gdoc.mdparse import utf16_len
+
+    items = sorted((s for s in parsed.styles if s.type == "bullets"),
+                   key=lambda s: s.start)
+    blocks = []
+    for item in items:
+        if blocks and blocks[-1][-1].end == item.start:
+            blocks[-1].append(item)
+        else:
+            blocks.append([item])
+    requests = []
+    removed = 0
+
+    def span(start, end):
+        target = {"startIndex": start, "endIndex": max(start + 1, end)}
+        if tab_id:
+            target["tabId"] = tab_id
+        return target
+
+    for block in blocks:
+        first, last = block[0], block[-1]
+        root_preset = first.style["bulletPreset"]
+        block_start = insert_index + utf16_len(parsed.plain_text[:first.start]) - removed
+        block_end = insert_index + utf16_len(parsed.plain_text[:last.end]) - removed
+        requests.append({"createParagraphBullets": {
+            "range": span(block_start, block_end),
+            "bulletPreset": root_preset,
+        }})
+        for item in block:
+            text = parsed.plain_text[item.start:item.end]
+            depth = len(text) - len(text.lstrip("\t"))
+            start = insert_index + utf16_len(parsed.plain_text[:item.start]) - removed
+            removed += depth
+            end = insert_index + utf16_len(parsed.plain_text[:item.end]) - removed
+            # The terminal retained newline also represents an empty list item.
+            end = max(start + 1, end)
+            target = span(start, end)
+            if item.style["bulletPreset"] != root_preset:
+                requests.append({"deleteParagraphBullets": {"range": target}})
+                if depth:
+                    location = {"index": start}
+                    if tab_id:
+                        location["tabId"] = tab_id
+                    requests.append({"insertText": {"location": location,
+                                                     "text": "\t" * depth}})
+                requests.append({"createParagraphBullets": {
+                    "range": span(start, end + depth),
+                    "bulletPreset": item.style["bulletPreset"],
+                }})
+            # Explicit physical depth is also the semantic export convention
+            # for a carved child's native level zero.
+            if len({item.style["bulletPreset"] for item in block}) > 1:
+                requests.append({"updateParagraphStyle": {
+                    "range": target,
+                    "paragraphStyle": {
+                        "indentStart": {"magnitude": 36 * (depth + 1), "unit": "PT"},
+                        "indentFirstLine": {
+                            "magnitude": 36 * (depth + 1) - 18, "unit": "PT",
+                        },
+                    },
+                    "fields": "indentStart,indentFirstLine",
+                }})
+    return requests
+
+
+def _parsed_images(parsed):
+    """Include images returned by parse_inline in contextual edit selections."""
+    from gdoc.mdparse import ImageData
+
+    return list(parsed.images) + [ImageData(s.start, s.style["uri"], s.style["alt"])
+                                  for s in parsed.styles if s.type == "image"]
+
+
+def _resolve_image_uri(uri, snapshot):
+    from urllib.parse import urlsplit
+
+    if uri.startswith("gdoc-image:"):
+        object_id = uri.removeprefix("gdoc-image:")
+        scopes = (flatten_tabs(snapshot["tabs"])
+                  if "tabs" in snapshot else [snapshot])
+        objects = [scope.get("inlineObjects", {}).get(object_id) for scope in scopes]
+        objects = [obj for obj in objects if obj is not None]
+        if len(objects) != 1:
+            raise GdocError(
+                "image reference is missing or ambiguous in the current snapshot: "
+                + object_id, exit_code=3,
+            )
+        embedded = objects[0].get("inlineObjectProperties", {}).get("embeddedObject", {})
+        image = embedded.get("imageProperties", {})
+        uri = image.get("contentUri", "")
+    parsed = urlsplit(uri)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise GdocError("image source must be an accessible HTTP(S) URL or a current "
+                        "gdoc-image reference", exit_code=3)
+    return uri
+
+
+def _prepare_image_sources(parsed, snapshot):
+    """Resolve all sources before destructive requests, including table cells."""
+    import sys
+
+    from gdoc.mdparse import parse_inline
+
+    has_alt = any(image.alt for image in _parsed_images(parsed))
+    for table in parsed.tables:
+        sources = {}
+        for row in table.rows:
+            for cell in row:
+                _, styles = parse_inline(cell)
+                for style in styles:
+                    if style.type == "image":
+                        source = style.style["uri"]
+                        sources[source] = _resolve_image_uri(source, snapshot)
+                        if style.style.get("alt"):
+                            has_alt = True
+        table.image_sources = sources
+    for image in _parsed_images(parsed):
+        resolved = _resolve_image_uri(image.uri, snapshot)
+        image.uri = resolved
+        for style in parsed.styles:
+            if style.type == "image" and style.start == image.plain_text_offset:
+                style.style = {**style.style, "uri": resolved}
+    if has_alt:
+        print("WARN: Google Docs API cannot set image alt text; inserted images "
+              "will not retain the Markdown alt description.", file=sys.stderr)
+
+
+def _image_requests(images, text, insert_index, tab_id):
+    from gdoc.mdparse import utf16_len
+
+    requests = []
+    for image in images:
+        index = (insert_index + utf16_len(text[:image.plain_text_offset])
+                 - image.removed_tabs_before)
+        target = {"startIndex": index, "endIndex": index + 1}
+        location = {"index": index}
+        if tab_id:
+            target["tabId"] = location["tabId"] = tab_id
+        requests.extend([
+            {"deleteContentRange": {"range": target}},
+            {"insertInlineImage": {"location": location, "uri": image.uri}},
+        ])
+    return requests
+
+
+def _native_docs_requests(parsed, insert_index, tab_id=None):
+    from gdoc.mdparse import to_docs_requests
+
+    requests = [r for r in to_docs_requests(parsed, insert_index, tab_id=tab_id)
+                if "createParagraphBullets" not in r]
+    requests.extend(_mixed_list_requests(parsed, insert_index, tab_id))
+    requests.extend(_image_requests(_parsed_images(parsed), parsed.plain_text,
+                                    insert_index, tab_id))
+    return requests
+
+
+def _code_range_requests(parsed, insert_index: int, tab_id: str | None) -> list[dict]:
+    """Mark complete code paragraphs before tables shift their native positions."""
+    from gdoc.mdparse import utf16_len
+
+    def coordinate(offset):
+        consumed = sum(
+            len(line) - len(line.lstrip("\t"))
+            for style in parsed.styles if style.type == "bullets"
+            for line in parsed.plain_text[
+                style.start:min(style.end, offset)
+            ].split("\n")
+            if style.start < offset
+        )
+        # A final code range includes the mandatory retained paragraph newline.
+        return insert_index + utf16_len(parsed.plain_text[:offset]) + max(
+            0, offset - len(parsed.plain_text),
+        ) - consumed
+
+    requests = []
+    for block in parsed.code_blocks:
+        span = {"startIndex": coordinate(block.start),
+                "endIndex": coordinate(block.end)}
+        if tab_id:
+            span["tabId"] = tab_id
+        requests.append({"createNamedRange": {"name": "gdoc:code:v1", "range": span}})
+    return requests
+
+
 def insert_markdown_into_tab(
     doc_id: str,
     tab_name: str,
@@ -1963,12 +2163,12 @@ def insert_markdown_into_tab(
     from gdoc.mdparse import (
         _paragraph_style_fields,
         parse_markdown,
-        to_docs_requests,
         utf16_len,
     )
 
     doc = document if document is not None else get_document_with_tabs(doc_id)
     revision_id = doc.get("revisionId", "")
+    input_revision_id = revision_id
     tabs = flatten_tabs(doc.get("tabs", []))
     tab_match = resolve_tab(tabs, tab_name)
     tab_id = tab_match["id"]
@@ -1990,19 +2190,12 @@ def insert_markdown_into_tab(
         insert_index = body_start
 
     parsed = parse_markdown(markdown)
-    if replace and parsed.non_default_list_starts:
+    if parsed.non_default_list_starts:
         import sys
 
-        losses = ", ".join(parsed.non_default_list_starts)
-        if not allow_lossy:
-            raise GdocError(
-                "Markdown replacement refused: incoming " + losses
-                + ". No content was written. Pass --allow-lossy to knowingly "
-                "reset list numbering.",
-                exit_code=3,
-            )
-        print("WARN: Markdown replacement will reset incoming " + losses,
-              file=sys.stderr)
+        print("WARN: Google Docs cannot set arbitrary native list starts; "
+              "the following lists will start at 1: "
+              + "; ".join(parsed.non_default_list_starts), file=sys.stderr)
     requests: list[dict] = []
 
     at_end = replace or body_end == body_start or position == "end"
@@ -2083,7 +2276,8 @@ def insert_markdown_into_tab(
     )
     if not replace and inherited_bullet:
         _reset_list_indents(parsed)
-    insertion = to_docs_requests(parsed, insert_index, tab_id=tab_id)
+    _prepare_image_sources(parsed, doc)
+    insertion = _native_docs_requests(parsed, insert_index, tab_id=tab_id)
     if at_end and parsed.plain_text.endswith("\n") and any(
         s.type == "paragraph_style" and s.end == len(parsed.plain_text)
         and "borderBottom" in s.style for s in parsed.styles
@@ -2114,6 +2308,7 @@ def insert_markdown_into_tab(
             "paragraphStyle": final_style,
             "fields": _paragraph_style_fields(final_style),
         }})
+    insertion.extend(_code_range_requests(parsed, insert_index, tab_id))
     requests.extend(insertion)
 
     with _StagedWrite(doc_id) as progress:
@@ -2138,6 +2333,9 @@ def insert_markdown_into_tab(
         "tab_id": tab_id,
         "tab_title": tab_match["title"],
         "insert_index": insert_index,
+        "input_revision_id": input_revision_id,
+        "acknowledged_revision_id": revision_id,
+        "rebased": progress.rebased,
     }
 
 
@@ -2159,7 +2357,8 @@ def check_tab_body_replacement(tab: dict, *, allow_lossy: bool = False) -> None:
             {"startIndex": body_start, "endIndex": body_end + 1},
         )
     }
-    scope = {"body": body, "lists": {
+    scope = {**{key: tab[key] for key in ("inlineObjects", "namedRanges") if key in tab},
+             "body": body, "lists": {
         key: value for key, value in tab.get("lists", {}).items()
         if key in list_ids
     }}
@@ -2512,6 +2711,12 @@ def check_segment_replacement(parsed, markdown: str, matches: list[dict]) -> Non
     """Non-body replacements support a single plain/inline paragraph only."""
     if not any(m.get("segmentId") for m in matches):
         return
+    # Single-line backtick delimiters are literal/inline in a segment,
+    # regardless of the body parser's unclosed-fence interpretation.
+    if "\n" not in markdown and markdown.lstrip().startswith("```"):
+        from gdoc.mdparse import parse_inline
+        parsed.plain_text, parsed.styles = parse_inline(markdown)
+        parsed.code_blocks = []
     try:
         check_inline_only_markdown(parsed)
     except GdocError:
@@ -2547,8 +2752,6 @@ def _build_replacement_requests(
 
     Returns (sorted_matches, requests).
     """
-    from gdoc.mdparse import to_docs_requests
-
     sorted_matches = sorted(matches, key=_replacement_order)
     all_requests: list[dict] = []
     for match in sorted_matches:
@@ -2571,7 +2774,7 @@ def _build_replacement_requests(
             })
         selected, baseline = (contexts[_match_key(match)] if contexts is not None
                               else (parsed, None))
-        requests = to_docs_requests(
+        requests = _native_docs_requests(
             _inline_only(selected) if segment_id else selected,
             match["startIndex"], tab_id=match_tab,
         )
@@ -2673,6 +2876,7 @@ def replace_formatted(
     revision_id: str,
     tab_id: str | None = None,
     *, body: dict | None = None, replace_paragraphs: bool = False,
+    result_details: dict | None = None,
 ) -> int:
     """Replace matched text ranges with formatted content.
 
@@ -2696,6 +2900,7 @@ def replace_formatted(
     """
     from gdoc.mdparse import parse_markdown, utf16_len
 
+    input_revision_id = revision_id
     parsed = parse_markdown(new_markdown)
     check_segment_replacement(parsed, new_markdown, matches)
 
@@ -2805,12 +3010,36 @@ def replace_formatted(
         raise GdocError(
             "replacement with tables not supported with --all", exit_code=3,
         )
+    image_snapshot = source or {}
+    selected_parses = [selected for selected, _ in contexts.values()]
+    if any(_parsed_images(selected) or selected.tables for selected in selected_parses):
+        needs_snapshot = any(image.uri.startswith("gdoc-image:")
+                             for selected in selected_parses
+                             for image in _parsed_images(selected))
+        # Table references need the same current object map as body images.
+        needs_snapshot = needs_snapshot or any(
+            "gdoc-image:" in cell for selected in selected_parses
+            for table in selected.tables for row in table.rows for cell in row
+        )
+        if needs_snapshot and not (
+            "tabs" in image_snapshot or "inlineObjects" in image_snapshot
+        ):
+            image_snapshot = get_document_with_tabs(doc_id)
+            if image_snapshot.get("revisionId") != input_revision_id:
+                raise GdocError("conflict: image snapshot revision changed",
+                                exit_code=3)
+        for selected in selected_parses:
+            _prepare_image_sources(selected, image_snapshot)
     sorted_matches, all_requests = _build_replacement_requests(
         parsed, matches, tab_id=tab_id, contexts=contexts,
         reset_bullets=reset_bullets,
     )
 
     if not all_requests:
+        if result_details is not None:
+            result_details.update(input_revision_id=input_revision_id,
+                                  acknowledged_revision_id=input_revision_id,
+                                  rebased=False)
         return 0
 
     # Each lower replacement may have a different rendered length when
@@ -2856,6 +3085,10 @@ def replace_formatted(
                         ordinal=ordinal, scaffolding=_table_scaffolding(parsed, table),
                     )
 
+        if result_details is not None:
+            result_details.update(input_revision_id=input_revision_id,
+                                  acknowledged_revision_id=revision_id,
+                                  rebased=progress.rebased)
         return occurrence_count
 
 
@@ -2921,7 +3154,7 @@ def check_inline_only_markdown(parsed) -> None:
     requests are sent in suggest mode). Fenced code blocks pass too — they
     parse to plain NORMAL_TEXT paragraphs in the code font.
     """
-    if parsed.tables:
+    if parsed.tables or _parsed_images(parsed):
         raise GdocError(_SUGGEST_UNSUPPORTED_HINT, exit_code=3)
     for sr in parsed.styles:
         if sr.type == "text_style":

@@ -106,3 +106,42 @@ def test_table_alignment_and_quote_rule_recognition():
                                     {'textRun': {'content': '\n'}}]}},
     ]
     assert get_tab_text({'body': {'content': content}}, True) == '> quotation\n---\n'
+
+
+def test_image_offsets_after_nested_lists_and_surrounding_unicode():
+    parsed = parse_markdown(
+        '- root\n  - 😀 ![map](https://example.org/a_(b).png) done\n'
+    )
+    image = parsed.images[0]
+    assert image.uri == 'https://example.org/a_(b).png'
+    assert image.alt == 'map'
+    assert image.removed_tabs_before == 1
+    offset = image.plain_text_offset
+    assert parsed.plain_text[offset - 2:offset] == '😀 '
+    assert parsed.plain_text[image.plain_text_offset:] == '  done\n'
+
+
+def test_existing_image_exports_snapshot_reference_and_alt_without_mutation():
+    paragraph = {'elements': [
+        {'textRun': {'content': 'Look '}},
+        {'inlineObjectElement': {'inlineObjectId': 'synthetic-image'}},
+        {'textRun': {'content': '\n'}},
+    ]}
+    tab = {'body': {'content': [{'paragraph': paragraph}]}, 'inlineObjects': {
+        'synthetic-image': {'inlineObjectProperties': {'embeddedObject': {
+            'description': 'A [map]', 'imageProperties': {
+                'contentUri': 'https://example.org/temporary',
+            },
+        }}},
+    }}
+    rendered = get_tab_text(tab, True)
+    assert 'temporary' not in rendered
+    image = parse_markdown(rendered).images[0]
+    assert (image.uri, image.alt) == ('gdoc-image:synthetic-image', 'A [map]')
+    assert '_markdown_image_alt' not in paragraph['elements'][1]
+
+
+def test_code_span_ending_backslash_does_not_hide_image():
+    parsed = parse_markdown('`path\\` ![drawing](https://example.org/d.png)\n')
+    assert parsed.plain_text == 'path\\  \n'
+    assert parsed.images[0].alt == 'drawing'

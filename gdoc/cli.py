@@ -327,119 +327,69 @@ def cmd_cat(args) -> int:
         )
         return 0
 
-    if tab or all_tabs:
-        from gdoc.api.docs import get_document_tabs, get_tab_text
+    from gdoc.api.docs import flatten_tabs, get_document_with_tabs, get_tab_text
+    from gdoc.api.docs import resolve_tab
+    from gdoc.format import format_json, get_output_mode
+    from gdoc.state import record_content_read, update_state_after_command
 
-        tabs = get_document_tabs(doc_id)
-
-        # Default view renders markdown (headings survive round-trips);
-        # --plain returns the verbatim text gdoc edit matches against.
-        want_md = not getattr(args, "plain", False)
-
-        if tab:
-            # Match by title (case-insensitive) first, then by ID
-            match = None
-            for t in tabs:
-                if t["title"].lower() == tab.lower():
-                    match = t
-                    break
-            if match is None:
-                for t in tabs:
-                    if t["id"] == tab:
-                        match = t
-                        break
-            if match is None:
-                raise GdocError(f"tab not found: {tab}", exit_code=3)
-            content = get_tab_text(match, markdown=want_md)
-            if no_images:
-                from gdoc.mdimport import strip_images
-                content = strip_images(content)
-            content = _truncate_bytes(content, max_bytes)
-
-            from gdoc.format import format_json, get_output_mode
-            mode = get_output_mode(args)
-            if mode == "json":
-                print(format_json(tab=match["title"], content=content))
-            else:
-                print(content, end="")
-        else:
-            # --all-tabs
-            parts = []
-            for t in tabs:
-                parts.append(f"=== Tab: {t['title']} ===\n")
-                parts.append(get_tab_text(t, markdown=want_md))
-            content = "".join(parts)
-            if no_images:
-                from gdoc.mdimport import strip_images
-                content = strip_images(content)
-            content = _truncate_bytes(content, max_bytes)
-
-            from gdoc.format import format_json, get_output_mode
-            mode = get_output_mode(args)
-            if mode == "json":
-                print(format_json(content=content))
-            else:
-                print(content, end="")
-
-        from gdoc.state import update_state_after_command
-        update_state_after_command(doc_id, change_info, command="cat", quiet=quiet)
-        return 0
-
-    if getattr(args, "comments", False):
-        # Annotated view: line-numbered content + inline comment annotations
-        from gdoc.api.drive import export_doc
-        markdown = export_doc(doc_id, mime_type="text/markdown")
-
-        if no_images:
-            from gdoc.mdimport import strip_images
-            markdown = strip_images(markdown)
-
-        from gdoc.api.comments import list_comments
-        include_resolved = getattr(args, "all", False)
-        comments = list_comments(
-            doc_id,
-            include_resolved=include_resolved,
-            include_anchor=True,
-        )
-
-        from gdoc.annotate import annotate_markdown
-        annotated = annotate_markdown(markdown, comments, show_resolved=include_resolved)
-        annotated = _truncate_bytes(annotated, max_bytes)
-
-        from gdoc.format import get_output_mode, format_json
-        mode = get_output_mode(args)
-        if mode == "json":
-            print(format_json(content=annotated))
-        else:
-            print(annotated, end="")
-
-        from gdoc.state import update_state_after_command
-        update_state_after_command(doc_id, change_info, command="cat", quiet=quiet)
-
-        return 0
-
-    mime_type = "text/plain" if getattr(args, "plain", False) else "text/markdown"
-
-    from gdoc.api.drive import export_doc
-
-    content = export_doc(doc_id, mime_type=mime_type)
+    document = get_document_with_tabs(doc_id)
+    tabs = flatten_tabs(document.get("tabs", []))
+    if not tabs:
+        raise GdocError("document has no readable tabs", exit_code=3)
+    selected = tabs if all_tabs else [resolve_tab(tabs, tab) if tab else tabs[0]]
+    want_markdown = not getattr(args, "plain", False)
+    parts = []
+    for selected_tab in selected:
+        if all_tabs:
+            parts.append(f"=== Tab: {selected_tab['title']} ===\n")
+        parts.append(get_tab_text(selected_tab, markdown=want_markdown))
+    content = "".join(parts)
     if no_images:
         from gdoc.mdimport import strip_images
         content = strip_images(content)
-    content = _truncate_bytes(content, max_bytes)
+    annotated = getattr(args, "comments", False)
+    if annotated:
+        from gdoc.annotate import annotate_markdown
+        from gdoc.api.comments import list_comments
+        include_resolved = getattr(args, "all", False)
+        comments = list_comments(
+            doc_id, include_resolved=include_resolved, include_anchor=True,
+        )
+        content = annotate_markdown(content, comments, show_resolved=include_resolved)
 
-    from gdoc.format import get_output_mode, format_json
-
-    mode = get_output_mode(args)
-    if mode == "json":
-        print(format_json(content=content))
+    total_bytes = len(content.encode("utf-8"))
+    displayed = _truncate_bytes(content, max_bytes)
+    truncated = displayed != content
+    # Plain text omits supported formatting, and no-images omits objects.
+    complete = not (truncated or no_images or not want_markdown or annotated)
+    scope = {
+        "tab_ids": [selected_tab["id"] for selected_tab in selected],
+        "complete": complete, "truncated": truncated,
+        "revision_id": document.get("revisionId", ""),
+        "total_bytes": total_bytes,
+    }
+    if get_output_mode(args) == "json":
+        extra = {"tab": selected[0]["title"]} if len(selected) == 1 else {}
+        print(format_json(content=displayed, scope=scope, **extra))
     else:
-        print(content, end="")
-
-    # Update state after success
-    from gdoc.state import update_state_after_command
-    update_state_after_command(doc_id, change_info, command="cat", quiet=quiet)
-
+        print(displayed, end="")
+        if len(tabs) > 1 and not all_tabs:
+            print(
+                f"NOTE: read tab {selected[0]['title']!r} ({selected[0]['id']}); "
+                f"{len(tabs)} tabs exist. Use --all-tabs or --tab to read others.",
+                file=sys.stderr,
+            )
+        if truncated:
+            print(
+                f"NOTE: partial output ({len(displayed.encode('utf-8'))} of "
+                f"{total_bytes} bytes). Use --max-bytes 0 for complete content.",
+                file=sys.stderr,
+            )
+    update_state_after_command(
+        doc_id, change_info, command="cat-content", quiet=quiet,
+    )
+    if complete:
+        record_content_read(doc_id, scope["tab_ids"], scope["revision_id"])
     return 0
 
 

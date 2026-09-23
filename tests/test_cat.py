@@ -2,7 +2,7 @@
 
 import json
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 import pytest
 
@@ -36,56 +36,69 @@ def _make_args(**overrides):
 def _doc_mime(doc_mime):
     """Keep spreadsheet detection on the Docs path for this module."""
 
+@pytest.fixture(autouse=True)
+def native_snapshot(mocker):
+    return mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "revisionId": "r1", "tabs": [{
+            "tabProperties": {"tabId": "main", "title": "Main"},
+            "documentTab": {"body": {"content": []}},
+        }],
+    })
+
+
 class TestCatMarkdown:
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value="# Hello World\n")
+    @patch("gdoc.api.docs.get_tab_text", return_value="# Hello World\n")
     def test_cat_default_markdown(self, mock_export, _mock_svc, _mock_pf, _mock_update, capsys):
         args = _make_args()
         rc = cmd_cat(args)
         assert rc == 0
         out = capsys.readouterr().out
         assert out == "# Hello World\n"
-        mock_export.assert_called_once_with("abc123", mime_type="text/markdown")
+        mock_export.assert_called_once_with(ANY, markdown=True)
 
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value="content")
+    @patch("gdoc.api.docs.get_tab_text", return_value="content")
     def test_cat_url_input(self, mock_export, _mock_svc, _mock_pf, _mock_update, capsys):
         args = _make_args(doc="https://docs.google.com/document/d/abc123/edit")
         rc = cmd_cat(args)
         assert rc == 0
-        mock_export.assert_called_once_with("abc123", mime_type="text/markdown")
+        mock_export.assert_called_once_with(ANY, markdown=True)
 
 
 class TestCatPlain:
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value="Hello World\n")
+    @patch("gdoc.api.docs.get_tab_text", return_value="Hello World\n")
     def test_cat_plain(self, mock_export, _mock_svc, _mock_pf, _mock_update, capsys):
         args = _make_args(plain=True)
         rc = cmd_cat(args)
         assert rc == 0
         out = capsys.readouterr().out
         assert out == "Hello World\n"
-        mock_export.assert_called_once_with("abc123", mime_type="text/plain")
+        mock_export.assert_called_once_with(ANY, markdown=False)
 
 
 class TestCatJson:
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value="# Hello")
+    @patch("gdoc.api.docs.get_tab_text", return_value="# Hello")
     def test_cat_json_mode(self, mock_export, _mock_svc, _mock_pf, _mock_update, capsys):
         args = _make_args(json=True)
         rc = cmd_cat(args)
         assert rc == 0
         out = capsys.readouterr().out
         data = json.loads(out)
-        assert data == {"ok": True, "content": "# Hello"}
+        assert data["ok"] is True
+        assert data["content"] == "# Hello"
+        assert data["scope"]["tab_ids"] == ["main"]
+        assert data["scope"]["complete"] is True
 
 
 class TestCatComments:
@@ -94,7 +107,7 @@ class TestCatComments:
     @patch("gdoc.api.comments.get_drive_service")
     @patch("gdoc.api.comments.list_comments", return_value=[])
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value="# Hello\n")
+    @patch("gdoc.api.docs.get_tab_text", return_value="# Hello\n")
     def test_cat_comments_calls_list_with_anchor(
         self, mock_export, _svc, mock_list, _csvc, _pf, _update
     ):
@@ -110,7 +123,7 @@ class TestCatComments:
     @patch("gdoc.api.comments.get_drive_service")
     @patch("gdoc.api.comments.list_comments", return_value=[])
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value="# Hello\n")
+    @patch("gdoc.api.docs.get_tab_text", return_value="# Hello\n")
     def test_cat_comments_all_includes_resolved(
         self, mock_export, _svc, mock_list, _csvc, _pf, _update
     ):
@@ -126,7 +139,7 @@ class TestCatComments:
     @patch("gdoc.api.comments.get_drive_service")
     @patch("gdoc.api.comments.list_comments")
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value="Some content here\n")
+    @patch("gdoc.api.docs.get_tab_text", return_value="Some content here\n")
     def test_cat_comments_output_annotated(
         self, mock_export, _svc, mock_list, _csvc, _pf, _update, capsys
     ):
@@ -152,7 +165,7 @@ class TestCatComments:
     @patch("gdoc.api.comments.get_drive_service")
     @patch("gdoc.api.comments.list_comments", return_value=[])
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value="# Hello\n")
+    @patch("gdoc.api.docs.get_tab_text", return_value="# Hello\n")
     def test_cat_comments_json_output(
         self, mock_export, _svc, mock_list, _csvc, _pf, _update, capsys
     ):
@@ -168,7 +181,7 @@ class TestCatComments:
     @patch("gdoc.api.comments.get_drive_service")
     @patch("gdoc.api.comments.list_comments", return_value=[])
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value="# Hello\n")
+    @patch("gdoc.api.docs.get_tab_text", return_value="# Hello\n")
     def test_cat_comments_no_stub_exit_code(
         self, mock_export, _svc, mock_list, _csvc, _pf, _update
     ):
@@ -181,14 +194,14 @@ class TestCatComments:
     @patch("gdoc.api.comments.get_drive_service")
     @patch("gdoc.api.comments.list_comments", return_value=[])
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value="# Hello\n")
+    @patch("gdoc.api.docs.get_tab_text", return_value="# Hello\n")
     def test_cat_comments_state_update(
         self, mock_export, _svc, mock_list, _csvc, _pf, mock_update
     ):
         args = _make_args(comments=True, quiet=True)
         cmd_cat(args)
         mock_update.assert_called_once_with(
-            "abc123", None, command="cat", quiet=True,
+            "abc123", None, command="cat-content", quiet=True,
         )
 
 
@@ -209,7 +222,7 @@ class TestCatErrors:
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
     @patch(
-        "gdoc.api.drive.export_doc",
+        "gdoc.api.docs.get_tab_text",
         side_effect=GdocError("Document not found: abc"),
     )
     def test_cat_api_error(self, mock_export, _mock_svc, _mock_pf, _mock_update):
@@ -229,7 +242,7 @@ class TestCatAwareness:
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight")
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value="content")
+    @patch("gdoc.api.docs.get_tab_text", return_value="content")
     def test_preflight_called_before_export(self, mock_export, _svc, mock_pf, mock_update):
         """pre_flight is called before export_doc."""
         mock_pf.return_value = ChangeInfo()
@@ -241,7 +254,7 @@ class TestCatAwareness:
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value="content")
+    @patch("gdoc.api.docs.get_tab_text", return_value="content")
     def test_quiet_skips_preflight(self, mock_export, _svc, mock_pf, mock_update):
         """--quiet passes quiet=True to pre_flight."""
         args = _make_args(quiet=True)
@@ -251,7 +264,7 @@ class TestCatAwareness:
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight")
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value="content")
+    @patch("gdoc.api.docs.get_tab_text", return_value="content")
     def test_state_updated_after_success(self, mock_export, _svc, mock_pf, mock_update):
         """State is updated after successful cat."""
         change_info = ChangeInfo(current_version=10)
@@ -259,20 +272,20 @@ class TestCatAwareness:
         args = _make_args()
         cmd_cat(args)
         mock_update.assert_called_once_with(
-            "abc123", change_info, command="cat", quiet=False,
+            "abc123", change_info, command="cat-content", quiet=False,
         )
 
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight")
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value="content")
+    @patch("gdoc.api.docs.get_tab_text", return_value="content")
     def test_state_updated_with_quiet(self, mock_export, _svc, mock_pf, mock_update):
         """State update under --quiet passes quiet=True and change_info=None."""
         mock_pf.return_value = None
         args = _make_args(quiet=True)
         cmd_cat(args)
         mock_update.assert_called_once_with(
-            "abc123", None, command="cat", quiet=True,
+            "abc123", None, command="cat-content", quiet=True,
         )
 
     @patch("gdoc.state.update_state_after_command")
@@ -280,7 +293,7 @@ class TestCatAwareness:
     @patch("gdoc.api.comments.get_drive_service")
     @patch("gdoc.api.comments.list_comments", return_value=[])
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value="# Hello\n")
+    @patch("gdoc.api.docs.get_tab_text", return_value="# Hello\n")
     def test_comments_calls_preflight(
         self, _export, _svc, _list, _csvc, mock_pf, mock_update
     ):
@@ -294,7 +307,7 @@ class TestCatAwareness:
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight")
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", side_effect=GdocError("API error"))
+    @patch("gdoc.api.docs.get_tab_text", side_effect=GdocError("API error"))
     def test_no_state_update_on_error(self, mock_export, _svc, mock_pf, mock_update):
         """State is NOT updated when export_doc raises an error."""
         mock_pf.return_value = ChangeInfo()
@@ -345,7 +358,7 @@ class TestCatMaxBytes:
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value="Hello World, this is long content")
+    @patch("gdoc.api.docs.get_tab_text", return_value="Hello World, this is long content")
     def test_max_bytes_truncates(self, _export, _svc, _pf, _update, capsys):
         args = _make_args(max_bytes=5)
         rc = cmd_cat(args)
@@ -356,7 +369,7 @@ class TestCatMaxBytes:
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value="Hello")
+    @patch("gdoc.api.docs.get_tab_text", return_value="Hello")
     def test_max_bytes_zero_unlimited(self, _export, _svc, _pf, _update, capsys):
         args = _make_args(max_bytes=0)
         rc = cmd_cat(args)
@@ -367,7 +380,7 @@ class TestCatMaxBytes:
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value="Hi")
+    @patch("gdoc.api.docs.get_tab_text", return_value="Hi")
     def test_max_bytes_larger_than_content(self, _export, _svc, _pf, _update, capsys):
         args = _make_args(max_bytes=1000)
         rc = cmd_cat(args)
@@ -378,7 +391,7 @@ class TestCatMaxBytes:
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value="Hello World")
+    @patch("gdoc.api.docs.get_tab_text", return_value="Hello World")
     def test_max_bytes_json_truncates_content(self, _export, _svc, _pf, _update, capsys):
         args = _make_args(max_bytes=5, json=True)
         rc = cmd_cat(args)
@@ -395,7 +408,7 @@ class TestCatNoImages:
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value=_MD_WITH_IMAGE)
+    @patch("gdoc.api.docs.get_tab_text", return_value=_MD_WITH_IMAGE)
     def test_no_images_strips(self, _export, _svc, _pf, _update, capsys):
         args = _make_args(no_images=True)
         rc = cmd_cat(args)
@@ -407,7 +420,7 @@ class TestCatNoImages:
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value="# No images here\n")
+    @patch("gdoc.api.docs.get_tab_text", return_value="# No images here\n")
     def test_no_images_noop_when_absent(self, _export, _svc, _pf, _update, capsys):
         args = _make_args(no_images=True)
         rc = cmd_cat(args)
@@ -417,7 +430,7 @@ class TestCatNoImages:
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value=_MD_WITH_IMAGE)
+    @patch("gdoc.api.docs.get_tab_text", return_value=_MD_WITH_IMAGE)
     def test_no_images_json(self, _export, _svc, _pf, _update, capsys):
         args = _make_args(no_images=True, json=True)
         rc = cmd_cat(args)
@@ -428,7 +441,7 @@ class TestCatNoImages:
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value=_MD_WITH_IMAGE)
+    @patch("gdoc.api.docs.get_tab_text", return_value=_MD_WITH_IMAGE)
     def test_no_images_before_truncation(self, _export, _svc, _pf, _update, capsys):
         """--no-images strips before --max-bytes truncates."""
         args = _make_args(no_images=True, max_bytes=8)
@@ -444,7 +457,7 @@ class TestCatNoImages:
     @patch("gdoc.api.comments.get_drive_service")
     @patch("gdoc.api.comments.list_comments", return_value=[])
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.drive.export_doc", return_value=_MD_WITH_IMAGE)
+    @patch("gdoc.api.docs.get_tab_text", return_value=_MD_WITH_IMAGE)
     def test_no_images_with_comments(
         self, _export, _svc, _list, _csvc, _pf, _update, capsys,
     ):

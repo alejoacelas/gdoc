@@ -1,0 +1,316 @@
+"""Synthetic request-level checks for native Markdown replacement."""
+
+from gdoc.api.docs import (
+    _code_range_requests,
+    _strip_trailing_newline_unless_hr,
+    _table_cell_requests,
+    insert_markdown_into_tab,
+    replace_formatted,
+)
+from gdoc.mdparse import parse_markdown
+
+
+def snapshot():
+    return {
+        "revisionId": "before",
+        "tabs": [
+            {
+                "tabProperties": {"tabId": "tab-one", "title": "Notes"},
+                "documentTab": {
+                    "body": {
+                        "content": [
+                            {
+                                "startIndex": 1,
+                                "endIndex": 5,
+                                "paragraph": {
+                                    "elements": [
+                                        {
+                                            "startIndex": 1,
+                                            "endIndex": 5,
+                                            "textRun": {"content": "Old\n"},
+                                        }
+                                    ],
+                                },
+                            }
+                        ]
+                    }
+                },
+            }
+        ],
+    }
+
+
+def service(mocker):
+    chain = mocker.patch(
+        "gdoc.api.docs.get_docs_service"
+    ).return_value.documents.return_value
+    chain.batchUpdate.return_value.execute.return_value = {
+        "writeControl": {"requiredRevisionId": "after"},
+    }
+    return chain
+
+
+def test_targeted_revision_is_from_acknowledgment(mocker):
+    service(mocker)
+    details = {}
+    result = replace_formatted(
+        "doc",
+        [{"startIndex": 1, "endIndex": 4}],
+        "New",
+        "before",
+        result_details=details,
+    )
+    assert result == 1
+    assert (
+        details["input_revision_id"],
+        details["acknowledged_revision_id"],
+        details["rebased"],
+    ) == ("before", "after", False)
+
+
+def test_general_split_and_reorder_are_native(mocker):
+    chain = service(mocker)
+    result = insert_markdown_into_tab(
+        "doc", "Notes", "## Moved\n\nSplit\n\nApart", replace=True, document=snapshot()
+    )
+    batch = chain.batchUpdate.call_args.kwargs["body"]
+    assert batch["writeControl"] == {"requiredRevisionId": "before"}
+    assert [
+        r["insertText"]["text"] for r in batch["requests"] if "insertText" in r
+    ] == [
+        "Moved\n\nSplit\n\nApart",
+    ]
+    assert result["input_revision_id"] == "before"
+    assert result["acknowledged_revision_id"] == "after"
+    assert result["rebased"] is False
+
+
+def test_table_alignment_and_explicit_emphasis_only():
+    table = parse_markdown("| Plain | **Bold** |\n| :--- | ---: |\n| a | b |").tables[0]
+    requests = _table_cell_requests([[5, 7], [11, 13]], table, "tab-one")
+    styles = [r["updateTextStyle"] for r in requests if "updateTextStyle" in r]
+    assert len(styles) == 1
+    assert styles[0]["range"] == {"startIndex": 12, "endIndex": 16, "tabId": "tab-one"}
+    alignments = [
+        r["updateParagraphStyle"]["paragraphStyle"]["alignment"]
+        for r in requests
+        if "updateParagraphStyle" in r
+    ]
+    assert alignments == ["START", "END", "START", "END"]
+
+
+def test_code_markers_include_final_mark_and_ignore_code_tabs():
+    parsed = parse_markdown("- parent\n  - child\n\n```\n\tliteral 😀\n```")
+    _strip_trailing_newline_unless_hr(parsed)
+    requests = _code_range_requests(parsed, 1, "tab-one")
+    assert requests == [
+        {
+            "createNamedRange": {
+                "name": "gdoc:code:v1",
+                "range": {
+                    "startIndex": 15,
+                    "endIndex": 27,
+                    "tabId": "tab-one",
+                },
+            }
+        }
+    ]
+
+
+def test_non_default_start_is_explicit_best_effort(mocker, capsys):
+    chain = service(mocker)
+    insert_markdown_into_tab(
+        "doc", "Notes", "7. Seven", replace=True, document=snapshot()
+    )
+    assert "will start at 1" in capsys.readouterr().err
+    assert any(
+        "createParagraphBullets" in r
+        for r in chain.batchUpdate.call_args.kwargs["body"]["requests"]
+    )
+
+
+def test_multi_tab_default_preserves_siblings_and_uses_native_revision(mocker):
+    from copy import deepcopy
+
+    from gdoc.api.drive import update_doc_content
+
+    document = snapshot()
+    sibling = deepcopy(document["tabs"][0])
+    sibling["tabProperties"] = {"tabId": "sibling", "title": "Other"}
+    document["tabs"].append(sibling)
+    chain = service(mocker)
+    drive = mocker.patch("gdoc.api.drive.get_drive_service")
+    mocker.patch("gdoc.api.drive.require_write_version")
+    mocker.patch("gdoc.api.drive.get_file_version", return_value={"version": 99})
+    details = {}
+    assert (
+        update_doc_content(
+            "doc", "New", document=document, expected_version=1, result_details=details
+        )
+        == 99
+    )
+    drive.assert_not_called()
+    chain.batchUpdate.assert_called_once()
+    assert details["acknowledged_revision_id"] == "after"
+    assert not any(
+        "deleteTab" in r for r in chain.batchUpdate.call_args.kwargs["body"]["requests"]
+    )
+
+
+def test_authorized_collapse_pins_sibling_deletion_to_ack(mocker):
+    from copy import deepcopy
+
+    from gdoc.api.drive import update_doc_content
+
+    document = snapshot()
+    sibling = deepcopy(document["tabs"][0])
+    sibling["tabProperties"] = {"tabId": "sibling", "title": "Other"}
+    document["tabs"].append(sibling)
+    chain = service(mocker)
+    chain.batchUpdate.return_value.execute.side_effect = [
+        {"writeControl": {"requiredRevisionId": "after"}},
+        {"writeControl": {"requiredRevisionId": "collapsed"}},
+    ]
+    mocker.patch("gdoc.api.drive.require_write_version")
+    mocker.patch("gdoc.api.drive.get_file_version", return_value={"version": 99})
+    details = {}
+    update_doc_content(
+        "doc",
+        "New",
+        document=document,
+        expected_version=1,
+        collapse_tabs=True,
+        result_details=details,
+    )
+    assert chain.batchUpdate.call_args.kwargs["body"] == {
+        "requests": [{"deleteTab": {"tabId": "sibling"}}],
+        "writeControl": {"requiredRevisionId": "after"},
+    }
+    assert details["acknowledged_revision_id"] == "collapsed"
+
+
+def test_image_reuse_and_external_insertion_share_first_atomic_batch(mocker, capsys):
+    document = snapshot()
+    document["tabs"][0]["documentTab"]["inlineObjects"] = {
+        "original": {
+            "inlineObjectProperties": {
+                "embeddedObject": {
+                    "imageProperties": {
+                        "contentUri": "https://example.org/current-image"
+                    },
+                }
+            },
+        }
+    }
+    chain = service(mocker)
+    insert_markdown_into_tab(
+        "doc",
+        "Notes",
+        "😀 ![old](gdoc-image:original) ![](https://example.org/new)",
+        replace=True,
+        document=document,
+    )
+    batch = chain.batchUpdate.call_args.kwargs["body"]
+    images = [
+        r["insertInlineImage"] for r in batch["requests"] if "insertInlineImage" in r
+    ]
+    assert images == [
+        {
+            "location": {"index": 4, "tabId": "tab-one"},
+            "uri": "https://example.org/current-image",
+        },
+        {
+            "location": {"index": 6, "tabId": "tab-one"},
+            "uri": "https://example.org/new",
+        },
+    ]
+    assert batch["requests"][0]["deleteContentRange"]["range"]["endIndex"] == 4
+    assert "cannot set image alt text" in capsys.readouterr().err
+    chain.batchUpdate.assert_called_once()
+
+
+def test_invalid_image_source_cannot_send_deletion(mocker):
+    import pytest
+
+    from gdoc.util import GdocError
+
+    chain = service(mocker)
+    for source in ("file:///private/image.png", "gdoc-image:missing", "javascript:x"):
+        with pytest.raises(GdocError):
+            insert_markdown_into_tab(
+                "doc", "Notes", f"![]({source})", replace=True, document=snapshot()
+            )
+    chain.batchUpdate.assert_not_called()
+
+
+def test_inline_target_image_has_width_one_and_preserves_neighbor_ranges(mocker):
+    chain = service(mocker)
+    body = snapshot()["tabs"][0]["documentTab"]["body"]
+    replace_formatted(
+        "doc",
+        [{"startIndex": 2, "endIndex": 3}],
+        "![sample](https://example.org/image)",
+        "before",
+        body=body,
+    )
+    requests = chain.batchUpdate.call_args.kwargs["body"]["requests"]
+    assert requests[0] == {
+        "deleteContentRange": {"range": {"startIndex": 2, "endIndex": 3}}
+    }
+    assert next(
+        r["insertInlineImage"] for r in requests if "insertInlineImage" in r
+    ) == {
+        "location": {"index": 2},
+        "uri": "https://example.org/image",
+    }
+
+
+def test_images_in_cells_are_native_objects_not_text_styles():
+    table = parse_markdown(
+        "| ![](https://example.org/image) |\n| --- |\n| words |"
+    ).tables[0]
+    requests = _table_cell_requests([[5], [9]], table, "tab-one")
+    assert any("insertInlineImage" in r for r in requests)
+    assert not any(
+        "uri" in r.get("updateTextStyle", {}).get("textStyle", {}) for r in requests
+    )
+
+
+def test_mixed_children_keep_parent_batch_and_restore_semantic_indent(mocker):
+    chain = service(mocker)
+    insert_markdown_into_tab(
+        "doc",
+        "Notes",
+        "1. parent\n  - child\n2. sibling",
+        replace=True,
+        document=snapshot(),
+    )
+    requests = chain.batchUpdate.call_args.kwargs["body"]["requests"]
+    creates = [
+        r["createParagraphBullets"] for r in requests if "createParagraphBullets" in r
+    ]
+    assert len(creates) == 2
+    assert creates[0]["range"] == {"startIndex": 1, "endIndex": 22, "tabId": "tab-one"}
+    assert creates[0]["bulletPreset"] == "NUMBERED_DECIMAL_ALPHA_ROMAN"
+    assert creates[1]["bulletPreset"].startswith("BULLET_")
+    indents = [
+        r["updateParagraphStyle"]["paragraphStyle"]["indentStart"]["magnitude"]
+        for r in requests
+        if "indentStart" in r.get("updateParagraphStyle", {}).get("paragraphStyle", {})
+    ]
+    assert indents == [36, 72, 36]
+
+
+def test_terminal_empty_list_styles_retained_native_mark(mocker):
+    chain = service(mocker)
+    insert_markdown_into_tab("doc", "Notes", "- ", replace=True, document=snapshot())
+    requests = chain.batchUpdate.call_args.kwargs["body"]["requests"]
+    assert next(
+        r["createParagraphBullets"]["range"]
+        for r in requests
+        if "createParagraphBullets" in r
+    ) == {
+        "startIndex": 1,
+        "endIndex": 2,
+        "tabId": "tab-one",
+    }

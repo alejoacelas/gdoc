@@ -917,33 +917,33 @@ class TestBalancedLinkDestinations:
         assert styles[0].style == {"link": {"url": "https://example.org/(x)"}}
 
 
-class TestNativeImageGuard:
-    """Native writes refuse complete image syntax and accept a literal ``![``."""
+class TestNativeImages:
+    """Images carry native placeholders; incomplete syntax stays literal."""
 
-    def _refuses(self, text):
-        from gdoc.util import GdocError
+    def _image(self, text):
+        parsed = parse_markdown(text)
+        assert len(parsed.images) == 1
+        image = parsed.images[0]
+        assert parsed.plain_text[image.plain_text_offset] == " "
+        assert image.uri.startswith("https://")
+        return image
 
-        with pytest.raises(GdocError) as info:
-            parse_markdown(text)
-        assert info.value.exit_code == 3
-        assert "images" in str(info.value)
+    def test_inline_image_represented(self):
+        self._image("Intro\n\n![photo](https://example.com/a.png)\n")
 
-    def test_inline_image_refused(self):
-        self._refuses("Intro\n\n![photo](https://example.com/a.png)\n")
-
-    def test_reference_image_with_definition_refused(self):
-        self._refuses(
+    def test_reference_image_with_definition_represented(self):
+        self._image(
             "See ![Logo][logo] here\n\n[LOGO]: https://example.com/l.png\n"
         )
 
-    def test_collapsed_reference_image_refused(self):
-        self._refuses("![logo][]\n\n[logo]: https://example.com/l.png\n")
+    def test_collapsed_reference_image_represented(self):
+        self._image("![logo][]\n\n[logo]: https://example.com/l.png\n")
 
-    def test_nested_bracket_alt_inline_refused(self):
-        self._refuses("![a [nested] label](https://example.com/image.png)\n")
+    def test_nested_bracket_alt_inline_represented(self):
+        self._image("![a [nested] label](https://example.com/image.png)\n")
 
-    def test_nested_bracket_alt_reference_refused(self):
-        self._refuses("![a [nested] label][pic]\n\n[pic]: https://example.com/i.png\n")
+    def test_nested_bracket_alt_reference_represented(self):
+        self._image("![a [nested] label][pic]\n\n[pic]: https://example.com/i.png\n")
 
     def test_bracketed_label_cannot_define_a_reference(self):
         # CommonMark link labels may not contain brackets, so no definition
@@ -953,11 +953,11 @@ class TestNativeImageGuard:
         )
         assert "![a [nested] label]" in parsed.plain_text
 
-    def test_deeply_nested_alt_inline_refused(self):
-        self._refuses("![a [b [c] d] e](https://example.com/i.png)\n")
+    def test_deeply_nested_alt_inline_represented(self):
+        self._image("![a [b [c] d] e](https://example.com/i.png)\n")
 
-    def test_deeply_nested_alt_reference_refused(self):
-        self._refuses("![a [b [c] d] e][pic]\n\n[pic]: https://example.com/i.png\n")
+    def test_deeply_nested_alt_reference_represented(self):
+        self._image("![a [b [c] d] e][pic]\n\n[pic]: https://example.com/i.png\n")
 
     def test_deeply_nested_alt_without_destination_is_literal(self):
         parsed = parse_markdown("See ![a [b [c] d] e] here\n")
@@ -976,8 +976,8 @@ class TestNativeImageGuard:
         parsed = parse_markdown("![x](first\nsecond) tail\n")
         assert "tail" in parsed.plain_text
 
-    def test_balanced_parenthesised_destination_refused(self):
-        self._refuses("![x](https://example.com/a_(b).png)\n")
+    def test_balanced_parenthesised_destination_represented(self):
+        self._image("![x](https://example.com/a_(b).png)\n")
 
     def test_empty_destination_is_literal(self):
         parsed = parse_markdown("An empty ![x]() marker\n")
@@ -988,18 +988,21 @@ class TestNativeImageGuard:
         assert "link" in parsed.plain_text
         assert any(s.style.get("link") for s in parsed.styles)
 
-    def test_linked_image_still_refused(self):
-        self._refuses("[![img](https://x.test/i.png)](https://x.test/)\n")
+    def test_linked_image_still_represented(self):
+        self._image("[![img](https://x.test/i.png)](https://x.test/)\n")
 
-    def test_image_after_link_still_refused(self):
-        self._refuses("See [x](https://x.test/) then ![a](https://x.test/i.png)\n")
+    def test_image_after_link_still_represented(self):
+        self._image("See [x](https://x.test/) then ![a](https://x.test/i.png)\n")
 
     def test_nested_bracket_without_destination_is_literal(self):
         parsed = parse_markdown("An ![a [nested] label] marker\n")
         assert "![a [nested] label]" in parsed.plain_text
 
-    def test_html_img_refused(self):
-        self._refuses("Text <img src=\"x.png\"> more\n")
+    def test_html_img_requires_markdown_syntax(self):
+        from gdoc.util import GdocError
+
+        with pytest.raises(GdocError, match="Markdown image syntax"):
+            parse_markdown('Text <img src="x.png"> more\n')
 
     def test_bare_opener_is_literal(self):
         parsed = parse_markdown("Use ![ literally in prose\n")
@@ -1039,9 +1042,8 @@ class TestSingleLineTripleBacktickSpan:
         parsed = parse_markdown("```python\nx = 1\n```\nAfter\n")
         assert parsed.plain_text == "x = 1\nAfter\n"
 
-    def test_image_guard_does_not_treat_span_as_fence(self):
-        from gdoc.util import GdocError
-
-        with pytest.raises(GdocError):
-            parse_markdown("```code```\n![a](https://x.test/i.png)\n")
+    def test_image_after_closed_span_is_represented(self):
+        parsed = parse_markdown("```code```\n![a](https://x.test/i.png)\n")
+        assert parsed.plain_text == "code\n \n"
+        assert parsed.images[0].uri == "https://x.test/i.png"
 

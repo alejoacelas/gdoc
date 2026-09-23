@@ -27,6 +27,25 @@ class TableData:
     # Leading list-indent tabs inserted before this table. createParagraphBullets
     # removes those tabs, shifting the table's real position left by this many.
     removed_tabs_before: int = 0
+    alignments: list[str | None] = field(default_factory=list)
+
+
+@dataclass
+class ImageData:
+    """One space placeholder, indexed before list-indent tabs are consumed."""
+
+    plain_text_offset: int
+    uri: str
+    alt: str
+    removed_tabs_before: int = 0
+
+
+@dataclass
+class CodeBlockData:
+    """Complete code paragraphs, in code points before list tabs are removed."""
+
+    start: int
+    end: int
 
 
 @dataclass
@@ -42,6 +61,8 @@ class ParsedMarkdown:
     removed_tabs: int = 0
     # Numbering starts that native createParagraphBullets would reset to 1.
     non_default_list_starts: list[str] = field(default_factory=list)
+    code_blocks: list[CodeBlockData] = field(default_factory=list)
+    images: list[ImageData] = field(default_factory=list)
 
 
 # Inline patterns — order matters (bold+italic before bold/italic)
@@ -51,7 +72,7 @@ _ITALIC_RE = re.compile(
     r"(?<!\*)\*(?![\s*])(.+?)(?<![\s*])\*(?!\*)"
     r"|(?<![\w_])_(?![\s_])(.+?)(?<![\s_])_(?![\w_])"
 )
-# Strikethrough is one or two tildes (GFM); a run of three or more is literal.
+# Strikethrough uses two tildes; a run of three or more is literal.
 _STRIKE_RE = re.compile(r"(?<!~)~~(?!~)(.+?)(?<!~)~~(?!~)")
 # Code spans follow CommonMark: a backtick string of length N (a run neither
 # preceded nor followed by a backtick) opens a span that only a backtick string
@@ -71,6 +92,7 @@ _INLINE_PATTERNS = [
     (_STRIKE_RE, "strike"),
     (_CODE_RE, "code"),
     (_LINK_RE, "link"),
+    (re.compile(r"<img\b[^>]*>", re.IGNORECASE), "html_image"),
     # Exported run boundaries: no visible text, unlike a space or zero-width char.
     (re.compile(r"<!-- -->"), "separator"),
 ]
@@ -87,18 +109,19 @@ _STYLES_FOR_KIND = {
 _CODE_FONT = {"weightedFontFamily": {"fontFamily": "Courier New"}}
 
 # Heading pattern
-_HEADING_RE = re.compile(r"^(#{1,6})\s+(.+)$")
+_HEADING_RE = re.compile(r"^(#{1,6})[ \t](.*)$")
 # Docs has two named styles with no ordinary Markdown heading equivalent.
 _NAMED_STYLE_RE = re.compile(r"^<!-- gdoc:(TITLE|SUBTITLE) --> (.*)$")
 
 # List item patterns (capture leading indentation for nesting)
-_BULLET_RE = re.compile(r"^([ \t]*)[-*]\s+(.+)$")
-_NUMBERED_RE = re.compile(r"^([ \t]*)\d+\.\s+(.+)$")
+_BULLET_RE = re.compile(r"^([ \t]*)[-*+](?:[ \t](.*)|$)")
+_NUMBERED_RE = re.compile(r"^([ \t]*)\d+\.(?:[ \t](.*)|$)")
 
 # Block patterns
 _BLOCKQUOTE_RE = re.compile(r"^ {0,3}>\s?(.*)$")
 _HR_RE = re.compile(r"^ {0,3}([-*_])[ ]*(?:\1[ ]*){2,}$")
-_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})\s*(\S*)\s*$")
+_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})[ \t]*(.*)$")
+_FENCE_CLOSE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})[ \t]*$")
 
 
 def _fence_open(line: str) -> re.Match | None:
@@ -193,17 +216,19 @@ def parse_inline(text: str) -> tuple[str, list[StyleRange]]:
     content cannot start a block. Returns (plain_text, style_ranges) with
     offsets relative to plain_text.
     """
-    return _parse_inline(text)
+    return _parse_inline(text.replace("\r\n", "\n").replace("\r", "\n"))
 
 
-def _parse_inline(text: str) -> tuple[str, list[StyleRange]]:
+def _parse_inline(
+    text: str, references: dict | None = None,
+) -> tuple[str, list[StyleRange]]:
     """Parse inline formatting from a text string.
 
     Returns (plain_text, style_ranges) with offsets relative to plain_text.
     Emphasis spans nest recursively; backslash escapes are resolved per
     segment (and left intact inside code spans).
     """
-    return _scan(text, _mask_escapes(text))
+    return _scan(text, _mask_escapes(text), references)
 
 
 def _find_link(masked: str) -> re.Match | None:
@@ -212,24 +237,85 @@ def _find_link(masked: str) -> re.Match | None:
     Escaped parentheses are already masked, so only unescaped delimiters
     contribute to depth. An unfinished destination is left as literal text.
     """
-    for opener in re.finditer(r"\[[^\]]+\]\(", masked):
-        depth = 1
-        for end in range(opener.end(), len(masked)):
-            char = masked[end]
-            if char == "\n":
-                break
-            if char == "(":
-                depth += 1
-            elif char == ")":
-                depth -= 1
-                if depth == 0:
-                    if end > opener.end():
-                        return _LINK_RE.match(masked, opener.start(), end + 1)
-                    break
+    # Match parentheses once, rather than rescanning the entire remaining input
+    # for every malformed link opener (quadratic on repeated "[x](").
+    closes = {}
+    brackets = {}
+    stack = []
+    bracket_stack = []
+    for index, char in enumerate(masked):
+        if char == "\n":
+            stack.clear()
+            bracket_stack.clear()
+        elif char == "[":
+            bracket_stack.append(index)
+        elif char == "]" and bracket_stack:
+            brackets[bracket_stack.pop()] = index
+        elif char == "(":
+            stack.append(index)
+        elif char == ")" and stack:
+            closes[stack.pop()] = index
+    for opener in re.finditer(r"\[", masked):
+        label_end = brackets.get(opener.start())
+        if label_end is None or masked[label_end + 1:label_end + 2] != "(":
+            continue
+        end = closes.get(label_end + 1)
+        if end is not None and end > label_end + 2:
+            width = label_end - opener.start() - 1
+            return re.compile(r"\[([\s\S]{" + str(width)
+                              + r"})\]\(([\s\S]*)\)").match(
+                masked, opener.start(), end + 1,
+            )
     return None
 
 
-def _scan(text: str, masked: str) -> tuple[str, list[StyleRange]]:
+def _find_image(masked: str, references: dict):
+    """Find a complete inline or defined reference image in linear time."""
+    pairs = {}
+    brackets = []
+    parens = []
+    for index, char in enumerate(masked):
+        if char == "[":
+            brackets.append(index)
+        elif char == "]" and brackets:
+            pairs[brackets.pop()] = index
+        elif char == "(":
+            parens.append(index)
+        elif char == ")" and parens:
+            pairs[parens.pop()] = index
+        elif char == "\n":
+            parens.clear()
+    for opener in re.finditer(r"!\[", masked):
+        close = pairs.get(opener.start() + 1)
+        if close is None:
+            continue
+        after = close + 1
+        alt = masked[opener.end():close]
+        if masked[after:after + 1] == "(":
+            end = pairs.get(after)
+            if end is not None and end > after + 1:
+                match = re.compile(r"!\[([\s\S]*)\]\(([\s\S]*)\)").match(
+                    masked, opener.start(), end + 1,
+                )
+                return match, "image"
+        label = alt
+        end = after
+        if masked[after:after + 1] == "[" and after in pairs:
+            end = pairs[after] + 1
+            label = masked[after + 1:end - 1] or alt
+        if _ref_label(label) in references:
+            width = close - opener.end()
+            match = re.compile(r"!\[([\s\S]{" + str(width)
+                               + r"})\](?:\[([^\]]*)\])?").match(
+                masked, opener.start(), end,
+            )
+            return match, "image_ref"
+    return None
+
+
+def _scan(
+    text: str, masked: str, references: dict | None = None,
+) -> tuple[str, list[StyleRange]]:
     """Recursively parse inline formatting.
 
     ``text`` is the original source; ``masked`` is the same length with escaped
@@ -239,6 +325,7 @@ def _scan(text: str, masked: str) -> tuple[str, list[StyleRange]]:
     Spans recurse so emphasis can nest (e.g. ``**bold _and italic_**``).
     Returns (plain_text, [StyleRange]) with offsets relative to plain_text.
     """
+    references = references or {}
     plain_parts: list[str] = []
     styles: list[StyleRange] = []
     offset = 0
@@ -252,7 +339,7 @@ def _scan(text: str, masked: str) -> tuple[str, list[StyleRange]]:
         # it (e.g. the `*b*` in `**a***b*`). Match offsets are relative to the
         # slice, so shift them by `pos`.
         tail = masked[pos:]
-        best: tuple[re.Match, str] | None = None
+        best: tuple[re.Match, str] | None = _find_image(tail, references)
         for pat, kind in _INLINE_PATTERNS:
             if kind == "code":
                 m = None
@@ -282,6 +369,11 @@ def _scan(text: str, masked: str) -> tuple[str, list[StyleRange]]:
             return pos + m.start(group), pos + m.end(group)
 
         seg_start = offset
+        if kind == "html_image":
+            from gdoc.util import GdocError
+
+            raise GdocError("Use Markdown image syntax instead of HTML img tags",
+                            exit_code=3)
         if kind == "separator":
             pass
         elif kind == "code":
@@ -297,9 +389,25 @@ def _scan(text: str, masked: str) -> tuple[str, list[StyleRange]]:
             plain_parts.append(inner)
             offset += len(inner)
             styles.append(StyleRange(seg_start, offset, _CODE_FONT, "text_style"))
+        elif kind in ("image", "image_ref"):
+            a, b = _grp(1)
+            alt = _strip_escapes(text[a:b])
+            if kind == "image":
+                ua, ub = _grp(2)
+                uri = _strip_escapes(text[ua:ub])
+                if uri.startswith("<") and uri.endswith(">"):
+                    uri = uri[1:-1]
+            else:
+                label = m.group(2) or alt
+                uri = references[_ref_label(label)]
+            plain_parts.append(" ")
+            offset += 1
+            styles.append(StyleRange(
+                seg_start, offset, {"uri": uri, "alt": alt}, "image",
+            ))
         elif kind == "link":
             a, b = _grp(1)
-            sub_plain, sub_styles = _scan(text[a:b], masked[a:b])
+            sub_plain, sub_styles = _scan(text[a:b], masked[a:b], references)
             plain_parts.append(sub_plain)
             offset += len(sub_plain)
             for s in sub_styles:
@@ -315,7 +423,7 @@ def _scan(text: str, masked: str) -> tuple[str, list[StyleRange]]:
             # bold / italic alternations capture group 1 or 2; others, group 1.
             g = 2 if (kind in ("bold", "italic") and m.group(1) is None) else 1
             a, b = _grp(g)
-            sub_plain, sub_styles = _scan(text[a:b], masked[a:b])
+            sub_plain, sub_styles = _scan(text[a:b], masked[a:b], references)
             plain_parts.append(sub_plain)
             offset += len(sub_plain)
             for s in sub_styles:
@@ -354,23 +462,21 @@ def _without_link_destinations(masked: str) -> str:
     an image's own ``[alt](src)`` (preceded by ``!``) is left in place.
     """
     out = list(masked)
-    for opener in re.finditer(r"\[[^\]]+\]\(", masked):
+    stack = []
+    closes = {}
+    for index, char in enumerate(masked):
+        if char == "\n":
+            stack.clear()
+        elif char == "(":
+            stack.append(index)
+        elif char == ")" and stack:
+            closes[stack.pop()] = index
+    for opener in re.finditer(r"\[[^\[\]\n]+\]\(", masked):
         if opener.start() > 0 and masked[opener.start() - 1] == "!":
             continue
-        depth = 1
-        for end in range(opener.end(), len(masked)):
-            char = masked[end]
-            if char == "\n":
-                break
-            if char == "(":
-                depth += 1
-            elif char == ")":
-                depth -= 1
-                if depth == 0:
-                    if end > opener.end():
-                        for i in range(opener.end(), end):
-                            out[i] = " "
-                    break
+        end = closes.get(opener.end() - 1)
+        if end is not None:
+            out[opener.end():end] = " " * (end - opener.end())
     return "".join(out)
 
 
@@ -485,13 +591,35 @@ def parse_markdown(text: str) -> ParsedMarkdown:
     if not text:
         return ParsedMarkdown(plain_text="")
 
-    _check_native_images(text)
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
     # A terminal LF closes the last paragraph; it is not an extra blank one.
     # Preserve additional LFs, each of which represents a real empty paragraph.
     lines = text.removesuffix("\n").split("\n")
+    references = {}
+    definition_lines = set()
+    fence = None
+    for line_number, line in enumerate(lines):
+        if fence is not None:
+            closer = _FENCE_CLOSE_RE.match(line)
+            if closer and closer[1][0] == fence[0] and len(closer[1]) >= len(fence):
+                fence = None
+            continue
+        opener = _fence_open(line)
+        if opener:
+            fence = opener[1]
+            continue
+        definition = re.fullmatch(r" {0,3}\[([^\]]+)\]:[ \t]*(\S+)[ \t]*", line)
+        if definition:
+            uri = _strip_escapes(definition[2])
+            references[_ref_label(definition[1])] = (
+                uri.removeprefix("<").removesuffix(">")
+            )
+            definition_lines.add(line_number)
     plain_parts: list[str] = []
     all_styles: list[StyleRange] = []
     all_tables: list[TableData] = []
+    images: list[ImageData] = []
+    code_blocks: list[CodeBlockData] = []
     offset = 0
     removed_tabs = 0  # running count of leading list-indent tabs (see below)
     list_levels: dict[int, str] = {}
@@ -532,6 +660,12 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         plain_parts.append(content)
         offset += len(content)
         for s in content_styles:
+            if s.type == "image":
+                images.append(ImageData(
+                    s.start + text_start, s.style["uri"], s.style["alt"],
+                    removed_tabs,
+                ))
+                continue
             all_styles.append(StyleRange(
                 s.start + text_start, s.end + text_start, s.style, s.type,
             ))
@@ -548,6 +682,9 @@ def parse_markdown(text: str) -> ParsedMarkdown:
 
     i = 0
     while i < len(lines):
+        if i in definition_lines:
+            i += 1
+            continue
         line = lines[i]
 
         # Fenced code block: ``` (or ~~~) ... ```
@@ -556,9 +693,10 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             list_levels.clear()
             fence = fence_m.group(1)
             fence_char = fence[0]
+            code_start = offset
             i += 1
             while i < len(lines):
-                close = _FENCE_RE.match(lines[i])
+                close = _FENCE_CLOSE_RE.match(lines[i])
                 if close:
                     close_fence = close.group(1)
                     if close_fence[0] == fence_char and len(
@@ -575,6 +713,9 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                     code_line, styles, {"namedStyleType": "NORMAL_TEXT"},
                 )
                 i += 1
+            if offset == code_start:
+                emit_paragraph("", [], {"namedStyleType": "NORMAL_TEXT"})
+            code_blocks.append(CodeBlockData(code_start, offset))
             continue
 
         # Table: header row + separator row + data rows
@@ -588,6 +729,17 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             header_cells = _table_cells(line)
             table_rows.append(header_cells)
             num_cols = len(header_cells)
+            alignments = []
+            for separator in _table_cells(lines[i + 1]):
+                if separator.startswith(":") and separator.endswith(":"):
+                    alignments.append("CENTER")
+                elif separator.startswith(":"):
+                    alignments.append("START")
+                elif separator.endswith(":"):
+                    alignments.append("END")
+                else:
+                    alignments.append(None)
+            alignments = (alignments + [None] * num_cols)[:num_cols]
             i += 2  # skip header + separator
             while i < len(lines) and _TABLE_ROW_RE.match(lines[i]):
                 if i + 1 < len(lines) and _TABLE_SEP_RE.match(lines[i + 1]):
@@ -607,6 +759,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                 num_cols=num_cols,
                 plain_text_offset=offset,
                 removed_tabs_before=removed_tabs,
+                alignments=alignments,
             ))
             plain_parts.append("\n")
             offset += 1
@@ -619,7 +772,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
 
         named_m = _NAMED_STYLE_RE.match(line)
         if named_m:
-            inline_text, inline_styles = _parse_inline(named_m.group(2))
+            inline_text, inline_styles = _parse_inline(named_m.group(2), references)
             emit_paragraph(
                 inline_text, inline_styles, {"namedStyleType": named_m.group(1)},
             )
@@ -630,7 +783,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         heading_m = _HEADING_RE.match(line)
         if heading_m:
             level = len(heading_m.group(1))
-            inline_text, inline_styles = _parse_inline(heading_m.group(2))
+            inline_text, inline_styles = _parse_inline(heading_m.group(2), references)
             emit_paragraph(
                 inline_text, inline_styles,
                 {"namedStyleType": f"HEADING_{level}"},
@@ -658,7 +811,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         # Blockquote — render as an indented normal paragraph.
         quote_m = _BLOCKQUOTE_RE.match(line)
         if quote_m:
-            inline_text, inline_styles = _parse_inline(quote_m.group(1))
+            inline_text, inline_styles = _parse_inline(quote_m.group(1), references)
             indent = {"magnitude": _QUOTE_INDENT_PT, "unit": "PT"}
             emit_paragraph(inline_text, inline_styles, {
                 "namedStyleType": "NORMAL_TEXT",
@@ -671,10 +824,20 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         # Bullet list item (indent-aware)
         bullet_m = _BULLET_RE.match(line)
         if bullet_m:
-            inline_text, inline_styles = _parse_inline(bullet_m.group(2))
+            item = bullet_m.group(2) or ""
+            heading = _HEADING_RE.match(item)
+            named = _NAMED_STYLE_RE.match(item)
+            item_style = "NORMAL_TEXT"
+            if heading:
+                item_style = f"HEADING_{len(heading.group(1))}"
+                item = heading.group(2)
+            elif named:
+                item_style = named.group(1)
+                item = named.group(2)
+            inline_text, inline_styles = _parse_inline(item, references)
             emit_paragraph(
                 inline_text, inline_styles,
-                {"namedStyleType": "NORMAL_TEXT"},
+                {"namedStyleType": item_style},
                 bullet_preset="BULLET_DISC_CIRCLE_SQUARE",
                 leading_tabs=_list_level(bullet_m.group(1)),
             )
@@ -684,10 +847,20 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         # Numbered list item (indent-aware)
         numbered_m = _NUMBERED_RE.match(line)
         if numbered_m:
-            inline_text, inline_styles = _parse_inline(numbered_m.group(2))
+            item = numbered_m.group(2) or ""
+            heading = _HEADING_RE.match(item)
+            named = _NAMED_STYLE_RE.match(item)
+            item_style = "NORMAL_TEXT"
+            if heading:
+                item_style = f"HEADING_{len(heading.group(1))}"
+                item = heading.group(2)
+            elif named:
+                item_style = named.group(1)
+                item = named.group(2)
+            inline_text, inline_styles = _parse_inline(item, references)
             emit_paragraph(
                 inline_text, inline_styles,
-                {"namedStyleType": "NORMAL_TEXT"},
+                {"namedStyleType": item_style},
                 bullet_preset="NUMBERED_DECIMAL_ALPHA_ROMAN",
                 leading_tabs=_list_level(numbered_m.group(1)),
                 start_number=int(line.lstrip().split(".", 1)[0]),
@@ -697,7 +870,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
 
         # Normal paragraph line. Explicit NORMAL_TEXT so inserted paragraphs
         # don't inherit the style of the paragraph at the insertion point.
-        inline_text, inline_styles = _parse_inline(line)
+        inline_text, inline_styles = _parse_inline(line, references)
         emit_paragraph(
             inline_text, inline_styles, {"namedStyleType": "NORMAL_TEXT"},
         )
@@ -709,6 +882,8 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         tables=all_tables,
         removed_tabs=removed_tabs,
         non_default_list_starts=non_default_list_starts,
+        code_blocks=code_blocks,
+        images=images,
     )
 
 

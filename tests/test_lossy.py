@@ -38,7 +38,6 @@ PLAIN = body({"textRun": {"content": "old\n"}})
     {"inlineObjectElement": {"inlineObjectId": "image"}},
     {"footnoteReference": {"footnoteId": "fn"}}, {"equation": {}},
     {"autoText": {}}, {"pageBreak": {}}, {"columnBreak": {}},
-    {"horizontalRule": {}},
     {"textRun": {"content": "pending", "suggestedInsertionIds": ["s"]}},
     {"textRun": {"textStyle": {"link": {"headingId": "h"}}}},
 ])
@@ -170,7 +169,7 @@ def test_tab_scope_ignores_rich_sibling_and_headers(mocker, target_body, selecto
     }
 
 
-@pytest.mark.parametrize("target_body", [RICH, body({"horizontalRule": {}})])
+@pytest.mark.parametrize("target_body", [RICH, body({"equation": {}})])
 @pytest.mark.parametrize("allow_lossy", [False, True])
 def test_tab_refusal_precedes_every_mutation(mocker, allow_lossy, target_body):
     mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
@@ -347,6 +346,11 @@ def test_markdown_horizontal_rule_border_requires_opt_in(mocker, capsys, text):
         "borderBottom": {"dashStyle": "SOLID", "width": {"magnitude": 1, "unit": "PT"}},
     }
     target = tab("target", scope)
+    if text == "\n":
+        assert get_tab_text(target["documentTab"], markdown=True) == "---\n"
+        check_markdown_replacement(scope, tab_body=True)
+        assert capsys.readouterr().err == ""
+        return
     assert get_tab_text(target["documentTab"], markdown=True) == text
     mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
         "revisionId": "r", "tabs": [target],
@@ -389,6 +393,10 @@ def test_named_range_names_are_not_schema_fields(mocker, tmp_path, name, command
     mutation = mocker.patch("gdoc.api.drive.update_doc_content", return_value=2)
     mocker.patch("gdoc.state.update_state_after_command")
     args = SimpleNamespace(doc="doc", file=str(path))
+    with pytest.raises(GdocError, match="custom named ranges") as error:
+        check_markdown_replacement(doc, tab_body=True)
+    assert "people chips" not in str(error.value)
+    assert "merged table cells" not in str(error.value)
     assert (cmd_write if command == "write" else cmd_push)(args) == 0
     mutation.assert_called_once()
 
@@ -571,21 +579,16 @@ def numbered_tab(list_ids, start=1, glyph_type="DECIMAL"):
     return target
 
 
-def test_adjacent_numbered_restarts_refuse_before_mutation(mocker):
+def test_adjacent_numbered_restarts_export_separately_and_warn(capsys):
     from gdoc.api.docs import get_tab_text
 
     target = numbered_tab(["first", "second"])
     markdown = get_tab_text(target["documentTab"], markdown=True)
-    # The native lists each start at 1; export loses the second restart.
-    assert markdown == "1. item\n2. item\n"
-    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
-        "revisionId": "r", "tabs": [target],
-    })
-    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
-    with pytest.raises(GdocError, match="numbered list") as exc:
-        insert_markdown_into_tab("doc", "target", markdown, replace=True)
-    assert "first" in str(exc.value) and "second" in str(exc.value)
-    service.documents.return_value.batchUpdate.assert_not_called()
+    assert markdown == "1. item\n1. item\n"
+    check_markdown_replacement(target["documentTab"], tab_body=True)
+    warning = capsys.readouterr().err
+    assert "numbering may reset" in warning
+    assert "'first', 'second'" in warning
 
 
 @pytest.mark.parametrize("list_ids,start", [
@@ -594,16 +597,16 @@ def test_adjacent_numbered_restarts_refuse_before_mutation(mocker):
     (["first"], 0),
 ])
 @pytest.mark.parametrize("tab_body", [False, True])
-def test_numbered_sequence_hazards_name_lists_and_allow_override(
+def test_numbering_warning_names_lists_without_opt_in(
     capsys, list_ids, start, tab_body,
 ):
     scope = numbered_tab(list_ids, start)["documentTab"]
-    with pytest.raises(GdocError, match="numbered list") as exc:
-        check_markdown_replacement(scope, tab_body=tab_body)
+    check_markdown_replacement(scope, tab_body=tab_body)
+    warning = capsys.readouterr().err
     for list_id in list_ids:
-        assert list_id in str(exc.value)
-    check_markdown_replacement(scope, tab_body=tab_body, allow_lossy=True)
-    assert "will discard:" in capsys.readouterr().err
+        assert list_id in warning
+    assert "numbering may reset" in warning
+    assert "--allow-lossy" not in warning
 
 
 @pytest.mark.parametrize("list_ids,glyph_type", [
@@ -616,14 +619,11 @@ def test_continuous_numbering_and_bullets_remain_allowed(list_ids, glyph_type):
 
 
 @pytest.mark.parametrize("same_list", [False, True])
-def test_numbering_after_plain_paragraph(same_list):
+def test_numbering_after_plain_paragraph(capsys, same_list):
     scope = numbered_tab(["first", "first" if same_list else "second"])["documentTab"]
     scope["body"]["content"].insert(1, PLAIN["content"][0])
-    if same_list:
-        with pytest.raises(GdocError, match="numbered list 'first' resumes"):
-            check_markdown_replacement(scope, tab_body=True)
-    else:
-        check_markdown_replacement(scope, tab_body=True)
+    check_markdown_replacement(scope, tab_body=True)
+    assert ("numbered list 'first' resumes" in capsys.readouterr().err) == same_list
 
 
 def test_numbered_definitions_follow_owning_tab():
@@ -633,7 +633,7 @@ def test_numbered_definitions_follow_owning_tab():
     check_markdown_replacement({"tabs": [first, second]})
 
 
-def test_only_referenced_numbered_levels_are_checked():
+def test_only_referenced_numbered_levels_are_checked(capsys):
     scope = numbered_tab(["first"])["documentTab"]
     scope["lists"]["unused"] = {"listProperties": {"nestingLevels": [
         {"glyphType": "DECIMAL", "startNumber": 5},
@@ -643,8 +643,9 @@ def test_only_referenced_numbered_levels_are_checked():
     })
     check_markdown_replacement(scope, tab_body=True)
     scope["body"]["content"][0]["paragraph"]["bullet"]["nestingLevel"] = 1
-    with pytest.raises(GdocError, match="numbered list 'first' starts at 3"):
-        check_markdown_replacement(scope, tab_body=True)
+    assert capsys.readouterr().err == ""
+    check_markdown_replacement(scope, tab_body=True)
+    assert "numbered list 'first' starts at 3" in capsys.readouterr().err
 
 
 def test_numbered_restart_override_permits_tab_mutation(mocker, capsys):
@@ -655,12 +656,12 @@ def test_numbered_restart_override_permits_tab_mutation(mocker, capsys):
     insert_markdown_into_tab("doc", "target", "new", replace=True, allow_lossy=True)
     service.documents.return_value.batchUpdate.assert_called_once()
     warning = capsys.readouterr().err
-    assert "will discard:" in warning and "'first', 'second'" in warning
+    assert "numbering may reset" in warning and "'first', 'second'" in warning
 
 
 @pytest.mark.parametrize("cell_text", [" leading\n", "trailing \n", "\tleading\n"])
 @pytest.mark.parametrize("tab_body", [False, True])
-def test_unrenderable_table_refuses_and_names_table(capsys, cell_text, tab_body):
+def test_whitespace_table_needs_no_opt_in(capsys, cell_text, tab_body):
     from gdoc.api.docs import get_tab_text
 
     scope = {"body": {"content": [{"startIndex": 7, "table": {
@@ -668,32 +669,26 @@ def test_unrenderable_table_refuses_and_names_table(capsys, cell_text, tab_body)
             body({"textRun": {"content": cell_text}}), PLAIN,
         ]}],
     }}]}}
-    assert "\told\n" in get_tab_text(scope, markdown=True)
-    with pytest.raises(GdocError, match="table at index 7"):
-        check_markdown_replacement(scope, tab_body=tab_body)
-    check_markdown_replacement(scope, tab_body=tab_body, allow_lossy=True)
-    assert "will discard: table at index 7" in capsys.readouterr().err
+    from gdoc.mdparse import parse_inline, parse_markdown
+
+    parsed = parse_markdown(get_tab_text(scope, markdown=True))
+    assert parse_inline(parsed.tables[0].rows[0][0])[0] == cell_text[:-1]
+    check_markdown_replacement(scope, tab_body=tab_body)
+    assert capsys.readouterr().err == ""
 
 
-def test_numbering_resumed_after_unordered_item_refuses(mocker):
+def test_numbering_resumed_after_unordered_item_warns(capsys):
     from gdoc.api.docs import get_tab_text
 
-    target = numbered_tab(["first", "bullet", "first"])
-    scope = target["documentTab"]
+    scope = numbered_tab(["first", "bullet", "first"])["documentTab"]
     scope["lists"]["bullet"]["listProperties"]["nestingLevels"] = [{}]
-    markdown = get_tab_text(scope, markdown=True)
-    assert markdown == "1. item\n- item\n1. item\n"
-    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
-        "revisionId": "r", "tabs": [target],
-    })
-    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
-    with pytest.raises(GdocError, match="numbered list 'first' resumes"):
-        insert_markdown_into_tab("doc", "target", markdown, replace=True)
-    service.documents.return_value.batchUpdate.assert_not_called()
+    assert get_tab_text(scope, markdown=True) == "1. item\n- item\n2. item\n"
+    check_markdown_replacement(scope, tab_body=True)
+    assert "numbered list 'first' resumes" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("glyph_type", ["GLYPH_TYPE_UNSPECIFIED", "DECIMAL"])
-def test_empty_list_item_refuses_before_mutation(mocker, glyph_type):
+def test_empty_list_item_is_reconstructed(mocker, glyph_type):
     from gdoc.api.docs import get_tab_text
 
     target = numbered_tab(["empty"], glyph_type=glyph_type)
@@ -701,20 +696,24 @@ def test_empty_list_item_refuses_before_mutation(mocker, glyph_type):
     scope["body"]["content"][0]["paragraph"]["elements"] = [
         {"textRun": {"content": "\n"}},
     ]
-    assert get_tab_text(scope, markdown=True) == "\n"
+    marker = "1." if glyph_type == "DECIMAL" else "-"
+    assert get_tab_text(scope, markdown=True) == marker + " \n"
     mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
         "revisionId": "r", "tabs": [target],
     })
     service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
-    with pytest.raises(GdocError, match="empty list item.*empty"):
-        insert_markdown_into_tab("doc", "target", "new", replace=True)
-    service.documents.return_value.batchUpdate.assert_not_called()
+    insert_markdown_into_tab("doc", "target", marker + " ", replace=True)
+    service.documents.return_value.batchUpdate.assert_called_once()
+    from gdoc.mdparse import parse_markdown
+
+    parsed = parse_markdown(get_tab_text(scope, markdown=True))
+    assert any(style.type == "bullets" for style in parsed.styles)
 
 
 @pytest.mark.parametrize("header_styles", [({}, {}), ({"bold": True}, {}),
                                            ({"bold": True}, {"bold": False})])
 @pytest.mark.parametrize("allow_lossy", [False, True])
-def test_plain_or_mixed_table_header_requires_opt_in(
+def test_plain_or_mixed_table_header_needs_no_opt_in(
     mocker, capsys, header_styles, allow_lossy,
 ):
     from gdoc.api.docs import get_tab_text
@@ -736,22 +735,13 @@ def test_plain_or_mixed_table_header_requires_opt_in(
     })
     service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
     table_insert = mocker.patch("gdoc.api.docs._insert_table")
-    if allow_lossy:
-        insert_markdown_into_tab(
-            "doc", "target", markdown, replace=True, allow_lossy=True,
-        )
-        service.documents.return_value.batchUpdate.assert_called_once()
-        table_insert.assert_called_once()
-        assert "table at index 7" in capsys.readouterr().err
-    else:
-        with pytest.raises(GdocError, match="table at index 7.*header") as exc:
-            insert_markdown_into_tab("doc", "target", markdown, replace=True)
-        assert exc.value.exit_code == 3
-        assert "--allow-lossy" in str(exc.value)
-        service.documents.return_value.batchUpdate.assert_not_called()
-        table_insert.assert_not_called()
-        with pytest.raises(GdocError, match="table at index 7.*header"):
-            check_markdown_replacement(scope)
+    insert_markdown_into_tab(
+        "doc", "target", markdown, replace=True, allow_lossy=allow_lossy,
+    )
+    service.documents.return_value.batchUpdate.assert_called_once()
+    table_insert.assert_called_once()
+    assert capsys.readouterr().err == ""
+    check_markdown_replacement(scope)
 
 
 @pytest.mark.parametrize("glyph_type,level", [

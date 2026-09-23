@@ -287,10 +287,9 @@ def test_irregular_tables_keep_text_fallback(kind):
 
 
 @pytest.mark.parametrize("cell", [" lead", "trail ", " ", "\t", "a\n ", " \nb"])
-def test_boundary_whitespace_cells_keep_text_fallback(cell):
+def test_boundary_whitespace_cells_roundtrip(cell):
     table = _table([["Header", "Other"], [cell, "Tail"]])
     tab = {"body": {"content": [table]}}
     exported = get_tab_text(tab, markdown=True)
-    assert exported == get_tab_text(tab)
-    assert exported == f"Header\tOther\n{cell.strip()}\tTail\n"
-    assert not parse_markdown(exported).tables
+    parsed = parse_markdown(exported)
+    assert parse_inline(parsed.tables[0].rows[1][0])[0] == cell

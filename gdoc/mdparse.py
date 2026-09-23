@@ -198,13 +198,22 @@ def _table_cells(line: str) -> list[str]:
     text = line[1:-1]
     separators = [m.start() for m in re.finditer(r"\|", _mask_escapes(text))]
     boundaries = [-1, *separators, len(text)]
-    return [
-        _CODE_RE.sub(lambda m: m[0].replace(r"\|", "|"), re.sub(
-            r"\\.|<br>", lambda m: "\n" if m[0] == "<br>" else m[0],
-            text[start + 1:end].strip(),
-        ))
-        for start, end in zip(boundaries, boundaries[1:])
-    ]
+    cells = []
+    for start, end in zip(boundaries, boundaries[1:]):
+        cell = text[start + 1:end].strip()
+        parts = []
+        cursor = 0
+        for code in _CODE_RE.finditer(cell):
+            parts.append(re.sub(r"\\.|<br>",
+                                lambda m: "\n" if m[0] == "<br>" else m[0],
+                                cell[cursor:code.start()]))
+            parts.append(code[0].replace(r"\|", "|"))
+            cursor = code.end()
+        parts.append(re.sub(r"\\.|<br>",
+                            lambda m: "\n" if m[0] == "<br>" else m[0],
+                            cell[cursor:]))
+        cells.append("".join(parts))
+    return cells
 
 
 def parse_inline(text: str) -> tuple[str, list[StyleRange]]:

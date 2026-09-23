@@ -211,3 +211,24 @@ def test_code_punctuation_cannot_close_surrounding_formatting(literal, style):
         for offset in range(span.start, span.end):
             actual[offset].update(span.style)
     assert actual == [style] * len(literal)
+
+
+def test_code_styled_terminal_newline_does_not_create_literal_delimiters():
+    code = {'weightedFontFamily': {'fontFamily': 'Courier New'}}
+    assert _style_run_markdown('\n', code) == '\n'
+
+
+def test_html_break_spelling_inside_table_code_is_literal():
+    parsed = parse_markdown('| `a<br>b` |\n| --- |\n| first<br>second |\n')
+    assert parse_inline(parsed.tables[0].rows[0][0])[0] == 'a<br>b'
+    assert parse_inline(parsed.tables[0].rows[1][0])[0] == 'first\nsecond'
+
+
+@pytest.mark.parametrize('literal', ['+ item', '+', '1.', '42.', '1. ', '---'])
+def test_new_empty_list_grammar_never_consumes_exported_literal_text(literal):
+    tab = {'body': {'content': [{'paragraph': {'elements': [
+        {'textRun': {'content': literal + '\n'}},
+    ]}}]}}
+    parsed = parse_markdown(get_tab_text(tab, True))
+    assert parsed.plain_text == literal + '\n'
+    assert not [style for style in parsed.styles if style.type == 'bullets']

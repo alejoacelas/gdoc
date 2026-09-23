@@ -349,7 +349,7 @@ def _style_run_markdown(content: str, style: dict) -> str:
     text = content
     if text.endswith("\n"):
         text, newline = text[:-1], "\n"
-    if not text.strip() and not style.get("weightedFontFamily"):
+    if not text or (not text.strip() and not style.get("weightedFontFamily")):
         return content
     lead = text[: len(text) - len(text.lstrip())]
     trail = text[len(text.rstrip()):]
@@ -485,8 +485,8 @@ def _paragraph_markdown(
         return "#" * level + " " + text + newline
     # Inline escaping above handles stars, underscores, and code fences. Escape
     # remaining literal block openers only after adding genuine block syntax.
-    text = re.sub(r"^([ \t]*)([-#>|])", r"\1\\\2", text)
-    text = re.sub(r"^([ \t]*\d+)\.(?=\s)", r"\1\\.", text)
+    text = re.sub(r"^([ \t]*)([-+#>|])", r"\1\\\2", text)
+    text = re.sub(r"^([ \t]*\d+)\.(?=\s|$)", r"\1\\.", text)
     return text + newline
 
 

@@ -609,7 +609,7 @@ def test_numbering_after_plain_paragraph(capsys, same_list):
     scope = numbered_tab(["first", "first" if same_list else "second"])["documentTab"]
     scope["body"]["content"].insert(1, PLAIN["content"][0])
     check_markdown_replacement(scope, tab_body=True)
-    assert ("numbered list 'first' resumes" in capsys.readouterr().err) == same_list
+    assert capsys.readouterr().err == ""
 
 
 def test_numbered_definitions_follow_owning_tab():
@@ -663,14 +663,14 @@ def test_whitespace_table_needs_no_opt_in(capsys, cell_text, tab_body):
     assert capsys.readouterr().err == ""
 
 
-def test_numbering_resumed_after_unordered_item_warns(capsys):
+def test_numbering_resumed_after_unordered_item_has_no_warning(capsys):
     from gdoc.api.docs import get_tab_text
 
     scope = numbered_tab(["first", "bullet", "first"])["documentTab"]
     scope["lists"]["bullet"]["listProperties"]["nestingLevels"] = [{}]
     assert get_tab_text(scope, markdown=True) == "1. item\n- item\n2. item\n"
     check_markdown_replacement(scope, tab_body=True)
-    assert "numbered list 'first' resumes" in capsys.readouterr().err
+    assert capsys.readouterr().err == ""
 
 
 @pytest.mark.parametrize("glyph_type", ["GLYPH_TYPE_UNSPECIFIED", "DECIMAL"])

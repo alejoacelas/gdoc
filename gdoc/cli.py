@@ -1221,9 +1221,10 @@ def cmd_edit(args) -> int:
     # path; partial-paragraph matches insert the table source literally.
     from gdoc.api.docs import replace_formatted
 
+    result_details = {}
     occurrences = replace_formatted(
         doc_id, matches, new_text, plan.revision_id, tab_id=plan.tab_id,
-        body=plan.replacement_source,
+        body=plan.replacement_source, result_details=result_details,
         **({"replace_paragraphs": True} if cell is not None else {}),
     )
 
@@ -1262,6 +1263,13 @@ def cmd_edit(args) -> int:
     update_state_after_command(
         doc_id, plan.change_info, command="edit",
         quiet=plan.quiet, command_version=command_version,
+    )
+
+    from gdoc.state import record_content_write
+    record_content_write(
+        doc_id, input_revision_id=result_details.get("input_revision_id", ""),
+        acknowledged_revision_id=result_details.get("acknowledged_revision_id", ""),
+        rebased=result_details.get("rebased", False),
     )
 
     return 0
@@ -1609,70 +1617,95 @@ def cmd_write(args) -> int:
     from gdoc.frontmatter import parse_frontmatter
     _, content = parse_frontmatter(content)
 
-    # Conflict detection. Content comparison only applies to full-doc
-    # writes — a tab write's body never equals the whole-doc export.
-    change_info, in_sync = _check_write_conflict(
-        doc_id, quiet, force, body=None if tab_name else content,
+    return _write_native_markdown(
+        args, doc_id, content, command="write", tab_name=tab_name,
     )
-    matched = in_sync or (not tab_name and _doc_matches(
-        doc_id, content, change_info.current_version if change_info else None,
-    ))
-    if matched:
-        return _finish_noop_write(doc_id, change_info, args, quiet,
-                                  command="write", matched_version=matched)
 
+
+def _write_native_markdown(args, doc_id, content, *, command, tab_name=None):
+    """Share full-content write semantics across CLI, MCP, push and hooks."""
+    from gdoc.api.docs import (
+        flatten_tabs, get_document_with_tabs, get_tab_text,
+        insert_markdown_into_tab, resolve_tab,
+    )
+    from gdoc.api.drive import get_file_version, update_doc_content
     from gdoc.format import format_json, get_output_mode
+    from gdoc.notify import pre_flight
+    from gdoc.state import (
+        record_content_read, record_content_write, require_content_baseline,
+        update_state_after_command,
+    )
+
+    quiet = getattr(args, "quiet", False)
+    collapse = getattr(args, "force_collapse_tabs", False)
+    if collapse and tab_name:
+        raise GdocError("--tab cannot be combined with --force-collapse-tabs", 3)
+    change_info = pre_flight(doc_id, quiet=quiet)
+    _require_doc(doc_id, change_info)
+    expected_version = (change_info.current_version if change_info else None)
+    if expected_version is None:
+        expected_version = get_file_version(doc_id).get("version")
+    document = get_document_with_tabs(doc_id)
+    tabs = flatten_tabs(document.get("tabs", []))
+    if not tabs:
+        raise GdocError("document has no writable tabs", 3)
+    selected = resolve_tab(tabs, tab_name) if tab_name else tabs[0]
+    revision = document.get("revisionId", "")
+    unchanged = (
+        not (collapse and len(tabs) > 1)
+        and _comparable_markdown(get_tab_text(selected, markdown=True))
+        == _comparable_markdown(content)
+    )
     mode = get_output_mode(args)
-
+    if unchanged:
+        record_content_read(doc_id, [selected["id"]], revision)
+        if mode == "json":
+            print(format_json(in_sync=True, tab_id=selected["id"], revision_id=revision))
+        else:
+            print("OK already in sync (selected tab matches; nothing to write)")
+        return 0
+    require_content_baseline(
+        doc_id, [t["id"] for t in tabs] if collapse else [selected["id"]],
+        revision, force=getattr(args, "force", False),
+    )
+    details = {}
     if tab_name:
-        from gdoc.api.docs import get_document_with_tabs, insert_markdown_into_tab
-        from gdoc.api.drive import require_write_version
-
-        document = get_document_with_tabs(doc_id)
-        # Keep this last: the guard read must precede the version check so a
-        # collaborator edit made during the command is refused, not adopted.
-        require_write_version(doc_id, change_info.current_version)
-        result = insert_markdown_into_tab(
-            doc_id, tab_name, content, replace=True,
+        details = insert_markdown_into_tab(
+            doc_id, selected["id"], content, replace=True,
             allow_lossy=getattr(args, "allow_lossy", False), document=document,
         )
-
-        from gdoc.api.drive import get_file_version
-        version_data = get_file_version(doc_id)
-        command_version = version_data.get("version")
-
-        _print_tab_write_result(
-            mode, doc_id, result, command_version, verb="wrote",
-        )
+        version = None
     else:
-        document = _check_document_replacement(
-            doc_id, command="write",
+        version = update_doc_content(
+            doc_id, content, expected_version=expected_version, document=document,
             allow_lossy=getattr(args, "allow_lossy", False),
-            force_collapse_tabs=force_collapse,
+            collapse_tabs=collapse, result_details=details,
         )
-        from gdoc.api.drive import update_doc_content
-        command_version = update_doc_content(
-            doc_id, content, expected_version=change_info.current_version,
-            document=document, allow_lossy=getattr(args, "allow_lossy", False),
-        )
-
-        if mode == "json":
-            print(format_json(written=True, version=command_version))
-        elif mode == "plain":
-            print(f"id\t{doc_id}")
-            print("status\tupdated")
-        else:
-            print("OK written")
-
-    # Update state
-    from gdoc.state import update_state_after_command
-
+    acknowledged = details.get("acknowledged_revision_id", "")
     update_state_after_command(
-        doc_id, change_info, command="write",
-        quiet=quiet, command_version=command_version,
-        full_doc_write=False,
+        doc_id, change_info, command=command, quiet=quiet, command_version=version,
     )
-
+    record_content_write(
+        doc_id, input_revision_id=details.get("input_revision_id", revision),
+        acknowledged_revision_id=acknowledged,
+        replaced_tab_ids=[selected["id"]], rebased=details.get("rebased", False),
+    )
+    if mode == "json":
+        result = {
+            "pushed" if command == "push" else "written": True,
+            "tab_id": selected["id"], "tab_title": selected["title"],
+            "revision_id": acknowledged,
+        }
+        if version is not None:
+            result["version"] = version
+        if command == "push":
+            result["file"] = args.file
+        print(format_json(**result))
+    elif mode == "plain":
+        print(f"id\t{doc_id}\ntab_id\t{selected['id']}\nstatus\tupdated")
+    else:
+        verb = "pushed" if command == "push" else "written"
+        print(f"OK {verb} tab {selected['title']!r} ({selected['id']})")
     return 0
 
 
@@ -1805,51 +1838,9 @@ def cmd_push(args) -> int:
 
     doc_id = _resolve_doc_id(metadata["gdoc"])
 
-    # Conflict detection (reuse shared helper)
-    change_info, in_sync = _check_write_conflict(doc_id, quiet, force, body=body)
-    matched = in_sync or _doc_matches(
-        doc_id, body, change_info.current_version if change_info else None,
+    return _write_native_markdown(
+        args, doc_id, body, command="push", tab_name=metadata.get("tab"),
     )
-    if matched:
-        return _finish_noop_write(doc_id, change_info, args, quiet,
-                                  command="push", matched_version=matched)
-
-    document = _check_document_replacement(
-        doc_id, command="push",
-        allow_lossy=getattr(args, "allow_lossy", False),
-        force_collapse_tabs=force_collapse,
-    )
-
-    # Upload body (frontmatter stripped)
-    from gdoc.api.drive import update_doc_content
-
-    command_version = update_doc_content(
-        doc_id, body, expected_version=change_info.current_version,
-        document=document, allow_lossy=getattr(args, "allow_lossy", False),
-    )
-
-    # Output
-    from gdoc.format import format_json, get_output_mode
-
-    mode = get_output_mode(args)
-    if mode == "json":
-        print(format_json(pushed=True, file=file_path, version=command_version))
-    elif mode == "plain":
-        print(f"id\t{doc_id}")
-        print(f"status\tupdated")
-    else:
-        print(f"OK pushed {file_path}")
-
-    # Update state
-    from gdoc.state import update_state_after_command
-
-    update_state_after_command(
-        doc_id, change_info, command="push",
-        quiet=quiet, command_version=command_version,
-        full_doc_write=False,
-    )
-
-    return 0
 
 
 def cmd_sync_hook(args) -> int:

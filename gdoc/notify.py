@@ -273,7 +273,10 @@ def _print_banner(info: ChangeInfo, state) -> None:
         info.new_comments, info.new_replies, info.newly_resolved, info.newly_reopened,
     ))
     if omitted:
-        print(f" {omitted} more comment updates; use `gdoc comments` for details", file=sys.stderr)
+        print(
+            f" {omitted} more comment updates; use `gdoc comments` for details",
+            file=sys.stderr,
+        )
     print("---", file=sys.stderr)
 
 

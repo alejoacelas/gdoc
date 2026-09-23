@@ -358,7 +358,9 @@ class TestCatMaxBytes:
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.docs.get_tab_text", return_value="Hello World, this is long content")
+    @patch(
+        "gdoc.api.docs.get_tab_text", return_value="Hello World, this is long content",
+    )
     def test_max_bytes_truncates(self, _export, _svc, _pf, _update, capsys):
         args = _make_args(max_bytes=5)
         rc = cmd_cat(args)

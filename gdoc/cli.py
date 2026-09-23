@@ -327,8 +327,12 @@ def cmd_cat(args) -> int:
         )
         return 0
 
-    from gdoc.api.docs import flatten_tabs, get_document_with_tabs, get_tab_text
-    from gdoc.api.docs import resolve_tab
+    from gdoc.api.docs import (
+        flatten_tabs,
+        get_document_with_tabs,
+        get_tab_text,
+        resolve_tab,
+    )
     from gdoc.format import format_json, get_output_mode
     from gdoc.state import record_content_read, update_state_after_command
 
@@ -649,10 +653,13 @@ def cmd_insert(args) -> int:
     if not content.strip():
         raise GdocError("input file has no content to insert", exit_code=3)
 
-    from gdoc.notify import pre_flight
     from gdoc.api.docs import (
-        flatten_tabs, get_document_with_tabs, insert_markdown_into_tab, resolve_tab,
+        flatten_tabs,
+        get_document_with_tabs,
+        insert_markdown_into_tab,
+        resolve_tab,
     )
+    from gdoc.notify import pre_flight
     from gdoc.state import record_content_write, require_content_baseline
 
     change_info = pre_flight(doc_id, quiet=quiet)
@@ -664,7 +671,8 @@ def cmd_insert(args) -> int:
     )
 
     result = insert_markdown_into_tab(
-        doc_id, selected["id"], content, position=position, replace=False, document=document,
+        doc_id, selected["id"], content, position=position, replace=False,
+        document=document,
     )
 
     from gdoc.api.drive import get_file_version
@@ -683,7 +691,8 @@ def cmd_insert(args) -> int:
         quiet=quiet, command_version=command_version,
     )
     record_content_write(
-        doc_id, input_revision_id=result.get("input_revision_id", document.get("revisionId", "")),
+        doc_id,
+        input_revision_id=result.get("input_revision_id", document.get("revisionId", "")),
         acknowledged_revision_id=result.get("acknowledged_revision_id", ""),
         rebased=result.get("rebased", False),
     )
@@ -1617,10 +1626,7 @@ def cmd_write(args) -> int:
     import os
 
     doc_id = _resolve_doc_id(args.doc)
-    quiet = getattr(args, "quiet", False)
-    force = getattr(args, "force", False)
     tab_name = getattr(args, "tab", None)
-    force_collapse = getattr(args, "force_collapse_tabs", False)
     file_path = args.file
 
     # Read local file first (fail fast on missing file)
@@ -1645,14 +1651,19 @@ def cmd_write(args) -> int:
 def _write_native_markdown(args, doc_id, content, *, command, tab_name=None):
     """Share full-content write semantics across CLI, MCP, push and hooks."""
     from gdoc.api.docs import (
-        flatten_tabs, get_document_with_tabs, get_tab_text,
-        insert_markdown_into_tab, resolve_tab,
+        flatten_tabs,
+        get_document_with_tabs,
+        get_tab_text,
+        insert_markdown_into_tab,
+        resolve_tab,
     )
     from gdoc.api.drive import get_file_version, update_doc_content
     from gdoc.format import format_json, get_output_mode
     from gdoc.notify import pre_flight
     from gdoc.state import (
-        record_content_read, record_content_write, require_content_baseline,
+        record_content_read,
+        record_content_write,
+        require_content_baseline,
         update_state_after_command,
     )
 
@@ -1680,7 +1691,9 @@ def _write_native_markdown(args, doc_id, content, *, command, tab_name=None):
     if unchanged:
         record_content_read(doc_id, [selected["id"]], revision)
         if mode == "json":
-            print(format_json(in_sync=True, tab_id=selected["id"], revision_id=revision))
+            print(format_json(
+                in_sync=True, tab_id=selected["id"], revision_id=revision,
+            ))
         else:
             print("OK already in sync (selected tab matches; nothing to write)")
         return 0
@@ -1732,7 +1745,10 @@ def _write_native_markdown(args, doc_id, content, *, command, tab_name=None):
 def _read_native_tab(doc_id: str, tab_name: str | None = None):
     """Return editable Markdown and its exact native snapshot provenance."""
     from gdoc.api.docs import (
-        flatten_tabs, get_document_with_tabs, get_tab_text, resolve_tab,
+        flatten_tabs,
+        get_document_with_tabs,
+        get_tab_text,
+        resolve_tab,
     )
 
     document = get_document_with_tabs(doc_id)
@@ -1844,9 +1860,6 @@ def cmd_push(args) -> int:
     import os
 
     file_path = args.file
-    quiet = getattr(args, "quiet", False)
-    force = getattr(args, "force", False)
-    force_collapse = getattr(args, "force_collapse_tabs", False)
 
     # Read local file (fail fast)
     if not os.path.isfile(file_path):
@@ -1923,7 +1936,8 @@ def cmd_sync_hook(args) -> int:
         try:
             with redirect_stdout(sys.stderr):
                 _write_native_markdown(
-                    hook_args, doc_id, body, command="push", tab_name=metadata.get("tab"),
+                    hook_args, doc_id, body, command="push",
+                    tab_name=metadata.get("tab"),
                 )
         except GdocError as error:
             print(f"SYNC: skipped (replacement safety check: {error})", file=sys.stderr)
@@ -3288,7 +3302,9 @@ def cmd_structure(args) -> int:
             for candidate in candidates:
                 for element in candidate.get("body", {}).get("content", []):
                     paragraph = element.get("paragraph", {})
-                    style = paragraph.get("paragraphStyle", {}).get("namedStyleType", "")
+                    style = paragraph.get("paragraphStyle", {}).get(
+                        "namedStyleType", "",
+                    )
                     text = "".join(
                         run.get("textRun", {}).get("content", "")
                         for run in paragraph.get("elements", [])
@@ -3307,8 +3323,10 @@ def cmd_structure(args) -> int:
                 raise GdocError(f"heading not found: {heading}", 3)
         else:
             candidate = candidates[0]
-            tables = [element for element in candidate.get("body", {}).get("content", [])
-                      if "table" in element]
+            tables = [
+                element for element in candidate.get("body", {}).get("content", [])
+                if "table" in element
+            ]
             if table_index > len(tables):
                 raise GdocError(f"table {table_index} not found", 3)
             matches = [(candidate, tables[table_index - 1])]

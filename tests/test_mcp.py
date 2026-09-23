@@ -718,7 +718,9 @@ def test_mcp_preserves_document_whitespace_from_cli(mocker, body):
 
 @pytest.mark.parametrize("command", ["insert-image", "replace-image"])
 @pytest.mark.parametrize("source", ["/tmp/image.png", "file:///tmp/image.png", "-"])
-def test_image_tools_reject_server_file_sources_before_dispatch(mocker, command, source):
+def test_image_tools_reject_server_file_sources_before_dispatch(
+    mocker, command, source,
+):
     run = mocker.patch("gdoc.cli.run_argv")
     with pytest.raises(ValueError, match="HTTP"):
         mcp.call_command(command, {"doc": "synthetic", "image": source})

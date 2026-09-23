@@ -44,8 +44,8 @@ TOOL_PREFIX = "gdoc_"
 # Subcommands exposed as tools, and whether each one only reads.
 # Anything absent is deliberately not exposed: `auth` needs an interactive
 # browser, `update` mutates the install, `config` is machine-wide, and
-# `pull`/`push`/`export`/`insert-image`/`replace-image` work on local file
-# paths a chat client cannot see.
+# `pull`/`push`/`export` work on local file paths a chat client cannot see.
+# Image tools accept URL sources over MCP.
 EXPOSED_COMMANDS: dict[str, bool] = {
     # read-only
     "ls": True,
@@ -65,6 +65,8 @@ EXPOSED_COMMANDS: dict[str, bool] = {
     "edit": False,
     "suggest": False,
     "insert": False,
+    "insert-image": False,
+    "replace-image": False,
     "write": False,
     "cells": False,
     "add-tab": False,
@@ -325,6 +327,11 @@ def build_tools(
         sub._gdoc_help = help_by_command.get(command, "")
         schema = _schema_for(command, sub)
 
+        if command in ("insert-image", "replace-image"):
+            schema["properties"]["image"]["description"] = (
+                "Publicly retrievable HTTP(S) image URL; host-local paths "
+                "are not accepted over MCP."
+            )
         file_arg = _TEXT_TO_FILE.get(command)
         if file_arg:
             schema["properties"]["text"] = {
@@ -453,6 +460,10 @@ def call_command(
 
     _reject_local_paths(command, arguments)
     _reject_stdin_sentinels(command, arguments)
+    if command in ("insert-image", "replace-image"):
+        source = arguments.get("image")
+        if not isinstance(source, str) or not source.startswith(("https://", "http://")):
+            raise ValueError("image must be an HTTP(S) URL over MCP")
 
     # Schema `required` cannot force a boolean to be true, so guard here:
     # with stdin detached, confirm_destructive() can never prompt.

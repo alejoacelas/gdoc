@@ -3250,6 +3250,14 @@ def cmd_structure(args) -> int:
     fields = getattr(args, "fields", None)
     svm = getattr(args, "suggestions_view_mode", None)
     svm = svm.upper() if svm else None
+    heading = getattr(args, "heading", None)
+    table_index = getattr(args, "table", None)
+    if table_index is not None and table_index < 1:
+        raise GdocError("--table must be positive", exit_code=3)
+    if heading is not None and table_index is not None:
+        raise GdocError("--heading and --table are mutually exclusive", exit_code=3)
+    if fields and (heading is not None or table_index is not None):
+        raise GdocError("--fields cannot be combined with --heading/--table", 3)
 
     from gdoc.notify import pre_flight
 
@@ -3266,21 +3274,58 @@ def cmd_structure(args) -> int:
     if svm and "suggestionsViewMode" not in doc:
         doc = {**doc, "suggestionsViewMode": svm}
 
-    if tab_name:
-        from gdoc.api.docs import resolve_raw_tab
-
+    from gdoc.api.docs import flatten_tabs, resolve_raw_tab, resolve_tab
+    all_flat = flatten_tabs(doc.get("tabs", []))
+    covered_tabs = [item["id"] for item in all_flat]
+    partial = bool(fields or (svm and svm != "SUGGESTIONS_INLINE"))
+    if heading is not None or table_index is not None:
+        if not all_flat:
+            raise GdocError("document has no readable tabs", exit_code=3)
+        candidates = [resolve_tab(all_flat, tab_name)] if tab_name else all_flat
+        matches = []
+        if heading is not None:
+            for candidate in candidates:
+                for element in candidate.get("body", {}).get("content", []):
+                    paragraph = element.get("paragraph", {})
+                    style = paragraph.get("paragraphStyle", {}).get("namedStyleType", "")
+                    text = "".join(
+                        run.get("textRun", {}).get("content", "")
+                        for run in paragraph.get("elements", [])
+                    ).strip()
+                    if style.startswith("HEADING_") and text == heading:
+                        matches.append((candidate, element))
+            if len(matches) > 1:
+                raise GdocError("heading is ambiguous; use --tab to narrow scope", 3)
+            if not matches:
+                raise GdocError(f"heading not found: {heading}", 3)
+        else:
+            candidate = candidates[0]
+            tables = [element for element in candidate.get("body", {}).get("content", [])
+                      if "table" in element]
+            if table_index > len(tables):
+                raise GdocError(f"table {table_index} not found", 3)
+            matches = [(candidate, tables[table_index - 1])]
+        selected, element = matches[0]
+        covered_tabs = [selected["id"]]
+        partial = True
+        out = {
+            "documentId": doc.get("documentId", doc_id),
+            "revisionId": doc.get("revisionId", ""),
+            "tab_id": selected["id"], "content": [element],
+            "scope": {"tab_ids": covered_tabs, "complete": False},
+        }
+    elif tab_name:
         tab = resolve_raw_tab(doc.get("tabs", []), tab_name)
         if tab is None:
             raise GdocError(
                 f"tab not found: {tab_name} "
-                "(with --fields, the mask must keep tabProperties)",
-                exit_code=3,
+                "(with --fields, the mask must keep tabProperties)", exit_code=3,
             )
+        covered_tabs = [item["id"] for item in flatten_tabs([tab])]
         out = {
             "documentId": doc.get("documentId", doc_id),
             "title": doc.get("title", ""),
-            "revisionId": doc.get("revisionId", ""),
-            "tab": tab,
+            "revisionId": doc.get("revisionId", ""), "tab": tab,
         }
         if doc.get("suggestionsViewMode"):
             out["suggestionsViewMode"] = doc["suggestionsViewMode"]
@@ -3300,8 +3345,11 @@ def cmd_structure(args) -> int:
     from gdoc.state import update_state_after_command
 
     update_state_after_command(
-        doc_id, change_info, command="structure", quiet=quiet,
+        doc_id, change_info, command="structure-content", quiet=quiet,
     )
+    if not partial:
+        from gdoc.state import record_content_read
+        record_content_read(doc_id, covered_tabs, doc.get("revisionId", ""))
     return 0
 
 
@@ -4692,6 +4740,13 @@ def build_parser() -> GdocArgumentParser:
     )
     structure_p.add_argument(
         "--quiet", action="store_true", help="Skip pre-flight checks"
+    )
+    structure_target = structure_p.add_mutually_exclusive_group()
+    structure_target.add_argument(
+        "--heading", help="Inspect one exact heading, optionally limited by --tab",
+    )
+    structure_target.add_argument(
+        "--table", type=int, help="Inspect the 1-based table in the selected tab",
     )
     structure_p.set_defaults(func=cmd_structure)
 

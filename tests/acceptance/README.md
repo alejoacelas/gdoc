@@ -3,10 +3,10 @@ MCP `tools/call`. Google service boundaries are replaced, sockets are blocked,
 and per-document state is isolated. No xfails or loss-consent flags hide missing
 core behavior.
 
-The integrated checkpoint passes **89 acceptance tests** and **128 migrated
-write/push/edit tests**. The full suite passes **3,291 tests**; the exact
-historical bindings select **485 passing existing cases**. Scoped lint and the
-no-stubs check pass. These are offline results, not a live fidelity guarantee.
+The final implementation passes **3,337 offline tests** across the full suite.
+The exact historical bindings select **485 passing existing cases**. The
+no-stubs check passes. These are offline results, not a universal live fidelity
+guarantee; the release PR records the bounded live checks separately.
 
 ```sh
 uv sync --extra dev
@@ -30,17 +30,17 @@ HTTP attempts. Live verification is reported separately in the release PR.
 | T01 | Text replay and untouched heading/link/list ranges | No live styled result |
 | T02 | Split, reread and merge by general native rewrite | Limited text application model |
 | T03 | Move section containing prose/list/table, add section, fill styled aligned cells, reread through CLI/MCP | Fixed 2×1 API table scaffold, not general layout simulation |
-| T04 | Apply requests, reread heading/link/emphasis/list/code/quote/rule combination unchanged, then change a phrase and reread | All-feature table-and-image combination fixture still needs final verification |
+| T04 | Apply requests, reread heading/link/emphasis/list/code/quote/rule combination unchanged, then change a phrase and reread | Combined table/image/list/code/quote content also passed live readback |
 | T05 | Apply actual style masks for emphasis and URL removal/retargeting | Backend styles not observed live |
-| T06 | Mixed/empty lists emit native requests; non-1 starts give explicit warning | New starts/restarts use accepted native-1 best effort, not full numbering support |
+| T06 | Mixed/empty lists emit native requests; non-1 starts give explicit warning | Root/nested restarts at 1 and mixed continuation passed live; arbitrary new non-1 starts remain best effort |
 | T07 | Cell text/styles/alignment and table-containing movement readback | Arbitrary row/column transformations not exhaustively simulated |
-| T08 | Code markers, literal backticks, blank code paragraphs, quote/rule identity after changed reconstruction | Offline request application only |
-| T09 | CLI/MCP ID-before-title selection; existing case-ambiguity bindings | No new backend tab probe |
+| T08 | Code markers, literal backticks, blank code paragraphs, quote/rule identity after changed reconstruction | Combined live readback retained code, quote and rule semantics |
+| T09 | CLI/MCP ID-before-title selection; existing case-ambiguity bindings | Selected-tab live write preserved a rich sibling and its image IDs |
 | T10 | Successive writes; collaborator/lost-response refusal; edit acknowledgment/rebase/missing-ack counterexamples; push state | Service fault injection only |
 | T11 | Same fixture: heading discovery/raw inspection versus direct selector; partial scope; candidate IDs on ambiguity | No agent-driven timing |
 | T12 | Prefix/other-tab/metadata/image-filtered reads cannot authorize unseen replacement; force remains revision-pinned | Offline snapshot provenance |
 | T13 | Local edit beside image/footnote; rich-footnote rebuild refusal | Native object requests and ranges, not live object inspection |
-| T14 | Insert/move/replace/remove image requests; unrelated rewrite refreshes current-snapshot image URI | Retrieval and backend persistence are not established by these mocks |
+| T14 | Insert/move/replace/remove image requests; unrelated rewrite refreshes current-snapshot image URI | Live checks separately established URL insertion, movement and repeated reconstruction; replacement/removal remain offline checks |
 | T15 | Unicode annotation, ambiguity refusal, zero-call invalid occurrence; existing normalized-anchor/fallback/conflict checks | No new backend anchoring guarantee |
 
 `test_readback.py` reuses the existing UTF-16 text and style-mask appliers. Its

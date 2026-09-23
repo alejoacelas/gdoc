@@ -464,7 +464,14 @@ Two verified API gaps have explicit best-effort behavior:
   targeted text edits retain them. The [Docs bullet request](https://developers.google.com/workspace/docs/api/reference/rest/v1/documents/request#CreateParagraphBulletsRequest)
   provides presets but no start-number setter. Drive import does not provide the
   same revision-protected in-place write, and Apps Script list methods do not add
-  a start-number setter.
+  a start-number setter. Restarts at 1 and continuation across prose or mixed
+  bullet/numbered sections are supported. Independently numbered lists of the same
+  style interleaved at the same depth can require a new non-1 start when rebuilt
+  (for example, displayed items `1, 1, 2, 2`); that case also warns and may reset.
+  Docs REST has no list-ID setter. Apps Script offers
+  [setListId](https://developers.google.com/apps-script/reference/document/list-item#setListId(ListItem)),
+  but, like its image setters, requires a separate execution service outside the
+  revision-pinned Docs batch. Targeted text edits preserve existing list identity.
 - Inserted/reconstructed images cannot receive Markdown alt text through the
   [Docs image request](https://developers.google.com/workspace/docs/api/reference/rest/v1/documents/request#InsertInlineImageRequest).
   gdoc warns when alt text cannot be written. Apps Script exposes an
@@ -575,7 +582,7 @@ HTML output has no extra dependencies. Richer artifacts (docx, PDF, …) are del
 
 ## Tabs
 
-Google Docs supports multiple tabs per document. The default `cat` command uses Drive export which only returns the first tab. Use `--tab` or `--all-tabs` to read tab content via the Docs API:
+Google Docs supports multiple tabs per document. The default `cat` command reads the first tab through the native Docs serializer. Use `--tab` to select another editable tab, or `--all-tabs` for combined inspection output:
 
 ```bash
 # List tabs in a document

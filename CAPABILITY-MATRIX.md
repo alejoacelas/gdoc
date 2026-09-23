@@ -2,10 +2,6 @@
 
 The product contract applies equally to CLI and MCP: reliable requested Markdown changes, then agent simplicity, then whole-task completion time. The general route is a complete native Markdown read of a selected tab, modification of that Markdown, and a revision-pinned native replacement of that tab. Targeted edits retain richer neighbors. Default reads identify their first-tab scope; sibling tabs are never implicitly collapsed.
 
-## Integration choice
-
-Modify the existing combined fixes at `90c10f0`, compared with upstream `dbfa4c3`. Retain range/Unicode targeting, single-send transport, revision-pinned staged writes, comment outcomes and meaningful regression tests. Extend representation and remove obsolete core refusal expectations. Selective rebuilding would reassemble those same intertwined safety layers before addressing the missing capabilities. Historical PR packaging does not constrain implementation.
-
 ## Task routes
 
 | Tasks | Route and representation | Required evidence |
@@ -21,16 +17,12 @@ Modify the existing combined fixes at `90c10f0`, compared with upstream `dbfa4c3
 | T14 | Parsed image references and native image operations; refresh existing references against current snapshot. | Insert/replace/move/remove and unrelated rewrite preservation; source limitations explicit. |
 | T15 | Existing single-send comment routes and deterministic normalized matching. | Unicode-space annotation, early invalid-occurrence rejection, ambiguity/conflict outcomes. |
 
-## Ownership and interface contract
+## Shared interfaces
 
-1. Representation owner A owns `mdparse.py`, `lossy.py`, a new `markdown_export.py` if useful, and only the existing exporter helpers `flatten_tabs`, `_list_is_ordered`, `_style_run_markdown`, `_runs_markdown`, `_paragraph_markdown`, `_table_markdown`, `get_tab_text` in `api/docs.py`. Keep existing helper signatures compatible. A owns corresponding parser/export/loss tests.
-2. Native owner B owns other `api/docs.py` mutation/selection helpers and native write operations in `api/drive.py`, plus their tests. Never edit A’s exporter helpers. Coordinator alone owns CLI, MCP, state, notifications, annotation, README and shared wiring. Acceptance owner C owns only `tests/acceptance/` and its synthetic fixtures.
-3. Extend `ParsedMarkdown` additively. Images use `ImageData(plain_text_offset, uri, alt)` entries in `images`, with a single space placeholder in `plain_text`; offsets are Python code points before consumed nesting tabs, converted to UTF-16 at request generation. Add `removed_tabs_before` to image entries for native placement. Native replacement of each placeholder by an image preserves width. External Markdown image references use HTTP(S); exported existing objects may use a documented internal reference resolved only in the current document snapshot. No private image publication.
-4. Extend `TableData` with `alignments: list[str | None]`, default empty for compatibility. Native table owner applies paragraph alignment to cells; exporter writes separator alignment. Cell text remains canonical inline Markdown. Header semantics must not require adding bold to existing unbolded text.
-5. Code/quote/rule identity must survive changed writes. A emits existing `StyleRange` annotations and additive `ParsedMarkdown.code_blocks: list[CodeBlockData(start,end)]` in Python code-point offsets before nesting tabs are consumed. Each range includes complete code paragraphs and their newlines; an empty fence has one empty native paragraph. B creates `gdoc:code:v1` named ranges after adjusting for consumed tabs, inserted tables and the preserved terminal newline. Export uses those ranges to distinguish fenced code from inline monospace text; `flatten_tabs` carries `namedRanges` and `inlineObjects`. Table alignments use Docs values `START`, `CENTER`, `END`, or `None`. Existing image exports use document-scoped `gdoc-image:<object-id>` references resolved against the current snapshot. No general document framework. A must notify coordinator and B before any extra data-model or marker dependency.
-6. Native result dictionaries add `input_revision_id`, `acknowledged_revision_id`, and `rebased`. Never substitute a later sampled Drive version for acknowledged content. B supplies these for general replacement and targeted edits; coordinator advances only previously exposed tab baselines matching the input revision and only without rebasing. A successful full tab replacement establishes that tab’s sent content baseline.
-7. Coordinator stores `read_revision_ids` by tab. Complete native content reads set covered tabs to their snapshot revision; metadata, summaries and truncated reads do not. Writes compare selected-tab baseline with the guard snapshot and send that exact revision as `requiredRevisionId`. Explicit force can authorize a new overwrite snapshot, never an unpinned mutation.
-8. Both interfaces use these shared handlers. MCP materializes inline Markdown temporarily and rejects host-local file references; equivalent image tasks need URL/reference inputs and cannot depend on shell-only commands.
+- Parser offsets are Python code points; native request generation converts them to UTF-16 and accounts for nesting tabs, tables and image placeholders.
+- Code blocks use `gdoc:code:v1` named ranges. Tables carry column alignments. Existing image references resolve against the checked native snapshot; acknowledged insertion replies carry old-to-new image aliases for successive writes.
+- Mutation results carry input and acknowledged revisions and whether rebasing occurred. State advances only content actually exposed or sent at those revisions. A sampled Drive version never substitutes for that acknowledgment.
+- Complete native reads record per-tab revision coverage. Partial output, metadata and summaries do not. Both interfaces invoke the same handlers; MCP accepts URL/image-reference inputs without requiring shell-local paths.
 
 ## Verified boundary
 
@@ -46,3 +38,7 @@ The live combined fixture confirms native code identity, mixed numbering, aligne
 styled tables, image references and identical CLI/MCP reads. Final verification is
 reported with the replacement PR; task timings distinguish offline execution from
 Google latency.
+
+Root and nested restarts at 1, continuation across prose and mixed lists, and literal
+tabs passed a combined live readback. Independent same-style interleaved lists that
+require a new non-1 start remain within the explicit numbering shortfall.

@@ -2,6 +2,13 @@
 
 import pytest
 
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--acceptance-results", help="Write offline task diagnostics as JSON"
+    )
+
+
 DOC_MIME = "application/vnd.google-apps.document"
 
 _AUTH_ENV_VARS = [

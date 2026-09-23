@@ -7,18 +7,26 @@ All notable changes to `gdoc` are documented here. This project follows
 ## [Unreleased]
 
 ### Added
-- `write` and `push` refuse known lossy Markdown replacements before mutation
-  (exit 3). `write --tab` checks only the selected body, so rich siblings and
-  headers/footers cannot block an empty target tab. Whole-document uploads
-  check all tabs and document segments; existing no-op writes remain no-ops.
-  Non-default tab titles and page setup require explicit consent for whole-file
-  imports; known style losses and opted-in structural losses are named.
-  Automatic sync applies the same guard and reports safety-check failures
-  to stderr without uploading.
-- `--allow-lossy` explicitly permits native-content loss, independently of
-  `--force` (conflicts) and `--force-collapse-tabs` (tab flattening).
+
+- Native read–modify–write supports structural Markdown changes through the same
+  CLI and MCP handlers, including code, quotes, aligned tables and images.
+- `write` and `push` refuse identified rich-content loss before mutation.
+  `--allow-lossy` permits that loss independently of revision conflicts and
+  explicit sibling-tab collapse. Supported Markdown needs no loss override.
+
+### Changed
+
+- Default `cat`, `pull` and Markdown `export` use the native first-tab serializer.
+  Use `--tab` for another editable tab or `cat --all-tabs` for inspection.
+- Default `write` and `push` replace the first tab and preserve siblings.
+  `--force-collapse-tabs` explicitly removes siblings through native requests.
+- `insert`, `write` and `push` require complete per-tab content at the exact Docs
+  revision. Metadata/partial reads cannot authorize replacement. Acknowledged
+  writes advance known content; rebased or uncertain writes require a fresh read.
+- `comment --quote` refuses ambiguous matches and reports candidates.
 
 ### Fixed
+
 - Tab replacements reset inherited bullets and direct paragraph/text styles;
   nested list items share a list-creation range and final rules use the retained
   paragraph mark without adding a blank paragraph. `insert --end` applies the

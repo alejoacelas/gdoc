@@ -3,7 +3,7 @@ MCP `tools/call`. Google service boundaries are replaced, sockets are blocked,
 and per-document state is isolated. No xfails or loss-consent flags hide missing
 core behavior.
 
-The final implementation passes **3,337 offline tests** across the full suite.
+The final implementation passes **3,343 offline tests** across the full suite.
 The exact historical bindings select **485 passing existing cases**. The
 no-stubs check passes. These are offline results, not a universal live fidelity
 guarantee; the release PR records the bounded live checks separately.

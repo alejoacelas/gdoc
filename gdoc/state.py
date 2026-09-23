@@ -184,7 +184,8 @@ def record_content_write(
 ) -> None:
     """Carry known content through an acknowledged, revision-pinned write.
 
-    A complete tab replacement also exposes the content sent by the caller.
+    A non-rebased tab replacement exposes the content sent by the caller.
+    Rebased recovery may retain unseen foreign content and cannot advance reads.
     An uncertain write or sampled Drive version supplies no acknowledgement.
     """
     if not isinstance(acknowledged_revision_id, str) or not acknowledged_revision_id:
@@ -202,9 +203,10 @@ def record_content_write(
             for original, current in state.image_reference_ids.items()
         }
         state.image_reference_ids.update(image_reference_ids)
-    for tab_id in replaced_tab_ids or []:
-        if isinstance(tab_id, str) and tab_id:
-            state.read_revision_ids[tab_id] = acknowledged_revision_id
+    if not rebased:
+        for tab_id in replaced_tab_ids or []:
+            if isinstance(tab_id, str) and tab_id:
+                state.read_revision_ids[tab_id] = acknowledged_revision_id
     save_state(doc_id, state)
 
 

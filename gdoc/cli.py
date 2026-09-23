@@ -1664,7 +1664,9 @@ def cmd_write(args) -> int:
     )
 
 
-def _write_native_markdown(args, doc_id, content, *, command, tab_name=None):
+def _write_native_markdown(
+    args, doc_id, content, *, command, tab_name=None, result_details=None,
+):
     """Share full-content write semantics across CLI, MCP, push and hooks."""
     import re
 
@@ -1722,6 +1724,8 @@ def _write_native_markdown(args, doc_id, content, *, command, tab_name=None):
     )
     mode = get_output_mode(args)
     if unchanged:
+        if result_details is not None:
+            result_details.update(acknowledged_revision_id=revision, rebased=False)
         record_content_read(doc_id, [selected["id"]], revision)
         if mode == "json":
             print(format_json(
@@ -1748,6 +1752,8 @@ def _write_native_markdown(args, doc_id, content, *, command, tab_name=None):
             collapse_tabs=collapse, result_details=details,
         )
     acknowledged = details.get("acknowledged_revision_id", "")
+    if result_details is not None:
+        result_details.update(details)
     update_state_after_command(
         doc_id, change_info, command=command, quiet=quiet, command_version=version,
     )
@@ -1972,15 +1978,29 @@ def cmd_sync_hook(args) -> int:
             file=file_path, quiet=True, force=False, force_collapse_tabs=False,
             allow_lossy=False, json=False, verbose=False, plain=False,
         )
+        write_result = {}
         try:
             with redirect_stdout(sys.stderr):
                 _write_native_markdown(
                     hook_args, doc_id, body, command="push",
-                    tab_name=metadata.get("tab"),
+                    tab_name=metadata.get("tab"), result_details=write_result,
                 )
         except GdocError as error:
+            if error.exit_code != 3:
+                raise
             print(f"SYNC: skipped (replacement safety check: {error})", file=sys.stderr)
             return 0
+        acknowledged = write_result.get("acknowledged_revision_id")
+        if acknowledged and not write_result.get("rebased", False):
+            from gdoc.frontmatter import add_frontmatter
+
+            # Do not replace a local edit made while the upload was in flight.
+            with open(file_path, encoding="utf-8") as f:
+                unchanged_file = f.read() == content
+            if unchanged_file:
+                metadata["gdoc-revision"] = acknowledged
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.write(add_frontmatter(body, metadata))
         print(f"SYNC: pushed to {metadata.get('title', doc_id)!r}", file=sys.stderr)
 
     except Exception as e:
@@ -4468,12 +4488,11 @@ def build_parser() -> GdocArgumentParser:
         "write", parents=[output_parent],
         help="Overwrite doc (or one tab) from local file",
         description=(
-            "Upload a markdown file and replace the doc's contents. "
-            "Without --tab, write replaces the entire document and "
-            "collapses any additional tabs into one — use --tab NAME "
-            "for per-tab writes, or `gdoc insert` to add content to an "
-            "existing tab. YAML frontmatter in the input is stripped "
-            "automatically."
+            "Replace one tab's body from a markdown file. Without --tab, "
+            "the first tab is replaced and sibling tabs survive; "
+            "--force-collapse-tabs explicitly removes siblings. Use "
+            "`gdoc insert` to add content to an existing tab. YAML "
+            "frontmatter in the input is stripped automatically."
         ),
     )
     write_p.add_argument("doc", help="Document ID or URL")
@@ -4692,8 +4711,9 @@ def build_parser() -> GdocArgumentParser:
         "export", parents=[output_parent],
         help="Export a doc to PDF, DOCX, HTML, and more",
         description=(
-            "Render a document to a file via Drive export. Exports cover "
-            "the whole document (all tabs). Binary formats (pdf, docx, "
+            "Export a document to a file. Markdown uses the native serializer "
+            "for the first tab; other formats use Drive export. Binary formats "
+            "(pdf, docx, "
             "odt, epub) require --out; text formats print to stdout "
             "without it."
         ),

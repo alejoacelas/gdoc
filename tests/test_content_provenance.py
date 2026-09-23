@@ -46,9 +46,10 @@ def test_rebased_write_does_not_bless_intervening_content():
         'doc', input_revision_id='r1', acknowledged_revision_id='r3',
         replaced_tab_ids=['one'], rebased=True,
     )
-    state.require_content_baseline('doc', ['one'], 'r3')
-    with pytest.raises(GdocError, match='changed since last read'):
-        state.require_content_baseline('doc', ['two'], 'r3')
+    assert state.load_state('doc').read_revision_ids == {'one': 'r1', 'two': 'r1'}
+    for tab in ['one', 'two']:
+        with pytest.raises(GdocError, match='changed since last read'):
+            state.require_content_baseline('doc', [tab], 'r3')
 
 
 def test_uncertain_write_cannot_advance_baseline():

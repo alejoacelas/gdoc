@@ -164,6 +164,8 @@ class TestInsertConflict:
         mock_pf.return_value = ChangeInfo(
             current_version=10, last_read_version=5,
         )
+        from gdoc.state import record_content_read
+        record_content_read("abc123", ["t.todo"], "older")
         args = _make_args(file=str(f), force=True)
         rc = cmd_insert(args)
         assert rc == 0

@@ -176,24 +176,28 @@ class TestSyncHookMultiTabSafety:
         )
 
 
-@pytest.mark.parametrize("scope", [
-    {"body": {"content": [{"paragraph": {"elements": [{"person": {}}]}}]}},
-    # One tab is replaced natively, body only: a rich body still refuses.
-    {"tabs": [{"documentTab": {"body": {"content": [
-        {"paragraph": {"elements": [{"person": {}}]}},
-    ]}}}]},
-])
-def test_sync_refuses_lossy_scope(mocker, tmp_path, capsys, scope):
+def test_sync_refuses_lossy_scope(mocker, tmp_path, capsys):
     f = tmp_path / "spec.md"
     f.write_text("---\ngdoc: abc123\n---\nBody", encoding="utf-8")
-    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value=scope)
-    upload = mocker.patch("gdoc.api.drive.update_doc_content")
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "revisionId": "r1", "tabs": [{
+            "tabProperties": {"tabId": "main", "title": "Main"},
+            "documentTab": {"body": {"content": [
+                {"startIndex": 1, "endIndex": 3, "paragraph": {"elements": [
+                    {"startIndex": 1, "endIndex": 2, "person": {}},
+                    {"startIndex": 2, "endIndex": 3,
+                     "textRun": {"content": "\n"}},
+                ]}},
+            ]}},
+        }],
+    })
+    service = mocker.patch("gdoc.api.docs.get_docs_service")
     state = mocker.patch("gdoc.state.update_state_after_command")
     with patch("sys.stdin", _stdin_json(str(f))):
         assert cmd_sync_hook(_make_args()) == 0
-    upload.assert_not_called()
+    service.return_value.documents.return_value.batchUpdate.assert_not_called()
     state.assert_not_called()
-    assert "SYNC: skipped" in capsys.readouterr().err
+    assert "Markdown replacement refused" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("error", [RuntimeError("offline"), OSError("read failed")])
@@ -223,3 +227,68 @@ def test_sync_uses_one_safety_snapshot(mocker, tmp_path):
         assert cmd_sync_hook(_make_args()) == 0
     fetch.assert_called_once_with("abc123")
     upload.assert_called_once()
+
+
+@pytest.mark.parametrize("exit_code", [1, 2, 3])
+def test_sync_reports_refusals_separately_from_failures(
+    mocker, tmp_path, capsys, exit_code,
+):
+    from gdoc.util import GdocError
+
+    f = tmp_path / "spec.md"
+    original = "---\ngdoc: abc123\ngdoc-revision: r1\n---\nBody"
+    f.write_text(original)
+    mocker.patch(
+        "gdoc.cli._write_native_markdown",
+        side_effect=GdocError("mutation outcome", exit_code),
+    )
+    with patch("sys.stdin", _stdin_json(str(f))):
+        assert cmd_sync_hook(_make_args()) == 0
+    error = capsys.readouterr().err
+    assert ("SYNC: skipped" if exit_code == 3 else "SYNC: failed") in error
+    assert f.read_text() == original
+
+
+@pytest.mark.parametrize("acknowledged,rebased", [("r2", False), ("", False),
+                                                  ("r2", True)])
+def test_sync_file_revision_requires_known_acknowledged_content(
+    mocker, tmp_path, acknowledged, rebased,
+):
+    from gdoc.frontmatter import parse_frontmatter
+
+    f = tmp_path / "spec.md"
+    f.write_text("---\ngdoc: abc123\ngdoc-revision: r1\n---\nNew body")
+
+    def upload(*args, result_details, **kwargs):
+        result_details.update(
+            input_revision_id="r1", acknowledged_revision_id=acknowledged,
+            rebased=rebased,
+        )
+        return 42
+
+    mocker.patch("gdoc.api.drive.update_doc_content", side_effect=upload)
+    mocker.patch("gdoc.state.update_state_after_command")
+    with patch("sys.stdin", _stdin_json(str(f))):
+        assert cmd_sync_hook(_make_args()) == 0
+    metadata, body = parse_frontmatter(f.read_text())
+    assert metadata["gdoc-revision"] == (
+        "r2" if acknowledged and not rebased else "r1"
+    )
+    assert body == "New body"
+
+
+def test_sync_does_not_replace_a_concurrent_local_edit(mocker, tmp_path):
+    f = tmp_path / "spec.md"
+    f.write_text("---\ngdoc: abc123\ngdoc-revision: r1\n---\nNew body")
+    concurrent = "---\ngdoc: abc123\ngdoc-revision: r1\n---\nLater local edit"
+
+    def upload(*args, result_details, **kwargs):
+        f.write_text(concurrent)
+        result_details.update(acknowledged_revision_id="r2", rebased=False)
+        return 42
+
+    mocker.patch("gdoc.api.drive.update_doc_content", side_effect=upload)
+    mocker.patch("gdoc.state.update_state_after_command")
+    with patch("sys.stdin", _stdin_json(str(f))):
+        assert cmd_sync_hook(_make_args()) == 0
+    assert f.read_text() == concurrent

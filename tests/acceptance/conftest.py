@@ -19,12 +19,6 @@ from gdoc.mdparse import utf16_len
 RECORDS = []
 
 
-def pytest_addoption(parser):
-    parser.addoption(
-        "--acceptance-results", help="Write offline task diagnostics as JSON"
-    )
-
-
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item, call):
     report = (yield).get_result()

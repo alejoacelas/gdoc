@@ -296,7 +296,9 @@ def _find_image(masked: str, references: dict):
         if masked[after:after + 1] == "(":
             end = pairs.get(after)
             if end is not None and end > after + 1:
-                match = re.compile(r"!\[([\s\S]*)\]\(([\s\S]*)\)").match(
+                width = close - opener.end()
+                match = re.compile(r"!\[([\s\S]{" + str(width)
+                                   + r"})\]\(([\s\S]*)\)").match(
                     masked, opener.start(), end + 1,
                 )
                 return match, "image"
@@ -328,6 +330,18 @@ def _scan(
     Returns (plain_text, [StyleRange]) with offsets relative to plain_text.
     """
     references = references or {}
+    # Code is literal even inside emphasis/link labels. Hide its punctuation
+    # from other recognizers so an internal ** cannot close surrounding bold.
+    protected = list(masked)
+    code_end = 0
+    for opener in re.finditer(r"(?<!`)(`+)(?!`)", masked):
+        if opener.start() < code_end:
+            continue
+        code = _CODE_RE.match(text, opener.start())
+        if code:
+            protected[code.start():code.end()] = _MASK * (code.end() - code.start())
+            code_end = code.end()
+    protected = "".join(protected)
     plain_parts: list[str] = []
     styles: list[StyleRange] = []
     offset = 0
@@ -340,13 +354,13 @@ def _scan(
         # just-consumed marker before `pos` and wrongly block a span that abuts
         # it (e.g. the `*b*` in `**a***b*`). Match offsets are relative to the
         # slice, so shift them by `pos`.
-        tail = masked[pos:]
+        tail = protected[pos:]
         best: tuple[re.Match, str] | None = _find_image(tail, references)
         for pat, kind in _INLINE_PATTERNS:
             if kind == "code":
                 m = None
                 raw_tail = text[pos:]
-                for opener in re.finditer(r"(?<!`)(`+)(?!`)", tail):
+                for opener in re.finditer(r"(?<!`)(`+)(?!`)", masked[pos:]):
                     m = pat.match(raw_tail, opener.start())
                     if m is not None:
                         break

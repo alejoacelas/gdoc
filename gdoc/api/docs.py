@@ -404,7 +404,8 @@ def _runs_markdown(elements: list[dict]) -> str:
         content = text_run.get("content", "")
         if content:
             rendered = _style_run_markdown(content, text_run.get("textStyle", {}))
-            if parts and parts[-1][-1:] in ("*", "~", "`") and rendered[:1] in ("*", "~", "`"):
+            if (parts and parts[-1][-1:] in ("*", "~", "`")
+                    and rendered[:1] in ("*", "~", "`")):
                 # Standard Markdown's empty comment separates delimiters without
                 # adding a visible character or merging differently styled runs.
                 parts.append("<!-- -->")
@@ -447,7 +448,9 @@ def _paragraph_markdown(
         if _list_is_ordered(lists, list_id, native_level):
             definition = lists[list_id]["listProperties"]["nestingLevels"][native_level]
             key = (list_id, native_level)
-            ordinal = ordered_counters.get(key, definition.get("startNumber", 1) - 1) + 1
+            ordinal = ordered_counters.get(
+                key, definition.get("startNumber", 1) - 1,
+            ) + 1
             ordered_counters[key] = ordinal
             marker = f"{ordinal}."
         else:
@@ -478,8 +481,7 @@ def _paragraph_markdown(
     if named_style in ("TITLE", "SUBTITLE"):
         return f"<!-- gdoc:{named_style} --> {text}{newline}"
     if level:
-        # lstrip leading spaces/tabs so the "# " prefix can't stack a
-        # widening gap across read->write round-trips.
+        # The parser consumes exactly the one syntactic separator space.
         return "#" * level + " " + text + newline
     # Inline escaping above handles stars, underscores, and code fences. Escape
     # remaining literal block openers only after adding genuine block syntax.
@@ -495,8 +497,8 @@ _TABLE_SEP_CELL_RE = re.compile(r"[\s:]*-{3,}[\s:]*")
 def _table_markdown(table: dict) -> str | None:
     """Export rectangular, unmerged tables; retain the text fallback otherwise.
 
-    Cells with leading or trailing whitespace also keep the text fallback,
-    because the parser strips pipe-delimiter padding from every cell.
+    Numeric entities preserve boundary whitespace separately from delimiter
+    padding; column alignment comes from the first row's paragraphs.
     """
     rows = [row.get("tableCells", []) for row in table.get("tableRows", [])]
     if not rows or not rows[0] or any(len(row) != len(rows[0]) for row in rows):
@@ -554,9 +556,10 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
     (``**bold**``, ``*italic*``, ``~~strike~~``) and ``[links](url)``, so a
     tab's supported text and styles can be reconstructed with ``write --tab``.
     Rectangular, unmerged tables use pipe rows, with the first row as a header
-    and cell newlines as ``<br>``; irregular and nested tables, and tables
-    with whitespace at a cell boundary, keep the text fallback. Table borders,
-    widths and paragraph styles are not represented.
+    and cell newlines as ``<br>``; irregular and nested tables keep the text
+    fallback. Column alignment and boundary whitespace are represented; table
+    borders and widths are richer formatting. Named ``gdoc:code:v1`` ranges
+    retain fenced code identity. Images use document-scoped object references.
 
     Markdown export escapes literal syntax: ``1. Hello`` becomes
     ``1\\. Hello``, and ``_``, ``[``, and ``<`` gain backslashes. It uses

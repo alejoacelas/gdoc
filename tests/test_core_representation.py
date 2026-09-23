@@ -194,3 +194,20 @@ def test_supported_core_styles_and_images_need_no_loss_override(capsys):
     scope['inlineObjects']['picture']['inlineObjectProperties']['embeddedObject'] = {}
     with pytest.raises(Exception, match='embedded objects'):
         check_markdown_replacement(scope, tab_body=True)
+
+
+@pytest.mark.parametrize('literal', ['a**b', 'a~~b', '[x](y)', '![x](y)', '`x`'])
+@pytest.mark.parametrize('style', [
+    {'bold': True}, {'italic': True}, {'bold': True, 'italic': True},
+    {'strikethrough': True}, {'link': {'url': 'https://example.org/a_(b)'}},
+])
+def test_code_punctuation_cannot_close_surrounding_formatting(literal, style):
+    style = {**style, 'weightedFontFamily': {'fontFamily': 'Courier New'}}
+    rendered = _style_run_markdown(literal, style)
+    plain, ranges = parse_inline(rendered)
+    assert plain == literal
+    actual = [{} for _ in plain]
+    for span in ranges:
+        for offset in range(span.start, span.end):
+            actual[offset].update(span.style)
+    assert actual == [style] * len(literal)

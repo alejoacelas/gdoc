@@ -1950,7 +1950,8 @@ def _mixed_list_requests(parsed, insert_index, tab_id):
     for block in blocks:
         first, last = block[0], block[-1]
         root_preset = first.style["bulletPreset"]
-        block_start = insert_index + utf16_len(parsed.plain_text[:first.start]) - removed
+        block_start = (insert_index
+                       + utf16_len(parsed.plain_text[:first.start]) - removed)
         block_end = insert_index + utf16_len(parsed.plain_text[:last.end]) - removed
         requests.append({"createParagraphBullets": {
             "range": span(block_start, block_end),
@@ -2015,7 +2016,9 @@ def _resolve_image_uri(uri, snapshot):
                 "image reference is missing or ambiguous in the current snapshot: "
                 + object_id, exit_code=3,
             )
-        embedded = objects[0].get("inlineObjectProperties", {}).get("embeddedObject", {})
+        embedded = objects[0].get("inlineObjectProperties", {}).get(
+            "embeddedObject", {},
+        )
         image = embedded.get("imageProperties", {})
         uri = image.get("contentUri", "")
     parsed = urlsplit(uri)
@@ -2338,7 +2341,8 @@ def check_tab_body_replacement(tab: dict, *, allow_lossy: bool = False) -> None:
             {"startIndex": body_start, "endIndex": body_end + 1},
         )
     }
-    scope = {**{key: tab[key] for key in ("inlineObjects", "namedRanges") if key in tab},
+    scope = {**{key: tab[key] for key in ("inlineObjects", "namedRanges")
+                if key in tab},
              "body": body, "lists": {
         key: value for key, value in tab.get("lists", {}).items()
         if key in list_ids

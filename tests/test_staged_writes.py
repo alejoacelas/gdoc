@@ -496,26 +496,17 @@ def multi_tab(read):
     read.return_value = document
 
 
-def test_drive_collapse_checks_version_after_upload_preparation(drive_api):
+def test_native_collapse_checks_version_and_pins_each_batch(api, drive_api):
     files, version, read = drive_api
     multi_tab(read)
-    events = []
-
-    def construct(**kwargs):
-        events.append("prepare upload")
-
-        def execute():
-            events.append("upload")
-            return {"version": "11"}
-
-        return SimpleNamespace(execute=execute)
-
-    files.update.side_effect = construct
-    version.side_effect = lambda doc_id: (
-        events.append("version check") or {"version": 10}
-    )
-    assert update_doc_content("synthetic", "New body", expected_version=10) == 11
-    assert events == ["prepare upload", "version check", "upload"]
+    version.side_effect = [{"version": 10}, {"version": 11}]
+    assert update_doc_content("synthetic", "New body", expected_version=10,
+                              collapse_tabs=True) == 11
+    assert [batch["writeControl"] for batch in batches(api)] == [
+        {"requiredRevisionId": "r1"}, {"requiredRevisionId": "r2"},
+    ]
+    assert batches(api)[1]["requests"] == [{"deleteTab": {"tabId": "t2"}}]
+    files.update.assert_not_called()
 
 
 @pytest.mark.parametrize("current", [11, None])
@@ -529,29 +520,29 @@ def test_drive_collapse_refuses_changed_or_missing_version(drive_api, current):
     files.update.return_value.execute.assert_not_called()
 
 
-def test_drive_import_lost_response_is_uncertain_and_not_retried(drive_api):
+def test_native_collapse_lost_response_is_uncertain_and_not_retried(api, drive_api):
     files, _, read = drive_api
     multi_tab(read)
-    applied = []
-
-    def execute():
-        applied.append("New body")
-        raise OSError("response lost")
-
-    files.update.return_value.execute.side_effect = execute
+    api.batchUpdate.return_value.execute.side_effect = [
+        response("r2"), OSError("response lost"),
+    ]
     with pytest.raises(
-        GdocError, match="whole-document import: completion uncertain"
+        GdocError, match="authorized sibling tabs removed: completion uncertain",
     ) as caught:
-        update_doc_content("synthetic", "New body", expected_version=10)
+        update_doc_content("synthetic", "New body", expected_version=10,
+                           collapse_tabs=True)
     assert caught.value.exit_code == 1
-    assert applied == ["New body"]
-    assert files.update.call_count == 1
+    assert "first tab content replaced" in str(caught.value)
+    assert api.batchUpdate.call_count == 2
+    files.update.assert_not_called()
 
 
 def test_native_write_version_read_failure_reports_known_completion(api, drive_api):
     files, version, _ = drive_api
     version.side_effect = [{"version": 10}, OSError("version read failed")]
-    with pytest.raises(GdocError, match="applied: document content replaced") as caught:
+    with pytest.raises(
+        GdocError, match="applied: first tab content replaced",
+    ) as caught:
         update_doc_content("synthetic", "New body", expected_version=10)
     assert caught.value.exit_code == 1
     assert "completion uncertain" not in str(caught.value)
@@ -928,19 +919,12 @@ def test_native_replacement_guards_incoming_list_starts(
         allow_lossy=allow_lossy,
     )
     handler = cmd_push if command == "push" else cmd_write
-    if hazard and not allow_lossy:
-        with pytest.raises(GdocError, match="--allow-lossy") as caught:
-            handler(args)
-        assert caught.value.exit_code == 3
-        assert "numbered list" in str(caught.value)
-        assert "item" in str(caught.value)
-        api.batchUpdate.assert_not_called()
-        update_state.assert_not_called()
-    else:
-        assert handler(args) == 0
-        assert len(batches(api)) == 1
-        err = capsys.readouterr().err
-        assert ("WARN:" in err) is hazard
-        if hazard:
-            assert "numbered list" in err and "reset to 1" in err
+    assert handler(args) == 0
+    assert len(batches(api)) == 1
+    err = capsys.readouterr().err
+    assert ("WARN:" in err) is hazard
+    if hazard:
+        assert "numbered list" in err and "will start at 1" in err
+        assert any("createParagraphBullets" in r for r in batches(api)[0]["requests"])
+    update_state.assert_called_once()
     files.update.assert_not_called()

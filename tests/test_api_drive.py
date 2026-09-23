@@ -243,7 +243,7 @@ class TestGetFileInfo:
             get_file_info("abc")
 
 
-@patch("gdoc.api.drive.get_drive_service")
+@patch("gdoc.api.docs.get_docs_service")
 class TestUpdateDocContent:
     @pytest.fixture(autouse=True)
     def _import_preflight(self, mocker):
@@ -259,33 +259,32 @@ class TestUpdateDocContent:
     def test_success(self, mock_get_service):
         mock_service = MagicMock()
         mock_get_service.return_value = mock_service
-        mock_service.files().update().execute.return_value = {
+        mock_service.documents().batchUpdate().execute.return_value = {
             "version": "42",
         }
 
         result = update_doc_content("abc123", "# Hello")
-        assert result == 42
+        assert result == 1
 
     def test_request_params(self, mock_get_service):
         mock_service = MagicMock()
         mock_get_service.return_value = mock_service
-        mock_service.files().update().execute.return_value = {
+        mock_service.documents().batchUpdate().execute.return_value = {
             "version": "10",
         }
 
         update_doc_content("abc123", "# Hello")
 
-        call_kwargs = mock_service.files().update.call_args
+        call_kwargs = mock_service.documents().batchUpdate.call_args
         assert call_kwargs is not None
         body = call_kwargs.kwargs.get("body", call_kwargs[1].get("body"))
-        assert body["mimeType"] == (
-            "application/vnd.google-apps.document"
-        )
+        assert body["writeControl"] == {"requiredRevisionId": "rev1"}
+        assert any("insertText" in request for request in body["requests"])
 
     def test_http_error_401(self, mock_get_service):
         mock_service = MagicMock()
         mock_get_service.return_value = mock_service
-        mock_service.files().update().execute.side_effect = (
+        mock_service.documents().batchUpdate().execute.side_effect = (
             _make_http_error(401)
         )
 
@@ -295,7 +294,7 @@ class TestUpdateDocContent:
     def test_http_error_403(self, mock_get_service):
         mock_service = MagicMock()
         mock_get_service.return_value = mock_service
-        mock_service.files().update().execute.side_effect = (
+        mock_service.documents().batchUpdate().execute.side_effect = (
             _make_http_error(403, reason="forbidden")
         )
 
@@ -305,7 +304,7 @@ class TestUpdateDocContent:
     def test_http_error_404(self, mock_get_service):
         mock_service = MagicMock()
         mock_get_service.return_value = mock_service
-        mock_service.files().update().execute.side_effect = (
+        mock_service.documents().batchUpdate().execute.side_effect = (
             _make_http_error(404)
         )
 

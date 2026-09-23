@@ -314,3 +314,35 @@ def test_terminal_empty_list_styles_retained_native_mark(mocker):
         "endIndex": 2,
         "tabId": "tab-one",
     }
+
+
+def test_terminal_empty_item_after_worded_item_is_included(mocker):
+    chain = service(mocker)
+    insert_markdown_into_tab(
+        "doc", "Notes", "- words\n- ", replace=True, document=snapshot()
+    )
+    requests = chain.batchUpdate.call_args.kwargs["body"]["requests"]
+    assert next(
+        r["createParagraphBullets"]["range"]
+        for r in requests
+        if "createParagraphBullets" in r
+    ) == {
+        "startIndex": 1,
+        "endIndex": 8,
+        "tabId": "tab-one",
+    }
+
+
+def test_segment_inline_code_space_is_not_an_empty_rendering(mocker):
+    chain = service(mocker)
+    replace_formatted(
+        "doc",
+        [{"startIndex": 1, "endIndex": 2, "segmentId": "header"}],
+        "` `",
+        "before",
+    )
+    requests = chain.batchUpdate.call_args.kwargs["body"]["requests"]
+    assert next(r["insertText"] for r in requests if "insertText" in r) == {
+        "location": {"index": 1, "segmentId": "header"},
+        "text": " ",
+    }

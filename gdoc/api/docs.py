@@ -1953,6 +1953,8 @@ def _mixed_list_requests(parsed, insert_index, tab_id):
         block_start = (insert_index
                        + utf16_len(parsed.plain_text[:first.start]) - removed)
         block_end = insert_index + utf16_len(parsed.plain_text[:last.end]) - removed
+        if last.start == last.end:
+            block_end += 1  # Include a final empty item on the retained mark.
         requests.append({"createParagraphBullets": {
             "range": span(block_start, block_end),
             "bulletPreset": root_preset,
@@ -2717,7 +2719,7 @@ def check_segment_replacement(parsed, markdown: str, matches: list[dict]) -> Non
     plain = parsed.plain_text.removesuffix("\n")
     if (markdown == "\n" or "\n" in plain
             or "\n" in markdown.removesuffix("\n")
-            or (markdown.strip() and not plain.strip())):
+            or (markdown.strip() and not plain)):
         raise GdocError(
             "headers, footers, and footnotes support only plain or inline "
             "Markdown replacements", exit_code=3,

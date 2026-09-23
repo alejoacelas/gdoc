@@ -145,3 +145,31 @@ def test_code_span_ending_backslash_does_not_hide_image():
     parsed = parse_markdown('`path\\` ![drawing](https://example.org/d.png)\n')
     assert parsed.plain_text == 'path\\  \n'
     assert parsed.images[0].alt == 'drawing'
+
+
+def test_list_ids_starts_and_resumption_remain_distinct():
+    def item(list_id, level=0):
+        return {'paragraph': {'bullet': {'listId': list_id, 'nestingLevel': level},
+                              'elements': [{'textRun': {'content': 'item\n'}}]}}
+    content = [item('first'), item('second'),
+               {'paragraph': {'elements': [{'textRun': {'content': 'pause\n'}}]}},
+               item('first')]
+    lists = {key: {'listProperties': {'nestingLevels': [{
+        'glyphType': 'DECIMAL', 'startNumber': start,
+    }]}} for key, start in [('first', 4), ('second', 1)]}
+    assert get_tab_text({'body': {'content': content}, 'lists': lists}, True) == (
+        '4. item\n1. item\npause\n5. item\n'
+    )
+
+
+def test_code_pipe_and_literal_entities_in_table_cells():
+    from gdoc.api.docs import _table_markdown
+
+    table = {'tableRows': [{'tableCells': [{'content': [{'paragraph': {'elements': [
+        {'textRun': {'content': 'a|b', 'textStyle': {
+            'weightedFontFamily': {'fontFamily': 'Courier New'},
+        }}}, {'textRun': {'content': ' &#32;\n'}},
+    ]}}]}]}]}
+    rendered = _table_markdown(table)
+    cell = parse_markdown(rendered).tables[0].rows[0][0]
+    assert parse_inline(cell)[0] == 'a|b &#32;'

@@ -354,7 +354,7 @@ def _style_run_markdown(content: str, style: dict) -> str:
     lead = text[: len(text) - len(text.lstrip())]
     trail = text[len(text.rstrip()):]
     core = "".join(
-        "\\" + char if char in "\\`*_[]~<!" else char
+        "\\" + char if char in "\\`*_[]~<!&" else char
         for char in text.strip()
     )
 
@@ -427,16 +427,24 @@ def _paragraph_markdown(
 
     bullet = paragraph.get("bullet")
     if bullet is not None:
-        level = bullet.get("nestingLevel", 0)
-        # A shallower item ends any deeper numbering.
-        for deeper in [lvl for lvl in ordered_counters if lvl > level]:
-            del ordered_counters[deeper]
-        indent = "  " * level  # 2 columns per level (matches the md parser)
-        if _list_is_ordered(lists, bullet.get("listId", ""), level):
-            ordered_counters[level] = ordered_counters.get(level, 0) + 1
-            marker = f"{ordered_counters[level]}."
+        native_level = bullet.get("nestingLevel", 0)
+        level = native_level
+        indent_start = paragraph.get("paragraphStyle", {}).get("indentStart", {})
+        if indent_start.get("unit", "PT") == "PT":
+            level = max(level, round(indent_start.get("magnitude", 0) / 36) - 1)
+        list_id = bullet.get("listId", "")
+        # List IDs carry continuity even across intervening paragraphs/lists.
+        for key in list(ordered_counters):
+            if key[0] == list_id and key[1] > native_level:
+                del ordered_counters[key]
+        indent = "  " * level
+        if _list_is_ordered(lists, list_id, native_level):
+            definition = lists[list_id]["listProperties"]["nestingLevels"][native_level]
+            key = (list_id, native_level)
+            ordinal = ordered_counters.get(key, definition.get("startNumber", 1) - 1) + 1
+            ordered_counters[key] = ordinal
+            marker = f"{ordinal}."
         else:
-            ordered_counters.pop(level, None)
             marker = "-"
         item = text
         named_style = paragraph.get("paragraphStyle", {}).get("namedStyleType", "")
@@ -449,8 +457,7 @@ def _paragraph_markdown(
             item = re.sub(r"^([#>])", r"\\\1", item)
         return f"{indent}{marker} {item}{newline}"
 
-    # Not a list item: numbering restarts at the next list.
-    ordered_counters.clear()
+    # Preserve counters: a later paragraph can resume the same native list.
 
     paragraph_style = paragraph.get("paragraphStyle", {})
     if any("horizontalRule" in e for e in paragraph.get("elements", [])) or (
@@ -507,10 +514,15 @@ def _table_markdown(table: dict) -> str | None:
                 # table; the parser drops the escape again.
                 text = text.replace("-", "\\-", 1)
             rendered = text.replace("|", "\\|").replace("\n", "<br>")
-            if rendered != rendered.strip():
-                # The parser strips delimiter padding, so boundary whitespace
-                # has no lossless pipe-table form.
-                return None
+            # Numeric entities keep meaningful boundary whitespace distinct
+            # from the optional padding around pipe delimiters.
+            lead = len(rendered) - len(rendered.lstrip(" \t"))
+            tail = len(rendered.rstrip(" \t"))
+            rendered = (
+                "".join(f"&#{ord(c)};" for c in rendered[:lead])
+                + rendered[lead:max(lead, tail)]
+                + "".join(f"&#{ord(c)};" for c in rendered[max(lead, tail):])
+            )
             cells.append(rendered)
         grid.append(cells)
     lines = ["| " + " | ".join(cells) + " |\n" for cells in grid]
@@ -606,7 +618,6 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
         active_code = marker
         if marker is not None and "paragraph" in element:
             code_parts.append(_extract_paragraphs_text([element]))
-            ordered_counters.clear()
             continue
         if "paragraph" in element:
             if not markdown:
@@ -616,7 +627,6 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
                 _paragraph_markdown(element["paragraph"], lists, ordered_counters)
             )
         elif "table" in element:
-            ordered_counters.clear()
             table = element["table"]
             rendered = _table_markdown(table) if markdown else None
             if rendered is not None:

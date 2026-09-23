@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import re
 from dataclasses import dataclass, field
 
@@ -92,6 +93,7 @@ _INLINE_PATTERNS = [
     (_STRIKE_RE, "strike"),
     (_CODE_RE, "code"),
     (_LINK_RE, "link"),
+    (re.compile(r"&#(?:[0-9]+|x[0-9a-fA-F]+);|&[a-zA-Z][a-zA-Z0-9]+;"), "entity"),
     (re.compile(r"<img\b[^>]*>", re.IGNORECASE), "html_image"),
     # Exported run boundaries: no visible text, unlike a space or zero-width char.
     (re.compile(r"<!-- -->"), "separator"),
@@ -197,10 +199,10 @@ def _table_cells(line: str) -> list[str]:
     separators = [m.start() for m in re.finditer(r"\|", _mask_escapes(text))]
     boundaries = [-1, *separators, len(text)]
     return [
-        re.sub(
+        _CODE_RE.sub(lambda m: m[0].replace(r"\|", "|"), re.sub(
             r"\\.|<br>", lambda m: "\n" if m[0] == "<br>" else m[0],
             text[start + 1:end].strip(),
-        )
+        ))
         for start, end in zip(boundaries, boundaries[1:])
     ]
 
@@ -376,6 +378,10 @@ def _scan(
                             exit_code=3)
         if kind == "separator":
             pass
+        elif kind == "entity":
+            literal = html.unescape(m[0])
+            plain_parts.append(literal)
+            offset += len(literal)
         elif kind == "code":
             # Code spans are literal (backslashes kept), normalised per
             # CommonMark 6.1: line endings become spaces, and one leading

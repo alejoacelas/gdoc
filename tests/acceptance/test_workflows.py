@@ -115,7 +115,14 @@ def test_t04_combined_roundtrip_preserves_link_heading_list(scenario, changed):
     r = paragraph("Cargo\n", q["endIndex"], bullet={"listId": "l"})
     scenario.document["tabs"][0]["documentTab"]["body"]["content"] = [p, q, r]
     source = read(scenario)
-    write(scenario, source.replace("Original", "Revised") if changed else source)
+    if not changed:
+        scenario.ok("write", tab="draft", text=source)
+        if not scenario.batches:
+            assert read(scenario) == source
+            scenario.record["evidence"] = "unchanged_noop_and_native_snapshot_read"
+            return
+    else:
+        write(scenario, source.replace("Original", "Revised"))
     reqs = requests(scenario)
     inserted = next(r["insertText"]["text"] for r in reqs if "insertText" in r)
     assert (
@@ -387,7 +394,9 @@ def test_t14_image_markdown_route(scenario, operation, markdown):
 
 
 def test_t15_unicode_space_fallback_visible_in_read(scenario, monkeypatch):
-    scenario.export = "Harbor\u00a0cargo\u2009ready\n"
+    scenario.document["tabs"][0]["documentTab"]["body"]["content"] = [
+        paragraph("Harbor\u00a0cargo\u2009ready\n")
+    ]
     comment = {
         "id": "c1",
         "content": "Check manifest",

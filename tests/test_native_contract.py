@@ -1,5 +1,7 @@
 """Synthetic request-level checks for native Markdown replacement."""
 
+import pytest
+
 from gdoc.api.docs import (
     _code_range_requests,
     _strip_trailing_newline_unless_hr,
@@ -346,3 +348,18 @@ def test_segment_inline_code_space_is_not_an_empty_rendering(mocker):
         "location": {"index": 1, "segmentId": "header"},
         "text": " ",
     }
+
+
+@pytest.mark.parametrize(
+    "text", ["# literal", "- literal", "1. literal", "> literal", "---"]
+)
+def test_segment_block_punctuation_is_literal_inline_text(mocker, text):
+    chain = service(mocker)
+    replace_formatted(
+        "doc", [{"startIndex": 1, "endIndex": 4, "segmentId": "header"}], text, "before"
+    )
+    requests = chain.batchUpdate.call_args.kwargs["body"]["requests"]
+    assert next(r["insertText"]["text"] for r in requests if "insertText" in r) == text
+    assert not any(
+        "updateParagraphStyle" in r or "createParagraphBullets" in r for r in requests
+    )

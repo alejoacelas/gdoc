@@ -2681,7 +2681,8 @@ def _contextual_replacement(parsed, markdown: str, match: dict, body: dict):
     whole = match["startIndex"] == start and match["endIndex"] == end
     # A complete paragraph can change its own style explicitly without
     # deleting its native mark or entering the block/cleanup path.
-    if whole and explicit_paragraph and "\n" not in markdown and not parsed.tables:
+    if (whole and explicit_paragraph and "\n" not in markdown
+            and not parsed.tables and not match.get("segmentId")):
         return parsed, []
     return (ParsedMarkdown(plain_text=text, styles=styles),
             _inline_baseline(paragraph, match, text))
@@ -2714,35 +2715,32 @@ def _replacement_order(match: dict) -> tuple:
 
 
 def check_segment_replacement(parsed, markdown: str, matches: list[dict]) -> None:
-    """Non-body replacements support a single plain/inline paragraph only."""
+    """Segments interpret one source line as inline Markdown, including #/- text.
+
+    A header/footer/footnote replacement cannot introduce body blocks. Block
+    punctuation in ordinary wording is literal, so validate paragraph breaks
+    and actual inline objects rather than the body parser's paragraph style.
+    """
     if not any(m.get("segmentId") for m in matches):
         return
-    # Single-line backtick delimiters are literal/inline in a segment,
-    # regardless of the body parser's unclosed-fence interpretation.
-    if "\n" not in markdown and markdown.lstrip().startswith("```"):
-        from gdoc.mdparse import parse_inline
-        parsed.plain_text, parsed.styles = parse_inline(markdown)
-        parsed.code_blocks = []
-    try:
-        check_inline_only_markdown(parsed)
-    except GdocError:
-        raise GdocError(
-            "headers, footers, and footnotes support only plain or inline "
-            "Markdown replacements", exit_code=3,
-        ) from None
-    # A fence needs its own closing line, so a single-line replacement is
-    # inline Markdown: an unmatched backtick string stays literal and a
-    # closed one is a code span. Reject a source newline (paragraph break or
-    # fenced block) and a non-empty line the parser renders to nothing, such
-    # as a fence delimiter pair, which would otherwise empty the segment.
-    plain = parsed.plain_text.removesuffix("\n")
-    if (markdown == "\n" or "\n" in plain
-            or "\n" in markdown.removesuffix("\n")
-            or (markdown.strip() and not plain)):
+    from gdoc.mdparse import parse_inline
+
+    source = markdown.removesuffix("\n")
+    if markdown == "\n" or "\n" in source or "\r" in source:
         raise GdocError(
             "headers, footers, and footnotes support only plain or inline "
             "Markdown replacements", exit_code=3,
         )
+    text, styles = parse_inline(source)
+    if any(style.type == "image" for style in styles):
+        raise GdocError(
+            "inline images in header/footer/footnote edits are not supported",
+            exit_code=3,
+        )
+    if all(m.get("segmentId") for m in matches):
+        parsed.plain_text, parsed.styles = text, styles
+        parsed.code_blocks, parsed.tables, parsed.images = [], [], []
+
 
 
 def _build_replacement_requests(
@@ -2902,7 +2900,8 @@ def replace_formatted(
             preserves native paragraph styles.
 
     Returns:
-        Number of replacements made.
+        Number of replacements made. When provided, result_details receives
+        input_revision_id, acknowledged_revision_id and rebased on success.
     """
     from gdoc.mdparse import parse_markdown, utf16_len
 
@@ -2937,7 +2936,15 @@ def replace_formatted(
             )
         else:
             contextual = body is not None and not (parsed.tables and whole)
-        if body is not None and not new_markdown and not replace_paragraphs:
+        if match.get("segmentId"):
+            from gdoc.mdparse import ParsedMarkdown, parse_inline
+            text, styles = parse_inline(new_markdown.removesuffix("\n"))
+            selected = ParsedMarkdown(text, styles)
+            found = (_replacement_paragraph(body.get("content", []), match)
+                     if body is not None else None)
+            baseline = _inline_baseline(found[0], match, text) if found else None
+            parts = [(match, (selected, baseline))]
+        elif body is not None and not new_markdown and not replace_paragraphs:
             from gdoc.mdparse import ParsedMarkdown
             parts = [
                 (_empty_paragraph_range(body.get("content", []), part) or part,
@@ -3525,9 +3532,9 @@ def suggest_replacement(
         )
 
     parsed = parse_markdown(new_markdown)
+    check_segment_replacement(parsed, new_markdown, matches)
     if body is None:
         check_inline_only_markdown(parsed)
-    check_segment_replacement(parsed, new_markdown, matches)
     _reject_overlapping_matches(matches)
     _strip_trailing_newline_unless_hr(parsed)
     occurrence_count = len(matches)

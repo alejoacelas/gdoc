@@ -14,6 +14,7 @@ from gdoc.api.drive import update_doc_content
 from gdoc.cli import cmd_push, cmd_write, run_argv
 from gdoc.mdparse import utf16_len
 from gdoc.notify import ChangeInfo
+from gdoc.state import DocState, save_state
 from gdoc.util import GdocError
 
 MARKDOWN = "Intro\n| Header |\n|---|\n| Value |"
@@ -408,6 +409,8 @@ def test_cli_prints_partial_completion_and_exits_one(api, mocker, capsys):
 
 @pytest.fixture
 def drive_api(mocker):
+    save_state("synthetic", DocState(last_read_version=10,
+                                      read_revision_ids={"t1": "r1"}))
     service = MagicMock()
     mocker.patch("gdoc.api.drive.get_drive_service", return_value=service)
     version = mocker.patch(
@@ -460,12 +463,13 @@ def test_cli_carries_pre_guard_version_even_when_forced(
         ),
     )
     mocker.patch(
-        "gdoc.state.load_state", return_value=SimpleNamespace(last_read_version=10)
+        "gdoc.state.load_state",
+        return_value=DocState(last_read_version=10, read_revision_ids={"t1": "r1"}),
     )
     update_state = mocker.patch("gdoc.state.update_state_after_command")
     mocker.patch("gdoc.api.docs.count_document_tabs", return_value=1)
     # The collaborator changes content after preflight and before the write.
-    version.side_effect = ([{"version": 10}] if quiet else []) + [{"version": 11}]
+    version.side_effect = [{"version": 11}]
     path = tmp_path / "body.md"
     path.write_text("---\ngdoc: synthetic\n---\nNew body")
     args = SimpleNamespace(
@@ -766,28 +770,29 @@ def tab_write_args(path, **overrides):
 @pytest.mark.parametrize(
     "quiet,force", [(False, False), (False, True), (True, False), (True, True)]
 )
-def test_tab_write_refuses_editor_between_preflight_and_snapshot(
-    api, drive_api, mocker, tmp_path, quiet, force
+def test_tab_write_foreign_snapshot_requires_explicit_force(
+    api, drive_api, mocker, tmp_path, quiet, force,
 ):
-    """A collaborator edit made during the command is refused, not adopted."""
-    _, version, read = drive_api
-    mocker.patch(
-        "gdoc.notify.pre_flight",
-        return_value=ChangeInfo(current_version=10, last_read_version=10),
-    )
-    mocker.patch(
-        "gdoc.state.load_state", return_value=SimpleNamespace(last_read_version=10)
-    )
+    """A new snapshot needs consent; even consent cannot bypass revision pins."""
+    _, _, read = drive_api
+    read.return_value = snapshot("editor", "Foreign words\n")
+    mocker.patch("gdoc.notify.pre_flight", return_value=ChangeInfo(
+        current_version=11, last_read_version=10,
+    ))
     update_state = mocker.patch("gdoc.state.update_state_after_command")
-    version.side_effect = ([{"version": 10}] if quiet else []) + [{"version": 11}]
     path = tmp_path / "body.md"
     path.write_text("New body")
-    with pytest.raises(GdocError, match="document changed") as caught:
-        cmd_write(tab_write_args(path, quiet=quiet, force=force))
-    assert caught.value.exit_code == 3
+    if force:
+        assert cmd_write(tab_write_args(path, quiet=quiet, force=True)) == 0
+        assert batches(api)[0]["writeControl"] == {"requiredRevisionId": "editor"}
+        update_state.assert_called_once()
+    else:
+        with pytest.raises(GdocError, match="changed since last read") as caught:
+            cmd_write(tab_write_args(path, quiet=quiet))
+        assert caught.value.exit_code == 3
+        api.batchUpdate.assert_not_called()
+        update_state.assert_not_called()
     read.assert_called_once_with("synthetic")
-    api.batchUpdate.assert_not_called()
-    update_state.assert_not_called()
 
 
 def test_tab_write_pins_the_guarded_snapshot(api, drive_api, mocker, tmp_path):
@@ -907,10 +912,9 @@ def test_native_replacement_guards_incoming_list_starts(
 ):
     files, _, _ = drive_api
     mocker.patch(
-        "gdoc.cli._check_write_conflict",
-        return_value=(ChangeInfo(current_version=10, last_read_version=10), False),
+        "gdoc.notify.pre_flight",
+        return_value=ChangeInfo(current_version=10, last_read_version=10),
     )
-    mocker.patch("gdoc.cli._doc_matches", return_value=None)
     update_state = mocker.patch("gdoc.state.update_state_after_command")
     path = tmp_path / "body.md"
     path.write_text("---\ngdoc: synthetic\n---\n" + markdown)

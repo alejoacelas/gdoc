@@ -69,7 +69,9 @@ def test_first_docs_snapshot_is_the_only_whole_write_authority(
     mocker.patch("gdoc.notify.pre_flight", return_value=ChangeInfo(
         current_version=10, last_read_version=10))
     mocker.patch.object(drive, "get_file_version", return_value={"version": 10})
-    mocker.patch("gdoc.state.load_state", return_value=DocState(last_read_version=10))
+    mocker.patch("gdoc.state.load_state", return_value=DocState(
+        last_read_version=10, read_revision_ids={"t1": "r1"},
+    ))
     state = mocker.patch("gdoc.state.update_state_after_command")
 
     def execute():
@@ -93,7 +95,8 @@ def test_first_docs_snapshot_is_the_only_whole_write_authority(
 @pytest.mark.parametrize("quiet", [False, True])
 def test_second_write_refuses_unseen_edit_after_first_write(mocker, tmp_path,
                                                            command, quiet):
-    state = DocState(last_read_version=10, last_version=10)
+    state = DocState(last_read_version=10, last_version=10,
+                     read_revision_ids={"t1": "r1"})
     version = 10
     mocker.patch("gdoc.state.load_state", side_effect=lambda _: deepcopy(state))
 
@@ -104,7 +107,6 @@ def test_second_write_refuses_unseen_edit_after_first_write(mocker, tmp_path,
     mocker.patch("gdoc.state.save_state", side_effect=save)
     mocker.patch("gdoc.notify.pre_flight", side_effect=lambda *a, **k: ChangeInfo(
         current_version=version, last_read_version=state.last_read_version))
-    mocker.patch("gdoc.cli._doc_matches", return_value=None)
     mocker.patch.object(drive, "get_file_version", side_effect=lambda _: {
         "version": version,
     })
@@ -125,6 +127,7 @@ def test_second_write_refuses_unseen_edit_after_first_write(mocker, tmp_path,
     assert command(args) == 0
     assert state.last_version == 12
     assert state.last_read_version == 10
+    assert state.read_revision_ids == {"t1": "r2"}
     with pytest.raises(GdocError, match="changed since last read"):
         command(args)
     assert api.batchUpdate.call_count == 1

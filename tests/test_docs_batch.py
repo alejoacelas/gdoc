@@ -679,7 +679,6 @@ def test_segment_edit_exact_batch(mocker):
 
 
 @pytest.mark.parametrize("markdown", [
-    "# Heading", "- Item", "1. Item", "> Quote", "---",
     "| A |\n| --- |\n| B |", "```\ncode\n```", "First\n\nSecond",
 ])
 def test_segment_structural_markdown_rejected_before_batch(mocker, markdown):
@@ -733,10 +732,6 @@ def test_non_body_only_edit_does_not_read_for_cleanup(mocker):
 
 @pytest.mark.parametrize("markdown", [
     "Text\n\n", "\n", "a\nb",
-    # A tilde fence pair on one line renders to nothing; accepting it would
-    # empty the segment instead of replacing the match. (A backtick fence's
-    # info string may not hold backticks, so ```code``` is inline code.)
-    "~~~code~~~",
 ])
 @pytest.mark.parametrize("mode", ["edit", "suggest"])
 def test_non_body_rejects_paragraph_breaks_and_empty_renderings(

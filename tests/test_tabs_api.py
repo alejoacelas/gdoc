@@ -286,15 +286,14 @@ class TestGetTabText:
         ]}}
         assert get_tab_text(tab, markdown=True) == "Body\n"
 
-    def test_heading_markdown_collapses_leading_space(self):
-        # A stored leading space must not stack into "##  Two"; lstrip
-        # keeps the round-trip stable.
+    def test_heading_markdown_preserves_leading_space(self):
+        # Exactly one separator space is syntax; the stored space is content.
         tab = {"body": {"content": [self._heading(" Two\n", "HEADING_2")]}}
-        assert get_tab_text(tab, markdown=True) == "## Two\n"
+        assert get_tab_text(tab, markdown=True) == "##  Two\n"
 
-    def test_heading_markdown_ignores_blank_heading(self):
+    def test_heading_markdown_preserves_blank_heading(self):
         tab = {"body": {"content": [self._heading("\n", "HEADING_1")]}}
-        assert get_tab_text(tab, markdown=True) == "\n"
+        assert get_tab_text(tab, markdown=True) == "# \n"
 
 
 def _run(text, **style):
@@ -373,14 +372,14 @@ class TestGetTabTextListMarkdown:
         ]}}
         assert get_tab_text(tab, markdown=True) == "- top\n  - sub\n"
 
-    def test_ordered_numbering_resets_after_break(self):
+    def test_ordered_numbering_resumes_same_list_after_break(self):
         tab = {"lists": self._ORDERED, "body": {"content": [
             _para(_run("a\n"), bullet={"listId": "L2"}),
             _para(_run("b\n"), bullet={"listId": "L2"}),
-            _para(_run("\n")),  # blank paragraph ends the list
+            _para(_run("\n")),  # same list ID resumes after this paragraph
             _para(_run("a\n"), bullet={"listId": "L2"}),
         ]}}
-        assert get_tab_text(tab, markdown=True) == "1. a\n2. b\n\n1. a\n"
+        assert get_tab_text(tab, markdown=True) == "1. a\n2. b\n\n3. a\n"
 
     def test_nested_ordered_counters_independent(self):
         tab = {"lists": self._ORDERED, "body": {"content": [

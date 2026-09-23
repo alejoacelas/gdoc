@@ -119,7 +119,8 @@ def test_content_styles_still_block_and_warn(capsys, location):
     }})
     paragraph = content["content"][0]["paragraph"]
     paragraph["paragraphStyle"] = {
-        "borderBottom": {}, "spaceAbove": {"magnitude": 6, "unit": "PT"},
+        "borderBottom": {"width": {"magnitude": 1, "unit": "PT"}},
+        "spaceAbove": {"magnitude": 6, "unit": "PT"},
     }
     paragraph["bullet"] = {"listId": "used"}
     scope = {"lists": {"used": {"listProperties": {
@@ -826,3 +827,13 @@ def test_table_cell_named_styles_require_opt_in(mocker, capsys, named_style, row
     service.documents.return_value.batchUpdate.assert_called_once()
     table_insert.assert_called_once()
     assert ("named paragraph styles" in capsys.readouterr().err) == lossy
+
+
+def test_native_zero_width_table_paragraph_border_is_not_a_loss():
+    check_markdown_replacement({"content": [{"paragraph": {
+        "elements": [{"textRun": {"content": "Seven crates\n"}}],
+        "paragraphStyle": {"borderBottom": {
+            "color": {}, "width": {"unit": "PT"},
+            "padding": {"unit": "PT"}, "dashStyle": "SOLID",
+        }},
+    }}]}, tab_body=True)

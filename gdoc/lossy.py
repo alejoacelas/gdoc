@@ -197,10 +197,11 @@ def check_markdown_replacement(
                 ):
                     continue
                 styles.add(label)
-            if "borderBottom" in paragraph_style:
+            border = paragraph_style.get("borderBottom", {})
+            if border.get("width", {}).get("magnitude", 0) > 0:
                 text = "".join(e.get("textRun", {}).get("content", "")
                                for e in value.get("elements", []))
-                if text.removesuffix("\n") or not paragraph_style["borderBottom"]:
+                if text.removesuffix("\n"):
                     hazards.add("border-bottom paragraphs (custom borders are lost)")
             if value.get("listProperties"):
                 levels = value["listProperties"].get("nestingLevels", [])

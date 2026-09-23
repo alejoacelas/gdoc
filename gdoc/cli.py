@@ -1709,6 +1709,20 @@ def _write_native_markdown(args, doc_id, content, *, command, tab_name=None):
     return 0
 
 
+def _read_native_tab(doc_id: str, tab_name: str | None = None):
+    """Return editable Markdown and its exact native snapshot provenance."""
+    from gdoc.api.docs import (
+        flatten_tabs, get_document_with_tabs, get_tab_text, resolve_tab,
+    )
+
+    document = get_document_with_tabs(doc_id)
+    tabs = flatten_tabs(document.get("tabs", []))
+    if not tabs:
+        raise GdocError("document has no readable tabs", exit_code=3)
+    selected = resolve_tab(tabs, tab_name) if tab_name else tabs[0]
+    return get_tab_text(selected, markdown=True), document, selected
+
+
 def cmd_pull(args) -> int:
     """Handler for `gdoc pull`."""
     doc_id = _resolve_doc_id(args.doc)
@@ -1723,9 +1737,10 @@ def cmd_pull(args) -> int:
     _require_doc(doc_id, change_info)
 
     # Export doc (or one past revision) as markdown
-    from gdoc.api.drive import export_doc, get_file_info
+    from gdoc.api.drive import get_file_info
 
     rev = None
+    document = selected = None
     if revision:
         from gdoc.api.revisions import export_revision
 
@@ -1735,7 +1750,9 @@ def cmd_pull(args) -> int:
             export_links=rev.get("exportLinks"),
         )
     else:
-        markdown = export_doc(doc_id, mime_type="text/markdown")
+        markdown, document, selected = _read_native_tab(
+            doc_id, getattr(args, "tab", None),
+        )
     metadata = get_file_info(doc_id)
     title = metadata.get("name", "")
 
@@ -1748,7 +1765,7 @@ def cmd_pull(args) -> int:
     if rev is not None:
         front = {"source": doc_id, "revision": rev["id"], "title": title}
     else:
-        front = {"gdoc": doc_id, "title": title}
+        front = {"gdoc": doc_id, "title": title, "tab": selected["id"]}
     content = add_frontmatter(markdown, front)
 
     try:
@@ -1791,11 +1808,14 @@ def cmd_pull(args) -> int:
 
     update_state_after_command(
         doc_id, change_info,
-        command="pull" if rev is None else "pull-revision",
+        command="pull-content" if rev is None else "pull-revision",
         quiet=quiet,
         command_version=command_version if rev is None else None,
     )
 
+    if document is not None:
+        from gdoc.state import record_content_read
+        record_content_read(doc_id, [selected["id"]], document.get("revisionId", ""))
     return 0
 
 
@@ -1873,41 +1893,22 @@ def cmd_sync_hook(args) -> int:
 
         doc_id = _resolve_doc_id(metadata["gdoc"])
 
-        # Hooks cannot request consent; always fail closed and report a skip.
-        # The version is captured before the guard read so an edit landing
-        # between the two is refused by the write, not adopted.
+        from contextlib import redirect_stdout
+        from types import SimpleNamespace
+
+        hook_args = SimpleNamespace(
+            file=file_path, quiet=True, force=False, force_collapse_tabs=False,
+            allow_lossy=False, json=False, verbose=False, plain=False,
+        )
         try:
-            from gdoc.api.drive import get_file_version
-
-            expected_version = get_file_version(doc_id).get("version")
-            if expected_version is None:
-                raise GdocError("cannot verify document version before writing")
-            document = _check_document_replacement(doc_id, command="sync")
-        except Exception as e:
-            title = metadata.get("title", doc_id)
-            print(f'SYNC: skipped "{title}" (replacement safety check: {e})',
-                  file=sys.stderr)
+            with redirect_stdout(sys.stderr):
+                _write_native_markdown(
+                    hook_args, doc_id, body, command="push", tab_name=metadata.get("tab"),
+                )
+        except GdocError as error:
+            print(f"SYNC: skipped (replacement safety check: {error})", file=sys.stderr)
             return 0
-
-        from gdoc.api.drive import update_doc_content
-
-        command_version = update_doc_content(
-            doc_id, body, expected_version=expected_version, document=document,
-        )
-
-        title = metadata.get("title", doc_id)
-        print(
-            f'SYNC: pushed to "{title}" (v{command_version})',
-            file=sys.stderr,
-        )
-
-        from gdoc.state import update_state_after_command
-
-        update_state_after_command(
-            doc_id, None, command="push",
-            quiet=True, command_version=command_version,
-            full_doc_write=False,
-        )
+        print(f"SYNC: pushed to {metadata.get('title', doc_id)!r}", file=sys.stderr)
 
     except Exception as e:
         # Keep the hook non-blocking, but never hide a failed read or upload.
@@ -1957,34 +1958,15 @@ def cmd_pull_hook(args) -> int:
         if state is not None and state.last_version == current_version:
             return 0  # No remote changes
 
-        # Pull fresh content
-        from gdoc.api.drive import export_doc, get_file_info
+        from contextlib import redirect_stdout
+        from types import SimpleNamespace
 
-        markdown = export_doc(doc_id, mime_type="text/markdown")
-        file_metadata = get_file_info(doc_id)
-        title = file_metadata.get("name", "")
-        version = file_metadata.get("version")
-        if version is not None:
-            version = int(version)
-
-        from gdoc.frontmatter import add_frontmatter
-
-        new_content = add_frontmatter(markdown, {"gdoc": doc_id, "title": title})
-
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(new_content)
-
-        print(
-            f'SYNC: pulled "{title}" (v{version})',
-            file=sys.stderr,
-        )
-
-        from gdoc.state import update_state_after_command
-
-        update_state_after_command(
-            doc_id, None, command="pull",
-            quiet=True, command_version=version,
-        )
+        with redirect_stdout(sys.stderr):
+            cmd_pull(SimpleNamespace(
+                doc=doc_id, file=file_path, tab=metadata.get("tab"), quiet=True,
+                revision=None, json=False, verbose=False, plain=False,
+            ))
+        print(f"SYNC: pulled {metadata.get('title', doc_id)!r}", file=sys.stderr)
 
     except Exception:
         pass  # Never block the agent
@@ -2897,7 +2879,12 @@ def cmd_export(args) -> int:
 
     from gdoc.api.drive import export_doc_bytes
 
-    content = export_doc_bytes(doc_id, _EXPORT_MIME[fmt])
+    document = selected = None
+    if fmt == "md":
+        markdown, document, selected = _read_native_tab(doc_id)
+        content = markdown.encode("utf-8")
+    else:
+        content = export_doc_bytes(doc_id, _EXPORT_MIME[fmt])
 
     if out:
         try:
@@ -2935,8 +2922,11 @@ def cmd_export(args) -> int:
     from gdoc.state import update_state_after_command
 
     update_state_after_command(
-        doc_id, change_info, command="export", quiet=quiet,
+        doc_id, change_info, command="export-content", quiet=quiet,
     )
+    if document is not None:
+        from gdoc.state import record_content_read
+        record_content_read(doc_id, [selected["id"]], document.get("revisionId", ""))
     return 0
 
 
@@ -4465,6 +4455,7 @@ def build_parser() -> GdocArgumentParser:
     pull_p.add_argument(
         "--quiet", action="store_true", help="Skip pre-flight checks"
     )
+    pull_p.add_argument("--tab", help="Read a selected tab (default: first tab)")
     pull_p.set_defaults(func=cmd_pull)
 
     # push

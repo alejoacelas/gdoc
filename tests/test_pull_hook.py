@@ -3,7 +3,9 @@
 import io
 import json
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import ANY, patch
+
+import pytest
 
 from gdoc.cli import cmd_pull_hook
 
@@ -24,7 +26,7 @@ class TestPullHookBasic:
         "gdoc.api.drive.get_file_info",
         return_value={"name": "My Doc", "version": "55"},
     )
-    @patch("gdoc.api.drive.export_doc", return_value="# Fresh content\n")
+    @patch("gdoc.api.docs.get_tab_text", return_value="# Fresh content\n")
     @patch("gdoc.api.drive.get_file_version", return_value={"version": 55})
     @patch("gdoc.state.load_state")
     def test_pull_on_version_mismatch(
@@ -42,7 +44,7 @@ class TestPullHookBasic:
             rc = cmd_pull_hook(args)
 
         assert rc == 0
-        mock_export.assert_called_once_with("abc123", mime_type="text/markdown")
+        mock_export.assert_called_once_with(ANY, markdown=True)
         mock_info.assert_called_once_with("abc123")
 
         # File should be overwritten with fresh content + frontmatter
@@ -53,7 +55,7 @@ class TestPullHookBasic:
         err = capsys.readouterr().err
         assert "SYNC:" in err
         assert "My Doc" in err
-        assert "v55" in err
+        assert "pulled" in err
 
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.api.drive.get_drive_service")
@@ -61,7 +63,7 @@ class TestPullHookBasic:
         "gdoc.api.drive.get_file_info",
         return_value={"name": "My Doc", "version": "55"},
     )
-    @patch("gdoc.api.drive.export_doc", return_value="# Fresh\n")
+    @patch("gdoc.api.docs.get_tab_text", return_value="# Fresh\n")
     @patch("gdoc.api.drive.get_file_version", return_value={"version": 55})
     @patch("gdoc.state.load_state")
     def test_pull_updates_state(
@@ -79,7 +81,7 @@ class TestPullHookBasic:
             cmd_pull_hook(args)
 
         mock_update.assert_called_once_with(
-            "abc123", None, command="pull",
+            "abc123", None, command="pull-content",
             quiet=True, command_version=55,
         )
 
@@ -89,7 +91,7 @@ class TestPullHookBasic:
         "gdoc.api.drive.get_file_info",
         return_value={"name": "Doc", "version": "10"},
     )
-    @patch("gdoc.api.drive.export_doc", return_value="# Content\n")
+    @patch("gdoc.api.docs.get_tab_text", return_value="# Content\n")
     @patch("gdoc.api.drive.get_file_version", return_value={"version": 10})
     @patch("gdoc.state.load_state", return_value=None)
     def test_pull_unconditionally_when_no_state(
@@ -191,3 +193,8 @@ class TestPullHookErrorHandling:
         with patch("sys.stdin", _stdin_json(str(f))):
             rc = cmd_pull_hook(args)
         assert rc == 0
+
+
+@pytest.fixture(autouse=True)
+def _native_snapshot(mocker):
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={"revisionId": "r1", "tabs": [{"tabProperties": {"tabId": "main", "title": "Main"}, "documentTab": {"body": {"content": []}}}]})

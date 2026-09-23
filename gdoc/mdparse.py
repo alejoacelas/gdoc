@@ -92,13 +92,14 @@ _HEADING_RE = re.compile(r"^(#{1,6})\s+(.+)$")
 _NAMED_STYLE_RE = re.compile(r"^<!-- gdoc:(TITLE|SUBTITLE) --> (.*)$")
 
 # List item patterns (capture leading indentation for nesting)
-_BULLET_RE = re.compile(r"^([ \t]*)[-*]\s+(.+)$")
-_NUMBERED_RE = re.compile(r"^([ \t]*)\d+\.\s+(.+)$")
+_BULLET_RE = re.compile(r"^([ \t]*)[-*+](?:[ \t]+(.*)|$)")
+_NUMBERED_RE = re.compile(r"^([ \t]*)\d+\.(?:[ \t]+(.*)|$)")
 
 # Block patterns
 _BLOCKQUOTE_RE = re.compile(r"^ {0,3}>\s?(.*)$")
 _HR_RE = re.compile(r"^ {0,3}([-*_])[ ]*(?:\1[ ]*){2,}$")
-_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})\s*(\S*)\s*$")
+_FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})[ \t]*(.*)$")
+_FENCE_CLOSE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})[ \t]*$")
 
 
 def _fence_open(line: str) -> re.Match | None:
@@ -193,7 +194,7 @@ def parse_inline(text: str) -> tuple[str, list[StyleRange]]:
     content cannot start a block. Returns (plain_text, style_ranges) with
     offsets relative to plain_text.
     """
-    return _parse_inline(text)
+    return _parse_inline(text.replace("\r\n", "\n").replace("\r", "\n"))
 
 
 def _parse_inline(text: str) -> tuple[str, list[StyleRange]]:
@@ -212,20 +213,21 @@ def _find_link(masked: str) -> re.Match | None:
     Escaped parentheses are already masked, so only unescaped delimiters
     contribute to depth. An unfinished destination is left as literal text.
     """
-    for opener in re.finditer(r"\[[^\]]+\]\(", masked):
-        depth = 1
-        for end in range(opener.end(), len(masked)):
-            char = masked[end]
-            if char == "\n":
-                break
-            if char == "(":
-                depth += 1
-            elif char == ")":
-                depth -= 1
-                if depth == 0:
-                    if end > opener.end():
-                        return _LINK_RE.match(masked, opener.start(), end + 1)
-                    break
+    # Match parentheses once, rather than rescanning the entire remaining input
+    # for every malformed link opener (quadratic on repeated "[x](").
+    closes = {}
+    stack = []
+    for index, char in enumerate(masked):
+        if char == "\n":
+            stack.clear()
+        elif char == "(":
+            stack.append(index)
+        elif char == ")" and stack:
+            closes[stack.pop()] = index
+    for opener in re.finditer(r"\[[^\[\]\n]+\]\(", masked):
+        end = closes.get(opener.end() - 1)
+        if end is not None and end > opener.end():
+            return _LINK_RE.match(masked, opener.start(), end + 1)
     return None
 
 
@@ -354,23 +356,21 @@ def _without_link_destinations(masked: str) -> str:
     an image's own ``[alt](src)`` (preceded by ``!``) is left in place.
     """
     out = list(masked)
-    for opener in re.finditer(r"\[[^\]]+\]\(", masked):
+    stack = []
+    closes = {}
+    for index, char in enumerate(masked):
+        if char == "\n":
+            stack.clear()
+        elif char == "(":
+            stack.append(index)
+        elif char == ")" and stack:
+            closes[stack.pop()] = index
+    for opener in re.finditer(r"\[[^\[\]\n]+\]\(", masked):
         if opener.start() > 0 and masked[opener.start() - 1] == "!":
             continue
-        depth = 1
-        for end in range(opener.end(), len(masked)):
-            char = masked[end]
-            if char == "\n":
-                break
-            if char == "(":
-                depth += 1
-            elif char == ")":
-                depth -= 1
-                if depth == 0:
-                    if end > opener.end():
-                        for i in range(opener.end(), end):
-                            out[i] = " "
-                    break
+        end = closes.get(opener.end() - 1)
+        if end is not None:
+            out[opener.end():end] = " " * (end - opener.end())
     return "".join(out)
 
 
@@ -485,6 +485,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
     if not text:
         return ParsedMarkdown(plain_text="")
 
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
     _check_native_images(text)
     # A terminal LF closes the last paragraph; it is not an extra blank one.
     # Preserve additional LFs, each of which represents a real empty paragraph.
@@ -558,7 +559,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             fence_char = fence[0]
             i += 1
             while i < len(lines):
-                close = _FENCE_RE.match(lines[i])
+                close = _FENCE_CLOSE_RE.match(lines[i])
                 if close:
                     close_fence = close.group(1)
                     if close_fence[0] == fence_char and len(
@@ -671,7 +672,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         # Bullet list item (indent-aware)
         bullet_m = _BULLET_RE.match(line)
         if bullet_m:
-            inline_text, inline_styles = _parse_inline(bullet_m.group(2))
+            inline_text, inline_styles = _parse_inline(bullet_m.group(2) or "")
             emit_paragraph(
                 inline_text, inline_styles,
                 {"namedStyleType": "NORMAL_TEXT"},
@@ -684,7 +685,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         # Numbered list item (indent-aware)
         numbered_m = _NUMBERED_RE.match(line)
         if numbered_m:
-            inline_text, inline_styles = _parse_inline(numbered_m.group(2))
+            inline_text, inline_styles = _parse_inline(numbered_m.group(2) or "")
             emit_paragraph(
                 inline_text, inline_styles,
                 {"namedStyleType": "NORMAL_TEXT"},

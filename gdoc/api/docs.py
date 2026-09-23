@@ -348,14 +348,27 @@ def _style_run_markdown(content: str, style: dict) -> str:
     text = content
     if text.endswith("\n"):
         text, newline = text[:-1], "\n"
-    if not text.strip():
+    if not text.strip() and not style.get("weightedFontFamily"):
         return content
     lead = text[: len(text) - len(text.lstrip())]
     trail = text[len(text.rstrip()):]
     core = "".join(
-        "\\" + char if char in "\\`*_[]~<" else char
+        "\\" + char if char in "\\`*_[]~<!" else char
         for char in text.strip()
     )
+
+    if style.get("weightedFontFamily", {}).get("fontFamily") in (
+        "Courier New", "Consolas", "monospace",
+    ):
+        lead = trail = ""
+        fence = "`" * (1 + max((len(m[0]) for m in re.finditer(r"`+", text)),
+                               default=0))
+        padded = text
+        if text.startswith("`") or text.endswith("`") or (
+            text.startswith(" ") and text.endswith(" ") and text.strip(" ")
+        ):
+            padded = " " + text + " "
+        core = fence + padded + fence
 
     link = (style.get("link") or {}).get("url")
     if style.get("bold") and style.get("italic"):
@@ -384,7 +397,7 @@ def _runs_markdown(elements: list[dict]) -> str:
         content = text_run.get("content", "")
         if content:
             rendered = _style_run_markdown(content, text_run.get("textStyle", {}))
-            if parts and parts[-1][-1:] in ("*", "~") and rendered[:1] in ("*", "~"):
+            if parts and parts[-1][-1:] in ("*", "~", "`") and rendered[:1] in ("*", "~", "`"):
                 # Standard Markdown's empty comment separates delimiters without
                 # adding a visible character or merging differently styled runs.
                 parts.append("<!-- -->")
@@ -406,7 +419,7 @@ def _paragraph_markdown(
         text, newline = text[:-1], "\n"
 
     bullet = paragraph.get("bullet")
-    if bullet is not None and text.strip():
+    if bullet is not None:
         level = bullet.get("nestingLevel", 0)
         # A shallower item ends any deeper numbering.
         for deeper in [lvl for lvl in ordered_counters if lvl > level]:

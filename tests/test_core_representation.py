@@ -260,3 +260,24 @@ def test_image_reference_spelling_inside_link_url_stays_literal():
     plain, styles = parse_inline(cell)
     assert plain == 'site'
     assert styles[0].style == {'link': {'url': 'https://example.org/![x][drawing]'}}
+
+
+def test_mixed_nested_child_does_not_warn_about_parent_numbering(capsys):
+    from gdoc.lossy import check_markdown_replacement
+
+    def item(list_id, indent):
+        return {'paragraph': {
+            'bullet': {'listId': list_id},
+            'paragraphStyle': {'indentStart': {'magnitude': indent, 'unit': 'PT'},
+                               'indentFirstLine': {'magnitude': indent - 18,
+                                                   'unit': 'PT'}},
+            'elements': [{'textRun': {'content': 'item\n'}}],
+        }}
+
+    scope = {'body': {'content': [item('parent', 36), item('child', 72),
+                                  item('parent', 36)]}, 'lists': {
+        'parent': {'listProperties': {'nestingLevels': [{'glyphType': 'DECIMAL'}]}},
+        'child': {'listProperties': {'nestingLevels': [{'glyphSymbol': '●'}]}},
+    }}
+    check_markdown_replacement(scope, tab_body=True)
+    assert capsys.readouterr().err == ''

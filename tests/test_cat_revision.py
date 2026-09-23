@@ -117,6 +117,12 @@ class TestCatRevision:
             cmd_cat(_cat_args(revision="1", tab="Notes"))
         assert exc_info.value.exit_code == 3
 
+    def test_truncated_revision_is_explicit(self, _pf, _list, _export, _update, capsys):
+        cmd_cat(_cat_args(revision="1", max_bytes=3, json=True))
+        captured = capsys.readouterr()
+        assert json.loads(captured.out)["scope"]["truncated"] is True
+        assert "--max-bytes 0" in captured.err
+
     def test_unknown_revision_errors(self, _pf, _list, _export, _update):
         with pytest.raises(GdocError, match="revision not found") as exc_info:
             cmd_cat(_cat_args(revision="999"))

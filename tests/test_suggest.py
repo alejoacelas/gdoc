@@ -1647,9 +1647,9 @@ class TestCmdSuggest:
     def test_conflict_warning_does_not_block(
         self, mock_pf, _doc, _sug, _ver, _state, capsys,
     ):
-        mock_pf.return_value = ChangeInfo(current_version=41, last_read_version=40)
+        mock_pf.return_value = ChangeInfo(current_version=41, last_read_version=40, doc_edited=True)
         assert cmd_suggest(_args()) == 0
-        assert "WARN: doc changed since last read" in capsys.readouterr().err
+        assert "WARN: doc changed since last interaction" in capsys.readouterr().err
 
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.api.drive.get_file_version", return_value=_VERSION)

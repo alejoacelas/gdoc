@@ -310,11 +310,22 @@ def cmd_cat(args) -> int:
         if no_images:
             from gdoc.mdimport import strip_images
             content = strip_images(content)
+        total_bytes = len(content.encode("utf-8"))
+        truncated = max_bytes > 0 and total_bytes > max_bytes
         content = _truncate_bytes(content, max_bytes)
+        if truncated:
+            print(
+                "NOTE: revision output is truncated; "
+                "use --max-bytes 0 for complete content", file=sys.stderr,
+            )
 
         from gdoc.format import format_json, get_output_mode
         if get_output_mode(args) == "json":
-            print(format_json(revision=rev["id"], content=content))
+            print(format_json(
+                revision=rev["id"], content=content,
+                scope={"complete": not (truncated or no_images),
+                       "truncated": truncated, "total_bytes": total_bytes},
+            ))
         else:
             print(content, end="")
 
@@ -1121,8 +1132,11 @@ def _prepare_text_replacement(
     _require_doc(doc_id, change_info)
 
     # Conflict warning (warn but don't block, per spec)
-    if change_info and change_info.has_conflict:
-        print("WARN: doc changed since last read", file=sys.stderr)
+    if change_info and change_info.doc_edited:
+        print(
+            "WARN: doc changed since last interaction; checking the current target",
+            file=sys.stderr,
+        )
 
     # Get document structure + revision ID
     from gdoc.api.docs import (
@@ -1785,6 +1799,9 @@ def cmd_pull(args) -> int:
     quiet = getattr(args, "quiet", False)
     file_path = args.file
     revision = getattr(args, "revision", None)
+
+    if revision and getattr(args, "tab", None):
+        raise GdocError("--revision cannot be combined with --tab", 3)
 
     # Pre-flight awareness check
     from gdoc.notify import pre_flight
@@ -3150,8 +3167,11 @@ def cmd_insert_image(args) -> int:
 
     change_info = pre_flight(doc_id, quiet=quiet)
     _require_doc(doc_id, change_info)
-    if change_info and change_info.has_conflict:
-        print("WARN: doc changed since last read", file=sys.stderr)
+    if change_info and change_info.doc_edited:
+        print(
+            "WARN: doc changed since last interaction; checking the current target",
+            file=sys.stderr,
+        )
 
     from gdoc.api.docs import get_document_with_tabs
 
@@ -3222,8 +3242,11 @@ def cmd_replace_image(args) -> int:
 
     change_info = pre_flight(doc_id, quiet=quiet)
     _require_doc(doc_id, change_info)
-    if change_info and change_info.has_conflict:
-        print("WARN: doc changed since last read", file=sys.stderr)
+    if change_info and change_info.doc_edited:
+        print(
+            "WARN: doc changed since last interaction; checking the current target",
+            file=sys.stderr,
+        )
 
     from gdoc.api.docs import find_object_tab, get_document_with_tabs
 

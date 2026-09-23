@@ -342,13 +342,13 @@ class TestEditConflict:
         _update,
         capsys,
     ):
-        change_info = ChangeInfo(current_version=10, last_read_version=5)
+        change_info = ChangeInfo(current_version=10, last_read_version=5, doc_edited=True)
         mock_pf.return_value = change_info
         args = _make_args()
         rc = cmd_edit(args)
         assert rc == 0
         err = capsys.readouterr().err
-        assert "WARN: doc changed since last read" in err
+        assert "WARN: doc changed since last interaction" in err
 
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.api.drive.get_file_version", return_value=_version_data())
@@ -372,7 +372,7 @@ class TestEditConflict:
         rc = cmd_edit(args)
         assert rc == 0
         err = capsys.readouterr().err
-        assert "WARN: doc changed since last read" not in err
+        assert "WARN: doc changed since last interaction" not in err
 
 
 class TestEditAwareness:
@@ -1045,7 +1045,7 @@ def test_edit_routes_context_and_keeps_conflict_warning(mocker, capsys, route):
     }
     body = root_body if route == "cell" else tab_body
     matches = _multi_match(2) if route == "all" else _single_match()
-    change = ChangeInfo(current_version=2, last_read_version=1)
+    change = ChangeInfo(current_version=2, last_read_version=1, doc_edited=True)
     mocker.patch("gdoc.notify.pre_flight", return_value=change)
     mocker.patch(
         "gdoc.api.docs.get_document",
@@ -1088,7 +1088,7 @@ def test_edit_routes_context_and_keeps_conflict_warning(mocker, capsys, route):
     if route == "cell":
         cell.assert_called_once_with(body, "0,1", col=1, table_index=0, normalize=False)
     captured = capsys.readouterr()
-    assert "WARN: doc changed since last read" in captured.err
+    assert "WARN: doc changed since last interaction" in captured.err
     assert captured.out == (
         "OK replaced 2 occurrences\n"
         if route == "all"

@@ -347,7 +347,7 @@ def cmd_cat(args) -> int:
     from gdoc.format import format_json, get_output_mode
     from gdoc.state import record_content_read, update_state_after_command
 
-    document = get_document_with_tabs(doc_id)
+    document = document if document is not None else get_document_with_tabs(doc_id)
     tabs = flatten_tabs(document.get("tabs", []))
     if not tabs:
         raise GdocError("document has no readable tabs", exit_code=3)
@@ -1776,7 +1776,7 @@ def _write_native_markdown(args, doc_id, content, *, command, tab_name=None):
     return 0
 
 
-def _read_native_tab(doc_id: str, tab_name: str | None = None):
+def _read_native_tab(doc_id: str, tab_name: str | None = None, *, document=None):
     """Return editable Markdown and its exact native snapshot provenance."""
     from gdoc.api.docs import (
         flatten_tabs,
@@ -1825,6 +1825,7 @@ def cmd_pull(args) -> int:
     else:
         markdown, document, selected = _read_native_tab(
             doc_id, getattr(args, "tab", None),
+            document=getattr(args, "_document_snapshot", None),
         )
     metadata = get_file_info(doc_id)
     title = metadata.get("name", "")
@@ -1838,7 +1839,8 @@ def cmd_pull(args) -> int:
     if rev is not None:
         front = {"source": doc_id, "revision": rev["id"], "title": title}
     else:
-        front = {"gdoc": doc_id, "title": title, "tab": selected["id"]}
+        front = {"gdoc": doc_id, "title": title, "tab": selected["id"],
+                 "gdoc-revision": document.get("revisionId", "")}
     content = add_frontmatter(markdown, front)
 
     try:
@@ -2018,16 +2020,12 @@ def cmd_pull_hook(args) -> int:
 
         doc_id = _resolve_doc_id(metadata["gdoc"])
 
-        from gdoc.api.drive import get_file_version
+        from gdoc.api.docs import get_document_with_tabs
 
-        version_data = get_file_version(doc_id)
-        current_version = version_data.get("version")
-
-        from gdoc.state import load_state
-
-        state = load_state(doc_id)
-        if state is not None and state.last_version == current_version:
-            return 0  # No remote changes
+        snapshot = get_document_with_tabs(doc_id)
+        revision = snapshot.get("revisionId", "")
+        if revision and metadata.get("gdoc-revision") == revision:
+            return 0
 
         from contextlib import redirect_stdout
         from types import SimpleNamespace
@@ -2036,11 +2034,12 @@ def cmd_pull_hook(args) -> int:
             cmd_pull(SimpleNamespace(
                 doc=doc_id, file=file_path, tab=metadata.get("tab"), quiet=True,
                 revision=None, json=False, verbose=False, plain=False,
+                _document_snapshot=snapshot,
             ))
         print(f"SYNC: pulled {metadata.get('title', doc_id)!r}", file=sys.stderr)
 
-    except Exception:
-        pass  # Never block the agent
+    except Exception as error:
+        print(f"SYNC: pull failed: {error}", file=sys.stderr)
 
     return 0
 

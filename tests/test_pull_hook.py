@@ -29,13 +29,13 @@ class TestPullHookBasic:
     @patch("gdoc.api.docs.get_tab_text", return_value="# Fresh content\n")
     @patch("gdoc.api.drive.get_file_version", return_value={"version": 55})
     @patch("gdoc.state.load_state")
-    def test_pull_on_version_mismatch(
+    def test_refreshes_stale_file_even_when_global_state_is_current(
         self, mock_load, mock_ver, mock_export, mock_info,
         _drv, mock_update, tmp_path, capsys,
     ):
         from gdoc.state import DocState
 
-        mock_load.return_value = DocState(last_version=50)
+        mock_load.return_value = DocState(last_version=55)
 
         f = tmp_path / "spec.md"
         f.write_text("---\ngdoc: abc123\ntitle: My Doc\n---\n# Old content\n")
@@ -114,7 +114,7 @@ class TestPullHookSkips:
     @patch("gdoc.api.drive.get_drive_service")
     @patch("gdoc.api.drive.get_file_version", return_value={"version": 42})
     @patch("gdoc.state.load_state")
-    def test_skip_when_version_matches(
+    def test_skip_when_file_revision_matches(
         self, mock_load, mock_ver, _drv, tmp_path,
     ):
         from gdoc.state import DocState
@@ -122,14 +122,13 @@ class TestPullHookSkips:
         mock_load.return_value = DocState(last_version=42)
 
         f = tmp_path / "spec.md"
-        f.write_text("---\ngdoc: abc123\ntitle: T\n---\nBody")
+        f.write_text("---\ngdoc: abc123\ngdoc-revision: r1\ntitle: T\n---\nBody")
         args = _make_args()
         with patch("sys.stdin", _stdin_json(str(f))):
             rc = cmd_pull_hook(args)
 
         assert rc == 0
-        # Should NOT have called export_doc (no pull needed)
-        mock_ver.assert_called_once()
+        mock_ver.assert_not_called()
 
     def test_skip_non_md_file(self, tmp_path):
         f = tmp_path / "file.txt"

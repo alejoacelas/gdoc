@@ -1352,6 +1352,11 @@ def _table_cell_requests(cell_indices, table, tab_id):
                                     style.style["uri"], style.style["uri"]),
                                 style.style["alt"])
                       for style in cell_styles if style.type == "image"]
+            image_styles = [style for style in cell_styles if style.type == "image"]
+            for image, style in zip(images, image_styles):
+                image.object_size = getattr(table, "image_sizes", {}).get(
+                    style.style["uri"],
+                )
             text_requests.extend(_image_requests(images, plain, base, tab_id))
             shift += utf16_len(plain)
 
@@ -2016,32 +2021,39 @@ def _mixed_list_requests(parsed, insert_index, tab_id):
 
 
 def _parsed_images(parsed):
-    """Include images returned by parse_inline in contextual edit selections."""
+    """Include contextual inline images and their native size metadata."""
     from gdoc.mdparse import ImageData
 
-    return list(parsed.images) + [ImageData(s.start, s.style["uri"], s.style["alt"])
-                                  for s in parsed.styles if s.type == "image"]
+    images = list(parsed.images)
+    for style in parsed.styles:
+        if style.type == "image":
+            image = ImageData(style.start, style.style["uri"], style.style["alt"])
+            image.object_size = style.style.get("objectSize")
+            images.append(image)
+    return images
+
+
+def _image_reference_properties(uri, snapshot):
+    if not uri.startswith("gdoc-image:"):
+        return {}
+    object_id = uri.removeprefix("gdoc-image:")
+    scopes = flatten_tabs(snapshot["tabs"]) if "tabs" in snapshot else [snapshot]
+    objects = [scope.get("inlineObjects", {}).get(object_id) for scope in scopes]
+    objects = [obj for obj in objects if obj is not None]
+    if len(objects) != 1:
+        raise GdocError(
+            "image reference is missing or ambiguous in the current snapshot: "
+            + object_id, exit_code=3,
+        )
+    return objects[0].get("inlineObjectProperties", {}).get("embeddedObject", {})
 
 
 def _resolve_image_uri(uri, snapshot):
     from urllib.parse import urlsplit
 
     if uri.startswith("gdoc-image:"):
-        object_id = uri.removeprefix("gdoc-image:")
-        scopes = (flatten_tabs(snapshot["tabs"])
-                  if "tabs" in snapshot else [snapshot])
-        objects = [scope.get("inlineObjects", {}).get(object_id) for scope in scopes]
-        objects = [obj for obj in objects if obj is not None]
-        if len(objects) != 1:
-            raise GdocError(
-                "image reference is missing or ambiguous in the current snapshot: "
-                + object_id, exit_code=3,
-            )
-        embedded = objects[0].get("inlineObjectProperties", {}).get(
-            "embeddedObject", {},
-        )
-        image = embedded.get("imageProperties", {})
-        uri = image.get("contentUri", "")
+        embedded = _image_reference_properties(uri, snapshot)
+        uri = embedded.get("imageProperties", {}).get("contentUri", "")
     parsed = urlsplit(uri)
     if parsed.scheme not in ("http", "https") or not parsed.hostname:
         raise GdocError("image source must be an accessible HTTP(S) URL or a current "
@@ -2058,6 +2070,7 @@ def _prepare_image_sources(parsed, snapshot):
     has_alt = any(image.alt for image in _parsed_images(parsed))
     for table in parsed.tables:
         sources = {}
+        sizes = {}
         for row in table.rows:
             for cell in row:
                 _, styles = parse_inline(cell)
@@ -2065,15 +2078,23 @@ def _prepare_image_sources(parsed, snapshot):
                     if style.type == "image":
                         source = style.style["uri"]
                         sources[source] = _resolve_image_uri(source, snapshot)
+                        sizes[source] = _image_reference_properties(
+                            source, snapshot,
+                        ).get("size")
                         if style.style.get("alt"):
                             has_alt = True
         table.image_sources = sources
+        table.image_sizes = sizes
     for image in _parsed_images(parsed):
+        image.object_size = _image_reference_properties(
+            image.uri, snapshot,
+        ).get("size")
         resolved = _resolve_image_uri(image.uri, snapshot)
         image.uri = resolved
         for style in parsed.styles:
             if style.type == "image" and style.start == image.plain_text_offset:
-                style.style = {**style.style, "uri": resolved}
+                style.style = {**style.style, "uri": resolved,
+                               "objectSize": image.object_size}
     if has_alt:
         print("WARN: Google Docs API cannot set image alt text; inserted images "
               "will not retain the Markdown alt description.", file=sys.stderr)
@@ -2090,9 +2111,12 @@ def _image_requests(images, text, insert_index, tab_id):
         location = {"index": index}
         if tab_id:
             target["tabId"] = location["tabId"] = tab_id
+        insertion = {"location": location, "uri": image.uri}
+        if getattr(image, "object_size", None):
+            insertion["objectSize"] = image.object_size
         requests.extend([
             {"deleteContentRange": {"range": target}},
-            {"insertInlineImage": {"location": location, "uri": image.uri}},
+            {"insertInlineImage": insertion},
         ])
     return requests
 

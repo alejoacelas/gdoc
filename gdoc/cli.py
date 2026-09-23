@@ -692,7 +692,9 @@ def cmd_insert(args) -> int:
     )
     record_content_write(
         doc_id,
-        input_revision_id=result.get("input_revision_id", document.get("revisionId", "")),
+        input_revision_id=result.get(
+            "input_revision_id", document.get("revisionId", ""),
+        ),
         acknowledged_revision_id=result.get("acknowledged_revision_id", ""),
         rebased=result.get("rebased", False),
     )
@@ -1667,6 +1669,13 @@ def _write_native_markdown(args, doc_id, content, *, command, tab_name=None):
         update_state_after_command,
     )
 
+    import re
+
+    if len(re.findall(r"^=== Tab: .+ ===$", content, re.MULTILINE)) > 1:
+        raise GdocError(
+            "combined --all-tabs output is an inspection view; read and write "
+            "each tab separately with --tab", 3,
+        )
     quiet = getattr(args, "quiet", False)
     collapse = getattr(args, "force_collapse_tabs", False)
     if collapse and tab_name:

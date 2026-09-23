@@ -39,7 +39,7 @@ def pytest_runtest_makereport(item, call):
 
 
 def pytest_sessionfinish(session, exitstatus):
-    destination = session.config.getoption("--acceptance-results")
+    destination = session.config.getoption("--acceptance-results", default=None)
     if destination:
         Path(destination).write_text(
             json.dumps(
@@ -138,6 +138,18 @@ class Scenario:
         )
         monkeypatch.setattr(drive, "export_doc", lambda *a, **kw: self.export)
         monkeypatch.setattr("gdoc.api.comments.list_comments", lambda *a, **kw: [])
+        self.boundaries = {}
+        from gdoc.api import comments
+
+        for module, name in (
+            (drive, "get_file_version"),
+            (drive, "get_file_info"),
+            (drive, "export_doc"),
+            (comments, "list_comments"),
+        ):
+            boundary = MagicMock(side_effect=getattr(module, name))
+            monkeypatch.setattr(module, name, boundary)
+            self.boundaries[name] = boundary
         self.record = {
             "test": nodeid,
             "interface": interface,
@@ -197,6 +209,7 @@ class Scenario:
                 "edit": ("doc", "old_text", "new_text"),
                 "comment": ("doc", "text"),
                 "images": ("doc",),
+                "toc": ("doc",),
             }[command]
             argv = [command] + [str(prepared.pop(k)) for k in positionals]
             for key, value in prepared.items():
@@ -207,9 +220,14 @@ class Scenario:
                     argv.extend([flag, str(value)])
             out, err = io.StringIO(), io.StringIO()
             with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-                code = cli.run_argv(argv, check_updates=False)
+                try:
+                    code = cli.run_argv(argv, check_updates=False)
+                except SystemExit as exc:
+                    code = exc.code if isinstance(exc.code, int) else 1
             output, error = out.getvalue(), err.getvalue()
             sequence = {"argv": argv}
+            if command == "write":
+                sequence["input_markdown"] = arguments["text"]
         self.record["commands"].append(
             {
                 **sequence,
@@ -227,6 +245,13 @@ class Scenario:
         self.record["docs_api_attempts"] = (
             self.service.documents.return_value.get.return_value.execute.call_count
             + batch_execute.call_count
+        )
+        self.record["mocked_boundary_calls"] = {
+            name: mock.call_count for name, mock in self.boundaries.items()
+        }
+        self.record["command_count"] = len(self.record["commands"])
+        self.record["refusals_or_errors"] = sum(
+            c["exit_code"] != 0 for c in self.record["commands"]
         )
         return code, output, error
 

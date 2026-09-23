@@ -326,7 +326,7 @@ def test_t12_partial_read_cannot_authorize_whole_overwrite(scenario, scope):
         scenario.document["tabs"].append(
             tab("unseen", "Unseen", [paragraph("Private sibling\n")])
         )
-        read(scenario)
+        scenario.ok("cat", tab="unseen", json=True)
     else:
         scenario.ok("structure", fields="documentId,title,revisionId", json=True)
     code, out, err = scenario.call("write", text="Replacement\n")
@@ -373,6 +373,8 @@ def test_t13_local_edit_beside_native_object(scenario, native):
     ],
 )
 def test_t14_image_markdown_route(scenario, operation, markdown):
+    if operation != "insert":
+        existing_image(scenario)
     read(scenario)
     write(scenario, markdown)
     assert any(
@@ -407,6 +409,7 @@ def test_t15_invalid_occurrence_is_local(scenario):
     )
     assert code != 0, out + err
     assert not scenario.service.documents.return_value.get.called
+    assert all(mock.call_count == 0 for mock in scenario.boundaries.values())
     assert not scenario.batches
 
 
@@ -429,3 +432,215 @@ def test_d08_literal_list_whitespace_survives_export():
 
 def test_helper_utf16_unit():
     assert utf16_len("a😀b") == 4
+
+
+def test_t12_prefix_output_explicitly_identifies_partial_content(scenario):
+    output = scenario.ok("cat", max_bytes=8, json=True)
+    assert any(word in output.lower() for word in ("truncat", "partial"))
+
+
+def test_t12_full_read_authorizes_known_tab(scenario):
+    read(scenario)
+    write(scenario, "Known replacement\n")
+
+
+def test_t15_duplicate_quote_refuses_without_comment(scenario):
+    content = [paragraph("Original sentence.\n"), paragraph("Original sentence.\n", 20)]
+    scenario.document["tabs"][0]["documentTab"]["body"]["content"] = content
+    code, output, error = scenario.call(
+        "comment", text="Check manifest", quote="Original sentence."
+    )
+    assert code != 0
+    assert "ambiguous" in (output + error).lower()
+    assert not scenario.batches
+
+
+def test_d02_positional_crlf_matches_file_normalization():
+    from types import SimpleNamespace
+
+    from gdoc.cli import _resolve_replacement_text
+
+    args = SimpleNamespace(old_text="Cargo\r\n", new_text="Freight\r\n")
+    assert _resolve_replacement_text(args, None) == ("Cargo", "Freight")
+
+
+def test_d07_heading_list_semantics_survive_roundtrip():
+    source = paragraph("Cargo\n", style="HEADING_2", bullet={"listId": "l"})
+    parsed = parse_markdown(
+        get_tab_text({"body": {"content": [source]}}, markdown=True)
+    )
+    assert parsed.plain_text == "Cargo\n"
+    assert any(s.type == "bullets" for s in parsed.styles)
+    assert any(s.style.get("namedStyleType") == "HEADING_2" for s in parsed.styles)
+
+
+def test_d13_image_after_backslash_code_span_is_not_literal():
+    # The code span ends before the image: parser and native image planner must agree.
+    parsed = parse_markdown("`path\\` ![Map](https://example.invalid/map.png)")
+    images = getattr(parsed, "images", [])
+    assert len(images) == 1
+    assert images[0].uri == "https://example.invalid/map.png"
+
+
+def test_d15_unmatched_link_openers_have_bounded_parse_time():
+    import time
+
+    from gdoc.mdparse import parse_inline
+
+    text = "[" * 4000
+    started = time.perf_counter()
+    parsed, styles = parse_inline(text)
+    assert time.perf_counter() - started < 2.0
+    assert parsed == text and not styles
+
+
+@pytest.mark.parametrize("replacement", ["# literal marker", "`closed span`"])
+def test_d05_inline_header_replacement_uses_inline_context(scenario, replacement):
+    scenario.document["tabs"][0]["documentTab"]["headers"] = {
+        "header": {"content": [paragraph("Prefix TOKEN suffix\n", 0)]}
+    }
+    scenario.ok("edit", tab="draft", old_text="TOKEN", new_text=replacement)
+    assert scenario.batches
+    assert all(
+        next(iter(r.values()))
+        .get("range", next(iter(r.values())).get("location", {}))
+        .get("segmentId")
+        == "header"
+        for r in requests(scenario)
+    )
+
+
+def existing_image(scenario):
+    before = paragraph("Before\n")
+    image = paragraph("\n", 9)
+    image["startIndex"] = 8
+    image["paragraph"]["elements"].insert(
+        0,
+        {
+            "startIndex": 8,
+            "endIndex": 9,
+            "inlineObjectElement": {"inlineObjectId": "map"},
+        },
+    )
+    native = scenario.document["tabs"][0]["documentTab"]
+    native["body"]["content"] = [before, image, paragraph("After\n", 10)]
+    native["inlineObjects"] = {
+        "map": {
+            "inlineObjectProperties": {
+                "embeddedObject": {
+                    "title": "Map",
+                    "imageProperties": {
+                        "sourceUri": "https://example.invalid/map.png",
+                        "contentUri": "https://example.invalid/temporary-map.png",
+                    },
+                }
+            }
+        }
+    }
+
+
+def test_t14_remove_image_via_explicit_rewrite(scenario):
+    existing_image(scenario)
+    read(scenario)
+    write(scenario, "Before\nAfter\n")
+    assert not any("insertInlineImage" in r for r in requests(scenario))
+    assert any("deleteContentRange" in r for r in requests(scenario))
+    assert (
+        "".join(
+            r["insertText"]["text"] for r in requests(scenario) if "insertText" in r
+        )
+        == "Before\nAfter"
+    )
+
+
+def test_t11_locate_heading_within_long_tab(scenario):
+    content = []
+    index = 1
+    for i in range(400):
+        p = paragraph(f"Archive entry {i}: " + "x" * 120 + "\n", index)
+        content.append(p)
+        index = p["endIndex"]
+    target = paragraph("Departure checklist\n", index, style="HEADING_2")
+    target["paragraph"]["paragraphStyle"]["headingId"] = "h.departure"
+    content.insert(200, target)
+    # Assign monotonic native indices after inserting the target heading.
+    index = 1
+    for p in content:
+        text = p["paragraph"]["elements"][0]["textRun"]["content"]
+        p["startIndex"], p["endIndex"] = index, index + utf16_len(text)
+        p["paragraph"]["elements"][0].update(startIndex=index, endIndex=p["endIndex"])
+        index = p["endIndex"]
+    scenario.document["tabs"][0]["documentTab"]["body"]["content"] = content
+    result = json.loads(scenario.ok("toc", tab="draft", json=True))
+    assert result["headings"] == [
+        {
+            "text": "Departure checklist",
+            "level": 2,
+            "heading_id": "h.departure",
+            "link": "https://docs.google.com/document/d/synthetic/edit?tab=draft#heading=h.departure",
+        }
+    ]
+    raw = json.loads(scenario.ok("structure", tab="draft", json=True))
+    paragraphs = raw["document"]["tab"]["documentTab"]["body"]["content"]
+    assert (
+        paragraphs[200]["paragraph"]["paragraphStyle"]["namedStyleType"] == "HEADING_2"
+    )
+    scenario.record["evidence"] = (
+        "heading_found_and_formatting_inspected_in_public_output"
+    )
+    scenario.record["gap"] = (
+        "toc finds heading in one call; formatting inspection "
+        "still emits whole selected tab"
+    )
+
+
+def test_t11_direct_heading_selector_exposes_partial_scope(scenario):
+    heading = paragraph("Departure checklist\n", style="HEADING_2")
+    other = paragraph("Archive " + "x" * 6000 + "\n", heading["endIndex"])
+    scenario.document["tabs"][0]["documentTab"]["body"]["content"] = [heading, other]
+    output = scenario.ok(
+        "structure", tab="draft", heading="Departure checklist", json=True
+    )
+    result = json.loads(output)["document"]
+    assert result["revisionId"] == "r1"
+    assert result["scope"]["complete"] is False
+    assert "Departure checklist" in output
+    assert "Archive" not in output
+    code, out, err = scenario.call("write", tab="draft", text="Unseen replacement\n")
+    assert code != 0, out + err
+    assert not scenario.batches
+
+
+def test_t11_direct_table_selector_exposes_only_requested_table(scenario):
+    make_table = existing_helper("test_native_targets", "table")
+    first = make_table([["Port\n"], ["East\n"]], 2)
+    between = paragraph("\n", first["endIndex"])
+    second = make_table([["Load\n"], ["Seven\n"]], between["endIndex"])
+    scenario.document["tabs"][0]["documentTab"]["body"]["content"] = [
+        paragraph("\n"),
+        first,
+        between,
+        second,
+        paragraph("\n", second["endIndex"]),
+    ]
+    output = scenario.ok("structure", tab="draft", table=2, json=True)
+    result = json.loads(output)["document"]
+    assert result["revisionId"] == "r1"
+    assert result["scope"]["complete"] is False
+    assert "Seven" in output and "East" not in output
+
+
+def test_t11_heading_collision_across_tabs_requires_selection(scenario):
+    for tab_id in ("draft", "other"):
+        heading = paragraph("Departure checklist\n", style="HEADING_2")
+        if tab_id == "draft":
+            scenario.document["tabs"][0]["documentTab"]["body"]["content"] = [heading]
+        else:
+            scenario.document["tabs"].append(tab(tab_id, "Other", [heading]))
+    code, output, error = scenario.call(
+        "structure", heading="Departure checklist", json=True
+    )
+    assert code != 0
+    assert "ambiguous" in (output + error).lower()
+    assert "draft" in output + error and "other" in output + error
+    assert not scenario.batches

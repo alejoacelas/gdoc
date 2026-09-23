@@ -22,7 +22,12 @@ def _stdin_json(file_path):
 @pytest.fixture(autouse=True)
 def _stub_single_tab(mocker):
     """Use a plain single-tab snapshot unless a test overrides the read."""
-    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={"revisionId": "r1", "tabs": [{"tabProperties": {"tabId": "main", "title": "Main"}, "documentTab": {"body": {"content": []}}}]})
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "revisionId": "r1", "tabs": [{
+            "tabProperties": {"tabId": "main", "title": "Main"},
+            "documentTab": {"body": {"content": []}},
+        }],
+    })
     from gdoc.state import record_content_read
     record_content_read("abc123", ["main"], "r1")
     # The hook pairs its safety snapshot with a version captured first.
@@ -43,7 +48,8 @@ class TestSyncHookBasic:
             rc = cmd_sync_hook(args)
         assert rc == 0
         mock_update_doc.assert_called_once_with(
-            "abc123", "# Hello\n", expected_version=1, document=ANY, allow_lossy=False, collapse_tabs=False, result_details=ANY,
+            "abc123", "# Hello\n", expected_version=1, document=ANY,
+            allow_lossy=False, collapse_tabs=False, result_details=ANY,
         )
         err = capsys.readouterr().err
         assert "SYNC:" in err
@@ -61,7 +67,8 @@ class TestSyncHookBasic:
         with patch("sys.stdin", _stdin_json(str(f))):
             cmd_sync_hook(args)
         mock_update_doc.assert_called_once_with(
-            "abc123", "Body text", expected_version=1, document=ANY, allow_lossy=False, collapse_tabs=False, result_details=ANY,
+            "abc123", "Body text", expected_version=1, document=ANY,
+            allow_lossy=False, collapse_tabs=False, result_details=ANY,
         )
 
     @patch("gdoc.state.update_state_after_command")
@@ -205,7 +212,10 @@ def test_sync_uses_one_safety_snapshot(mocker, tmp_path):
     f = tmp_path / "spec.md"
     f.write_text("---\ngdoc: abc123\n---\nBody", encoding="utf-8")
     fetch = mocker.patch("gdoc.api.docs.get_document_with_tabs", side_effect=[
-        {"revisionId": "r1", "tabs": [{"tabProperties": {"tabId": "main", "title": "Main"}, "documentTab": {"body": {"content": []}}}]}, {"tabs": [{}, {}]},
+        {"revisionId": "r1", "tabs": [{
+            "tabProperties": {"tabId": "main", "title": "Main"},
+            "documentTab": {"body": {"content": []}},
+        }]}, {"tabs": [{}, {}]},
     ])
     upload = mocker.patch("gdoc.api.drive.update_doc_content", return_value=42)
     mocker.patch("gdoc.state.update_state_after_command")

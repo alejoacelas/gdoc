@@ -130,7 +130,7 @@ gdoc edit DOC_ID "old text" "**new bold text**"
 # Same replacement, but as a suggested edit for a human to accept
 gdoc suggest DOC_ID "old text" "new text"
 
-# Overwrite a document from a local file
+# Replace the first tab from a local file
 gdoc write DOC_ID draft.md
 
 # Create a new blank document
@@ -181,7 +181,7 @@ gdoc cat 1aBcDeFg...
 
 | Command | Description |
 |---------|-------------|
-| `cat DOC` | Export document as markdown (or `--plain` for plain text, `--max-bytes N` to truncate) |
+| `cat DOC` | Read the first tab as editable Markdown (`--plain` for text; `--max-bytes N` explicitly marks partial output) |
 | `cat --tab NAME DOC` | Read a specific tab by title or ID |
 | `cat --all-tabs DOC` | Read all tabs with headers |
 | `cat --comments DOC` | Line-numbered content with inline comment annotations |
@@ -192,7 +192,7 @@ gdoc cat 1aBcDeFg...
 | `images DOC` | List images, charts, and drawings (`--download DIR` to save locally) |
 | `find QUERY` | Search files by name or content (`--raw` to pass a full [Drive query](https://developers.google.com/workspace/drive/api/guides/search-files) verbatim) |
 | `drives` | List shared drives |
-| `export DOC --out FILE` | Render to `pdf`, `docx`, `odt`, `epub`, `html`, `md`, `txt`, or `rtf` (format inferred from the extension, or `--format`; all tabs included) |
+| `export DOC --out FILE` | Render to `pdf`, `docx`, `odt`, `epub`, `html`, `md`, `txt`, or `rtf` (format inferred from the extension, or `--format`; Markdown uses the first tab) |
 | `structure DOC` | Native document JSON — styles, tables, tab topology, UTF-16 index ranges (`--tab` to narrow, `--fields` for a raw field mask, `--suggestions-view-mode` to pick the suggestions rendering) |
 
 ### Writing
@@ -202,7 +202,7 @@ gdoc cat 1aBcDeFg...
 | `edit DOC OLD NEW` | Find and replace text with Markdown formatting, including text inside tables (`--all` for all; `--normalize` to match through smart quotes/dashes; `-` reads an argument from stdin) |
 | `edit DOC --cell ADDR NEW` | Replace a table cell by label or `ROW,COL` coordinates (`--col`, `--table`) |
 | `suggest DOC OLD NEW` | Same find-and-replace as `edit`, made as a **suggested edit** the doc's reviewers accept or reject (same `--all`/`--normalize`/`--case-sensitive`/`--tab`/`--old-file`/`--new-file`/`-` flags; inline Markdown only — see below) |
-| `write DOC FILE` | Overwrite document from a local markdown file |
+| `write DOC FILE` | Replace the first tab from Markdown; `--tab NAME` selects another tab and siblings survive |
 | `cells SHEET RANGE` | Write values into a spreadsheet range (`-v VALUE` per cell, `--file rows.csv`, `--stdin` for TSV; `--append` adds rows, `--user-entered` parses formulas/dates) |
 | `new TITLE` | Create a blank document (`--folder` to specify location, `--file` to import markdown with images) |
 | `insert-image DOC IMG` | Insert a local image or public URL (`--after TEXT`, `--index N`, or `--end`; `--tab` for multi-tab docs; `--width`/`--height` in points) |
@@ -345,9 +345,10 @@ How the tools differ from the CLI:
   `diff FILE`/`--out`, `images --download`, …) are not exposed: a chat
   client cannot see the server's filesystem, and hiding them keeps a
   prompt-injected model from reading or writing files on the host.
-- `auth`, `update`, `config`, `pull`, `push`, `export`, `insert-image`,
-  and `replace-image` are not exposed: they need a browser, change the
-  install, or only work on local paths.
+- `insert-image` and `replace-image` accept HTTP(S) image URLs.
+- `auth`, `update`, `config`, `pull`, `push`, and `export` are not exposed:
+  they need a browser, change the install, or operate on local files.
+  Use `cat` and inline `write` for the same Markdown workflow over MCP.
 - `diff` reporting "differences found" (exit code 1 in the CLI,
   diff-style) is a normal result, not an error.
 
@@ -387,110 +388,110 @@ On subsequent interactions:
 ---
 ```
 
-If nothing changed: `--- no changes ---`
+If nothing changed, no banner is printed. Each comment-update category shows at
+most three previews, with an omitted count and a command for full details.
 
-### Conflict prevention
+### Editable Markdown and revision safety
 
-The `write` command blocks if the document was modified since your last read:
+CLI and MCP share the same handlers and content contract. Read a complete tab,
+modify its Markdown, then replace that tab:
 
 ```bash
-gdoc cat DOC               # establishes a read baseline
-# ... someone else edits the doc ...
-gdoc write DOC draft.md    # ERR: doc changed since last read
-gdoc cat DOC               # re-read to update baseline
-gdoc write DOC draft.md    # OK written
+gdoc cat DOC --max-bytes 0 > draft.md
+# Edit draft.md, including paragraph, list or table structure.
+gdoc write DOC draft.md
+
+# File workflows remember the selected tab in frontmatter.
+gdoc pull DOC draft.md --tab Notes
+gdoc push draft.md
 ```
 
-`--force` allows overwriting changes since your previous read; it still checks
-for changes made during the current command. `--quiet` skips the notification
-preflight, but write and push retain a lightweight version check.
-Whole-document `write` and `push` still perform no-op and lossiness safety checks.
+The default is the first tab. `--tab` accepts an exact ID or a unique title;
+other tabs, headers, footers and page setup survive a body replacement.
+`cat --all-tabs` is an inspection view with tab headers, not a file to write back
+as one tab. `structure --heading "Checklist"` and `structure --table 1 --tab Notes`
+provide detail for a specific element; complete raw structure remains available.
 
-Single-tab `write` and `push` use the Docs API with a revision precondition.
-Table insertion and cell filling each carry their own revision precondition.
-A rejected follow-up gets at most one fresh read and retry, and only when its
-target can be identified unambiguously; otherwise the command reports a conflict
-with exit 1 if any stage already applied, or exit 3 if nothing applied.
-Table-only insertions have no text anchor for this recovery.
+Complete native Markdown reads establish a baseline for the tabs actually read.
+Metadata, truncated output, plain text, annotated comments and structure selectors
+do not establish a full-content baseline. Truncation is reported on stderr and in
+JSON scope metadata; `--max-bytes 0` retrieves complete content. `pull` and Markdown
+`export` use the same native serializer as `cat`.
 
-A later-stage failure reports which stages completed and which did not; a lost
-write response reports uncertain completion. Partial or uncertain writes exit 1;
-a clean revision refusal exits 3. Mutations use a single-send HTTP transport
-and never replay acknowledged or uncertain writes. Inspect
-the document before issuing the command again.
+Writes compare that baseline with the native document revision and pin mutations
+to the checked snapshot. A collaborator edit requires a fresh read. `--force`
+explicitly authorizes replacement from the current snapshot; it never disables the
+revision precondition. `--quiet` only suppresses notifications. A successful write
+uses the revision acknowledged by Google, so successive own writes normally need
+no extra read. Missing acknowledgments or a rebased recovery do not bless unseen
+content. An unchanged selected tab returns `already in sync` without mutation.
 
-Native writes leave the read baseline unchanged: their displayed Drive version
-may include a collaborator's subsequent edit. Read the document again before
-another unforced write. Image syntax (including reference images) and replacement
-of bodies with multiple sections are refused before changing content.
+Table creation and filling are revision-protected stages. Partial or uncertain
+completion exits 1 and reports completed stages; a clean refusal before mutation
+exits 3. Mutations are sent once and uncertain requests are never automatically
+replayed. Inspect the document before retrying. `--force-collapse-tabs` explicitly
+removes sibling tabs after replacing the first tab, using revision-pinned native
+requests; ordinary writes never collapse tabs.
 
-`--force-collapse-tabs` still uses Drive's Markdown import for multiple tabs.
-Drive's upload endpoint exposes no revision/version precondition: a final
-version read immediately before uploading narrows the race but cannot eliminate
-it. Avoid collapsing tabs while collaborators are editing; use `write --tab`
-for revision-protected replacement instead.
+### Supported Markdown
 
-### Markdown replacement safety
+The canonical format supports paragraphs and meaningful blank paragraphs, headings
+1–6, bold/italic/strike/inline code, external links, nested bullet and numbered lists,
+fenced code, quotes, rules, rectangular tables with column alignment, and inline
+images. Use a complete read–modify–write for paragraph splits/merges, section moves,
+and row/column changes. Targeted `edit` preserves unrelated native content and does
+not silently fall back to rewriting a rich tab.
 
-`write` and `push` refuse before mutation (exit 3) when their replacement
-scope contains known native content the Markdown path cannot preserve.
-Use targeted `edit` operations to retain that content, or explicitly accept
-its loss:
+This is a semantic Markdown format, not complete CommonMark/GFM conformance.
+Canonical export may escape punctuation or change fence spelling; code text and
+meaningful whitespace survive. Code blocks use native named ranges to retain their
+identity. Tables do not gain incidental header bold. Nested lists use two spaces per
+level in exports. Syntax highlighting, native object IDs, pagination, custom fonts,
+colors and arbitrary layout are outside the Markdown promise.
+
+Images accept publicly fetchable HTTP(S) URLs. Existing images export as
+`![](gdoc-image:OBJECT_ID)` (with alt text when available). Those references are
+valid only in their source document; each write resolves a fresh image URI from its
+checked snapshot. Moving or rewriting an image may change its native ID. gdoc does
+not publish existing private images. Drawing/chart identity, image crop and layout
+are richer features.
+
+Two verified API gaps have explicit best-effort behavior:
+
+- A reconstructed numbered list starts at 1, even when Markdown asks for another
+  starting value. gdoc warns with the affected list. Native numbering is retained;
+  it is never replaced by plain numbered text. Export reads existing starts, and
+  targeted text edits retain them. The [Docs bullet request](https://developers.google.com/workspace/docs/api/reference/rest/v1/documents/request#CreateParagraphBulletsRequest)
+  provides presets but no start-number setter. Drive import does not provide the
+  same revision-protected in-place write, and Apps Script list methods do not add
+  a start-number setter.
+- Inserted/reconstructed images cannot receive Markdown alt text through the
+  [Docs image request](https://developers.google.com/workspace/docs/api/reference/rest/v1/documents/request#InsertInlineImageRequest).
+  gdoc warns when alt text cannot be written. Apps Script exposes an
+  [alt-description setter](https://developers.google.com/apps-script/reference/document/inline-image#setAltDescription(String)),
+  but requires a separately deployed script and does not join the revision-pinned
+  Docs batch. This release does not introduce that separate execution service.
+
+These are documented shortfalls, not claims of full support.
+
+### Rich-content replacement safety
+
+`write` and `push` inspect the selected body, including table cells, before mutation.
+Ordinary supported Markdown needs no `--allow-lossy`. Chips, footnotes, equations,
+generated contents, pending suggestions, internal native links, complex tables and
+section/layout boundaries may require explicit loss consent. Rich content in
+unmodified sibling tabs or separate document segments does not block a body write.
+Use targeted edits when richer native content should survive.
 
 ```bash
-gdoc write DOC draft.md --allow-lossy
 gdoc write DOC draft.md --tab Notes --allow-lossy
-gdoc push draft.md --allow-lossy
 ```
 
-`write --tab NAME` checks **only the selected tab body**, including its table
-cells. Rich siblings, child tabs, headers, footers, and unreferenced object
-metadata do not block it; an empty body remains writable. Whole-document
-`write` and `push` check the full Docs response, including all nested tabs,
-headers, footers, and footnotes, because Drive replaces the whole document.
-Unchanged single-tab uploads return “already in sync” before the guard, even
-without a conflict or with `--quiet --force`. The comparison preserves
-indentation and blank paragraphs; it ignores CRLF and one terminal newline.
-
-The inventory follows the [Docs document structures](https://developers.google.com/workspace/docs/api/reference/rest/v1/documents)
-and the current `get_tab_text`, `mdparse`, and Drive Markdown paths:
-
-| Detected structure | Why replacement requires consent |
-| --- | --- |
-| People, rich-link, and date chips | Text or ordinary links cannot retain native chip identity and behavior. |
-| Inline images/embedded objects and positioned-object references | Tab Markdown omits these; whole-document Markdown cannot preserve native drawing/chart links and positioning. Image references alone do not establish a safe native-object round-trip. |
-| Footnotes, equations, automatic text, generated tables of contents | Markdown replacement does not recreate their native references or generated behavior. |
-| Section boundaries and custom section layout | Markdown cannot recreate sections, multiple columns, or section layout overrides. A tab’s initial section marker is retained by the API replacement and is excluded from its guard; ordinary default section metadata remains allowed. |
-| Page/column breaks | These native layout boundaries have no supported Markdown equivalent. |
-| Nonempty suggestion fields | Replacement would discard pending review state. |
-| Internal bookmark/heading/tab links | Replacement does not recreate their native targets and IDs. Ordinary URL links are allowed. |
-| Native horizontal-rule elements in tab writes | The tab exporter omits these; the tab writer approximates Markdown rules with paragraph borders instead of native rule elements. |
-| Nested tables or merged cells | A Markdown table cannot express nesting or row/column spans. Ordinary rectangular tables are allowed and export as Markdown pipe tables for reconstruction. |
-| Headers, footers, footnotes in whole uploads | Body Markdown cannot recreate these separate document segments. |
-| Non-default tab titles or page setup in whole uploads | Drive import resets titles to `Tab 1` and page setup to its defaults (US Letter, one-inch body margins, paged mode). Use `write --tab` to retain them, or explicitly accept the named losses with `--allow-lossy`. |
-
-Bold, italic, strikeout, headings, lists, external links, rectangular tables,
-and default section metadata do not trigger the guard. Known style losses
-(such as colour, alignment, paragraph spacing or list glyphs) produce one
-warning. `--allow-lossy` also prints the structural and page/title losses it
-permits. Unknown fields are not automatically refused.
-
-Tab replacements clear the retained paragraph's old bullets and direct styles
-before insertion, then apply the new Markdown. Contiguous nested list items
-are created together. One terminal newline closes the final paragraph;
-additional blank paragraphs remain intentional, including a final rule.
-
-This inventory of known structural losses is not a guarantee of pixel-perfect formatting or detection of features
-the Docs API does not expose. Whole-document inspection is a preflight read;
-Drive upload does not provide the tab writer's revision-pinned batch update.
-Tab-collapse and native-content checks use the same document snapshot.
-
-`--force` bypasses conflicts only. `--force-collapse-tabs` separately permits
-flattening multiple tabs; it does not permit rich-content loss. A rich,
-multi-tab whole-document replacement needs both `--allow-lossy` and
-`--force-collapse-tabs`. `--quiet` does not bypass either safety guard.
-Automatic sync also checks the whole-document scope; it has no lossiness override and reports a skip to stderr
-if the check refuses or cannot complete.
+Known style resets produce a concise warning. `--allow-lossy` accepts identified
+rich-feature losses; it does not bypass revision conflicts. Automatic sync uses the
+same native tab and revision checks and reports a skip when it cannot safely write.
+The inventory is not a promise of pixel-perfect formatting or detection of properties
+Google does not expose.
 
 ## Spreadsheets
 

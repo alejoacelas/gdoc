@@ -32,6 +32,17 @@ Modify the existing combined fixes at `90c10f0`, compared with upstream `dbfa4c3
 7. Coordinator stores `read_revision_ids` by tab. Complete native content reads set covered tabs to their snapshot revision; metadata, summaries and truncated reads do not. Writes compare selected-tab baseline with the guard snapshot and send that exact revision as `requiredRevisionId`. Explicit force can authorize a new overwrite snapshot, never an unpinned mutation.
 8. Both interfaces use these shared handlers. MCP materializes inline Markdown temporarily and rejects host-local file references; equivalent image tasks need URL/reference inputs and cannot depend on shell-only commands.
 
-## Phase 0 uncertainties
+## Verified boundary
 
-Official API feasibility review is in progress for list starts/restarts, mixed native list presets and image retrieval/reuse. Dependent implementation must not claim these are solved or label code defects as API gaps. A verified gap requires current official references, credible alternatives, exact best reliable behavior, tests and an explicit user-visible shortfall. Independent acceptance preparation is underway.
+Phase 0 settled native mixed-list creation and current-snapshot image reuse, then
+implemented both routes. Mixed child presets retain parent list identity; physical
+paragraph indentation recovers nesting when Google's child list metadata resets it.
+Arbitrary reconstructed numbering starts and image alt-text setters remain the exact
+best-effort gaps documented in [README.md](README.md#supported-markdown). Native
+numbering is retained, unavailable starts warn, and images are never silently omitted.
+
+Offline acceptance covers both interfaces, changed combinations and protected scope.
+The live combined fixture confirms native code identity, mixed numbering, aligned
+styled tables, image references and identical CLI/MCP reads. Final verification is
+reported with the replacement PR; task timings distinguish offline execution from
+Google latency.

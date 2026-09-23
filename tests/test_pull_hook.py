@@ -197,4 +197,9 @@ class TestPullHookErrorHandling:
 
 @pytest.fixture(autouse=True)
 def _native_snapshot(mocker):
-    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={"revisionId": "r1", "tabs": [{"tabProperties": {"tabId": "main", "title": "Main"}, "documentTab": {"body": {"content": []}}}]})
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "revisionId": "r1", "tabs": [{
+            "tabProperties": {"tabId": "main", "title": "Main"},
+            "documentTab": {"body": {"content": []}},
+        }],
+    })

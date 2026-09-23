@@ -301,5 +301,7 @@ def test_write_and_push_preserve_page_setup_natively(
     batch = service.documents.return_value.batchUpdate.call_args.kwargs["body"]
     assert batch["writeControl"] == {"requiredRevisionId": "r1"}
     assert not any("updateDocumentStyle" in r for r in batch["requests"])
-    assert any(r.get("insertText", {}).get("text") == "New text" for r in batch["requests"])
+    assert any(
+        r.get("insertText", {}).get("text") == "New text" for r in batch["requests"]
+    )
     assert "discard" not in capsys.readouterr().err

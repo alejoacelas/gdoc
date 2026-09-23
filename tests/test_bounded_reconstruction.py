@@ -234,7 +234,11 @@ def test_unchanged_upload_skips_even_rich_page_state(
     ))
     version = mocker.patch("gdoc.api.drive.get_file_version",
                            return_value={"version": 10})
-    mocker.patch("gdoc.api.drive.export_doc", return_value="Summary\n")
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "revisionId": "r1", "tabs": [_tab({"content": [{"paragraph": {
+            "elements": [{"textRun": {"content": "Summary\n"}}],
+        }}]})], "documentStyle": {"useCustomHeaderFooterMargins": True},
+    })
     mocker.patch("gdoc.api.docs.count_document_tabs", return_value=1)
     inspect = mocker.patch("gdoc.cli._check_document_replacement")
     upload = mocker.patch("gdoc.api.drive.update_doc_content")
@@ -242,9 +246,10 @@ def test_unchanged_upload_skips_even_rich_page_state(
     assert (cmd_write if command == "write" else cmd_push)(args) == 0
     inspect.assert_not_called()
     upload.assert_not_called()
-    assert state.call_args.kwargs["command_version"] == 10
-    # Baseline read only when the caller has none, plus the post-read recheck.
-    assert version.call_count == int(quiet_force) + 1
+    state.assert_not_called()
+    from gdoc.state import load_state
+    assert load_state("doc").read_revision_ids == {"draft": "r1"}
+    assert version.call_count == 0
     assert "already in sync" in capsys.readouterr().out
 
 
@@ -270,13 +275,9 @@ def test_nested_list_table_insertion_uses_post_bullet_coordinates(mocker):
 
 @pytest.mark.parametrize("command", ["write", "push"])
 @pytest.mark.parametrize("allow_lossy", [False, True])
-@pytest.mark.parametrize("native,loss", [
-    # A single tab is replaced natively, so its title survives: no loss.
-    ({"tabs": [_tab({})]}, None),
-    ({"documentStyle": {"useCustomHeaderFooterMargins": True}}, "page setup"),
-])
-def test_f6_write_and_push_refuse_before_upload_or_warn_on_opt_in(
-    mocker, tmp_path, capsys, command, allow_lossy, native, loss,
+@pytest.mark.parametrize("page_style", [{}, {"useCustomHeaderFooterMargins": True}])
+def test_write_and_push_preserve_page_setup_natively(
+    mocker, tmp_path, capsys, command, allow_lossy, page_style,
 ):
     path = tmp_path / "draft.md"
     path.write_text("---\ngdoc: doc\n---\nNew text\n", encoding="utf-8")
@@ -284,24 +285,21 @@ def test_f6_write_and_push_refuse_before_upload_or_warn_on_opt_in(
     argv += ["--quiet", "--force"]
     if allow_lossy:
         argv += ["--allow-lossy"]
-    args = build_parser().parse_args(argv)
-    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value=native)
-    mocker.patch("gdoc.api.drive.export_doc", return_value="Old text")
+    document = {
+        "revisionId": "r1", "tabs": [_tab({"content": [{
+            "startIndex": 1, "endIndex": 5, "paragraph": {
+                "elements": [{"textRun": {"content": "Old\n"}}],
+            },
+        }]})], "documentStyle": page_style,
+    }
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value=document)
     mocker.patch("gdoc.api.drive.get_file_version", return_value={"version": 10})
-    upload = mocker.patch("gdoc.api.drive.update_doc_content", return_value=11)
-    state = mocker.patch("gdoc.state.update_state_after_command")
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    mocker.patch("gdoc.state.update_state_after_command")
     handler = cmd_write if command == "write" else cmd_push
-    if allow_lossy or loss is None:
-        assert handler(args) == 0
-        upload.assert_called_once_with("doc", "New text\n", expected_version=10,
-                                       document=native, allow_lossy=allow_lossy)
-        err = capsys.readouterr().err
-        if loss is None:
-            assert "discard" not in err
-        else:
-            assert loss in err
-    else:
-        with pytest.raises(GdocError, match=loss):
-            handler(args)
-        upload.assert_not_called()
-        state.assert_not_called()
+    assert handler(build_parser().parse_args(argv)) == 0
+    batch = service.documents.return_value.batchUpdate.call_args.kwargs["body"]
+    assert batch["writeControl"] == {"requiredRevisionId": "r1"}
+    assert not any("updateDocumentStyle" in r for r in batch["requests"])
+    assert any(r.get("insertText", {}).get("text") == "New text" for r in batch["requests"])
+    assert "discard" not in capsys.readouterr().err

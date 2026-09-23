@@ -347,7 +347,7 @@ def cmd_cat(args) -> int:
     from gdoc.format import format_json, get_output_mode
     from gdoc.state import record_content_read, update_state_after_command
 
-    document = document if document is not None else get_document_with_tabs(doc_id)
+    document = get_document_with_tabs(doc_id)
     tabs = flatten_tabs(document.get("tabs", []))
     if not tabs:
         raise GdocError("document has no readable tabs", exit_code=3)
@@ -1785,7 +1785,7 @@ def _read_native_tab(doc_id: str, tab_name: str | None = None, *, document=None)
         resolve_tab,
     )
 
-    document = get_document_with_tabs(doc_id)
+    document = document if document is not None else get_document_with_tabs(doc_id)
     tabs = flatten_tabs(document.get("tabs", []))
     if not tabs:
         raise GdocError("document has no readable tabs", exit_code=3)

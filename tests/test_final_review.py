@@ -77,3 +77,16 @@ def test_default_table_styles_do_not_warn_about_nonexistent_losses(capsys):
         },
     }}]}, tab_body=True)
     assert capsys.readouterr().err == ""
+
+
+def test_file_read_reuses_supplied_snapshot_without_affecting_cat(mocker):
+    from gdoc.cli import _read_native_tab
+
+    fetch = mocker.patch("gdoc.api.docs.get_document_with_tabs")
+    snapshot = {"revisionId": "r1", "tabs": [{
+        "tabProperties": {"tabId": "main", "title": "Main"},
+        "documentTab": {"body": {"content": []}},
+    }]}
+    text, actual, tab = _read_native_tab("doc", document=snapshot)
+    assert actual is snapshot and tab["id"] == "main" and text == ""
+    fetch.assert_not_called()

@@ -203,7 +203,9 @@ def test_default_page_setup_does_not_require_override():
 def test_styles_warn_once_with_specific_losses(capsys):
     check_markdown_replacement({"content": [{"paragraph": {
         "paragraphStyle": {"alignment": "CENTER", "lineSpacing": 200},
-        "elements": [{"textRun": {"textStyle": {"foregroundColor": {}}}}] * 2,
+        "elements": [{"textRun": {"textStyle": {
+            "foregroundColor": {"color": {"rgbColor": {"red": 1}}},
+        }}}] * 2,
     }}]}, tab_body=True)
     assert capsys.readouterr().err == (
         "WARN: Markdown replacement may reset styles: alignment, colour, line spacing\n"

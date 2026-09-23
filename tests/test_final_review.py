@@ -61,3 +61,19 @@ def test_native_image_aliases_come_from_actual_batch_replies(mocker):
         "uri": "https://example.org/image.png", "location": {"index": 1},
     }}], "r1")
     assert stage.inserted_images == {"https://example.org/image.png": ["new-image"]}
+
+
+def test_default_table_styles_do_not_warn_about_nonexistent_losses(capsys):
+    from gdoc.lossy import check_markdown_replacement
+
+    check_markdown_replacement({"content": [{"paragraph": {
+        "elements": [{"textRun": {"content": "Cargo\n", "textStyle": {}}}],
+        "paragraphStyle": {
+            "lineSpacing": 100, "spaceAbove": {"unit": "PT"},
+            "spaceBelow": {"unit": "PT"}, "indentStart": {"unit": "PT"},
+            "indentEnd": {"unit": "PT"}, "indentFirstLine": {"unit": "PT"},
+            "keepWithNext": False, "keepLinesTogether": False,
+            "avoidWidowAndOrphan": False, "pageBreakBefore": False,
+        },
+    }}]}, tab_body=True)
+    assert capsys.readouterr().err == ""

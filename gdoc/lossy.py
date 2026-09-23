@@ -183,6 +183,11 @@ def check_markdown_replacement(
                                 "(import resets page size, margins or page mode)")
             for field, label in _TEXT_STYLE_LOSSES.items():
                 if field in value.get("textStyle", {}):
+                    text_style = value["textStyle"]
+                    if text_style[field] in (None, False, {}):
+                        continue
+                    if field in ("foregroundColor", "underline") and text_style.get("link"):
+                        continue
                     if field == "weightedFontFamily" and value["textStyle"][field].get(
                         "fontFamily",
                     ) in ("Courier New", "Consolas", "monospace"):
@@ -193,6 +198,14 @@ def check_markdown_replacement(
                         for key in ("indentStart", "indentFirstLine"))
             for field, label in _PARAGRAPH_STYLE_LOSSES.items():
                 if field not in paragraph_style:
+                    continue
+                setting = paragraph_style[field]
+                if setting in (None, False, {}, []):
+                    continue
+                if field == "lineSpacing" and setting == 100:
+                    continue
+                if field in ("spaceAbove", "spaceBelow", "indentStart", "indentEnd",
+                             "indentFirstLine") and setting.get("magnitude", 0) == 0:
                     continue
                 if field in ("indentStart", "indentFirstLine") and (
                     quote or "bullet" in value

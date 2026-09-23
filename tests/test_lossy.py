@@ -397,8 +397,9 @@ def test_named_range_names_are_not_schema_fields(mocker, tmp_path, name, command
         check_markdown_replacement(doc, tab_body=True)
     assert "people chips" not in str(error.value)
     assert "merged table cells" not in str(error.value)
-    assert (cmd_write if command == "write" else cmd_push)(args) == 0
-    mutation.assert_called_once()
+    with pytest.raises(GdocError, match="custom named ranges"):
+        (cmd_write if command == "write" else cmd_push)(args)
+    mutation.assert_not_called()
 
 
 @pytest.mark.parametrize("style", [

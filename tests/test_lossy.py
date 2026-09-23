@@ -1,5 +1,6 @@
 """Replacement safety uses native structure, never Markdown text heuristics."""
 
+from copy import deepcopy
 from types import SimpleNamespace
 
 import pytest
@@ -27,6 +28,26 @@ def tab(name, content):
 def no_export_network(mocker):
     mocker.patch("gdoc.api.drive.export_doc", return_value="remote")
     mocker.patch("gdoc.api.drive.get_file_version", return_value={"version": 2})
+
+
+def _cli_setup(mocker, scope):
+    """Mock service boundaries while running the real native write/loss path."""
+    doc = deepcopy(scope)
+    if "tabs" not in doc:
+        doc = {"tabs": [{"documentTab": doc}]}
+    doc["revisionId"] = "before"
+    for index, item in enumerate(doc["tabs"]):
+        item.setdefault("tabProperties", {"tabId": f"tab-{index}", "title": "Notes"})
+    fetch = mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value=doc)
+    mocker.patch("gdoc.notify.pre_flight", return_value=ChangeInfo(
+        current_version=2, mime_type="application/vnd.google-apps.document",
+    ))
+    mocker.patch("gdoc.state.update_state_after_command")
+    chain = mocker.patch("gdoc.api.docs.get_docs_service").return_value.documents
+    chain.return_value.batchUpdate.return_value.execute.return_value = {
+        "writeControl": {"requiredRevisionId": "after"},
+    }
+    return doc, fetch, chain.return_value.batchUpdate
 
 
 RICH = body({"person": {"personProperties": {"name": "Example"}}})
@@ -200,67 +221,53 @@ def test_tab_refusal_precedes_every_mutation(mocker, allow_lossy, target_body):
 ])
 @pytest.mark.parametrize("mode", ["refuse", "opt-in", "no-op"])
 def test_full_write_scope(mocker, tmp_path, command, scope, mode):
+    from gdoc.api.docs import flatten_tabs, get_tab_text
+
+    doc, fetch, batch = _cli_setup(mocker, scope)
+    selected = flatten_tabs(doc["tabs"])[0]
+    content = get_tab_text(selected, markdown=True) if mode == "no-op" else "new"
     path = tmp_path / "draft.md"
-    path.write_text("---\ngdoc: doc\n---\nnew", encoding="utf-8")
-    args = SimpleNamespace(
-        doc="doc", file=str(path), force=True, force_collapse_tabs=True,
-        allow_lossy=mode == "opt-in", quiet=True,
-    )
-    mocker.patch("gdoc.cli._check_write_conflict",
-                 return_value=(ChangeInfo(current_version=2), mode == "no-op"))
-    noop = mocker.patch("gdoc.cli._finish_noop_write", return_value=0)
-    fetch = mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value=scope)
-    mutation = mocker.patch("gdoc.api.drive.update_doc_content", return_value=2)
-    mocker.patch("gdoc.state.update_state_after_command")
+    path.write_text("---\ngdoc: doc\n---\n" + content, encoding="utf-8")
+    args = SimpleNamespace(doc="doc", file=str(path), force=True, quiet=True,
+                           allow_lossy=mode == "opt-in")
     handler = cmd_write if command == "write" else cmd_push
-    # A single-tab document is replaced natively, tab body only, so its
-    # footers are preserved and never a reason to refuse.
-    preserved = scope == {"tabs": [{"documentTab": {"footers": {"f": PLAIN}}}]}
-    if mode == "refuse" and not preserved:
-        with pytest.raises(GdocError, match="whole document"):
+    rich_target = selected.get("body") == RICH
+    if mode == "refuse" and rich_target:
+        with pytest.raises(GdocError, match="selected tab body.*people chips"):
             handler(args)
-        mutation.assert_not_called()
+        batch.assert_not_called()
     else:
         assert handler(args) == 0
         if mode == "no-op":
-            noop.assert_called_once()
-            mutation.assert_not_called()
-            fetch.assert_not_called()
+            batch.assert_not_called()
         else:
-            mutation.assert_called_once_with(
-                "doc", "new", expected_version=2, document=scope,
-                allow_lossy=mode == "opt-in",
-            )
+            batch.assert_called_once()
+            sent = batch.call_args.kwargs["body"]
+            assert sent["writeControl"] == {"requiredRevisionId": "before"}
+            assert not any("deleteTab" in request for request in sent["requests"])
+    fetch.assert_called_once_with("doc")
 
 
 @pytest.mark.parametrize("command", ["write", "push"])
 @pytest.mark.parametrize("mode", ["refuse", "opt-in"])
 def test_single_tab_write_uses_body_scope(mocker, tmp_path, command, mode):
-    """One tab: headers and the title survive; a rich body still refuses."""
     path = tmp_path / "draft.md"
     path.write_text("---\ngdoc: doc\n---\nnew", encoding="utf-8")
-    args = SimpleNamespace(
-        doc="doc", file=str(path), force=True, force_collapse_tabs=False,
-        allow_lossy=mode == "opt-in", quiet=True,
-    )
     only = tab("Renamed", RICH if mode == "refuse" else PLAIN)
     only["documentTab"]["headers"] = {"h": RICH}
-    scope = {"tabs": [only], "documentStyle": {"pageSize": {"width": {}}}}
-    mocker.patch("gdoc.cli._check_write_conflict",
-                 return_value=(ChangeInfo(current_version=2), False))
-    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value=scope)
-    mutation = mocker.patch("gdoc.api.drive.update_doc_content", return_value=2)
-    mocker.patch("gdoc.state.update_state_after_command")
+    _, _, batch = _cli_setup(mocker, {"tabs": [only]})
+    args = SimpleNamespace(doc="doc", file=str(path), force=True, quiet=True,
+                           allow_lossy=mode == "opt-in")
     handler = cmd_write if command == "write" else cmd_push
     if mode == "refuse":
-        with pytest.raises(GdocError, match="selected tab body"):
+        with pytest.raises(GdocError, match="selected tab body.*people chips"):
             handler(args)
-        mutation.assert_not_called()
+        batch.assert_not_called()
     else:
         assert handler(args) == 0
-        mutation.assert_called_once_with(
-            "doc", "new", expected_version=2, document=scope, allow_lossy=True,
-        )
+        batch.assert_called_once()
+        assert not any("deleteTab" in request for request in
+                       batch.call_args.kwargs["body"]["requests"])
 
 
 def test_single_tab_header_only_needs_no_consent(mocker, tmp_path):
@@ -268,31 +275,22 @@ def test_single_tab_header_only_needs_no_consent(mocker, tmp_path):
     path.write_text("new", encoding="utf-8")
     only = tab("Renamed", PLAIN)
     only["documentTab"]["headers"] = {"h": RICH}
-    scope = {"tabs": [only]}
-    mocker.patch("gdoc.cli._check_write_conflict",
-                 return_value=(ChangeInfo(current_version=2), False))
-    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value=scope)
-    mutation = mocker.patch("gdoc.api.drive.update_doc_content", return_value=2)
-    mocker.patch("gdoc.state.update_state_after_command")
+    _, _, batch = _cli_setup(mocker, {"tabs": [only]})
     assert cmd_write(SimpleNamespace(doc="doc", file=str(path), force=True)) == 0
-    mutation.assert_called_once_with(
-        "doc", "new", expected_version=2, document=scope, allow_lossy=False,
-    )
+    batch.assert_called_once()
+    assert all("segmentId" not in str(request)
+               for request in batch.call_args.kwargs["body"]["requests"])
 
 
 @pytest.mark.parametrize("command", ["write", "push"])
 def test_lossy_opt_in_does_not_allow_tab_collapse(mocker, tmp_path, command):
     path = tmp_path / "draft.md"
     path.write_text("---\ngdoc: doc\n---\nnew", encoding="utf-8")
-    args = SimpleNamespace(doc="doc", file=str(path), allow_lossy=True)
-    mocker.patch("gdoc.cli._check_write_conflict",
-                 return_value=(ChangeInfo(current_version=2), False))
-    mocker.patch("gdoc.api.docs.get_document_with_tabs",
-                 return_value={"tabs": [{}, {}]})
-    mutation = mocker.patch("gdoc.api.drive.update_doc_content")
-    with pytest.raises(GdocError, match="--force-collapse-tabs"):
-        (cmd_write if command == "write" else cmd_push)(args)
-    mutation.assert_not_called()
+    _, _, batch = _cli_setup(mocker, {"tabs": [tab("first", PLAIN), tab("rich", RICH)]})
+    args = SimpleNamespace(doc="doc", file=str(path), allow_lossy=True, force=True)
+    assert (cmd_write if command == "write" else cmd_push)(args) == 0
+    assert not any("deleteTab" in request
+                   for request in batch.call_args.kwargs["body"]["requests"])
 
 
 @pytest.mark.parametrize("argv", [["write", "doc", "file"], ["push", "file"]])
@@ -307,34 +305,26 @@ def test_parser_opt_in_is_separate(argv):
 def test_structure_read_failure_propagates_before_upload(mocker, tmp_path):
     path = tmp_path / "draft.md"
     path.write_text("new", encoding="utf-8")
-    mocker.patch("gdoc.cli._check_write_conflict",
-                 return_value=(ChangeInfo(current_version=2), False))
-    mocker.patch(
-        "gdoc.api.docs.get_document_with_tabs",
-        side_effect=GdocError("unavailable"),
-    )
-    mutation = mocker.patch("gdoc.api.drive.update_doc_content")
+    _, fetch, batch = _cli_setup(mocker, {"body": PLAIN})
+    fetch.side_effect = GdocError("unavailable")
     with pytest.raises(GdocError, match="unavailable"):
-        cmd_write(SimpleNamespace(doc="doc", file=str(path)))
-    mutation.assert_not_called()
+        cmd_write(SimpleNamespace(doc="doc", file=str(path), force=True))
+    batch.assert_not_called()
 
 
 @pytest.mark.parametrize("command", ["write", "push"])
 def test_full_write_uses_one_safety_snapshot(mocker, tmp_path, command):
     path = tmp_path / "draft.md"
     path.write_text("---\ngdoc: doc\n---\nnew", encoding="utf-8")
-    mocker.patch("gdoc.cli._check_write_conflict",
-                 return_value=(ChangeInfo(current_version=2), False))
-    fetch = mocker.patch("gdoc.api.docs.get_document_with_tabs", side_effect=[
-        {"tabs": [tab("Tab 1", PLAIN)]},
-        {"tabs": [tab("Tab 1", PLAIN), tab("new-tab", PLAIN)]},
-    ])
-    mutation = mocker.patch("gdoc.api.drive.update_doc_content", return_value=2)
-    mocker.patch("gdoc.state.update_state_after_command")
-    args = SimpleNamespace(doc="doc", file=str(path))
+    doc, fetch, batch = _cli_setup(mocker, {"tabs": [tab("Tab 1", PLAIN)]})
+    fetch.side_effect = [doc, {"revisionId": "foreign", "tabs": [tab("new", RICH)]}]
+    args = SimpleNamespace(doc="doc", file=str(path), force=True)
     assert (cmd_write if command == "write" else cmd_push)(args) == 0
     fetch.assert_called_once_with("doc")
-    mutation.assert_called_once()
+    batch.assert_called_once()
+    assert batch.call_args.kwargs["body"]["writeControl"] == {
+        "requiredRevisionId": "before",
+    }
 
 
 @pytest.mark.parametrize("text", ["\n", "underlined paragraph\n"])
@@ -382,24 +372,20 @@ def test_native_horizontal_rule_whole_document_behavior_is_unchanged():
 def test_named_range_names_are_not_schema_fields(mocker, tmp_path, name, command):
     path = tmp_path / "draft.md"
     path.write_text("---\ngdoc: doc\n---\nnew", encoding="utf-8")
-    doc = {"tabs": [{"documentTab": {"body": PLAIN, "namedRanges": {
+    scope = {"body": PLAIN, "namedRanges": {
         name: {"namedRanges": [{"name": name, "ranges": [{
             "startIndex": 1, "endIndex": 3,
         }]}]},
-    }}}]}
-    mocker.patch("gdoc.cli._check_write_conflict",
-                 return_value=(ChangeInfo(current_version=2), False))
-    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value=doc)
-    mutation = mocker.patch("gdoc.api.drive.update_doc_content", return_value=2)
-    mocker.patch("gdoc.state.update_state_after_command")
-    args = SimpleNamespace(doc="doc", file=str(path))
+    }}
+    doc, _, batch = _cli_setup(mocker, scope)
     with pytest.raises(GdocError, match="custom named ranges") as error:
         check_markdown_replacement(doc, tab_body=True)
     assert "people chips" not in str(error.value)
     assert "merged table cells" not in str(error.value)
+    args = SimpleNamespace(doc="doc", file=str(path), force=True)
     with pytest.raises(GdocError, match="custom named ranges"):
         (cmd_write if command == "write" else cmd_push)(args)
-    mutation.assert_not_called()
+    batch.assert_not_called()
 
 
 @pytest.mark.parametrize("style", [

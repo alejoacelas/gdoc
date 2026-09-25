@@ -435,6 +435,10 @@ requests; ordinary writes never collapse tabs.
 
 ### Supported Markdown
 
+The [product design contract](docs/CONTRACT.md) defines the intended behavior and
+shared CLI/MCP requirements. The implemented capabilities and remaining API gaps
+are documented below.
+
 The canonical format supports paragraphs and meaningful blank paragraphs, headings
 1–6, bold/italic/strike/inline code, external links, nested bullet and numbered lists,
 fenced code, quotes, rules, rectangular tables with column alignment, and inline

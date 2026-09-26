@@ -136,6 +136,8 @@ def test_line_and_blank_line_paragraph_format(route):
 @pytest.mark.parametrize("text", [
     "---\n\nNote: keep me\n\n---\n\nafter\n",
     "---\n\nSee [docs](https://e.org/).\n\n---\n",
+    "---\nhttps://example.com\n---\n",
+    "---\nNote\\: keep me\n---\n",
 ])
 def test_rule_first_body_with_colon_prose_is_written(route, text):
     """R7-8: rules and prose are content, not metadata."""
@@ -143,5 +145,6 @@ def test_rule_first_body_with_colon_prose_is_written(route, text):
     route.ok("cat")
     route.ok("write", text=text)
     texts = [t for t, *_ in styles(route.service.doc)]
-    assert any("keep me" in t or t == "See docs." for t in texts)
+    assert any(t in ("Note: keep me", "See docs.", "https://example.com")
+               for t in texts)
     assert route.ok("cat").startswith("---\n---\n---\n")

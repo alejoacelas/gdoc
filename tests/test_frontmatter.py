@@ -150,6 +150,9 @@ class TestLeadingRuleProse:
         "---\n\nNote: keep me\n\n---\n\nafter\n",
         "---\n\nSee [docs](https://e.org/).\n\n---\n",
         "---\nSee [docs](https://e.org/).\n---\nafter\n",
+        "---\nhttps://example.com\n---\nafter\n",
+        "---\ntitle: x\nhttps://example.com\n---\nafter\n",
+        "---\nNote\\: keep me\n---\nafter\n",
     ])
     def test_prose_between_rules_stays_in_the_body(self, content):
         assert parse_frontmatter(content) == ({}, content)
@@ -164,3 +167,11 @@ class TestLeadingRuleProse:
     ])
     def test_known_frontmatter_still_parses(self, content, meta):
         assert parse_frontmatter(content)[0] == meta
+
+    def test_key_value_prose_between_rules_is_metadata(self):
+        """The documented boundary: a first-line `key: value` is metadata."""
+        assert parse_frontmatter("---\nNote: keep me\n---\nafter\n") == (
+            {"Note": "keep me"}, "after\n")
+
+    def test_comment_before_keys_is_still_metadata(self):
+        assert parse_frontmatter("---\n# keep\ngdoc: a\n---\nb\n")[0] == {"gdoc": "a"}

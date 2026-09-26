@@ -436,9 +436,13 @@ elsewhere. When a tab starts
 with a horizontal rule, `cat` and Markdown `export` print that empty block first, so
 the rule and the text after it stay content. Keep the empty block when writing such
 a read back; `pull` files already carry their own metadata block. Without it, a
-leading `---` block is metadata only when its first line is a `key: value` line and
-every colon line has a plain key: `---`, a blank line, `Note: keep me`, `---` stays
-a rule, a paragraph and a rule, but `---`, `Note: keep me`, `---` is metadata.
+leading `---` block is metadata only when its first line (after `#` comments) is a
+YAML `key: value` line and so is every unindented line with a colon: a plain key,
+a colon, then a space or the line end. Otherwise it stays content: `---`, a blank
+line, `Note: keep me`, `---` is a rule, a paragraph and a rule, as is a block
+holding a link such as `https://example.com`. `---`, `Note: keep me`, `---` is
+metadata; to start a body that way, write the empty block first or escape the
+colon (`Note\: keep me`).
 
 Writes compare that baseline with the native document revision and pin mutations
 to the checked snapshot. A collaborator edit requires a fresh read. `--force`

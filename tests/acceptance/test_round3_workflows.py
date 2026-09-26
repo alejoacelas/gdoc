@@ -331,3 +331,44 @@ def test_linked_image_keeps_its_link_through_read_and_rewrite(scenario):
                     and i > 0 and "insertInlineImage" in sent[i - 1])
         placed = sent[link - 1]["insertInlineImage"]["location"]["index"]
         assert sent[link]["updateTextStyle"]["range"]["startIndex"] == placed
+
+
+def _cell_table_document(scenario):
+    def cell(start, text):
+        return {"startIndex": start - 1, "endIndex": start + len(text),
+                "content": [paragraph(text, start)]}
+
+    table = {"startIndex": 8, "endIndex": 18, "table": {
+        "rows": 1, "columns": 2, "tableRows": [{
+            "startIndex": 9, "endIndex": 18,
+            "tableCells": [cell(10, "k\n"), cell(13, "old\n")]}]}}
+    scenario.document["tabs"][0]["documentTab"]["body"]["content"] = [
+        paragraph("Intro\n"), table, paragraph("\n", 18)]
+
+
+@pytest.mark.parametrize("replacement", [
+    "| a | b |\n| - | - |\n| 1 | 2 |\n",
+    "Lead\n\n| a |\n| - |\n| 1 |\n",
+])
+def test_table_markdown_into_a_cell_is_refused_before_any_write(
+    scenario, replacement,
+):
+    _cell_table_document(scenario)
+    read(scenario)
+    if scenario.interface == "cli":
+        code, out, error = _run(["edit", "synthetic", "--tab", "draft", "--cell",
+                                 "0,1", replacement])
+    else:
+        code, out, error = scenario.call("edit", old_text=replacement, cell="0,1",
+                                         tab="draft")
+    assert code != 0 and "nested tables are not supported" in out + error
+    assert not scenario.batches
+    # Ordinary cell text edits still work.
+    if scenario.interface == "cli":
+        code, out, error = _run(["edit", "synthetic", "--tab", "draft", "--cell", "0,1",
+                                  "**new**"])
+    else:
+        code, out, error = scenario.call("edit", old_text="**new**", cell="0,1",
+                                           tab="draft")
+    assert code == 0, out + error
+    assert "new" in _inserted_text(scenario)

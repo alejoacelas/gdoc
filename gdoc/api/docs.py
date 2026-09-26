@@ -3251,6 +3251,21 @@ def replace_formatted(
     input_revision_id = revision_id
     parsed = parse_markdown(new_markdown)
     check_segment_replacement(parsed, new_markdown, matches)
+    # A table replacing whole paragraphs inside a cell would nest a table,
+    # which later stages cannot fill; refuse before sending anything.
+    if parsed.tables and body is not None and any(
+        element.get("startIndex", 0) <= match["startIndex"] < element.get("endIndex", 0)
+        and (replace_paragraphs or _covers_whole_paragraphs(content, match))
+        for match in matches if not match.get("segmentId")
+        for content in [_replacement_body(body, match).get("content", [])]
+        for element in content if "table" in element
+    ):
+        raise GdocError(
+            "a Markdown table cannot replace text inside a table cell: nested "
+            "tables are not supported. Replace the cell with text, or change "
+            "the table's rows and columns by rewriting the tab (cat, edit the "
+            "Markdown table, write --tab).", exit_code=3,
+        )
 
     # Same guard as suggest_replacement: overlapping matches ("aa" in
     # "aaa" with --all) would make the last-to-first delete/insert plan

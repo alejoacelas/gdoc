@@ -319,7 +319,12 @@ def test_table_boundary_paragraphs_are_stable(route, merge, source, expected, be
     start = next(i for i, u in enumerate(doc.units) if u.kind == "tstart")
     assert sum(u.ch == "\n" and u.kind == "text"
                for u in doc.units[:start]) == before
-    for n in range(2):
-        changed = _read(route).replace("v |", f"v{n} |", 1)
+    text = _read(route)
+    for old, new in [("v |", "v0 |"), ("h |", "h1 |")]:
+        changed = text.replace(old, new, 1)
+        assert changed != text
+        batches = len(route.service.batches)
         route.ok("write", text=changed)
-        assert _read(route) == changed
+        assert len(route.service.batches) > batches
+        text = _read(route)
+        assert text == changed

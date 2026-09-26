@@ -107,9 +107,12 @@ def test_rule_like_list_item_survives_changed_rewrites(route, merge):
     route.ok("cat")
     route.ok("write", text="- &#32;--\n- b\n")
     first = _read(route)
-    for n in range(2):
-        changed = first.replace("- b", f"- b{n}")
+    for old, new in [("- b", "- b0"), ("- b0", "- b01")]:
+        changed = first.replace(old, new, 1)
+        assert changed != first
+        batches = len(route.service.batches)
         route.ok("write", text=changed)
+        assert len(route.service.batches) > batches
         first = _read(route)
         assert first == changed
     assert "".join(u.ch for u in doc.units if u.kind == "text").startswith(" --\n")

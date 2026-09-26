@@ -454,3 +454,40 @@ def test_local_state_failure_after_acknowledged_write_is_a_warning(
     # The baseline stayed at the pre-write revision, so the next write asks
     # for a fresh read rather than trusting unrecorded content.
     assert state.load_state("synthetic").read_revision_ids == {"draft": "r1"}
+
+
+@pytest.mark.parametrize("via_hook", [False, True])
+def test_file_stays_pushable_after_a_collaborator_edits_a_sibling_tab(
+    cli_scenario, tmp_path, via_hook,
+):
+    """F10: the live tab matching the file's body is that tab's baseline."""
+    scenario = cli_scenario
+    a, _ = _two_tab_files(scenario, tmp_path)
+    # A collaborator edits only tab Two; tab One still reads as a.md recorded.
+    scenario.document["revisionId"] = "r5"
+    scenario.document["tabs"][1]["documentTab"]["body"]["content"] = [
+        paragraph("Beta by a colleague.\n")]
+    if via_hook:
+        code, _, err = _run(["_sync-hook"], json.dumps(
+            {"tool_input": {"file_path": str(a)}}))
+        assert code == 0 and "SYNC: pushed" in err, err
+    else:
+        code, out, err = _run(["push", str(a)])
+        assert code == 0, out + err
+    assert scenario.batches[-1]["writeControl"] == {"requiredRevisionId": "r5"}
+    assert all(next(iter(r.values())).get("range", {}).get("tabId", "t1") == "t1"
+               for r in requests(scenario))
+
+
+def test_collaborator_edit_in_the_same_tab_still_blocks_the_file(
+    cli_scenario, tmp_path,
+):
+    """F10: an unseen change to the selected tab is never overwritten."""
+    scenario = cli_scenario
+    a, _ = _two_tab_files(scenario, tmp_path)
+    scenario.document["revisionId"] = "r5"
+    scenario.document["tabs"][0]["documentTab"]["body"]["content"] = [
+        paragraph("Alpha by a colleague.\n")]
+    code, _, err = _run(["push", str(a)])
+    assert code == 3 and "stale" in err
+    assert not scenario.batches

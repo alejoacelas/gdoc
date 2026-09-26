@@ -1590,6 +1590,11 @@ def _write_native_markdown(
                 "file was pulled. Reconcile the local and remote edits, or use "
                 "--force to intentionally overwrite.", 3,
             )
+        if tab_unchanged:
+            # The current snapshot shows the selected tab exactly as this file
+            # recorded it, so the file is a complete read of that tab at this
+            # revision; edits elsewhere (another tab) cannot be overwritten.
+            record_content_read(doc_id, [selected["id"]], revision)
     require_content_baseline(
         doc_id, [t["id"] for t in tabs] if collapse else [selected["id"]],
         revision, force=getattr(args, "force", False),

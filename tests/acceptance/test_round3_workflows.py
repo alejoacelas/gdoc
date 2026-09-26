@@ -144,6 +144,14 @@ def test_insert_at_start_keeps_code_marker_on_its_paragraph(scenario, markdown):
                         "tabId": "draft"}]
 
 
+@pytest.fixture
+def cli_scenario(request, monkeypatch, tmp_path):
+    """File commands (pull, push, hooks) exist only in the CLI."""
+    from tests.acceptance.conftest import Scenario
+
+    return Scenario(monkeypatch, tmp_path, "cli", request.node.nodeid)
+
+
 def _run(argv, stdin=None):
     import contextlib
     import io
@@ -192,9 +200,10 @@ def _push_first(scenario, path, via_hook):
 
 
 @pytest.mark.parametrize("via_hook", [False, True])
-def test_sibling_tab_file_stays_pushable_after_own_push(scenario, tmp_path, via_hook):
-    if scenario.interface != "cli":
-        pytest.skip("pull and push are file commands")
+def test_sibling_tab_file_stays_pushable_after_own_push(
+    cli_scenario, tmp_path, via_hook,
+):
+    scenario = cli_scenario
     a, b = _two_tab_files(scenario, tmp_path)
     _push_first(scenario, a, via_hook)
     if via_hook:
@@ -212,10 +221,9 @@ def test_sibling_tab_file_stays_pushable_after_own_push(scenario, tmp_path, via_
 
 
 def test_changed_target_tab_still_blocks_stale_file_after_fresh_read(
-    scenario, tmp_path,
+    cli_scenario, tmp_path,
 ):
-    if scenario.interface != "cli":
-        pytest.skip("pull and push are file commands")
+    scenario = cli_scenario
     a, b = _two_tab_files(scenario, tmp_path)
     _push_first(scenario, a, via_hook=False)
     # Someone else edits tab Two; a fresh read of it must not bless b.md.

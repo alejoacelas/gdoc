@@ -56,6 +56,21 @@ All notable changes to `gdoc` are documented here. This project follows
   and custom first-level list indents no longer read as nesting.
 - An indented paragraph's heading style and literal punctuation survive inside
   its quote. Cells aligned unlike their column header need loss consent.
+- A table directly beside a heading, list item, quote or rule keeps those
+  paragraphs' styles and list membership through rewrites and `insert --end`;
+  removing a final paragraph, or one before a table, restores the paragraph
+  before it. A numbered list continues across a table or image.
+- Inserted Markdown no longer inherits a neighboring quote indent, rule border,
+  bold, link or code style, and a tab holding only a rule or empty heading keeps it.
+- Images whose alt text has backticks or line breaks, list items of dashes,
+  escaped backticks in table cells, non-space cell edges and definition-shaped
+  links survive rewrites. Tables separated by a blank line in another container
+  no longer gain a paragraph per rewrite.
+- An edit inside a link's label keeps the link. `--allow-lossy` rewrites a tab
+  with section breaks as one section. Table shading, borders and fixed widths
+  produce the style warning. `comment --quote` prefers its own letter case.
+- A pulled file stays pushable after a collaborator edits another tab. An
+  unreadable add-tab reply reports an uncertain outcome instead of an error.
 - `edit` and `insert` record an acknowledged write before the optional version
   lookup. Markdown `export` and `pull` name the tab they read. Sync hooks
   report skips to the agent, identical local replacements leave the file in

@@ -121,3 +121,18 @@ def test_section_breaks_flatten_only_with_consent(mocker, consent):
         "startIndex": 1, "endIndex": 11, "tabId": "t1"}}}
     assert batch.call_args.kwargs["body"]["writeControl"] == {
         "requiredRevisionId": "r1"}
+
+
+@pytest.mark.parametrize("text", ["--", "---", "- -", "-", "- - -"])
+@pytest.mark.parametrize("nest", [0, 1])
+def test_a_bullet_of_dashes_stays_a_list_item(text, nest):
+    """F11: an item whose text is dashes never reads back as a rule."""
+    paragraph = _paragraph((text + "\n", {}))
+    paragraph["paragraph"]["bullet"] = {"listId": "L", "nestingLevel": nest}
+    tab = _tab([paragraph])
+    tab["lists"] = {"L": {"listProperties": {"nestingLevels": [
+        {"glyphSymbol": "●"}] * 3}}}
+    parsed = parse_markdown(get_tab_text(tab, markdown=True))
+    assert parsed.plain_text.lstrip("\t") == text + "\n"
+    assert [s.type for s in parsed.styles].count("bullets") == 1
+    assert not any("borderBottom" in s.style for s in parsed.styles)

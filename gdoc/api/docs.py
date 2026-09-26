@@ -567,6 +567,10 @@ def _paragraph_markdown(
             item = f"<!-- gdoc:{named_style} --> {item}"
         else:
             item = re.sub(r"^([#>])", r"\\\1", item)
+            from gdoc.mdparse import _HR_RE
+            if _HR_RE.match(f"{marker} {item}"):
+                # An item of dashes would read back as a thematic break.
+                item = "\\" + item
         return f"{indent}{marker} {item}{newline}"
 
     # Preserve counters: a later paragraph can resume the same native list.

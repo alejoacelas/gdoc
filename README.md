@@ -216,7 +216,7 @@ gdoc cat 1aBcDeFg...
 | `revisions DOC` | List retained revisions — id, modified time, author, `[keep]` marker (`--limit N`; alias: `history`) |
 | `cat --revision REV DOC` | Export a past revision to stdout |
 | `pull --revision REV DOC FILE` | Download a past revision (gets `source:`/`revision:` frontmatter, not `gdoc:`, so it can't be pushed back by accident) |
-| `diff DOC FILE` | Compare the current doc against a local file (unified diff) |
+| `diff DOC FILE` | Compare one tab's Markdown, as `cat` and `pull` read it, against a local file's body (unified diff; the file's pulled tab, `--tab NAME`, or the first tab) |
 | `diff DOC --rev A..B` | Word-diff two revisions (`--rev A` compares A against latest) |
 | `diff DOC --since ISO` | What changed since a timestamp (last revision at/before it vs latest) |
 | `diff DOC --rev A..B --format html` | Write a styled diff artifact (`--out PATH`, `--with-comments` to anchor comment threads) |

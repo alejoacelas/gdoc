@@ -2203,6 +2203,8 @@ def cmd_diff(args) -> int:
             "always compares against the current document)",
             exit_code=3,
         )
+    if (rev or since) and getattr(args, "tab", None):
+        raise GdocError("--tab applies to file diffs, not revision diffs", 3)
     if rev or since:
         return _diff_revisions(args, doc_id)
     if not file_path:
@@ -2231,20 +2233,24 @@ def cmd_diff(args) -> int:
     change_info = pre_flight(doc_id, quiet=quiet)
     _require_doc(doc_id, change_info)
 
-    # Export doc
-    from gdoc.api.drive import export_doc
-
-    mime = "text/plain" if use_plain else "text/markdown"
-    remote = export_doc(doc_id, mime_type=mime)
-
     # Read local file
     if not os.path.isfile(file_path):
         raise GdocError(f"file not found: {file_path}", exit_code=3)
     try:
-        with open(file_path) as f:
+        with open(file_path, encoding="utf-8", newline="") as f:
             local = f.read()
     except OSError as e:
         raise GdocError(f"cannot read file: {e}", exit_code=3)
+    # Compare the body with the tab that cat, pull and write use.
+    from gdoc.api.docs import get_tab_text
+    from gdoc.frontmatter import parse_frontmatter
+
+    metadata, local = parse_frontmatter(local)
+    local = local.replace("\r\n", "\n")
+    _, document, selected = _read_native_tab(
+        doc_id, getattr(args, "tab", None) or metadata.get("tab"),
+    )
+    remote = get_tab_text(selected, markdown=not use_plain)
 
     # Diff
     remote_lines = remote.splitlines(keepends=True)
@@ -4416,6 +4422,11 @@ def build_parser() -> GdocArgumentParser:
     diff_p.add_argument(
         "file", nargs="?",
         help="Local file to compare against (current doc vs file)",
+    )
+    diff_p.add_argument(
+        "--tab",
+        help="File diffs: compare this tab title or ID (default: the file's "
+             "pulled tab, else the first tab)",
     )
     diff_p.add_argument(
         "--rev", metavar="REV[..REV]",

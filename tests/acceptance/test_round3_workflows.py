@@ -287,3 +287,28 @@ def test_comment_annotation_is_scoped_to_the_selected_tab(scenario, monkeypatch)
     second = scenario.ok("cat", comments=True, tab="Two")
     assert '[#c1 open] Ann on "Second tab  prose"' in second
     assert "[#c2 open] [anchor in another tab]" in second
+
+
+def test_file_diff_compares_the_same_tab_markdown_as_cat_and_pull(
+    cli_scenario, tmp_path,
+):
+    from tests.acceptance.conftest import tab
+
+    scenario = cli_scenario
+    scenario.document["tabs"] = [
+        tab("t1", "One", [paragraph("Alpha * one.\n"),
+                          paragraph("- literal dash\n", 14)]),
+        tab("t2", "Two", [paragraph("Beta ✓.\n")]),
+    ]
+    scenario.export = "Something Drive renders differently\n"
+    catted = tmp_path / "cat.md"
+    catted.write_text(_run(["cat", "synthetic"])[1])
+    assert _run(["diff", "synthetic", str(catted)])[:2] == (0, "OK identical\n")
+    pulled = tmp_path / "two.md"
+    assert _run(["pull", "synthetic", str(pulled), "--tab", "Two"])[0] == 0
+    # The pulled file's own tab and metadata are honored.
+    assert _run(["diff", "synthetic", str(pulled)])[:2] == (0, "OK identical\n")
+    pulled.write_text(pulled.read_text().replace("Beta", "Gamma"))
+    code, out, _ = _run(["diff", "synthetic", str(pulled)])
+    assert code == 1 and "-Beta ✓." in out and "+Gamma ✓." in out
+    assert "gdoc:" not in out.split("\n", 2)[2]

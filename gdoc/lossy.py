@@ -308,6 +308,27 @@ def check_markdown_replacement(
                             f"table at index {index} "
                             "(named paragraph styles become plain text)"
                         )
+                    # Markdown aligns a whole column like its header cell.
+                    rows = [row.get("tableCells", [])
+                            for row in child.get("tableRows", [])]
+
+                    def alignments(cell):
+                        return [block["paragraph"].get("paragraphStyle", {}).get(
+                            "alignment", "START") for block in cell.get("content", [])
+                            if "paragraph" in block]
+
+                    headers = [(alignments(cell) or ["START"])[0]
+                               for cell in (rows[0] if rows else [])]
+                    if any(
+                        alignment != headers[column]
+                        for row in rows
+                        for column, cell in enumerate(row[:len(headers)])
+                        for alignment in alignments(cell)
+                    ):
+                        hazards.add(
+                            f"table at index {index} "
+                            "(cell alignment differs from its column header)"
+                        )
                 if key in ("rowSpan", "columnSpan") and child > 1:
                     hazards.add("merged table cells")
                 if not tab_body and key in ("headers", "footers", "footnotes"):

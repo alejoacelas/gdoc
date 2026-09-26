@@ -525,8 +525,8 @@ These are documented shortfalls, not claims of full support.
 
 `write` and `push` inspect the selected body, including table cells, before mutation.
 Ordinary supported Markdown needs no `--allow-lossy`. Chips, footnotes, equations,
-generated contents, pending suggestions, internal native links, complex tables and
-section/layout boundaries may require explicit loss consent. Rich content in
+generated contents, pending suggestions, internal native links, complex tables,
+table cells aligned unlike their column's header cell, and section/layout boundaries may require explicit loss consent. Rich content in
 unmodified sibling tabs or separate document segments does not block a body write.
 Use targeted edits when richer native content should survive.
 

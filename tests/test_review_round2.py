@@ -165,3 +165,24 @@ def test_custom_first_level_indent_is_not_nesting(definition_indent, paragraph_i
     exported = get_tab_text({"body": {"content": [item]}, "lists": lists},
                             markdown=True)
     assert exported == marker + "\n"
+
+
+@pytest.mark.parametrize("data_alignment, lossy", [
+    ("CENTER", False), (None, True), ("END", True)])
+def test_cell_alignment_unlike_its_header_needs_loss_consent(data_alignment, lossy):
+    from gdoc.util import GdocError
+    from gdoc.lossy import check_markdown_replacement
+
+    table = _table([["H"], ["v"]])
+    for row, alignment in ((0, "CENTER"), (1, data_alignment)):
+        style = table["table"]["tableRows"][row]["tableCells"][0]["content"][0][
+            "paragraph"]["paragraphStyle"]
+        if alignment:
+            style["alignment"] = alignment
+    scope = {"body": {"content": [table]}}
+    if lossy:
+        with pytest.raises(GdocError, match="alignment differs from its column"):
+            check_markdown_replacement(scope, tab_body=True)
+        check_markdown_replacement(scope, tab_body=True, allow_lossy=True)
+    else:
+        check_markdown_replacement(scope, tab_body=True)

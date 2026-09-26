@@ -175,3 +175,15 @@ class TestLeadingRuleProse:
 
     def test_comment_before_keys_is_still_metadata(self):
         assert parse_frontmatter("---\n# keep\ngdoc: a\n---\nb\n")[0] == {"gdoc": "a"}
+
+    @pytest.mark.parametrize("content,meta", [
+        ("---\ntitle: Post\nLast updated: 2024\n---\nB\n",
+         {"title": "Post", "Last updated": "2024"}),
+        ('---\n"title": Post\n---\nB\n', {"title": "Post"}),
+        ("---\ntítulo: Post\n---\nB\n", {"título": "Post"}),
+        ("---\nkey:value\n---\nB\n", {"key": "value"}),
+        ("---\ntitle: x\nurl: http://x\n---\nB\n", {"title": "x", "url": "http://x"}),
+    ])
+    def test_other_tools_frontmatter_keys_still_parse(self, content, meta):
+        """Round-8 recheck: spaced, quoted, non-ASCII and unspaced keys."""
+        assert parse_frontmatter(content) == (meta, "B\n")

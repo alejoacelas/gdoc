@@ -154,4 +154,8 @@ def test_custom_named_range_read_is_limited_and_consistent_with_write(route):
     assert route.service.batches == []
     route.ok("edit", old_text="Beta", new_text="Gamma")
     assert ["integration:anchor", 1, 6] in doc.named
+    batches = len(route.service.batches)
     route.ok("write", text="Alpha changed.\nGamma.\n", allow_lossy=True)
+    assert len(route.service.batches) > batches
+    assert parse_frontmatter(route.ok("cat"))[1] == "Alpha changed.\nGamma.\n"
+    # What Docs does with a range whose text is deleted is not modeled here.

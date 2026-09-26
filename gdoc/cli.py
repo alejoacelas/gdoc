@@ -1569,7 +1569,7 @@ def cmd_write(args) -> int:
     pulled_doc = metadata.get("gdoc")
     if pulled_doc and _resolve_doc_id(pulled_doc) != doc_id:
         raise GdocError(
-            f"{file_path} was pulled from document {pulled_doc}, not {doc_id}. "
+            f"the file was pulled from document {pulled_doc}, not {doc_id}. "
             "Use `gdoc push` to update its own document, or remove its "
             "frontmatter to copy the text into this one.", 3,
         )
@@ -2036,6 +2036,9 @@ def cmd_push(args) -> int:
         args, doc_id, body, command="push",
         tab_name=(None if getattr(args, "force_collapse_tabs", False)
                   else metadata.get("tab")),
+        # As for `write`, a collapse keeps only the first tab, so it refuses
+        # a file pulled from a later one.
+        file_tab=metadata.get("tab") or None,
         file_revision=metadata.get("gdoc-revision", ""), result_details=details,
         file_tab_fingerprint=metadata.get("gdoc-tab-sha256"),
     )

@@ -191,3 +191,27 @@ def test_new_from_file_failure_after_creation_names_the_document(
     assert code == 1
     assert "created document created_doc_123" in err.getvalue()
     assert "rerunning `new --file`" in err.getvalue()
+
+
+def test_push_collapse_refuses_a_file_pulled_from_a_later_tab(monkeypatch, tmp_path):
+    """Round-8 recheck: push and write agree on --force-collapse-tabs."""
+    import contextlib
+    import io
+
+    from gdoc import cli
+
+    route = NativeRoute("cli", monkeypatch, tmp_path)
+    _two_tabs(route)
+    path = tmp_path / "appendix.md"
+
+    def run(*argv):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+            return cli.run_argv(list(argv), check_updates=False), out.getvalue()
+
+    assert run("pull", "synthetic", str(path), "--tab", "Appendix")[0] == 0
+    route.ok("cat", tab="Main")
+    path.write_text(path.read_text().replace("Appendix content.", "Revised."))
+    code, output = run("push", str(path), "--force-collapse-tabs")
+    assert code == 3 and "--force-collapse-tabs replaces the first tab" in output
+    assert route.service.batches == []

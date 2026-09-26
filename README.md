@@ -438,8 +438,9 @@ with a horizontal rule, `cat` and Markdown `export` print that empty block first
 the rule and the text after it stay content. Keep the empty block when writing such
 a read back; `pull` files already carry their own metadata block. Without it, a
 leading `---` block is metadata only when its first line (after `#` comments) is a
-YAML `key: value` line and so is every unindented line with a colon: a plain key,
-a colon, then a space or the line end. Otherwise it stays content: `---`, a blank
+`key: value` line and so is every unindented line with a colon: a key without
+Markdown link, code, emphasis or escape characters, then a colon that does not
+begin a URL's `//`. Otherwise it stays content: `---`, a blank
 line, `Note: keep me`, `---` is a rule, a paragraph and a rule, as is a block
 holding a link such as `https://example.com`. `---`, `Note: keep me`, `---` is
 metadata; to start a body that way, write the empty block first or escape the
@@ -560,8 +561,8 @@ splits the block around it. A replacement inside code is literal text (`*`, link
 and `#` stay characters); inside inline code in prose, a replacement written as one
 code span such as `` `name` `` uses that span's content. Tab replacements remove gdoc's old ranges. Other named
 ranges (for example from add-ons) are named as omitted by reads; targeted edits
-leave them alone, and a rewrite of their tab needs `--allow-lossy`, which removes
-them. Edits made in Docs take precedence over these ranges: a
+leave them alone, and a rewrite of their tab needs `--allow-lossy` because it
+deletes the text they mark. Edits made in Docs take precedence over these ranges: a
 paragraph inside a code range that has become a heading or list item, or carries an
 image, link or emphasis, is read as ordinary Markdown, and a paragraph whose quote or
 list indent was removed is read without that container. Plain text typed or merged

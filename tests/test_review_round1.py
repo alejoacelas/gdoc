@@ -422,17 +422,17 @@ def test_open_descriptor_write_after_return_is_recoverable(tmp_path):
 
 
 @pytest.mark.parametrize(
-    ("source", "prefix"),
+    ("source", "path"),
     [
-        ("> | A | B |\n> | :-- | --: |\n> | x | y |", (1, 0)),
-        ("> > | A | B |\n> > | - | - |\n> > | x | y |", (2, 0)),
-        ("1. item\n   | A | B |\n   | - | - |\n   | x | y |\n2. next", (0, 3)),
+        ("> | A | B |\n> | :-- | --: |\n> | x | y |", ("q",)),
+        ("> > | A | B |\n> > | - | - |\n> > | x | y |", ("q", "q")),
+        ("1. item\n   | A | B |\n   | - | - |\n   | x | y |\n2. next", (3,)),
     ],
 )
-def test_contained_tables_parse_with_their_container(source, prefix):
+def test_contained_tables_parse_with_their_container(source, path):
     parsed = parse_markdown(source)
     [table] = parsed.tables
-    assert table.prefix == prefix
+    assert table.path == path
     assert table.rows == [["A", "B"], ["x", "y"]]
     assert "|" not in parsed.plain_text
 
@@ -505,7 +505,7 @@ def test_adjacent_quoted_tables_and_paragraphs_keep_separate_containers():
         "> | A |\n> | - |\n> | 1 |\n>\n> | B |\n> | - |\n> | 2 |\n"
         "> > | C |\n> > | - |\n> > | 3 |\nplain\n| D |\n| - |\n| 4 |"
     )
-    assert [t.prefix for t in parsed.tables] == [(1, 0), (1, 0), (2, 0), (0, 0)]
+    assert [t.path for t in parsed.tables] == [("q",), ("q",), ("q", "q"), ()]
     assert [t.rows for t in parsed.tables] == [
         [["A"], ["1"]], [["B"], ["2"]], [["C"], ["3"]], [["D"], ["4"]],
     ]

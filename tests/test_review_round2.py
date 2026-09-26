@@ -40,7 +40,7 @@ def test_adjacent_tables_use_one_separating_blank_line(between, blanks):
 
 def test_adjacent_quoted_tables_separate_inside_the_quote():
     parsed = parse_markdown("> | A |\n> | - |\n>\n> | B |\n> | - |\n")
-    assert [t.prefix for t in parsed.tables] == [(1, 0), (1, 0)]
+    assert [t.path for t in parsed.tables] == [("q",), ("q",)]
     assert parsed.plain_text == "\n\n"
 
 

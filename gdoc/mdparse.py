@@ -20,6 +20,8 @@ class StyleRange:
     list_depth: int = 0
     literal_tabs: int = 0
     list_group: int | None = None
+    # Container path of a markdown_prefix range (see container_path).
+    path: tuple = ()
 
 
 @dataclass
@@ -34,10 +36,8 @@ class TableData:
     # removes those tabs, shifting the table's real position left by this many.
     removed_tabs_before: int = 0
     alignments: list[str | None] = field(default_factory=list)
-    # Container prefix (quote depth, list indent) recorded by a named range.
-    prefix: tuple[int, int] = (0, 0)
-    # List-item indent before the quote markers of a quote inside an item.
-    outer: int = 0
+    # Container path recorded by a named range on the first cell.
+    path: tuple = ()
 
 
 @dataclass
@@ -665,6 +665,63 @@ def _unquote(line: str, limit: int | None = None) -> tuple[str, int]:
     return line, depth
 
 
+def path_lead(path: tuple) -> str:
+    """The Markdown line prefix of a container path.
+
+    A path lists a paragraph's containers, outermost first: ``"q"`` is a
+    quote marker and an integer is a list item's content indent in spaces.
+    """
+    return "".join("> " if token == "q" else " " * token for token in path)
+
+
+def legacy_prefix(path: tuple) -> tuple[int, int, int] | None:
+    """``(quotes, indent, outer)`` when a path has a v1/v2 range name."""
+    path = tuple(path)
+    outer = 0
+    if path and path[0] != "q" and len(path) > 1 and path[1] == "q":
+        outer, path = path[0], path[1:]
+    quotes = 0
+    while quotes < len(path) and path[quotes] == "q":
+        quotes += 1
+    rest = path[quotes:]
+    if not rest:
+        return quotes, 0, outer
+    if len(rest) == 1 and rest[0] != "q" and (quotes or not outer):
+        return quotes, rest[0], outer
+    return None
+
+
+def _strip_path(line: str, path: tuple, lenient: bool = False) -> str | None:
+    """A line with its container markers removed, or None when outside them.
+
+    A blank line stays inside list item content. ``lenient`` (fenced code)
+    also accepts a missing quote marker and a shallower indent.
+    """
+    for token in path:
+        if token == "q":
+            match = _BLOCKQUOTE_RE.match(line)
+            if match:
+                line = match[1]
+            elif not (lenient or not line.strip()):
+                return None
+            elif not line.strip():
+                line = ""
+        else:
+            spaces = len(line) - len(line.lstrip(" "))
+            if spaces >= token:
+                line = line[token:]
+            elif lenient or not line.strip():
+                line = line[spaces:]
+            else:
+                return None
+    return line
+
+
+def _list_item_line(text: str) -> bool:
+    return bool(_BULLET_RE.match(text) or _NUMBERED_RE.match(text)) and not \
+        _HR_RE.match(text)
+
+
 def parse_markdown(text: str) -> ParsedMarkdown:
     """Parse markdown text into plain text + style annotations.
 
@@ -727,14 +784,42 @@ def parse_markdown(text: str) -> ParsedMarkdown:
     last_list_end = 0
     groups: dict[tuple[int, str], tuple[int, int]] = {}
     next_group = 0
-    quote_depth = 0
-    code_indent = 0
-    # A quote inside a list item: its lines, with the item indent removed,
-    # parse as a quote whose container records that indent.
-    contained_outer = 0
-    contained_end = None
-    contained_saved = None
+    # Each container path has its own open lists: a list quoted inside an
+    # item is separate from the item's list, which resumes after the quote.
+    contexts: dict[tuple, tuple[dict, dict]] = {(): (list_levels, groups)}
+    container: tuple = ()  # the current paragraph's container path
     non_default_list_starts: list[str] = []
+
+    def enter(path: tuple) -> None:
+        """Make *path* current, ending the lists of containers it left."""
+        nonlocal list_levels, groups, container
+        for key in list(contexts):
+            if key != path[:len(key)]:
+                del contexts[key]
+        list_levels, groups = contexts.setdefault(path, ({}, {}))
+        container = path
+
+    def container_path(line: str) -> tuple[tuple, str]:
+        """Split a line into its container path and its content.
+
+        Quote markers open quotes. Inside an open list, an indented line that
+        is not itself a list item belongs to the last item's content.
+        """
+        path: tuple = ()
+        while True:
+            open_list = bool(contexts.get(path, ({},))[0])
+            spaces = len(line) - len(line.lstrip(" "))
+            body = line[spaces:]
+            if open_list and spaces and not _list_item_line(body):
+                path += (spaces,)
+                line = body
+                continue
+            quoted = _BLOCKQUOTE_RE.match(line)
+            if quoted:
+                path += ("q",)
+                line = quoted[1]
+                continue
+            return path, line
 
     def emit_paragraph(
         content: str,
@@ -778,8 +863,13 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             groups[key] = (group, start_number)
         if bullet_preset is None:
             # Blank paragraphs may separate items of the same numbered list.
-            if content and not contained_outer:
+            if content:
                 list_levels.clear()
+                # A quote opened directly in a container interrupts its lists;
+                # content inside a list item does not.
+                for depth in range(len(container)):
+                    if container[depth] == "q" and container[:depth] in contexts:
+                        contexts[container[:depth]][0].clear()
         else:
             previous = list_levels.get(leading_tabs)
             ordered = bullet_preset.startswith("NUMBERED")
@@ -797,10 +887,9 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             number = previous[1] + 1 if previous and previous[0] == bullet_preset else 1
             list_levels[leading_tabs] = (bullet_preset, number)
         para_start = offset
-        if quote_depth or code_indent:
+        if container:
             para_style = dict(para_style)
-            level = quote_depth + bool(code_indent or contained_outer)
-            indent = {"magnitude": 36 * level, "unit": "PT"}
+            indent = {"magnitude": 36 * len(container), "unit": "PT"}
             para_style.update(indentStart=indent, indentFirstLine=indent)
         if leading_tabs:
             plain_parts.append("\t" * leading_tabs)
@@ -824,12 +913,14 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         all_styles.append(StyleRange(
             para_start, offset, para_style, "paragraph_style",
         ))
-        if quote_depth or code_indent:
-            prefix = {"quote": quote_depth, "indent": code_indent}
-            if contained_outer:
-                prefix["outer"] = contained_outer
+        if container:
+            legacy = legacy_prefix(container)
+            prefix = ({"quote": legacy[0], "indent": legacy[1]}
+                      if legacy else {"path": container})
+            if legacy and legacy[2]:
+                prefix["outer"] = legacy[2]
             all_styles.append(StyleRange(
-                para_start, offset, prefix, "markdown_prefix",
+                para_start, offset, prefix, "markdown_prefix", path=container,
             ))
         if bullet_preset is not None:
             all_styles.append(StyleRange(
@@ -843,47 +934,29 @@ def parse_markdown(text: str) -> ParsedMarkdown:
     i = 0
     table_separators: set[int] = set()
     while i < len(lines):
-        if contained_end is not None and i >= contained_end:
-            list_levels.clear()
-            list_levels.update(contained_saved[0])
-            groups.clear()
-            groups.update(contained_saved[1])
-            contained_outer, contained_end = 0, None
-        if contained_end is None and list_levels:
-            stripped = lines[i].lstrip(" ")
-            outer = len(lines[i]) - len(stripped)
-            if outer and stripped.startswith(">"):
-                end = i
-                while (end < len(lines) and lines[end][:outer] == " " * outer
-                       and lines[end][outer:].startswith(">")):
-                    lines[end] = lines[end][outer:]
-                    end += 1
-                # The quote's own lists are separate; the item's list resumes
-                # after it.
-                contained_saved = (dict(list_levels), dict(groups))
-                list_levels.clear()
-                groups.clear()
-                contained_outer, contained_end = outer, end
         if i in definition_lines or i in table_separators:
             i += 1
             continue
-        line, quote_depth = _unquote(lines[i])
+        path, line = container_path(lines[i])
+        if not line.strip() and path and path[-1] != "q":
+            # A blank line inside list item content is a blank paragraph; only
+            # its quote markers are containers (see get_tab_text).
+            while path and path[-1] != "q":
+                path = path[:-1]
+            line = ""
+        enter(path)
 
         # Fenced code block: ``` (or ~~~) ... ```
         fence_indent = len(line) - len(line.lstrip(" "))
-        in_list_code = bool(list_levels) and fence_indent > 0
-        fence_m = _fence_open(line.lstrip(" ") if in_list_code else line)
+        fence_m = _fence_open(line)
         if fence_m:
-            saved_levels = dict(list_levels) if in_list_code else {}
-            if not in_list_code:
-                list_levels.clear()
-            code_indent = fence_indent if in_list_code else 0
+            list_levels.clear()
             fence = fence_m.group(1)
             fence_char = fence[0]
             code_start = offset
             i += 1
             while i < len(lines):
-                code_line, _ = _unquote(lines[i], quote_depth)
+                code_line = _strip_path(lines[i], path, lenient=True)
                 # Fence indentation belongs to the container, not the code.
                 strip = min(fence_indent, len(code_line) - len(code_line.lstrip(" ")))
                 code_line = code_line[strip:]
@@ -906,27 +979,16 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             if offset == code_start:
                 emit_paragraph("", [], {"namedStyleType": "NORMAL_TEXT"})
             code_blocks.append(CodeBlockData(code_start, offset))
-            list_levels.update(saved_levels)
-            code_indent = 0
             continue
 
         # Table: header row + separator row + data rows. Tables may sit inside
         # quotes and, indented, inside list items; the container is recorded.
-        table_quote = quote_depth
-        table_indent = len(line) - len(line.lstrip(" "))
-        in_list_table = bool(list_levels) and table_indent > 0
-
-        def table_line(j, quote=table_quote, indent=table_indent,
-                       in_list=in_list_table):
+        def table_line(j, path=path):
             if j >= len(lines):
                 return ""
-            text, depth = _unquote(lines[j], quote)
-            if depth != quote:
+            text = _strip_path(lines[j], path)
+            if text is None or not text.strip():
                 return ""
-            if in_list:
-                if len(text) - len(text.lstrip(" ")) < indent:
-                    return ""
-                text = text[indent:]
             return text
 
         header_line = table_line(i)
@@ -935,7 +997,6 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             and _TABLE_SEP_RE.match(table_line(i + 1))
         ):
             table_rows: list[list[str]] = []
-            saved_levels = dict(list_levels) if in_list_table else {}
             list_levels.clear()
             header_cells = _table_cells(header_line)
             table_rows.append(header_cells)
@@ -974,17 +1035,15 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                 plain_text_offset=offset,
                 removed_tabs_before=removed_tabs,
                 alignments=alignments,
-                prefix=(table_quote, table_indent if in_list_table else 0),
-                outer=contained_outer,
+                path=path,
             ))
-            list_levels.update(saved_levels)
             # Canonical adjacent tables: the last blank line before a following
             # table in the same container separates them; earlier blank or
             # whitespace-only lines are paragraphs.
             j = i
             while j < len(lines):
-                text, depth = _unquote(lines[j], table_quote)
-                if depth != table_quote or text.strip():
+                text = _strip_path(lines[j], path)
+                if text is None or text.strip():
                     break
                 j += 1
             if (j > i and _TABLE_ROW_RE.match(table_line(j))
@@ -1198,8 +1257,7 @@ def prefix_indent_requests(parsed, insert_index, tab_id):
     bullets = [s for s in parsed.styles if s.type == "bullets"]
     for prefix in (s for s in parsed.styles if s.type == "markdown_prefix"):
         bullet = next((b for b in bullets if b.start == prefix.start), None)
-        level = prefix.style["quote"] + bool(prefix.style.get("outer")) + (
-            bullet.list_depth + 1 if bullet else bool(prefix.style["indent"]))
+        level = len(prefix.path) + (bullet.list_depth + 1 if bullet else 0)
         removed_before = sum(b.list_depth for b in bullets if b.start < prefix.start)
         removed_end = sum(b.list_depth for b in bullets if b.start < prefix.end)
         start = (insert_index + utf16_len(parsed.plain_text[:prefix.start])
@@ -1543,7 +1601,8 @@ def _separated_list_requests(parsed: ParsedMarkdown, insert_index: int,
     # A list quoted inside a list item is its own list, even between items
     # of an enclosing list with the same preset.
     contained = {id(group[0]) for group in groups.values() if any(
-        s.type == "markdown_prefix" and s.style.get("outer") and s.style["quote"]
+        s.type == "markdown_prefix" and "q" in s.path
+        and any(token != "q" for token in s.path[:s.path.index("q")])
         and s.start <= group[0].start < s.end for s in parsed.styles)}
     # Numbered continuity takes precedence over intervening unordered items.
     # Independent same-depth restarts are created from bottom to top, and

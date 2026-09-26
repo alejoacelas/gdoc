@@ -335,7 +335,11 @@ class TestGetTabTextInlineMarkdown:
 
     def test_spaces_kept_outside_markers(self):
         tab = {"body": {"content": [_para(_run(" b \n", bold=True))]}}
-        assert get_tab_text(tab, markdown=True) == " **b** \n"
+        # Literal leading whitespace is an entity: raw indentation marks
+        # list item content.
+        assert get_tab_text(tab, markdown=True) == "&#32;**b** \n"
+        from gdoc.mdparse import parse_markdown
+        assert parse_markdown("- item\n&#32;**b** \n").plain_text == "item\n b \n"
 
     def test_plain_mode_ignores_styles(self):
         tab = {"body": {"content": [_para(_run("x\n", bold=True))]}}

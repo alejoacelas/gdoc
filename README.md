@@ -496,11 +496,15 @@ which applies to the entire selected scope. Use `--tab` to limit a bulk edit.
 This is a semantic Markdown format, not complete CommonMark/GFM conformance.
 Canonical export may escape punctuation or change fence spelling; code text and
 meaningful whitespace survive. Code blocks use native named ranges to retain their
-identity; container ranges retain quoted lists, quoted tables, and code, tables or
-quotes nested inside list items. A quote inside an item is written with the item's
-content indent before `>` (`1. item`, blank line, `   > quoted`); lists quoted there
-are their own lists, and the item's list continues after the quote. A contained table's container is recorded on its first
-cell. `edit` and `insert` create these ranges for new code and containers. Wording
+identity; container ranges retain quotes and list item content nested to any depth:
+paragraphs, headings, rules, code, tables and quotes inside list items, and lists,
+code and tables inside quotes, including a quote inside a quoted list item. Content
+inside a list item is written with the item's content indent (`1. item`, blank line,
+`   > quoted` or `   more text`); lists quoted there are their own lists, and the
+item's list continues after the content. Raw indentation after a list item therefore
+means item content: literal leading whitespace in a paragraph is written as a
+numeric entity (`&#32; text`). A contained table's container is recorded on its first
+cell, and the paragraph Docs keeps between two tables belongs to their container. `edit` and `insert` create these ranges for new code and containers. Wording
 edited inside a code line or quote stays in its block; a structural replacement
 splits the block around it. A replacement inside code is literal text (`*`, links
 and `#` stay characters); inside inline code in prose, a replacement written as one

@@ -10,7 +10,8 @@ import sys
 from gdoc.util import GdocError
 
 # gdoc's own container ranges (see gdoc.api.docs._prefix_range_name).
-_PREFIX_NAME = r"gdoc:prefix:(?:v1:\d+:\d+|v2:\d+:\d+:\d+)"
+_PREFIX_NAME = (r"gdoc:prefix:(?:v1:\d+:\d+|v2:\d+:\d+:\d+"
+                r"|v3:(?:q|\d+)(?:\.(?:q|\d+))*)")
 
 _ELEMENTS = {
     "person": "people chips",

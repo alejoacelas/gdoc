@@ -16,6 +16,13 @@ All notable changes to `gdoc` are documented here. This project follows
 
 ### Changed
 
+- Container context is a path of quote markers and list item indents, so
+  paragraphs, headings, rules, code, tables and quotes nest inside list items
+  and quotes to any depth, and blank paragraphs between contained tables keep
+  their count across rewrites. New nestings use `gdoc:prefix:v3:` range names;
+  v1/v2 ranges keep their meaning. Literal leading whitespace in a paragraph is
+  exported as a numeric entity.
+
 - Default `cat`, `pull` and Markdown `export` use the native first-tab serializer.
   Use `--tab` for another editable tab or `cat --all-tabs` for inspection.
 - Default `write` and `push` replace the first tab and preserve siblings.

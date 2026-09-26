@@ -447,38 +447,62 @@ def _still_code(paragraph: dict) -> bool:
 
 
 _PREFIX_RANGE_RE = re.compile(
-    r"gdoc:prefix:(?:v1:(\d+):(\d+)|v2:(\d+):(\d+):(\d+))")
+    r"gdoc:prefix:(?:v1:(\d+):(\d+)|v2:(\d+):(\d+):(\d+)|v3:((?:q|\d+)(?:\.(?:q|\d+))*))")
 
 
-def _prefix_range_name(quote: int, indent: int, outer: int = 0) -> str:
-    """Name of a container range: v2 adds a list item's indent before quotes."""
-    if outer:
-        return f"gdoc:prefix:v2:{outer}:{quote}:{indent}"
-    return f"gdoc:prefix:v1:{quote}:{indent}"
+def _prefix_range_name(path: tuple) -> str:
+    """Name of a container range for a container path.
+
+    A path lists the containers outside a paragraph, outermost first: ``"q"``
+    for a quote marker and an integer for a list item's content indent. v1
+    (quotes, then an indent) and v2 (an item indent, quotes, then an indent)
+    keep their names; any other nesting uses v3, the path itself.
+    """
+    from gdoc.mdparse import legacy_prefix
+
+    legacy = legacy_prefix(path)
+    if legacy is not None:
+        quote, indent, outer = legacy
+        if outer:
+            return f"gdoc:prefix:v2:{outer}:{quote}:{indent}"
+        return f"gdoc:prefix:v1:{quote}:{indent}"
+    return "gdoc:prefix:v3:" + ".".join(str(token) for token in path)
 
 
-def _parse_prefix_range_name(name: str) -> tuple[int, int, int] | None:
-    """``(quote, indent, outer)`` of a gdoc container range name."""
+def _parse_prefix_range_name(name: str) -> tuple | None:
+    """The container path of a gdoc container range name."""
     found = _PREFIX_RANGE_RE.fullmatch(name)
     if not found:
         return None
     if found[1] is not None:
-        return int(found[1]), int(found[2]), 0
-    return int(found[4]), int(found[5]), int(found[3])
+        quote, indent, outer = int(found[1]), int(found[2]), 0
+    elif found[3] is not None:
+        quote, indent, outer = int(found[4]), int(found[5]), int(found[3])
+    else:
+        return tuple(token if token == "q" else int(token)
+                     for token in found[6].split("."))
+    return ((outer,) if outer else ()) + ("q",) * quote + (
+        (indent,) if indent else ())
 
 
-def _prefix_still_applies(paragraph: dict, prefix: tuple[int, int, int]) -> bool:
+def _without_trailing_indent(path: tuple) -> tuple:
+    """A path without its trailing list-item indents (a blank line's markers)."""
+    path = tuple(path)
+    while path and path[-1] != "q":
+        path = path[:-1]
+    return path
+
+
+def _prefix_still_applies(paragraph: dict, path: tuple) -> bool:
     """Whether a paragraph still has the indent its recorded container gave it.
 
-    gdoc indents each quote level by 36pt, plus one level for text contained
-    in a list item; removing that indent in Docs removes the container.
+    gdoc indents each container (quote marker or list item content) by 36pt;
+    removing that indent in Docs removes the container.
     """
     indent = paragraph.get("paragraphStyle", {}).get("indentStart", {})
     magnitude = (indent.get("magnitude", 0)
                  if indent.get("unit", "PT") == "PT" else 0)
-    required = 36 * (prefix[0] + bool(prefix[2])) + (
-        36 if prefix[1] and not paragraph.get("bullet") else 0)
-    return magnitude >= required - 0.5
+    return magnitude >= 36 * len(path) - 0.5
 
 
 def _runs_markdown(elements: list[dict]) -> str:
@@ -686,6 +710,10 @@ def _paragraph_markdown(
         text = "\\" + text
     text = re.sub(r"^([ \t]*)([-+#>|])", r"\1\\\2", text)
     text = re.sub(r"^([ \t]*\d+)\.(?=\s|$)", r"\1\\.", text)
+    if text[:1] in (" ", "\t"):
+        # Raw indentation marks list item content; a numeric entity keeps
+        # literal leading whitespace as text.
+        text = f"&#{ord(text[0])};" + text[1:]
     return quote + text + newline
 
 
@@ -931,12 +959,20 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
                 prefix_ranges.extend((r, prefix) for r in named.get("ranges", []))
     code_parts = []
     active_code = None
-    active_prefix = (0, 0, 0)
+    active_prefix = ()
 
-    def with_prefix(text, prefix):
-        lead = " " * prefix[2] + "> " * prefix[0] + " " * prefix[1]
+    def with_prefix(text, path, code=False):
+        from gdoc.mdparse import path_lead
+
+        lead = path_lead(path)
+        # A blank line outside code carries only the containers that need a
+        # marker: trailing list-item indentation alone would be invisible
+        # trailing whitespace, and the parser treats a blank line as inside
+        # the item either way.
+        blank = path_lead(_without_trailing_indent(path))
         # Only "\n" ends a Markdown line; a soft break (\x0b) stays in its line.
-        return "".join(lead + line for line in re.findall(r"[^\n]*\n|[^\n]+", text))
+        return "".join((blank if line == "\n" and not code else lead) + line
+                       for line in re.findall(r"[^\n]*\n|[^\n]+", text))
 
     def flush_code():
         if not code_parts:
@@ -945,13 +981,14 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
         fence = "`" * max(3, 1 + max(
             (len(m[0]) for m in re.finditer(r"`+", literal)), default=0,
         ))
-        parts.append(with_prefix(fence + "\n" + literal + fence + "\n", active_prefix))
+        parts.append(with_prefix(fence + "\n" + literal + fence + "\n",
+                                 active_prefix, code=True))
         code_parts.clear()
 
     def prefix_at(index):
-        return next((prefix for r, prefix in prefix_ranges
+        return next((path for r, path in prefix_ranges
                      if r.get("startIndex", 0) <= index < r.get("endIndex", 0)),
-                    (0, 0, 0))
+                    ())
 
     def table_prefix(table):
         # Only a range starting inside the first cell marks a contained table,
@@ -959,13 +996,28 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
         cell = next(iter(next(iter(table.get("tableRows", [])), {}).get(
             "tableCells", [])), {})
         low, high = cell.get("startIndex", -1), cell.get("endIndex", -1)
-        return next((prefix for r, prefix in prefix_ranges
-                     if low <= r.get("startIndex", -1) < high), (0, 0, 0))
+        return next((path for r, path in prefix_ranges
+                     if low <= r.get("startIndex", -1) < high), ())
+
+    def blank_paragraph(element):
+        paragraph = element.get("paragraph")
+        return paragraph is not None and not paragraph.get("bullet") and all(
+            not run.get("textRun", {}).get("content", "\n").strip("\n")
+            and "textRun" in run for run in paragraph.get("elements", []))
+
+    def next_table_prefix(position):
+        """The container of a table that follows only blank paragraphs."""
+        for later in content[position + 1:]:
+            if "table" in later:
+                return table_prefix(later["table"])
+            if not blank_paragraph(later):
+                return None
+        return None
 
     table_run = None  # Container of the last pipe table, until non-blank content.
-    for element in content:
+    for position, element in enumerate(content):
         if not markdown:
-            prefix = (0, 0, 0)
+            prefix = ()
         elif "table" in element:
             prefix = table_prefix(element["table"])
         else:
@@ -976,11 +1028,17 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
         # gdoc's ranges record what it wrote. A paragraph someone has since
         # restyled in Docs is read from its native content instead.
         if "paragraph" in element:
-            if any(prefix) and not _prefix_still_applies(
-                    element["paragraph"], prefix):
-                prefix = (0, 0, 0)
+            if prefix and not _prefix_still_applies(element["paragraph"], prefix):
+                prefix = ()
             if marker is not None and not _still_code(element["paragraph"]):
                 marker = None
+            # Docs keeps a paragraph between adjacent tables. Blank paragraphs
+            # there belong to the tables' container, so the separator logic
+            # below counts them in that container.
+            if (markdown and marker is None and table_run is not None
+                    and prefix != table_run and blank_paragraph(element)
+                    and next_table_prefix(position) == table_run):
+                prefix = table_run
         if (marker != active_code or prefix != active_prefix
                 or "paragraph" not in element):
             flush_code()
@@ -995,7 +1053,7 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
                 parts.append(_extract_paragraphs_text([element]))
                 continue
             paragraph = element["paragraph"]
-            if any(prefix):
+            if prefix:
                 # Prefix ranges distinguish quote/list containers from incidental
                 # native indentation and avoid inferring a second quote marker.
                 paragraph_style = dict(paragraph.get("paragraphStyle", {}))
@@ -1004,7 +1062,7 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
                         paragraph_style[key] = {
                             **paragraph_style[key],
                             "magnitude": paragraph_style[key].get("magnitude", 0)
-                            - 36 * (prefix[0] + bool(prefix[2])),
+                            - 36 * len(prefix),
                         }
                     else:
                         paragraph_style.pop(key, None)
@@ -1685,9 +1743,8 @@ def _table_prefix_requests(cell_indices, table, tab_id):
     """
     from gdoc.mdparse import parse_inline, utf16_len
 
-    quote, indent = getattr(table, "prefix", (0, 0))
-    outer = getattr(table, "outer", 0)
-    if not (quote or indent) or not cell_indices or not cell_indices[0]:
+    path = getattr(table, "path", ())
+    if not path or not cell_indices or not cell_indices[0]:
         return []
     start = cell_indices[0][0]
     raw = table.rows[0][0] if table.rows and table.rows[0] else ""
@@ -1696,7 +1753,7 @@ def _table_prefix_requests(cell_indices, table, tab_id):
     if tab_id:
         span["tabId"] = tab_id
     return [{"createNamedRange": {
-        "name": _prefix_range_name(quote, indent, outer), "range": span,
+        "name": _prefix_range_name(path), "range": span,
     }}]
 
 
@@ -2752,14 +2809,14 @@ def _code_range_requests(parsed, insert_index: int, tab_id: str | None) -> list[
                 "endIndex": max(start + 1, coordinate(style.end))}
         if tab_id:
             span["tabId"] = tab_id
-        name = _prefix_range_name(style.style["quote"], style.style["indent"],
-                                  style.style.get("outer", 0))
+        name = _prefix_range_name(style.path)
         requests.append({"createNamedRange": {"name": name, "range": span}})
     return requests
 
 
 _OWNED_RANGE_NAME_RE = re.compile(
-    r"gdoc:code:v1|gdoc:prefix:v1:\d+:\d+|gdoc:prefix:v2:\d+:\d+:\d+")
+    r"gdoc:code:v1|gdoc:prefix:v1:\d+:\d+|gdoc:prefix:v2:\d+:\d+:\d+"
+    r"|gdoc:prefix:v3:(?:q|\d+)(?:\.(?:q|\d+))*")
 
 
 def _owned_named_ranges(tab: dict | None, tab_id: str | None):

@@ -413,6 +413,29 @@ def _runs_markdown(elements: list[dict]) -> str:
     return "".join(parts)
 
 
+def _indent_nesting_level(native_level: int, indent: dict, definitions: list) -> int:
+    """Return the nesting a list paragraph's physical indent shows.
+
+    gdoc indents a nested list created as its own native list by 36pt per
+    level, so the indent recovers nesting its metadata resets. The level is the
+    one whose own list-definition indent (36pt per level by default) is closest;
+    ties keep the shallower level, so a custom first-level indent is no nesting.
+    """
+    if indent.get("unit", "PT") != "PT" or "magnitude" not in indent:
+        return native_level
+
+    def expected(level):
+        defined = (definitions[level].get("indentStart", {})
+                   if level < len(definitions) else {})
+        if defined.get("unit", "PT") == "PT" and "magnitude" in defined:
+            return defined["magnitude"]
+        return 36 * (level + 1)
+
+    magnitude = indent["magnitude"]
+    closest = min(range(9), key=lambda level: (abs(expected(level) - magnitude), level))
+    return max(native_level, closest)
+
+
 def _paragraph_markdown(
     paragraph: dict, lists: dict, ordered_counters: dict
 ) -> str:
@@ -462,8 +485,7 @@ def _paragraph_markdown(
         indent_start = paragraph.get("paragraphStyle", {}).get(
             "indentStart", inherited.get("indentStart", {}),
         )
-        if indent_start.get("unit", "PT") == "PT":
-            level = max(level, round(indent_start.get("magnitude", 0) / 36) - 1)
+        level = _indent_nesting_level(native_level, indent_start, definitions)
         list_id = bullet.get("listId", "")
         # List IDs carry continuity even across intervening paragraphs/lists.
         for key in list(ordered_counters):

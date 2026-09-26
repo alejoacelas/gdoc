@@ -90,7 +90,7 @@ _PARAGRAPH_STYLE_LOSSES = {
 
 def _numbered_list_hazards(content: list, lists: dict) -> set[str]:
     """Find numbering boundaries and starts reconstruction cannot preserve."""
-    from gdoc.api.docs import _list_is_ordered
+    from gdoc.api.docs import _indent_nesting_level, _list_is_ordered
 
     hazards = set()
     run = {}
@@ -110,7 +110,7 @@ def _numbered_list_hazards(content: list, lists: dict) -> set[str]:
         indent = paragraph.get("paragraphStyle", {}).get(
             "indentStart", definition.get("indentStart", {}),
         )
-        level = max(native_level, round(indent.get("magnitude", 0) / 36) - 1)
+        level = _indent_nesting_level(native_level, indent, definitions)
         for deeper in [key for key in run if key > level]:
             del run[deeper]
         if not _list_is_ordered(lists, list_id, native_level):

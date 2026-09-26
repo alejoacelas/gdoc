@@ -144,3 +144,24 @@ def test_numbered_item_containing_a_rule_stays_one_item():
     _strip_trailing_newline_unless_hr(parsed)
     assert labels(apply_list_requests(_native_docs_requests(parsed, 1, "t"))) == [1, 2]
     assert not parsed.non_default_list_starts
+
+
+@pytest.mark.parametrize("definition_indent, paragraph_indent, marker", [
+    (54, None, "1. item"),     # Custom list definition, inherited indent.
+    (None, 54, "1. item"),     # Custom paragraph indent on a first-level item.
+    (None, 72, "  1. item"),   # gdoc's own nested child list at one level deep.
+])
+def test_custom_first_level_indent_is_not_nesting(definition_indent, paragraph_indent,
+                                                  marker):
+    level = {"glyphType": "DECIMAL"}
+    if definition_indent:
+        level["indentStart"] = {"magnitude": definition_indent, "unit": "PT"}
+    lists = {"L": {"listProperties": {"nestingLevels": [level] + [
+        {"glyphType": "ALPHA"}] * 8}}}
+    item = _paragraph([("item", {})], bullet={"listId": "L", "nestingLevel": 0})
+    if paragraph_indent:
+        item["paragraph"]["paragraphStyle"]["indentStart"] = {
+            "magnitude": paragraph_indent, "unit": "PT"}
+    exported = get_tab_text({"body": {"content": [item]}, "lists": lists},
+                            markdown=True)
+    assert exported == marker + "\n"

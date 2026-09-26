@@ -300,3 +300,26 @@ def test_quote_in_item_numbering_is_one_list(route):
     doc = _written(route, "1. a\n\n   > 1. x\n   > 2. y\n2. b\n")
     lists = {text: bullet[0] for text, _, bullet in styles(doc) if bullet}
     assert lists["a"] == lists["b"] != lists["x"] == lists["y"]
+
+
+@pytest.mark.parametrize("separator", ["\x0b", " ", "\x0c"])
+def test_a_soft_break_before_a_tab_header_can_be_written_back(route, separator):
+    """R5-11: only a line of its own is an --all-tabs tab header."""
+    doc = route.load(NativeDoc(("p", f"intro{separator}=== Tab: Notes ===")))
+    read = route.ok("cat")
+    route.ok("write", text=read.replace("intro", "intro2"))
+    assert styles(doc)[0][0] == f"intro2{separator}=== Tab: Notes ==="
+
+
+@pytest.mark.parametrize("markdown,expected", [
+    ("---\n```\n```\n", "---\n```\n\n```\n"),
+    ("> ---\n```\n", "> ---\n```\n\n```\n"),
+    ("a\n---\n```\n```\n", "a\n---\n```\n\n```\n"),
+])
+def test_a_rule_before_a_final_empty_code_block_is_written(route, markdown,
+                                                           expected):
+    """R5-12: the empty code line owns the final mark; the rule keeps its own."""
+    _written(route, markdown)
+    assert _read(route) == expected
+    route.ok("write", text=expected.replace("---", "***"))
+    assert _read(route) == expected

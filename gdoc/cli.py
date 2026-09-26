@@ -1519,7 +1519,9 @@ def _write_native_markdown(
 
     inspection_header = False
     fence = None
-    for line in content.splitlines():
+    # Split Markdown lines as the parser does: a soft break (\v) or another
+    # Unicode separator stays inside its paragraph's line.
+    for line in content.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
         if fence is not None:
             close = _FENCE_CLOSE_RE.match(line.lstrip())
             if close and close[1][0] == fence[0] and len(close[1]) >= len(fence):

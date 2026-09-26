@@ -2867,7 +2867,10 @@ def insert_markdown_into_tab(
     # A table placed after the rule is the tab's last block instead.
     table_last = any(t.plain_text_offset == len(parsed.plain_text)
                      for t in parsed.tables)
-    if at_end and not table_last and parsed.plain_text.endswith("\n") and any(
+    # An empty final paragraph after the rule (such as an empty code line)
+    # owns the mandatory final newline itself, so the rule keeps its mark.
+    if at_end and not table_last and final_style is None \
+            and parsed.plain_text.endswith("\n") and any(
         s.type == "paragraph_style" and s.end == len(parsed.plain_text)
         and "borderBottom" in s.style for s in parsed.styles
     ):

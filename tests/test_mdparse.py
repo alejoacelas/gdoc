@@ -1046,4 +1046,3 @@ class TestSingleLineTripleBacktickSpan:
         parsed = parse_markdown("```code```\n![a](https://x.test/i.png)\n")
         assert parsed.plain_text == "code\n \n"
         assert parsed.images[0].uri == "https://x.test/i.png"
-

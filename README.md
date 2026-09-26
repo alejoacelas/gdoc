@@ -566,6 +566,18 @@ Use targeted edits when richer native content should survive. With consent, a
 body with section breaks is rewritten as one section: the breaks and their
 per-section layout are removed.
 
+A pipe-table cell holds inline Markdown and `<br>` line breaks, so block content
+inside a cell is a richer feature: a native bulleted or numbered paragraph, or a
+heading, inside a cell has no Markdown spelling. A rewrite of such a table is
+refused, and with `--allow-lossy` those cell paragraphs become plain text; edit the
+cell's wording with `edit --cell` to keep them. Lists around and beside tables,
+and tables inside list items and quotes, are supported Markdown and never need
+consent.
+
+A changed tab rewrite deletes and reinserts the tab's body, so comments anchored in
+it can lose their anchors even where the text is unchanged; targeted edits touch
+only the replaced wording.
+
 Markdown reads show a tab's text without its pending suggestions: suggested
 insertions are left out and wording suggested for deletion stays. `cat` notes on
 stderr how many suggestions are pending (`scope.pending_suggestions` with `--json`).

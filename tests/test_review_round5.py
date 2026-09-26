@@ -51,3 +51,29 @@ def test_image_alt_text_cannot_hide_the_image(description):
     code = [s for s in parsed.styles if s.type == "text_style"
             and "weightedFontFamily" in s.style]
     assert [(s.start, s.end) for s in code] == [(10, 12)]
+
+
+def _table(*rows):
+    """A native table whose cells each hold one paragraph of styled runs."""
+    return {"startIndex": 1, "endIndex": 2, "table": {
+        "rows": len(rows), "columns": len(rows[0]),
+        "tableRows": [{"tableCells": [{"content": [_paragraph(*cell)]}
+                                      for cell in row]} for row in rows]}}
+
+
+@pytest.mark.parametrize("cell,text", [
+    ((("Type ` then ", {}), ("a|b", CODE), ("\n", {})), "Type ` then a|b"),
+    ((("a`b\x0bc`d", {}), ("\n", {})), "a`b\x0bc`d"),
+])
+def test_table_cell_backtick_stays_literal(cell, text):
+    """F4: an escaped backtick in a cell never opens a code span.
+
+    The cell must parse back to exactly its native text, so a write sends no
+    extra backslash or literal ``<br>`` that the next read would grow.
+    """
+    from gdoc.mdparse import parse_inline
+
+    tab = _tab([_table([(("H", {}), ("\n", {}))], [cell]), _paragraph(("\n", {}))])
+    parsed = parse_markdown(get_tab_text(tab, markdown=True))
+    (only,) = parsed.tables[0].rows[1]
+    assert parse_inline(only)[0] == text

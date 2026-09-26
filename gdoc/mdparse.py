@@ -205,6 +205,19 @@ def _strip_escapes(s: str) -> str:
     return "".join(out)
 
 
+def _code_spans(text: str) -> list[re.Match]:
+    """Code spans of ``text``, opened only by unescaped backticks."""
+    spans = []
+    code_end = 0
+    for opener in re.finditer(r"(?<!`)(`+)(?!`)", _mask_escapes(text)):
+        if opener.start() < code_end:
+            continue
+        if code := _CODE_RE.match(text, opener.start()):
+            spans.append(code)
+            code_end = code.end()
+    return spans
+
+
 def _table_cells(line: str) -> list[str]:
     """Split unescaped pipes, retaining inline escapes for the cell parser."""
     text = line[1:-1]
@@ -212,13 +225,8 @@ def _table_cells(line: str) -> list[str]:
     # Backslashes are literal inside code spans, where only "\\|" marks a pipe
     # of the content; elsewhere an escaped backslash leaves the pipe bare.
     in_code = [False] * len(text)
-    code_end = 0
-    for opener in re.finditer(r"(?<!`)(`+)(?!`)", masked):
-        if opener.start() < code_end:
-            continue
-        if code := _CODE_RE.match(text, opener.start()):
-            in_code[code.start():code.end()] = [True] * (code.end() - code.start())
-            code_end = code.end()
+    for code in _code_spans(text):
+        in_code[code.start():code.end()] = [True] * (code.end() - code.start())
     separators = [
         index for index, char in enumerate(text) if char == "|" and not (
             text[index - 1:index] == "\\" if in_code[index] else masked[index] != "|"
@@ -230,7 +238,7 @@ def _table_cells(line: str) -> list[str]:
         cell = text[start + 1:end].strip()
         parts = []
         cursor = 0
-        for code in _CODE_RE.finditer(cell):
+        for code in _code_spans(cell):
             parts.append(re.sub(r"\\.|<br>",
                                 lambda m: "\n" if m[0] == "<br>" else m[0],
                                 cell[cursor:code.start()]))

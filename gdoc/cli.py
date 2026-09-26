@@ -390,6 +390,12 @@ def cmd_cat(args) -> int:
         "revision_id": document.get("revisionId", ""),
         "total_bytes": total_bytes,
     }
+    if want_markdown:
+        from gdoc.api.docs import pending_suggestion_ids
+        pending = sum(len(pending_suggestion_ids(t.get("body", {})))
+                      for t in selected)
+        if pending:
+            scope["pending_suggestions"] = pending
     if get_output_mode(args) == "json":
         extra = {"tab": selected[0]["title"]} if len(selected) == 1 else {}
         print(format_json(content=displayed, scope=scope, **extra))
@@ -398,6 +404,8 @@ def cmd_cat(args) -> int:
         if not all_tabs:
             _note_tab_scope(document, selected[0],
                             "--tab" if annotated else "--all-tabs or --tab")
+        elif want_markdown:
+            _note_pending_suggestions(selected)
         if truncated:
             print(
                 f"NOTE: partial output ({len(displayed.encode('utf-8'))} of "
@@ -1656,6 +1664,23 @@ def _note_tab_scope(document: dict, selected: dict, others: str = "--tab") -> No
             f"{count} tabs exist. Use {others} to read others.",
             file=sys.stderr,
         )
+    _note_pending_suggestions([selected])
+
+
+def _note_pending_suggestions(tabs: list[dict]) -> None:
+    """Say on stderr that Markdown shows the text without pending suggestions."""
+    from gdoc.api.docs import pending_suggestion_ids
+
+    for tab in tabs:
+        count = len(pending_suggestion_ids(tab.get("body", {})))
+        if count:
+            print(
+                f"NOTE: tab {tab['title']!r} has {count} pending "
+                f"suggestion{'s' if count != 1 else ''}; the Markdown shows its "
+                "text without them. Rewriting the tab needs --allow-lossy and "
+                "discards them; accept or reject them in Docs to keep them.",
+                file=sys.stderr,
+            )
 
 
 def _read_native_tab(doc_id: str, tab_name: str | None = None, *, document=None):

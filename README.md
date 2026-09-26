@@ -561,6 +561,13 @@ Use targeted edits when richer native content should survive. With consent, a
 body with section breaks is rewritten as one section: the breaks and their
 per-section layout are removed.
 
+Markdown reads show a tab's text without its pending suggestions: suggested
+insertions are left out and wording suggested for deletion stays. `cat` notes on
+stderr how many suggestions are pending (`scope.pending_suggestions` with `--json`).
+Writing that text back unchanged sends nothing. A changed rewrite is refused unless
+`--allow-lossy` is given; with it, the suggestions are discarded, never applied as
+direct edits.
+
 ```bash
 gdoc write DOC draft.md --tab Notes --allow-lossy
 ```

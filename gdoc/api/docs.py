@@ -655,6 +655,71 @@ def _table_markdown(table: dict) -> str | None:
     return "".join(lines)
 
 
+def pending_suggestion_ids(value) -> set[str]:
+    """IDs of pending suggestions anywhere in a tab or content subtree."""
+    found: set[str] = set()
+    if isinstance(value, list):
+        for child in value:
+            found |= pending_suggestion_ids(child)
+    elif isinstance(value, dict):
+        for key, child in value.items():
+            if key in ("suggestedInsertionIds", "suggestedDeletionIds"):
+                found.update(child or [])
+            elif key.startswith("suggested") and isinstance(child, dict):
+                found.update(child)
+            else:
+                found |= pending_suggestion_ids(child)
+    return found
+
+
+def _without_suggestions(content: list[dict]) -> list[dict]:
+    """Content as it reads before its pending suggestions.
+
+    Reads use the API's inline suggestion view, so suggested insertions
+    appear as text beside the wording they would delete. Markdown shows the
+    current text: suggested insertions are left out and suggested deletions
+    stay. A paragraph break that is itself a suggested insertion joins its
+    text to the following paragraph.
+    """
+    result: list[dict] = []
+    carried: list[dict] = []
+    for element in content:
+        if element.get("suggestedInsertionIds"):
+            continue
+        if "table" in element:
+            table = dict(element["table"])
+            table["tableRows"] = [
+                {**row, "tableCells": [
+                    {**cell, "content": _without_suggestions(cell.get("content", []))}
+                    for cell in row.get("tableCells", [])]}
+                for row in table.get("tableRows", [])
+                if not row.get("suggestedInsertionIds")
+            ]
+            result.append({**element, "table": table})
+            continue
+        if "paragraph" not in element:
+            result.append(element)
+            continue
+        paragraph = element["paragraph"]
+        kept = [e for e in paragraph.get("elements", [])
+                if not any(e.get(kind, {}).get("suggestedInsertionIds")
+                           for kind in e if isinstance(e.get(kind), dict))]
+        mark = next((e for e in reversed(paragraph.get("elements", []))
+                     if "textRun" in e), None)
+        if mark is not None and mark["textRun"].get("content", "").endswith("\n") \
+                and mark["textRun"].get("suggestedInsertionIds"):
+            text = [e for e in kept if e is not mark]
+            carried.extend(text)
+            continue
+        result.append({**element, "paragraph": {
+            **paragraph, "elements": carried + kept}})
+        carried = []
+    if carried:
+        result.append({"paragraph": {"elements": carried + [
+            {"textRun": {"content": "\n"}}]}})
+    return result
+
+
 def get_tab_text(tab: dict, markdown: bool = False) -> str:
     """Extract text from a tab's body content.
 
@@ -683,6 +748,8 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
     """
     body = tab.get("body", {})
     content = body.get("content", [])
+    if markdown and pending_suggestion_ids(content):
+        content = _without_suggestions(content)
     if markdown and tab.get("inlineObjects"):
         from copy import deepcopy
 

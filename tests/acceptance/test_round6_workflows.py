@@ -179,3 +179,62 @@ def test_join_that_would_move_a_list_item_is_refused(route):
     assert code != 0 and "list item" in output + error
     assert len(route.service.batches) == batches
     assert _read(route) == "- a b\nc d\n"
+
+
+def _run(text, start, **extra):
+    end = start + len(text.encode("utf-16-le")) // 2
+    return {"startIndex": start, "endIndex": end,
+            "textRun": {"content": text, "textStyle": {}, **extra}}
+
+
+def _suggested_tab():
+    """'The cat ran' with 'cat' suggested for deletion and 'dog' inserted,
+    a suggested paragraph break, and a wholly suggested paragraph."""
+    runs = [_run("The ", 1), _run("cat", 5, suggestedDeletionIds=["s1"]),
+            _run("dog", 8, suggestedInsertionIds=["s1"]), _run(" ran", 11),
+            _run("\n", 15)]
+    split = [_run("one", 16), _run("\n", 19, suggestedInsertionIds=["s2"])]
+    joined = [_run("two\n", 20)]
+    added = [_run("new\n", 24, suggestedInsertionIds=["s3"])]
+    content = [{"startIndex": 1, "endIndex": 16, "paragraph": {"elements": runs}},
+               {"startIndex": 16, "endIndex": 20, "paragraph": {"elements": split}},
+               {"startIndex": 20, "endIndex": 24, "paragraph": {"elements": joined}},
+               {"startIndex": 24, "endIndex": 28, "paragraph": {"elements": added},
+                "suggestedInsertionIds": ["s3"]}]
+    return {"documentId": "synthetic", "revisionId": "r1", "tabs": [{
+        "tabProperties": {"tabId": "t.0", "title": "Main", "index": 0},
+        "documentTab": {"body": {"content": [
+            {"startIndex": 0, "endIndex": 1, "sectionBreak": {}}, *content]}},
+    }]}
+
+
+def test_reads_show_text_without_pending_suggestions(route, monkeypatch):
+    """R5-5: suggested insertions never read as ordinary text."""
+    from gdoc.api import docs
+
+    route.load(NativeDoc())
+    monkeypatch.setattr(docs, "get_document_with_tabs",
+                        lambda *a, **k: _suggested_tab())
+    code, output, error = route.call("cat")
+    assert code == 0
+    assert parse_frontmatter(output)[1] == "The cat ran\nonetwo\n"
+    assert "3 pending suggestions" in output + error
+    code, output, _ = route.call("cat", json=True)
+    assert '"pending_suggestions": 3' in output
+    assert "dog" not in output and "new" not in output
+
+
+def test_unchanged_write_after_a_suggestion_read_sends_nothing(route, monkeypatch):
+    """R5-5: writing the read back keeps the suggestions pending."""
+    from gdoc.api import docs
+
+    route.load(NativeDoc())
+    monkeypatch.setattr(docs, "get_document_with_tabs",
+                        lambda *a, **k: _suggested_tab())
+    read = route.ok("cat")
+    code, output, error = route.call("write", text=read)
+    assert code == 0, output + error
+    assert route.service.batches == []
+    code, output, error = route.call("write", text=read.replace("ran", "sat"))
+    assert code != 0 and "pending suggestions" in output + error
+    assert route.service.batches == []

@@ -900,11 +900,16 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         """
         path: tuple = ()
         while True:
-            open_list = bool(contexts.get(path, ({},))[0])
+            levels = contexts.get(path, ({},))[0]
             spaces = len(line) - len(line.lstrip(" "))
             body = line[spaces:]
-            if open_list and spaces and not _list_item_line(body):
-                path += (spaces,)
+            if levels and spaces and not _list_item_line(body):
+                # Content of an item nested at depth d sits inside d + 1 items:
+                # one token per enclosing item (two spaces per nesting level,
+                # then the item's own content indent), so native indentation
+                # counts every level while the Markdown prefix is unchanged.
+                depth = min((spaces - 1) // 2, max(levels))
+                path += (2,) * depth + (spaces - 2 * depth,)
                 line = body
                 continue
             quoted = _BLOCKQUOTE_RE.match(line)

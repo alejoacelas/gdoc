@@ -328,3 +328,33 @@ def test_table_boundary_paragraphs_are_stable(route, merge, source, expected, be
         assert len(route.service.batches) > batches
         text = _read(route)
         assert text == changed
+
+
+def _indent_of(doc, text):
+    for start, mark in doc.paragraphs():
+        if "".join(u.ch for u in doc.units[start:mark]) == text:
+            return doc.units[mark].ps.get("indentStart", {}).get("magnitude", 0)
+    raise AssertionError(text)
+
+
+@MERGES
+@pytest.mark.parametrize("markdown,text,indent", [
+    ("- parent\n  - child\n\n    continuation\n- next\n", "continuation", 72),
+    ("1. a\n  1. b\n\n     para\n2. c\n", "para", 72),
+    ("- p\n  - c\n    - g\n\n      deep\n- n\n", "deep", 108),
+    ("- p\n  - c\n\n    > quoted\n- n\n", "quoted", 108),
+    ("- p\n  - c\n\n    ```\n    code\n    ```\n- n\n", "code", 72),
+    ("- p\n  - c\n\n    | t |\n    | --- |\n    | v |\n- n\n", None, None),
+])
+def test_content_under_nested_items_is_indented_at_its_item(
+    route, merge, markdown, text, indent,
+):
+    """Internal review P1: one container level per enclosing item."""
+    last = markdown.rstrip("\n").rsplit("\n", 1)[1]
+    edits = [(last, last + "2")]
+    if text:
+        edits.append((text, text + "3"))
+    doc = _check(route, merge, markdown, edits,
+                 tables=1 if "| t |" in markdown else None)
+    if text:
+        assert _indent_of(doc, text + "3") == indent

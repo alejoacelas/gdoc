@@ -195,3 +195,52 @@ def test_markdown_export_records_limited_coverage(monkeypatch, tmp_path):
     state = _state()
     assert state.limited_read_revision_ids == {"t.0": "r1"}
     assert "t.0" not in state.read_revision_ids
+
+
+def with_drawing(service):
+    snapshot = service.snapshot
+
+    def drawing():
+        value = snapshot()
+        tab = value["tabs"][0]["documentTab"]
+        paragraph = next(e for e in tab["body"]["content"] if "paragraph" in e)
+        paragraph["paragraph"]["elements"].insert(0, {
+            "inlineObjectElement": {"inlineObjectId": "drawing"}})
+        tab["inlineObjects"] = {"drawing": {"inlineObjectProperties": {
+            "embeddedObject": {"embeddedDrawingProperties": {}}}}}
+        return value
+
+    service.snapshot = drawing
+
+
+def test_drawings_are_reported_as_omitted(route):
+    """Internal review P2: only images read faithfully as references."""
+    route.load(NativeDoc(("p", "See it."), ("p", "After.")))
+    with_drawing(route.service)
+    scope = json.loads(route.ok("cat", json=True))["scope"]
+    assert scope["complete"] is False
+    assert scope["omitted"] == ["inline images or embedded objects"]
+    assert _state().limited_read_revision_ids == {"t.0": "r1"}
+
+
+def test_images_are_not_omissions(route):
+    route.load(NativeDoc(("p", "See it."), ("p", "After.")))
+    route.service.doc.apply({"insertInlineImage": {
+        "location": {"index": 1}, "uri": "https://example.org/i.png"}})
+    scope = json.loads(route.ok("cat", json=True))["scope"]
+    assert scope["complete"] is True and "omitted" not in scope
+
+
+@pytest.mark.parametrize("to_file", [False, True])
+def test_markdown_export_json_reports_coverage(monkeypatch, tmp_path, to_file):
+    """Internal review P2: export --json carries complete and omitted."""
+    route = NativeRoute("cli", monkeypatch, tmp_path)
+    route.load(NativeDoc(("p", "See it."), ("p", "After.")))
+    with_rich(route.service, "body")
+    argv = ["--json", "export", "synthetic", "--format", "md"]
+    if to_file:
+        argv += ["--out", str(tmp_path / "x.md")]
+    code, out, err = _run(*argv)
+    result = json.loads(out)
+    assert code == 0 and result["complete"] is False
+    assert result["omitted"] == ["footnotes"]

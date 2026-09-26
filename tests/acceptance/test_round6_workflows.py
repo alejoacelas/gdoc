@@ -441,7 +441,16 @@ def test_suggested_tables_rows_and_columns_are_not_read(route, monkeypatch):
 def _tab_of(content, named=None):
     """A one-tab document in the inline suggestion view."""
     body = [{"startIndex": 0, "endIndex": 1, "sectionBreak": {}}, *content]
+    # As in API responses, each inline image has an inlineObjects entry.
+    objects = {element["inlineObjectElement"]["inlineObjectId"]
+               for block in content for element in block.get("paragraph", {})
+               .get("elements", []) if "inlineObjectElement" in element}
     tab = {"body": {"content": body}}
+    if objects:
+        tab["inlineObjects"] = {object_id: {"inlineObjectProperties": {
+            "embeddedObject": {"imageProperties": {
+                "contentUri": f"https://example.invalid/{object_id}.png"}}}}
+            for object_id in objects}
     if named:
         tab["namedRanges"] = named
     return {"documentId": "synthetic", "revisionId": "r1", "tabs": [{

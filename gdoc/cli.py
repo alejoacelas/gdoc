@@ -3083,11 +3083,17 @@ def cmd_export(args) -> int:
         markdown, document, selected = _read_native_tab(doc_id, tab_name)
         content = protect_body(markdown).encode("utf-8")
         _note_tab_scope(document, selected)
-        _note_omissions(_read_omissions([selected]))
+        omitted = _read_omissions([selected])
+        _note_omissions(omitted)
     else:
         content = export_doc_bytes(doc_id, _EXPORT_MIME[fmt])
     tab_scope = ({"tab": selected["title"], "tab_id": selected["id"]}
                  if selected is not None else {})
+    if selected is not None:
+        # Same coverage fields as pull: JSON callers see an incomplete read.
+        tab_scope["complete"] = _preview_complete([selected]) and not omitted
+        if omitted:
+            tab_scope["omitted"] = omitted
 
     if out:
         try:

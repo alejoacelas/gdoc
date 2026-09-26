@@ -299,6 +299,33 @@ def flatten_tabs(tabs: list[dict], _level: int = 0) -> list[dict]:
     return result
 
 
+def native_tab_fingerprint(tab: dict) -> str:
+    """Fingerprint a flattened tab's native content, styles and suggestions.
+
+    Two snapshots of an unchanged tab fingerprint equally even at different
+    document revisions, so edits to other tabs do not change it. Any native
+    change in the tab does, including styles and pending suggestions that
+    Markdown does not show. Image ``contentUri`` values are excluded: the
+    Docs API issues a fresh temporary URI (default lifetime 30 minutes) on
+    every read, so they differ between reads of an unchanged image.
+    """
+    import hashlib
+    import json
+
+    def stable(value):
+        if isinstance(value, dict):
+            return {key: stable(child) for key, child in value.items()
+                    if key != "contentUri"}
+        if isinstance(value, list):
+            return [stable(child) for child in value]
+        return value
+
+    content = {key: value for key, value in tab.items()
+               if key not in ("id", "title", "index", "nesting_level")}
+    encoded = json.dumps(stable(content), sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
 def get_document_tabs(doc_id: str) -> list[dict]:
     """Fetch document with all tab content and return flattened tab list.
 

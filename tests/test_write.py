@@ -208,9 +208,10 @@ def test_force_authorizes_new_snapshot_but_requires_revision(native_write, quiet
 
 @pytest.mark.parametrize("baseline", [None, "stale"])
 @pytest.mark.parametrize("tab", [None, "Draft"])
-def test_matching_native_content_is_noop_and_establishes_only_selected_read(
+def test_matching_native_content_is_noop_and_establishes_no_read(
     native_write, baseline, tab, capsys
 ):
+    """Equal Markdown is not a read: invisible native changes could differ."""
     state.save_state(
         "abc123",
         state.DocState(read_revision_ids={"first": baseline} if baseline else {}),
@@ -225,7 +226,8 @@ def test_matching_native_content_is_noop_and_establishes_only_selected_read(
     }
     native_write.write.assert_not_called()
     native_write.tab_write.assert_not_called()
-    assert state.load_state("abc123").read_revision_ids == {"first": "r10"}
+    assert state.load_state("abc123").read_revision_ids == (
+        {"first": baseline} if baseline else {})
 
 
 def test_default_write_preserves_siblings_without_collapse_consent(native_write):

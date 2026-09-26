@@ -246,7 +246,10 @@ def test_full_write_scope(mocker, tmp_path, command, scope, mode):
             sent = batch.call_args.kwargs["body"]
             assert sent["writeControl"] == {"requiredRevisionId": "before"}
             assert not any("deleteTab" in request for request in sent["requests"])
-    fetch.assert_called_once_with("doc")
+    # One safety snapshot precedes any mutation. An acknowledged push reads
+    # once more afterwards to record its file's native tab fingerprint.
+    after_push = command == "push" and batch.called
+    assert fetch.call_args_list == [mocker.call("doc")] * (1 + after_push)
 
 
 @pytest.mark.parametrize("command", ["write", "push"])
@@ -321,11 +324,16 @@ def test_full_write_uses_one_safety_snapshot(mocker, tmp_path, command):
     fetch.side_effect = [doc, {"revisionId": "foreign", "tabs": [tab("new", RICH)]}]
     args = SimpleNamespace(doc="doc", file=str(path), force=True)
     assert (cmd_write if command == "write" else cmd_push)(args) == 0
-    fetch.assert_called_once_with("doc")
+    # The foreign snapshot is only ever the post-acknowledgement read of a
+    # push; it never feeds the safety check or the write.
+    assert fetch.call_count == (2 if command == "push" else 1)
     batch.assert_called_once()
     assert batch.call_args.kwargs["body"]["writeControl"] == {
         "requiredRevisionId": "before",
     }
+    if command == "push":
+        assert "gdoc-tab-sha256: \n" in path.read_text() or \
+            "gdoc-tab-sha256:" not in path.read_text()
 
 
 @pytest.mark.parametrize("text", ["\n", "underlined paragraph\n"])

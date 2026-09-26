@@ -249,7 +249,13 @@ def test_unchanged_upload_skips_even_rich_page_state(
     upload.assert_not_called()
     state.assert_not_called()
     from gdoc.state import load_state
-    assert load_state("doc").read_revision_ids == {"draft": "r1"}
+    # Matching Markdown is not a read: invisible native changes could differ.
+    # Only the pushed file's own provenance at this revision records one.
+    known = load_state("doc")
+    if command == "push":
+        assert known.read_revision_ids == {"draft": "r1"}
+    else:
+        assert known is None or "draft" not in known.read_revision_ids
     assert version.call_count == 0
     assert "already in sync" in capsys.readouterr().out
 

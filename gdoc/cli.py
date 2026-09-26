@@ -1504,7 +1504,7 @@ def cmd_write(args) -> int:
 
 def _write_native_markdown(
     args, doc_id, content, *, command, tab_name=None, result_details=None,
-    file_revision=None, file_fingerprint=None,
+    file_revision=None, file_tab_fingerprint=None,
 ):
     """Share full-content write semantics across CLI, MCP, push and hooks."""
     import re
@@ -1569,10 +1569,29 @@ def _write_native_markdown(
         == _comparable_markdown(rename_image_references(content, aliases))
     )
     mode = get_output_mode(args)
+    from gdoc.api.docs import native_tab_fingerprint
+
+    # A file pulled at another revision still shows the selected tab when the
+    # tab's native content (including styles and suggestions Markdown does not
+    # show) is identical now; edits to other tabs changed the revision.
+    tab_unchanged = (
+        file_revision is not None and not collapse
+        and bool(file_tab_fingerprint)
+        and native_tab_fingerprint(selected) == file_tab_fingerprint
+    )
+    file_current = bool(file_revision) and (
+        file_revision == revision or tab_unchanged)
     if unchanged:
-        if result_details is not None:
-            result_details.update(acknowledged_revision_id=revision, rebased=False)
-        if _preview_complete([selected]):
+        if result_details is not None and file_current:
+            # The file's provenance advances only when it already covers the
+            # selected tab; an unseen native change keeps the file stale.
+            result_details.update(
+                acknowledged_revision_id=revision, rebased=False,
+                tab_fingerprint=native_tab_fingerprint(selected),
+            )
+        # Matching Markdown is not a read: invisible native changes may differ.
+        # Only a file whose own provenance covers this snapshot advances.
+        if file_current and _preview_complete([selected]):
             record_content_read(doc_id, [selected["id"]], revision)
         if mode == "json":
             print(format_json(
@@ -1590,26 +1609,18 @@ def _write_native_markdown(
                 "fresh copy and reapply the edits, or use --force to "
                 "intentionally overwrite.", 3,
             )
-        from gdoc.frontmatter import body_fingerprint
-
-        # The revision is document-wide. A change elsewhere (another tab, or
-        # this tool's own write) leaves the file current when the selected
-        # tab still reads exactly as the body this file was pulled with.
-        tab_unchanged = (
-            not collapse and bool(file_fingerprint)
-            and body_fingerprint(get_tab_text(selected, markdown=True))
-            == file_fingerprint
-        )
-        if file_revision != revision and not tab_unchanged:
+        # The revision is document-wide. A change elsewhere (another tab)
+        # leaves the file current when the selected tab's native content is
+        # exactly what it was at the file's revision.
+        if not file_current:
             raise GdocError(
-                "file gdoc-revision is stale; the document changed since this "
-                "file was pulled. Reconcile the local and remote edits, or use "
-                "--force to intentionally overwrite.", 3,
+                "file gdoc-revision is stale; the selected tab changed since "
+                "this file was pulled. Reconcile the local and remote edits, or "
+                "use --force to intentionally overwrite.", 3,
             )
-        if tab_unchanged and _preview_complete([selected]):
-            # The current snapshot shows the selected tab exactly as this file
-            # recorded it, so the file is a complete read of that tab at this
-            # revision; edits elsewhere (another tab) cannot be overwritten.
+        if file_revision != revision and _preview_complete([selected]):
+            # The native tab is identical to the one the file recorded, so the
+            # file is a complete read of that tab at this revision.
             record_content_read(doc_id, [selected["id"]], revision)
     require_content_baseline(
         doc_id, [t["id"] for t in tabs] if collapse else [selected["id"]],
@@ -1642,6 +1653,20 @@ def _write_native_markdown(
         replaced_tab_ids=[selected["id"]], rebased=details.get("rebased", False),
         image_reference_ids=details.get("image_reference_ids"),
     )
+    if (file_revision is not None and result_details is not None and acknowledged
+            and not details.get("rebased", False)):
+        # A file keeps its tab's native fingerprint so that a later edit to
+        # another tab leaves it pushable. Only a snapshot at exactly the
+        # acknowledged revision shows the written tab without foreign edits.
+        try:
+            after = get_document_with_tabs(doc_id)
+        except GdocError:
+            after = {}
+        if after.get("revisionId") == acknowledged:
+            written = next((t for t in flatten_tabs(after.get("tabs", []))
+                            if t["id"] == selected["id"]), None)
+            if written is not None:
+                result_details["tab_fingerprint"] = native_tab_fingerprint(written)
     if mode == "json":
         result = {
             "pushed" if command == "push" else "written": True,
@@ -1766,6 +1791,7 @@ def cmd_pull(args) -> int:
     # deliberately omit the `gdoc:` key — push and the sync hooks key
     # off it, and silently pushing a stale revision over the live doc
     # is a footgun.
+    from gdoc.api.docs import native_tab_fingerprint
     from gdoc.frontmatter import add_frontmatter, body_fingerprint
 
     if rev is not None:
@@ -1773,7 +1799,8 @@ def cmd_pull(args) -> int:
     else:
         front = {"gdoc": doc_id, "title": title, "tab": selected["id"],
                  "gdoc-revision": document.get("revisionId", ""),
-                 "gdoc-body-sha256": body_fingerprint(markdown)}
+                 "gdoc-body-sha256": body_fingerprint(markdown),
+                 "gdoc-tab-sha256": native_tab_fingerprint(selected)}
     content = add_frontmatter(markdown, front)
 
     from gdoc.frontmatter import preserve_and_replace
@@ -1876,7 +1903,7 @@ def cmd_push(args) -> int:
         tab_name=(None if getattr(args, "force_collapse_tabs", False)
                   else metadata.get("tab")),
         file_revision=metadata.get("gdoc-revision", ""), result_details=details,
-        file_fingerprint=metadata.get("gdoc-body-sha256"),
+        file_tab_fingerprint=metadata.get("gdoc-tab-sha256"),
     )
     _refresh_file_revision(file_path, content, details)
     return result
@@ -1898,6 +1925,11 @@ def _refresh_file_revision(file_path, content, details):
     updated = update_frontmatter_value(content, "gdoc-revision", acknowledged)
     updated = update_frontmatter_value(
         updated, "gdoc-body-sha256", body_fingerprint(body),
+    )
+    # Without a snapshot at the acknowledged revision the tab's native state is
+    # unknown; an empty fingerprint makes any later revision change stale.
+    updated = update_frontmatter_value(
+        updated, "gdoc-tab-sha256", details.get("tab_fingerprint", ""),
     )
     if updated == content:
         return
@@ -1970,7 +2002,7 @@ def cmd_sync_hook(args) -> int:
                     hook_args, doc_id, body, command="push",
                     tab_name=metadata.get("tab"), result_details=write_result,
                     file_revision=metadata.get("gdoc-revision", ""),
-                    file_fingerprint=metadata.get("gdoc-body-sha256"),
+                    file_tab_fingerprint=metadata.get("gdoc-tab-sha256"),
                 )
         except GdocError as error:
             if error.exit_code != 3:

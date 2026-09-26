@@ -26,7 +26,10 @@ All notable changes to `gdoc` are documented here. This project follows
 - `comment --quote` refuses ambiguous matches and reports candidates.
 - `edit` and `suggest` search all tabs, including headers, footers and footnotes.
   `--tab` selects one tab and its segments; `--all` replaces every match in scope.
-- Pushes check the file's revision as well as the shared read baseline. Pull hooks
+- Pushes check the file's revision as well as the shared read baseline. An older
+  file stays pushable only while its selected tab's native content (text, styles
+  and suggestions) matches the recorded `gdoc-tab-sha256`; Markdown equality alone
+  never blesses a newer revision. Pull hooks
   leave unsynced local bodies in place. Local replacements retain the previous
   file as a printed recovery copy, so an editor write racing the replacement is
   never lost. Files without `gdoc-revision` need a fresh pull or `--force`.

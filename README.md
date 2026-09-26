@@ -433,14 +433,20 @@ revision precondition. `--quiet` only suppresses notifications. A successful wri
 uses the revision acknowledged by Google, so successive own writes normally need
 no extra read. Missing acknowledgments or a rebased recovery do not bless unseen
 content. An unchanged selected tab returns `already in sync` without mutation.
+Matching Markdown is not a read: styles and pending suggestions do not appear in
+Markdown, so an `already in sync` result never establishes a new baseline.
 
 `push` and the sync hook also check the file's own `gdoc-revision`; reading a newer
 copy elsewhere cannot authorize an older file. The revision covers the whole
-document, so an older file is still accepted when its selected tab reads exactly as
-the body recorded in its `gdoc-body-sha256`: edits to other tabs, including your
-own push of a sibling tab's file, leave it pushable. Files without revision provenance
+document, so an older file is still accepted when its selected tab's native content
+matches the `gdoc-tab-sha256` fingerprint recorded at that revision: edits to other
+tabs, including your own push of a sibling tab's file, leave it pushable. Any change
+to the selected tab itself, including text colour or a pending suggestion, makes the
+file stale; `--allow-lossy` does not override that. Files without revision provenance
 need a fresh pull or an explicit `--force`. An acknowledged push updates only its
-provenance fields, preserving other frontmatter. `gdoc-body-sha256` records the
+provenance fields, preserving other frontmatter, and reads the document once more
+to fingerprint the written tab; if another edit already landed, the fingerprint is
+left empty and the next push needs a fresh pull. `gdoc-body-sha256` records the
 last pulled or acknowledged body. The pull hook leaves locally edited files in
 place; pull a separate copy to reconcile them. When a hook skips or fails, it
 prints the reason on stderr and, for Claude Code hook events, also returns it as

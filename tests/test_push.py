@@ -1,6 +1,7 @@
 """Push frontmatter transport and native content provenance."""
 
 import json
+from unittest import mock
 
 import pytest
 import test_write as write_tests
@@ -162,7 +163,10 @@ def test_push_explicit_collapse_requires_coverage_or_force(
         env.write.assert_not_called()
     else:
         assert cmd_push(args) == 0
-        env.read.assert_called_once_with("abc123")
+        # The safety snapshot, then at most the post-acknowledgement read that
+        # records the pushed file's native tab fingerprint.
+        assert env.read.call_args_list[0] == mock.call("abc123")
+        assert env.read.call_count <= 2
         assert env.write.call_args.kwargs["collapse_tabs"] is True
 
 
@@ -263,14 +267,22 @@ def test_missing_file_revision_pushes_with_explicit_force(native_write):
     env.write.assert_called_once()
 
 
-def test_stale_file_matching_live_tab_is_in_sync_and_refreshed(native_write, capsys):
-    from gdoc.frontmatter import body_fingerprint, parse_frontmatter
+def test_stale_file_matching_live_markdown_is_not_blessed(native_write, capsys):
+    """Matching Markdown is not evidence the tab is unchanged natively."""
+    from gdoc.frontmatter import parse_frontmatter
 
     env = native_write
-    env.path.write_text('---\ngdoc: abc123\ngdoc-revision: r9\n---\nRemote notes\n')
+    stale = '---\ngdoc: abc123\ngdoc-revision: r9\n---\nRemote notes\n'
+    env.path.write_text(stale)
     assert cmd_push(_make_args(file=str(env.path))) == 0
     assert 'already in sync' in capsys.readouterr().out
     env.write.assert_not_called()
-    metadata, body = parse_frontmatter(env.path.read_text())
-    assert metadata['gdoc-revision'] == 'r10'
-    assert metadata['gdoc-body-sha256'] == body_fingerprint(body)
+    metadata, _ = parse_frontmatter(env.path.read_text())
+    assert metadata['gdoc-revision'] == 'r9'
+    assert state.load_state("abc123") is None or "t.0" not in (
+        state.load_state("abc123").read_revision_ids)
+    # A later change from this file is still refused as stale.
+    env.path.write_text(stale.replace("Remote notes", "Changed notes"))
+    with pytest.raises(GdocError, match="stale"):
+        cmd_push(_make_args(file=str(env.path)))
+    env.write.assert_not_called()

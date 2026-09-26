@@ -3051,7 +3051,8 @@ def _wording_contexts(body: dict, match: dict, markdown: str):
                 and s.start < end and s.end > offset
             ], code_group=group if parsed.code_blocks else None)
             found = _replacement_paragraph(body.get("content", []), part)
-            baseline = _inline_baseline(found[0], part, line) if found else []
+            baseline = (_inline_baseline(found[0], part, line, selected.styles)
+                        if found else [])
             result.append((part, (selected, baseline)))
             offset = end + 1
         return result
@@ -3169,12 +3170,15 @@ def _retained_mark_requests(match: dict, tab_id: str | None) -> list[dict]:
     return requests
 
 
-def _replacement_text_style(runs: list[dict], match: dict, text: str):
+def _replacement_text_style(runs: list[dict], match: dict, text: str,
+                            explicit_links: bool = False):
     """Keep unique surviving runs, including plain runs, in source order.
 
     Unmatched gaps keep only styles common to their original runs. Ambiguous
-    mixed rewrites keep common fields, never a guessed dominant style. Links
-    require the full contiguous original label, uniquely at word boundaries.
+    mixed rewrites keep common fields, never a guessed dominant style. An edit
+    inside one link's label keeps the whole replacement in that link;
+    otherwise the linked wording the match covers must reappear uniquely, at
+    word boundaries, for its link to follow it.
     Offsets returned here are Python offsets into the replacement text.
     """
     start, end = match["startIndex"], match["endIndex"]
@@ -3226,14 +3230,29 @@ def _replacement_text_style(runs: list[dict], match: dict, text: str):
         result.append((offset, len(text), common(targets[source_index:] or targets)))
 
     for lo, hi, label, link in links:
-        if lo < start or hi > end or not label.strip():
+        # A link that also covers the paragraph mark ends at its visible text.
+        while label.endswith("\n"):
+            label, hi = label[:-1], hi - 1
+        if not label.strip() or hi <= start or lo >= end:
             continue
-        pos = text.find(label)
-        stop = pos + len(label)
-        if (pos < 0 or text.find(label, pos + 1) >= 0
-                or (pos and label[0].isalnum() and text[pos - 1].isalnum())
-                or (stop < len(text) and label[-1].isalnum() and text[stop].isalnum())):
-            continue
+        if (lo <= start and end <= hi and (lo, hi) != (start, end)
+                and not explicit_links):
+            # An edit of part of one link's label is a label edit: all of
+            # the replacement stays in that link.
+            pos, stop = 0, len(text)
+        else:
+            # Otherwise the linked wording the match covers must survive
+            # uniquely, as whole words, for its link to follow it.
+            raw = label.encode("utf-16-le")
+            part = raw[(max(lo, start) - lo) * 2:(min(hi, end) - lo) * 2].decode(
+                "utf-16-le")
+            pos = text.find(part)
+            stop = pos + len(part)
+            if (not part.strip() or pos < 0 or text.find(part, pos + 1) >= 0
+                    or (pos and part[0].isalnum() and text[pos - 1].isalnum())
+                    or (stop < len(text) and part[-1].isalnum()
+                        and text[stop].isalnum())):
+                continue
         # Link spans may cross non-link formatting boundaries.
         split = []
         for a, b, style in result:
@@ -3245,11 +3264,14 @@ def _replacement_text_style(runs: list[dict], match: dict, text: str):
     return result
 
 
-def _inline_baseline(paragraph: dict, match: dict, text: str) -> list[dict]:
+def _inline_baseline(paragraph: dict, match: dict, text: str,
+                     styles=()) -> list[dict]:
     """Restore target styles over inserted text, using masks for absent fields.
 
     Keep the complete desired style for restoring link decorations after
     explicit Markdown; only differing fields need an initial style request.
+    ``styles`` are the replacement's parsed styles: a replacement that sets
+    its own links never inherits the old one as a label edit.
     """
     from gdoc.mdparse import utf16_len
 
@@ -3266,7 +3288,10 @@ def _inline_baseline(paragraph: dict, match: dict, text: str) -> list[dict]:
     old_link = any("link" in el["textRun"].get("textStyle", {}) for el in runs
                    if el.get("startIndex", 0) < end and el["endIndex"] > start)
     result = []
-    for lo, hi, target in _replacement_text_style(runs, match, text):
+    explicit_links = any(s.type == "text_style" and "link" in s.style
+                         for s in styles)
+    for lo, hi, target in _replacement_text_style(runs, match, text,
+                                                  explicit_links):
         fields = {key for key in target.keys() | neighbour.keys()
                   if target.get(key) != neighbour.get(key)}
         if old_link or "link" in target:
@@ -3318,7 +3343,7 @@ def _contextual_replacement(parsed, markdown: str, match: dict, body: dict):
             and not parsed.tables and not match.get("segmentId")):
         return parsed, []
     return (ParsedMarkdown(plain_text=text, styles=styles),
-            _inline_baseline(paragraph, match, text))
+            _inline_baseline(paragraph, match, text, styles))
 
 
 def _match_space(match: dict) -> tuple[str, str]:
@@ -3655,7 +3680,8 @@ def replace_formatted(
             selected = ParsedMarkdown(text, styles)
             found = (_replacement_paragraph(body.get("content", []), match)
                      if body is not None else None)
-            baseline = _inline_baseline(found[0], match, text) if found else None
+            baseline = (_inline_baseline(found[0], match, text, styles)
+                        if found else None)
             parts = [(match, (selected, baseline))]
         elif body is not None and not new_markdown and not replace_paragraphs:
             from gdoc.mdparse import ParsedMarkdown
@@ -3676,7 +3702,7 @@ def replace_formatted(
             paragraph = {"elements": [run for p, _, _ in native
                                       for run in p.get("elements", [])]}
             parts = [(match, (_inline_only(parsed), _inline_baseline(
-                paragraph, match, parsed.plain_text,
+                paragraph, match, parsed.plain_text, parsed.styles,
             )))]
         else:
             parts = [(match, (parsed, None))]

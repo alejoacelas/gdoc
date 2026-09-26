@@ -730,6 +730,13 @@ By default matching is exact. If an anchor isn't found, `edit` explains why — 
 gdoc edit DOC "JP's job" "JP's role" --normalize   # matches "JP's job" in the doc
 ```
 
+### Links in replaced text
+
+An edit inside one link's text stays in that link, so correcting or extending part
+of a label keeps the link. When a match covers a whole link, or reaches past it,
+the link follows only its own words that reappear once, as whole words, in the
+replacement. Write `[label](url)` in the replacement to set a link explicitly.
+
 ### Multi-line arguments from stdin
 
 Pass `-` for the old or new argument to read it from stdin (one stream, so at most one `-`):

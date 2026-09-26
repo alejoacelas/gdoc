@@ -311,9 +311,9 @@ def test_complete_heading_exact_batch(mocker, replacement, inserted, structural)
       "foregroundColor": {"color": {"rgbColor": {"red": 0.5}}}},
      "foregroundColor,link,underline"),
 ])
-def test_partial_link_does_not_restore_clipped_label(mocker, decor, fields):
-    # The complete link includes the left neighbour, outside the match.
-    # Keeping a clipped fragment is not proof that its original label survives.
+def test_edit_inside_a_link_label_keeps_the_link(mocker, decor, fields):
+    # The complete link includes the left neighbour, outside the match, so the
+    # match edits part of one link's label: the replacement stays in it.
     link = {"link": {"url": "https://example.com/spec"}, **decor}
     body = _styled_body(left=dict(link))
     body["content"][0]["paragraph"]["elements"][1]["textRun"]["textStyle"] = dict(link)
@@ -329,7 +329,7 @@ def test_partial_link_does_not_restore_clipped_label(mocker, decor, fields):
                                 "text": "2. Archive the sample"}},
                 {"updateTextStyle": {
                     "range": {"startIndex": 9, "endIndex": 30},
-                    "textStyle": {}, "fields": "link",
+                    "textStyle": link, "fields": fields,
                 }},
             ],
             "writeControl": {"requiredRevisionId": "rev-a"},

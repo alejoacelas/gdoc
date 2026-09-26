@@ -328,3 +328,18 @@ def test_inserted_markdown_does_not_inherit_its_neighbor(
     # A tab starting with a rule reads after an empty metadata block.
     assert parse_frontmatter(route.ok("cat"))[1] == expected
     assert len(doc.paragraphs()) == expected.count("\n")
+
+
+@pytest.mark.parametrize("old,new,expected", [
+    ("report", "reporter", "L [Annual reporter](https://example.test/r) right\n"),
+    ("report", "report", "L [Annual report](https://example.test/r) right\n"),
+    ("report right", "report left", "L [Annual report](https://example.test/r) left\n"),
+    ("Annual report", "summary", "L summary right\n"),
+])
+def test_editing_link_labels_through_the_interfaces(route, old, new, expected):
+    """F8: label edits keep the link; unrelated replacements do not get it."""
+    route.load(NativeDoc())
+    route.ok("cat")
+    route.ok("write", text="L [Annual report](https://example.test/r) right\n")
+    route.ok("edit", old_text=old, new_text=new)
+    assert route.ok("cat") == expected

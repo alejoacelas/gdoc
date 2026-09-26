@@ -306,20 +306,40 @@ def test_changed_coloured_prefix_does_not_colour_surviving_plain_suffix(
 
 
 @pytest.mark.parametrize("command", ["edit", "suggest"])
-@pytest.mark.parametrize("label,old,new", [
-    ("art", "art", "party"),
-    ("Annual report", "report", "reporter"),
-    ("Annual report", "report", "report"),
+@pytest.mark.parametrize("label,old,new,linked", [
+    # Replacing a whole label needs the label to survive, at word boundaries.
+    ("art", "art", "party", ""),
+    ("Anual report", "Anual report", "Annual report", ""),
+    # An edit inside one link's label is a label edit, even a no-op one.
+    ("Annual report", "report", "reporter", "reporter"),
+    ("Annual report", "report", "report", "report"),
+    ("Annual report", "Annual", "Yearly", "Yearly"),
 ])
-def test_link_requires_full_original_label_at_word_boundaries(
-    mocker, command, label, old, new,
+def test_link_follows_label_edits_but_not_whole_replacements(
+    mocker, command, label, old, new, linked,
 ):
+    """F8: deterministic label edits; no link over unrelated replacements."""
     body = _body(("L ", {}), (label, LINK), (" right\n", {}))
     if command == "suggest":
         return _refused(mocker, body, old, new)
     requests = _batch(mocker, body, old, new, command)
     inherited = LINK if old != label else {}
-    assert _replacement_styles(requests, inherited) == [RED] * len(new)
+    styles = _replacement_styles(requests, inherited)
+    assert styles == ([LINK] * len(new) if linked else [RED] * len(new))
+
+
+@pytest.mark.parametrize("old,new,linked", [
+    ("report right", "report left", "report"),
+    ("report right", "summary", ""),
+])
+def test_link_straddling_the_match_follows_its_surviving_words(mocker, old, new,
+                                                               linked):
+    """F8: only the linked words the match covers carry the link forward."""
+    body = _body(("L ", {}), ("Annual report", LINK), (" right\n", {}))
+    requests = _batch(mocker, body, old, new)
+    styles = _replacement_styles(requests, LINK)
+    assert [bool(style.get("link")) for style in styles] == [
+        index < len(linked) for index in range(len(new))]
 
 
 @pytest.mark.parametrize("command", ["edit", "suggest"])

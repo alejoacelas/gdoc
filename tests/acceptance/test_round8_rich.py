@@ -140,3 +140,18 @@ def test_tables_gdoc_writes_read_complete(route, markdown):
     route.ok("write", text=markdown)
     scope = json.loads(route.ok("cat", json=True))["scope"]
     assert scope["complete"] is True and "omitted" not in scope
+
+
+def test_custom_named_range_read_is_limited_and_consistent_with_write(route):
+    """R7-9: a read names the range a rewrite would need consent to remove."""
+    doc = route.load(NativeDoc(("p", "Alpha."), ("p", "Beta.")))
+    doc.named.append(["integration:anchor", 1, 6])
+    scope = json.loads(route.ok("cat", json=True))["scope"]
+    assert scope["complete"] is False
+    assert scope["omitted"] == ["custom named ranges"]
+    code, output, error = route.call("write", text="Alpha changed.\nBeta.\n")
+    assert code != 0 and "custom named ranges" in output + error
+    assert route.service.batches == []
+    route.ok("edit", old_text="Beta", new_text="Gamma")
+    assert ["integration:anchor", 1, 6] in doc.named
+    route.ok("write", text="Alpha changed.\nGamma.\n", allow_lossy=True)

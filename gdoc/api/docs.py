@@ -3282,11 +3282,12 @@ def check_tab_body_replacement(tab: dict, *, allow_lossy: bool = False) -> None:
                                allow_lossy=allow_lossy)
 
 
-# Not content a Markdown read omits: suggestions have their own read notes,
-# and custom named ranges are invisible metadata. Images read as references;
-# the "embedded objects" hazard covers only objects without image properties
-# (drawings and the like), which a reference cannot recreate.
-_NOT_READ_OMISSIONS = {"pending suggestions", "custom named ranges"}
+# Not content a Markdown read omits: suggestions have their own read notes.
+# Custom named ranges are named: Markdown does not show them and a rewrite
+# needs consent to remove them. Images read as references; the "embedded
+# objects" hazard covers only objects without image properties (drawings
+# and the like), which a reference cannot recreate.
+_NOT_READ_OMISSIONS = {"pending suggestions"}
 
 
 def markdown_read_omissions(tab: dict) -> list[str]:

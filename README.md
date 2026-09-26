@@ -420,8 +420,8 @@ do not establish a full-content baseline. Truncation is reported on stderr and i
 JSON scope metadata; `--max-bytes 0` retrieves complete content. `cat --json`
 also reports `tab_count`. When a tab holds content Markdown cannot show (footnotes,
 chips, equations, page breaks, positioned objects, drawings, linked charts,
-generated contents, tables that cannot be pipe tables, or lists, headings, rules
-and indented paragraphs inside table cells), `cat`, `pull` and
+generated contents, custom named ranges, tables that cannot be pipe tables, or
+lists, headings, rules and indented paragraphs inside table cells), `cat`, `pull` and
 Markdown `export` name it on stderr, and JSON reports `complete: false` with an
 `omitted` list. Such a read records only limited coverage of its revision:
 targeted edits and `insert` keep the omitted content and proceed, and a rewrite of
@@ -542,7 +542,9 @@ edited inside a code line or quote stays in its block; a structural replacement
 splits the block around it. A replacement inside code is literal text (`*`, links
 and `#` stay characters); inside inline code in prose, a replacement written as one
 code span such as `` `name` `` uses that span's content. Tab replacements remove gdoc's old ranges. Other named
-ranges are left alone. Edits made in Docs take precedence over these ranges: a
+ranges (for example from add-ons) are named as omitted by reads; targeted edits
+leave them alone, and a rewrite of their tab needs `--allow-lossy`, which removes
+them. Edits made in Docs take precedence over these ranges: a
 paragraph inside a code range that has become a heading or list item, or carries an
 image, link or emphasis, is read as ordinary Markdown, and a paragraph whose quote or
 list indent was removed is read without that container. Plain text typed or merged
@@ -618,7 +620,8 @@ These are documented shortfalls, not claims of full support.
 `write` and `push` inspect the selected body, including table cells, before mutation.
 Ordinary supported Markdown needs no `--allow-lossy`. Chips, footnotes, equations,
 generated contents, pending suggestions, internal native links, linked Sheets
-charts (a rewrite keeps only their rendered image), drawings, complex tables,
+charts (a rewrite keeps only their rendered image), drawings, custom named
+ranges, complex tables,
 table cells aligned unlike their column's header cell, and section/layout boundaries may require explicit loss consent. Rich content in
 unmodified sibling tabs or separate document segments does not block a body write.
 Use targeted edits when richer native content should survive. With consent, a

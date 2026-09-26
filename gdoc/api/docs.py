@@ -3338,6 +3338,28 @@ def _inline_baseline(paragraph: dict, match: dict, text: str,
     return result
 
 
+def _is_code_style(style: dict) -> bool:
+    return style.get("weightedFontFamily", {}).get("fontFamily") in _MONOSPACE_FONTS
+
+
+def _code_context(paragraph: dict, match: dict) -> str | None:
+    """"line" when a match lies in an all-code paragraph, "span" in inline code.
+
+    Every text run the match touches must be monospace; a match that also
+    covers prose is ordinary Markdown.
+    """
+    start, end = match["startIndex"], match["endIndex"]
+    runs = [el for el in paragraph.get("elements", []) if "textRun" in el
+            and el["textRun"].get("content", "") not in ("", "\n")]
+    touched = [el for el in runs
+               if el.get("startIndex", 0) < end and el.get("endIndex", 0) > start]
+    if not touched or not all(
+            _is_code_style(el["textRun"].get("textStyle", {})) for el in touched):
+        return None
+    return "line" if all(_is_code_style(el["textRun"].get("textStyle", {}))
+                         for el in runs) else "span"
+
+
 def _contextual_replacement(parsed, markdown: str, match: dict, body: dict):
     """Plan a paragraph edit without replacing its native paragraph mark.
 
@@ -3352,6 +3374,20 @@ def _contextual_replacement(parsed, markdown: str, match: dict, body: dict):
     if not found:
         return parsed, None
     paragraph, start, end = found
+    code = _code_context(paragraph, match)
+    if code:
+        # Code is literal: asterisks, links and fences typed into a code line
+        # or span stay characters. Only inside prose's inline code may the
+        # replacement be written as one code span, whose content is used.
+        text, styles = markdown, []
+        if code == "span":
+            spanned, spans = parse_inline(markdown)
+            if (len(spans) == 1 and spans[0].type == "text_style"
+                    and _is_code_style(spans[0].style)
+                    and (spans[0].start, spans[0].end) == (0, len(spanned))):
+                text = spanned
+        return (ParsedMarkdown(plain_text=text, styles=styles),
+                _inline_baseline(paragraph, match, text, styles))
     text, styles = parse_inline(markdown)
     explicit_paragraph = any(
         s.type == "bullets" or (s.type == "paragraph_style"

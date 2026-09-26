@@ -487,7 +487,9 @@ identity; container ranges retain quoted lists, quoted tables, and code or table
 nested inside list items. A contained table's container is recorded on its first
 cell. `edit` and `insert` create these ranges for new code and containers. Wording
 edited inside a code line or quote stays in its block; a structural replacement
-splits the block around it. Tab replacements remove gdoc's old ranges. Other named
+splits the block around it. A replacement inside code is literal text (`*`, links
+and `#` stay characters); inside inline code in prose, a replacement written as one
+code span such as `` `name` `` uses that span's content. Tab replacements remove gdoc's old ranges. Other named
 ranges are left alone. Edits made in Docs take precedence over these ranges: a
 paragraph inside a code range that has become a heading or list item, or carries an
 image, link or emphasis, is read as ordinary Markdown, and a paragraph whose quote or

@@ -1721,12 +1721,15 @@ def _separated_list_requests(parsed: ParsedMarkdown, insert_index: int,
 
     contained = {id(group[0]) for group in groups.values()
                  if _quoted_in_item(container_of(group))}
-    # Numbered continuity takes precedence over intervening unordered items.
-    # Independent same-depth restarts are created from bottom to top, and
-    # quoted lists after the lists that span them (deeper containers later).
+    # A quoted list is created after every list that spans it, whatever
+    # their depths (deeper containers later): a later spanning bullet request
+    # would overwrite its preset and identity. Within one container,
+    # shallower lists come first, numbered continuity takes precedence over
+    # intervening unordered items, and independent same-depth restarts are
+    # created from bottom to top.
     ordered_groups = sorted(groups.values(), key=lambda group: (
-        group[0].list_depth,
         len(container_of(group)) if id(group[0]) in contained else 0,
+        group[0].list_depth,
         not group[0].style["bulletPreset"].startswith("NUMBERED"),
         -group[0].start,
     ))

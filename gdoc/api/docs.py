@@ -2983,6 +2983,12 @@ def insert_markdown_into_tab(
         print("WARN: Google Docs cannot set arbitrary native list starts; "
               "the following lists will start at 1: "
               + "; ".join(parsed.non_default_list_starts), file=sys.stderr)
+    if parsed.deep_list_items:
+        import sys
+
+        print("WARN: a Google Docs list has at most nine nesting levels; deeper "
+              "items are written at the ninth: "
+              + "; ".join(parsed.deep_list_items), file=sys.stderr)
     requests: list[dict] = []
 
     # A tab whose only paragraph is a rule, an empty heading or an empty

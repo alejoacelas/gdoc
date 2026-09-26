@@ -532,7 +532,8 @@ which applies to the entire selected scope. Use `--tab` to limit a bulk edit.
 This is a semantic Markdown format, not complete CommonMark/GFM conformance.
 Canonical export may escape punctuation or change fence spelling; code text and
 meaningful whitespace survive. Code blocks use native named ranges to retain their
-identity; container ranges retain quotes and list item content nested to any depth:
+identity; container ranges retain quotes and list item content nested to any depth
+(list nesting itself stops at nine levels, below):
 paragraphs, headings, rules, code, tables and quotes inside list items, and lists,
 code and tables inside quotes, including a quote inside a quoted list item. Content
 inside a list item is written with the item's content indent (`1. item`, blank line,
@@ -576,7 +577,11 @@ Write the canonical spellings that exports use; other spellings of the same
 structure may read differently:
 
 - Nest a list item two spaces per level under any marker (`- a` then `  - b`;
-  `10. a` then `  - b`). Each further two spaces adds a level.
+  `10. a` then `  - b`). Each further two spaces adds a level, up to the nine
+  levels a Docs list has
+  ([`nestingLevels`](https://developers.google.com/workspace/docs/api/reference/rest/v1/documents#listproperties)).
+  Deeper nesting is not supported: such items are written at the ninth level
+  and `write`/`insert` warn with the affected lines.
 - When emphasis spans close together, mark the inner one with underscores:
   `**bold _italic_**`, not `**bold *italic***`. Spans that open together read
   as CommonMark does (`***bold** then italic*`).

@@ -72,6 +72,8 @@ class ParsedMarkdown:
     removed_tabs: int = 0
     # Numbering starts that native createParagraphBullets would reset to 1.
     non_default_list_starts: list[str] = field(default_factory=list)
+    # List items nested deeper than a Docs list's nine levels.
+    deep_list_items: list[str] = field(default_factory=list)
     code_blocks: list[CodeBlockData] = field(default_factory=list)
     images: list[ImageData] = field(default_factory=list)
     # Per-paragraph pieces of one fenced replacement share this marker, so
@@ -722,13 +724,20 @@ def _scan(
     return "".join(plain_parts), styles
 
 
+# A Docs list has at most nine nesting levels (ListProperties.nestingLevels).
+MAX_LIST_LEVEL = 8
+
+
 def _list_level(indent: str) -> int:
     """Nesting level from a list item's leading whitespace.
 
-    Two columns (or one tab) per level; capped at 8 (Docs' max).
+    Two columns (or one tab) per level; capped at the ninth level (index 8).
     """
-    columns = len(indent.replace("\t", "  "))
-    return min(columns // 2, 8)
+    return min(_raw_list_level(indent), MAX_LIST_LEVEL)
+
+
+def _raw_list_level(indent: str) -> int:
+    return len(indent.replace("\t", "  ")) // 2
 
 
 def _ref_label(label: str) -> str:
@@ -844,7 +853,8 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             continue
         # Escaped brackets cannot delimit a definition's label.
         # A trailing CommonMark title ("t", 't' or (t)) is allowed and dropped.
-        masked = re.fullmatch(r" {0,3}\[([^\]]+)\]:[ \t]*(\S+)"
+        # A destination in angle brackets may contain spaces, as inline.
+        masked = re.fullmatch(r" {0,3}\[([^\]]+)\]:[ \t]*(<[^<>\n]*>|\S+)"
                               r"(?:[ \t]+(?:\"[^\"]*\"|'[^']*'|\([^()]*\)))?[ \t]*",
                               _mask_escapes(line))
         definition = masked and (line[masked.start(1):masked.end(1)],
@@ -857,13 +867,16 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                 uri.removeprefix("<").removesuffix(">")
             )
             definition_lines.add(line_number)
-    # Blank lines that only separate trailing reference definitions from the
-    # text are not paragraphs of the document.
+    # Trailing reference definitions, the blank lines among and after them,
+    # and one blank line separating them from the text are not paragraphs of
+    # the document; further blank lines before them are blank paragraphs.
     tail = len(lines)
     while tail and (tail - 1 in definition_lines or not lines[tail - 1].strip()):
         tail -= 1
-    if any(line_number >= tail for line_number in definition_lines):
-        definition_lines.update(range(tail, len(lines)))
+    first = next((n for n in range(tail, len(lines)) if n in definition_lines), None)
+    if first is not None:
+        start = first - 1 if first > tail else first
+        definition_lines.update(range(start, len(lines)))
     plain_parts: list[str] = []
     all_styles: list[StyleRange] = []
     all_tables: list[TableData] = []
@@ -882,6 +895,15 @@ def parse_markdown(text: str) -> ParsedMarkdown:
     container: tuple = ()  # the current paragraph's container path
     context_blocks: dict[tuple, int] = {}  # each context's current list block
     non_default_list_starts: list[str] = []
+    deep_list_items: list[str] = []
+
+    def note_deep(indent: str, content: str) -> None:
+        level = _raw_list_level(indent)
+        if level > MAX_LIST_LEVEL:
+            deep_list_items.append(
+                f"list item at line {i + 1} ({content!r}) is nested "
+                f"{level + 1} levels deep (written at level {MAX_LIST_LEVEL + 1})"
+            )
 
     def enter(path: tuple) -> None:
         """Make *path* current, ending the lists of containers it left."""
@@ -1225,6 +1247,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                 bullet_preset="BULLET_DISC_CIRCLE_SQUARE",
                 leading_tabs=_list_level(bullet_m.group(1)),
             )
+            note_deep(bullet_m.group(1), item)
             i += 1
             continue
 
@@ -1249,6 +1272,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                 leading_tabs=_list_level(numbered_m.group(1)),
                 start_number=int(line.lstrip().split(".", 1)[0]),
             )
+            note_deep(numbered_m.group(1), item)
             i += 1
             continue
 
@@ -1266,6 +1290,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         tables=all_tables,
         removed_tabs=removed_tabs,
         non_default_list_starts=non_default_list_starts,
+        deep_list_items=deep_list_items,
         code_blocks=code_blocks,
         images=images,
     )

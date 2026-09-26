@@ -16,6 +16,13 @@ All notable changes to `gdoc` are documented here. This project follows
 
 ### Changed
 
+- Default `write` and `push` read Markdown in gdoc's format instead of Google's
+  Markdown import, as `write --tab` and `insert` already did: each line is one
+  paragraph and each blank line is an empty paragraph, matching `cat` output.
+  Files written for CommonMark paragraph rules (hard-wrapped lines, blank-line
+  separators) gain paragraph breaks and empty paragraphs; write one line per
+  paragraph. `new --file` still uses Google's import.
+
 - A pinned revision refused by the server exits 3 for `insert-image`,
   `replace-image` and `suggest`, as for other writes. The README now says that
   images inserted by `new --file` use the ordinary client transport.

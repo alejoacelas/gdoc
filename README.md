@@ -494,6 +494,20 @@ The [product design contract](docs/CONTRACT.md) defines the intended behavior an
 shared CLI/MCP requirements. The implemented capabilities and remaining API gaps
 are documented below.
 
+**Paragraphs are lines.** In gdoc's format, as `cat` prints it and `write`,
+`insert`, `push` and MCP read it, each line of text is one paragraph and each
+blank line is one empty paragraph. `a` on one line and `b` on the next are two
+paragraphs, and `a`, a blank line, then `b` puts an empty paragraph between them.
+Write each paragraph on a single line and add blank lines only where the
+document should have empty paragraphs; a hard-wrapped CommonMark file becomes one
+paragraph per line. Inside list items, quotes and around code and tables, the
+blank lines shown below are separators, as `cat` prints them. `new --file` is
+different: it uses Google's Markdown import, which follows CommonMark paragraphs
+(joined lines, blank-line separators) and does not create gdoc's code and
+container ranges. To
+create a document in gdoc's format, run `gdoc new TITLE`, then `gdoc write DOC
+FILE`.
+
 The canonical format supports paragraphs and meaningful blank paragraphs, headings
 1–6, bold/italic/strike/inline code, external links, nested bullet and numbered lists,
 fenced code, quotes, rules, rectangular tables with column alignment, and inline
@@ -908,6 +922,13 @@ Create a document from a local markdown file with `new --file`:
 ```bash
 gdoc new "Report" --file report.md
 ```
+
+`new --file` uses Google's Markdown import, which reads CommonMark paragraphs
+(joined lines, blank-line separators) rather than gdoc's line-per-paragraph
+format ([Supported Markdown](#supported-markdown)); code and container ranges,
+table alignment and gdoc image references are not recreated. To create a
+document from a file in gdoc's format, such as a `cat` or `pull` output, run
+`gdoc new TITLE` and then `gdoc write DOC FILE`.
 
 Images in the markdown are handled automatically:
 - **Remote images** (`https://...`) are inserted directly via URL

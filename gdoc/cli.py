@@ -4694,7 +4694,10 @@ def build_parser() -> GdocArgumentParser:
             "the first tab is replaced and sibling tabs survive; "
             "--force-collapse-tabs explicitly removes siblings. Use "
             "`gdoc insert` to add content to an existing tab. YAML "
-            "frontmatter in the input is stripped automatically."
+            "frontmatter in the input is stripped automatically; a pulled "
+            "file's `tab` selects its tab. Input uses the format `cat` "
+            "prints: each line is one paragraph and each blank line is an "
+            "empty paragraph, so write paragraphs as single lines."
         ),
     )
     write_p.add_argument("doc", help="Document ID or URL")
@@ -4727,7 +4730,8 @@ def build_parser() -> GdocArgumentParser:
         description=(
             "Insert the contents of a markdown file into a specific tab "
             "without touching any other tab. Frontmatter is stripped "
-            "before upload."
+            "before upload. As with `write`, each line is one paragraph "
+            "and each blank line is an empty paragraph."
         ),
     )
     insert_p.add_argument("doc", help="Document ID or URL")
@@ -5130,7 +5134,11 @@ def build_parser() -> GdocArgumentParser:
     new_p.add_argument("--folder", help="Folder ID to place doc in")
     new_p.add_argument(
         "--file", dest="file_path",
-        help="Create doc from a local markdown file",
+        help="Create doc from a local markdown file through Google's "
+             "Markdown import, which reads CommonMark paragraphs (joined "
+             "lines, blank-line separators) rather than gdoc's line-per-"
+             "paragraph format; for that format, create the doc and `write` "
+             "the file",
     )
     new_mode = new_p.add_mutually_exclusive_group()
     new_mode.add_argument(

@@ -11,7 +11,7 @@ import json
 import pytest
 
 from tests.acceptance.test_round5_workflows import NativeRoute
-from tests.native_model import NativeDoc
+from tests.native_model import NativeDoc, styles
 
 
 @pytest.fixture(params=["cli", "mcp"])
@@ -112,3 +112,22 @@ def test_metadata_free_input_keeps_the_first_tab_default(route, text):
     assert code == 0, output + error
     assert "'Main' (t.0)" in output
     assert route.service.doc.paragraphs()
+
+
+@pytest.mark.parametrize("tool", ["gdoc_write", "gdoc_insert"])
+def test_write_tools_state_the_paragraph_format(tool):
+    """R7-7: the line-per-paragraph format is stated where agents look."""
+    from gdoc import mcp
+
+    description = mcp.build_tools()[tool]["description"]
+    assert "each line is one paragraph" in description
+    assert "empty paragraph" in description
+
+
+def test_line_and_blank_line_paragraph_format(route):
+    """R7-7: the documented format, pinned natively."""
+    route.load(NativeDoc(("p", "seed")))
+    route.ok("cat")
+    route.ok("write", text="a\nb\n\nc\n")
+    texts = [text for text, *_ in styles(route.service.doc)]
+    assert texts == ["a", "b", "", "c"]

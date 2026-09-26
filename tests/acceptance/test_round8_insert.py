@@ -96,7 +96,13 @@ def test_insert_matches_writing_the_concatenation(
 
     doc = _written(route, merge, base)
     assert _read(route) == base_read
+    original = _native(doc)[0]
     batches = len(route.service.batches)
     route.ok("insert", text=inserted, tab="t.0", position=position)
     assert len(route.service.batches) > batches
+    # The tab's own paragraphs keep their text, style, list, indent and rule
+    # outside the inserted scope, whatever the concatenation would suggest.
+    after = _native(doc)[0]
+    kept = after[:len(original)] if position == "end" else after[-len(original):]
+    assert kept == original
     assert (_read(route), _native(doc)) == expected

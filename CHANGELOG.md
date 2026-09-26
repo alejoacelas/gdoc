@@ -27,9 +27,9 @@ All notable changes to `gdoc` are documented here. This project follows
 - `edit` and `suggest` search all tabs, including headers, footers and footnotes.
   `--tab` selects one tab and its segments; `--all` replaces every match in scope.
 - Pushes check the file's revision as well as the shared read baseline. Pull hooks
-  leave unsynced local bodies in place. A local replacement that races an editor
-  write keeps that write, in a printed recovery copy when needed. Files without
-  `gdoc-revision` need a fresh pull or `--force`.
+  leave unsynced local bodies in place. Local replacements retain the previous
+  file as a printed recovery copy, so an editor write racing the replacement is
+  never lost. Files without `gdoc-revision` need a fresh pull or `--force`.
 
 ### Fixed
 

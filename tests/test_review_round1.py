@@ -391,39 +391,30 @@ def test_empty_final_quote_prefix_owns_retained_newline():
     }}]
 
 
-def test_uncontested_publication_leaves_no_recovery_copy(tmp_path, capsys):
+
+def test_uncontested_publication_retains_announced_recovery_copy(tmp_path, capsys):
     path = tmp_path / "document.md"
     path.write_text("original")
     assert preserve_and_replace(str(path), "published", expected="original")
-    assert preserve_and_replace(str(path), "again")
-    assert path.read_text() == "again"
-    assert not list(tmp_path.glob("*.gdoc-backup-*"))
-    assert "retained" not in capsys.readouterr().err
+    [backup] = tmp_path.glob("*.gdoc-backup-*")
+    assert backup.read_text() == "original"
+    assert path.read_text() == "published"
+    assert str(backup) in capsys.readouterr().err
 
 
-def test_open_descriptor_write_keeps_one_announced_recovery_copy(
-    tmp_path, monkeypatch, capsys
-):
-    import os
-
+def test_open_descriptor_write_after_return_is_recoverable(tmp_path):
     path = tmp_path / "document.md"
     path.write_text("original")
     opened = path.open("r+")
-    real_link = os.link
-
-    def link(source, destination):
-        if str(source).split("/")[-1].startswith(".gdoc-publish-"):
-            opened.seek(0)
-            opened.write("concurrent")
-            opened.truncate()
-            opened.flush()
-        return real_link(source, destination)
-
-    monkeypatch.setattr(os, "link", link)
     try:
         assert preserve_and_replace(str(path), "published", expected="original")
+        # A late editor write through the descriptor opened before publication.
+        opened.seek(0)
+        opened.write("late concurrent edit")
+        opened.truncate()
+        opened.flush()
     finally:
         opened.close()
-    [backup] = tmp_path.glob("*.gdoc-backup-*")
-    assert backup.read_text() == "concurrent"
-    assert capsys.readouterr().err.count(str(backup)) == 1
+    assert path.read_text() == "published"
+    recovered = [p.read_text() for p in tmp_path.glob("*.gdoc-backup-*")]
+    assert recovered == ["late concurrent edit"]

@@ -23,6 +23,9 @@ All notable changes to `gdoc` are documented here. This project follows
   v1/v2 ranges keep their meaning. Literal leading whitespace in a paragraph is
   exported as a numeric entity.
 
+- Reads name native content their Markdown leaves out (footnotes, chips, page
+  breaks and similar, including inside table cells) and report
+  `complete: false` with an `omitted` list; `cat --json` reports `tab_count`.
 - Default `cat`, `pull` and Markdown `export` use the native first-tab serializer.
   Use `--tab` for another editable tab or `cat --all-tabs` for inspection.
 - Default `write` and `push` replace the first tab and preserve siblings.

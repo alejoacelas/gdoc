@@ -168,6 +168,37 @@ def check_markdown_replacement(
     scope: dict, *, tab_body: bool = False, allow_lossy: bool = False,
 ) -> None:
     """Refuse known lossy structures in a body or a complete Docs response."""
+    hazards, styles, numbering = markdown_hazards(scope, tab_body=tab_body)
+    if hazards and not allow_lossy:
+        where = "selected tab body" if tab_body else "whole document"
+        raise GdocError(
+            f"Markdown replacement refused: {where} contains "
+            + ", ".join(sorted(hazards))
+            + ". No content was written. Use targeted edits to preserve native "
+            "content, or pass --allow-lossy to knowingly discard it. "
+            "--force only bypasses conflicts; --force-collapse-tabs only "
+            "allows tab collapse.",
+            exit_code=3,
+        )
+    if numbering:
+        print("WARN: Native numbering may reset on reconstruction: " +
+              "; ".join(sorted(numbering)), file=sys.stderr)
+    if hazards:
+        print("WARN: Markdown replacement will discard: " +
+              ", ".join(sorted(hazards)), file=sys.stderr)
+    if styles:
+        print("WARN: Markdown replacement may reset styles: " +
+              ", ".join(sorted(styles)), file=sys.stderr)
+
+
+def markdown_hazards(
+    scope: dict, *, tab_body: bool = False,
+) -> tuple[set[str], set[str], set[str]]:
+    """Content, style and numbering losses of a Markdown round trip of *scope*.
+
+    Content hazards are native content the Markdown cannot represent; reads
+    report them as omissions and replacements require consent to lose them.
+    """
     from gdoc.api.docs import _table_markdown
 
     hazards: set[str] = set()
@@ -392,23 +423,4 @@ def check_markdown_replacement(
                           document_style, lists, images, prefixes, supported_prefix)
 
     visit(scope)
-    if hazards and not allow_lossy:
-        where = "selected tab body" if tab_body else "whole document"
-        raise GdocError(
-            f"Markdown replacement refused: {where} contains "
-            + ", ".join(sorted(hazards))
-            + ". No content was written. Use targeted edits to preserve native "
-            "content, or pass --allow-lossy to knowingly discard it. "
-            "--force only bypasses conflicts; --force-collapse-tabs only "
-            "allows tab collapse.",
-            exit_code=3,
-        )
-    if numbering:
-        print("WARN: Native numbering may reset on reconstruction: " +
-              "; ".join(sorted(numbering)), file=sys.stderr)
-    if hazards:
-        print("WARN: Markdown replacement will discard: " +
-              ", ".join(sorted(hazards)), file=sys.stderr)
-    if styles:
-        print("WARN: Markdown replacement may reset styles: " +
-              ", ".join(sorted(styles)), file=sys.stderr)
+    return hazards, styles, numbering

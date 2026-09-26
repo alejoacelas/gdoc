@@ -417,7 +417,14 @@ provide detail for a specific element; complete raw structure remains available.
 Complete native Markdown reads establish a baseline for the tabs actually read.
 Metadata, truncated output, plain text, annotated comments and structure selectors
 do not establish a full-content baseline. Truncation is reported on stderr and in
-JSON scope metadata; `--max-bytes 0` retrieves complete content. `pull` and Markdown
+JSON scope metadata; `--max-bytes 0` retrieves complete content. `cat --json`
+also reports `tab_count`. When a tab holds content Markdown cannot show (footnotes,
+chips, equations, page breaks, positioned objects, generated contents, tables that
+cannot be pipe tables, or lists and headings inside table cells), `cat`, `pull` and
+Markdown `export` name it on stderr, and JSON reports `complete: false` with an
+`omitted` list. Such a read still pins its revision: targeted edits keep the
+omitted content, and a rewrite of the tab needs `--allow-lossy` to discard it while
+staying revision-protected. `pull` and Markdown
 `export` use the same native serializer as `cat`.
 
 `write` and `insert` accept at most one leading metadata block: `pull` frontmatter

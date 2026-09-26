@@ -383,14 +383,17 @@ def cmd_cat(args) -> int:
     displayed = _truncate_bytes(content, max_bytes)
     truncated = displayed != content
     # Plain text omits supported formatting, and no-images omits objects.
-    complete = not (truncated or no_images or not want_markdown or annotated) \
+    baseline = not (truncated or no_images or not want_markdown or annotated) \
         and _preview_complete(selected)
+    omitted = _read_omissions(selected) if want_markdown else []
     scope = {
         "tab_ids": [selected_tab["id"] for selected_tab in selected],
-        "complete": complete, "truncated": truncated,
+        "complete": baseline and not omitted, "truncated": truncated,
         "revision_id": document.get("revisionId", ""),
-        "total_bytes": total_bytes,
+        "total_bytes": total_bytes, "tab_count": len(tabs),
     }
+    if omitted:
+        scope["omitted"] = omitted
     if want_markdown:
         from gdoc.api.docs import pending_suggestion_ids
         pending = sum(len(pending_suggestion_ids(t.get("body", {})))
@@ -411,6 +414,7 @@ def cmd_cat(args) -> int:
                             "--tab" if annotated else "--all-tabs or --tab")
         elif want_markdown:
             _note_pending_suggestions(selected)
+        _note_omissions(omitted)
         if truncated:
             print(
                 f"NOTE: partial output ({len(displayed.encode('utf-8'))} of "
@@ -420,9 +424,29 @@ def cmd_cat(args) -> int:
     update_state_after_command(
         doc_id, change_info, command="cat-content", quiet=quiet,
     )
-    if complete:
+    # A read that reports its omissions still pins the revision it saw: a
+    # rewrite then needs --allow-lossy to discard them (the loss guard), and
+    # stays revision-protected.
+    if baseline:
         record_content_read(doc_id, scope["tab_ids"], scope["revision_id"])
     return 0
+
+
+def _read_omissions(tabs: list[dict]) -> list[str]:
+    """Native content the Markdown reads of *tabs* leave out or flatten."""
+    from gdoc.api.docs import markdown_read_omissions
+
+    return sorted({item for tab in tabs for item in markdown_read_omissions(tab)})
+
+
+def _note_omissions(omitted: list[str]) -> None:
+    if omitted:
+        print(
+            "NOTE: this Markdown leaves out native content: "
+            + ", ".join(omitted) + ". `gdoc structure` shows it; targeted "
+            "edits keep it, and a rewrite of the tab needs --allow-lossy and "
+            "discards it.", file=sys.stderr,
+        )
 
 
 def _tabs_sheet(args, doc_id: str, change_info) -> int:
@@ -1821,8 +1845,10 @@ def cmd_pull(args) -> int:
 
     rev_label = f" @ rev {rev['id']}" if rev is not None else ""
     mode = get_output_mode(args)
+    omitted = _read_omissions([selected]) if document is not None else []
     if document is not None:
         _note_tab_scope(document, selected)
+        _note_omissions(omitted)
     if mode == "json":
         if rev is not None:
             print(format_json(
@@ -1830,8 +1856,11 @@ def cmd_pull(args) -> int:
                 revision=rev["id"],
             ))
         else:
+            extra = {"omitted": omitted} if omitted else {}
             print(format_json(pulled=True, title=title, file=file_path,
-                              tab=selected["title"], tab_id=selected["id"]))
+                              tab=selected["title"], tab_id=selected["id"],
+                              complete=_preview_complete([selected]) and not omitted,
+                              **extra))
     elif mode == "plain":
         print(f"path\t{file_path}")
         if rev is not None:
@@ -3013,6 +3042,7 @@ def cmd_export(args) -> int:
         markdown, document, selected = _read_native_tab(doc_id, tab_name)
         content = protect_body(markdown).encode("utf-8")
         _note_tab_scope(document, selected)
+        _note_omissions(_read_omissions([selected]))
     else:
         content = export_doc_bytes(doc_id, _EXPORT_MIME[fmt])
     tab_scope = ({"tab": selected["title"], "tab_id": selected["id"]}

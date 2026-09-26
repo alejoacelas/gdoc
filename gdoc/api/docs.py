@@ -3193,6 +3193,28 @@ def check_tab_body_replacement(tab: dict, *, allow_lossy: bool = False) -> None:
     """
     from gdoc.lossy import check_markdown_replacement
 
+    check_markdown_replacement(_tab_replacement_scope(tab), tab_body=True,
+                               allow_lossy=allow_lossy)
+
+
+# Not content a Markdown read omits: suggestions have their own read notes,
+# custom named ranges are invisible metadata, and every inline object reads
+# as an image reference (a rewrite still refuses objects it cannot recreate).
+_NOT_READ_OMISSIONS = {"pending suggestions", "custom named ranges",
+                       "inline images or embedded objects"}
+
+
+def markdown_read_omissions(tab: dict) -> list[str]:
+    """Native content in a tab body, including table cells, that its Markdown
+    read leaves out or flattens; the same content a rewrite needs consent to
+    discard."""
+    from gdoc.lossy import markdown_hazards
+
+    hazards, _, _ = markdown_hazards(_tab_replacement_scope(tab), tab_body=True)
+    return sorted(hazards - _NOT_READ_OMISSIONS)
+
+
+def _tab_replacement_scope(tab: dict) -> dict:
     body = tab.get("body", {})
     body_start, body_end = _tab_body_range(body)
     list_ids = {
@@ -3202,13 +3224,12 @@ def check_tab_body_replacement(tab: dict, *, allow_lossy: bool = False) -> None:
             {"startIndex": body_start, "endIndex": body_end + 1},
         )
     }
-    scope = {**{key: tab[key] for key in ("inlineObjects", "namedRanges")
-                if key in tab},
-             "body": body, "lists": {
+    return {**{key: tab[key] for key in ("inlineObjects", "namedRanges")
+               if key in tab},
+            "body": body, "lists": {
         key: value for key, value in tab.get("lists", {}).items()
         if key in list_ids
     }}
-    check_markdown_replacement(scope, tab_body=True, allow_lossy=allow_lossy)
 
 
 def _replacement_paragraphs(content: list[dict], match: dict):

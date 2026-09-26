@@ -1650,7 +1650,8 @@ def _table_cleanup_requests(tab, table_element, scaffolding, tab_id, expected=No
                 "createNamedRange": {"name": name, "range": span},
             }])
     if not count:
-        return requests, neighbors
+        return _final_paragraph_reset(content, position, placeholder,
+                                      tab_id) + requests, neighbors
     removed = [e for e in following[:count] if _is_empty_paragraph(e)]
     if (len(removed) != count or len(following) != count + 1
             or "paragraph" not in following[-1]):
@@ -1683,6 +1684,36 @@ def _table_cleanup_requests(tab, table_element, scaffolding, tab_id, expected=No
     if first.get("bullet") and not survivor.get("bullet"):
         cleanup.append({"deleteParagraphBullets": ranged({})})
     return cleanup + requests, neighbors
+
+
+def _final_paragraph_reset(content, position, placeholder, tab_id):
+    """Plain final paragraph after a table that ends the inserted Markdown.
+
+    Appending a leading table splits the tab's last paragraph at its mark,
+    so the mandatory final paragraph after the table keeps that paragraph's
+    heading or bullet. The Markdown ends with the table, so the final
+    paragraph is reset like the retained mark of a replaced tab.
+    """
+    if placeholder or position + 2 != len(content):
+        return []
+    final = content[-1]
+    paragraph = final.get("paragraph", {})
+    style = paragraph.get("paragraphStyle", {})
+    if not _is_empty_paragraph(final) or not (
+            paragraph.get("bullet")
+            or style.get("namedStyleType", "NORMAL_TEXT") != "NORMAL_TEXT"
+            or any(style.get(f) for f in _INSERT_INHERITED_FIELDS)):
+        return []
+    span = {"startIndex": final["startIndex"], "endIndex": final["endIndex"]}
+    if tab_id:
+        span["tabId"] = tab_id
+    return [
+        {"deleteParagraphBullets": {"range": dict(span)}},
+        {"updateParagraphStyle": {
+            "range": dict(span),
+            "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"}, "fields": "*",
+        }},
+    ]
 
 
 # Writable paragraph style fields restored on a paragraph that a merge could
@@ -2798,9 +2829,12 @@ def insert_markdown_into_tab(
     if not replace and inherited_bullet and parsed.plain_text:
         # After a leading table placeholder the reset starts past the
         # newline that now ends the existing list item.
+        # A trailing empty paragraph's style lands on the retained final
+        # mark, which is then one of the new paragraphs and loses the bullet.
         insertion.insert(1, {"deleteParagraphBullets": {"range": {
             "startIndex": insert_index + (1 if leading_table else 0),
-            "endIndex": insert_index + utf16_len(parsed.plain_text),
+            "endIndex": insert_index + utf16_len(parsed.plain_text)
+            + (final_style is not None and position == "end"),
             "tabId": tab_id,
         }}})
     if final_style is not None:

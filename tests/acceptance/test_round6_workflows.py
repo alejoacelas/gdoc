@@ -116,3 +116,25 @@ def test_blank_line_between_a_container_and_a_table_stays_outside(
         text = text.replace("x" if turn == "y" else "y", turn)
         route.ok("write", text=text)
     assert _read(route) == text
+
+
+TABLE_MD = "| a |\n| --- |\n| b |\n"
+
+
+@MERGES
+@pytest.mark.parametrize("existing,inserted,expected", [
+    ("## H\n", TABLE_MD, "## H\n" + TABLE_MD + "\n"),
+    ("- item\n", TABLE_MD, "- item\n" + TABLE_MD + "\n"),
+    ("> q\n", TABLE_MD, "> q\n" + TABLE_MD + "\n"),
+    ("1. x\n", "para\n\n", "1. x\npara\n\n"),
+    ("- b2\n", "# top\n\n", "- b2\n# top\n\n"),
+    ("1. x\n", "- y\n\n", "1. x\n- y\n\n"),
+    ("## H\n", TABLE_MD + "after\n", "## H\n" + TABLE_MD + "after\n"),
+])
+def test_appending_leaves_no_stray_styled_paragraph(route, existing, inserted,
+                                                    expected, merge):
+    """R5-8: the retained final mark takes the Markdown's style, not the old."""
+    _written(route, existing, merge)
+    route.ok("cat", tab="Main")
+    route.ok("insert", text=inserted, tab="Main", position="end")
+    assert _read(route) == expected

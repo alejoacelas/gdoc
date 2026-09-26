@@ -2897,6 +2897,12 @@ def cmd_export(args) -> int:
         raise GdocError(
             f"--out is required for binary formats ({fmt})", exit_code=3,
         )
+    tab_name = getattr(args, "tab", None)
+    if tab_name and fmt != "md":
+        raise GdocError(
+            f"--tab applies only to Markdown export; {fmt} covers every tab",
+            exit_code=3,
+        )
 
     from gdoc.notify import pre_flight
 
@@ -2909,7 +2915,7 @@ def cmd_export(args) -> int:
     if fmt == "md":
         from gdoc.frontmatter import protect_body
 
-        markdown, document, selected = _read_native_tab(doc_id)
+        markdown, document, selected = _read_native_tab(doc_id, tab_name)
         content = protect_body(markdown).encode("utf-8")
         _note_tab_scope(document, selected)
     else:
@@ -4676,7 +4682,8 @@ def build_parser() -> GdocArgumentParser:
         help="Export a doc to PDF, DOCX, HTML, and more",
         description=(
             "Export a document to a file. Markdown uses the native serializer "
-            "for the first tab; other formats use Drive export. Binary formats "
+            "for one tab (the first unless --tab selects another); other "
+            "formats use Drive export of every tab. Binary formats "
             "(pdf, docx, "
             "odt, epub) require --out; text formats print to stdout "
             "without it."
@@ -4689,6 +4696,9 @@ def build_parser() -> GdocArgumentParser:
     )
     export_p.add_argument(
         "--out", metavar="FILE", help="Output file path",
+    )
+    export_p.add_argument(
+        "--tab", help="Markdown only: export this tab title or ID",
     )
     export_p.add_argument(
         "--quiet", action="store_true", help="Skip pre-flight checks"

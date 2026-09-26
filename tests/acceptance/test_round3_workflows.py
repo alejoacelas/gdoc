@@ -234,3 +234,28 @@ def test_changed_target_tab_still_blocks_stale_file_after_fresh_read(
     code, _, err = _run(["push", str(b)])
     assert code == 3 and "stale" in err
     assert not scenario.batches
+
+
+def test_markdown_export_selects_a_tab_and_other_formats_refuse_tab(
+    cli_scenario, tmp_path,
+):
+    from tests.acceptance.conftest import tab
+
+    scenario = cli_scenario
+    scenario.document["tabs"] = [
+        tab("t1", "One", [paragraph("Alpha.\n")]),
+        tab("t2", "Two", [paragraph("Beta ✓.\n")]),
+    ]
+    code, out, err = _run(["export", "synthetic", "--format", "md"])
+    assert (code, out) == (0, "Alpha.\n")
+    assert "Use --tab to read others" in err
+    code, out, err = _run(["export", "synthetic", "--format", "md", "--tab", "Two"])
+    assert (code, out) == (0, "Beta ✓.\n"), err
+    target = tmp_path / "two.md"
+    code, out, _ = _run(["--json", "export", "synthetic", "--out", str(target),
+                         "--tab", "t2"])
+    assert code == 0 and json.loads(out)["tab_id"] == "t2"
+    assert target.read_text() == "Beta ✓.\n"
+    code, _, err = _run(["export", "synthetic", "--out", str(tmp_path / "x.pdf"),
+                         "--tab", "Two"])
+    assert code == 3 and "every tab" in err

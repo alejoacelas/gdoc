@@ -192,7 +192,7 @@ gdoc cat 1aBcDeFg...
 | `images DOC` | List images, charts, and drawings (`--download DIR` to save locally) |
 | `find QUERY` | Search files by name or content (`--raw` to pass a full [Drive query](https://developers.google.com/workspace/drive/api/guides/search-files) verbatim) |
 | `drives` | List shared drives |
-| `export DOC --out FILE` | Render to `pdf`, `docx`, `odt`, `epub`, `html`, `md`, `txt`, or `rtf` (format inferred from the extension, or `--format`; Markdown uses the first tab) |
+| `export DOC --out FILE` | Render to `pdf`, `docx`, `odt`, `epub`, `html`, `md`, `txt`, or `rtf` (format inferred from the extension, or `--format`; Markdown exports the first tab, or `--tab NAME`; other formats cover every tab) |
 | `structure DOC` | Native document JSON — styles, tables, tab topology, UTF-16 index ranges (`--tab` to narrow, `--fields` for a raw field mask, `--suggestions-view-mode` to pick the suggestions rendering) |
 
 ### Writing

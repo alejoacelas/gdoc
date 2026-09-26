@@ -358,11 +358,12 @@ def cmd_cat(args) -> int:
     for selected_tab in selected:
         if all_tabs:
             parts.append(f"=== Tab: {selected_tab['title']} ===\n")
+        if no_images:
+            # Drop the native image elements, not text that looks like an
+            # image reference: code keeps its characters and paragraphs stay.
+            selected_tab = _without_inline_objects(selected_tab)
         parts.append(get_tab_text(selected_tab, markdown=want_markdown))
     content = "".join(parts)
-    if no_images:
-        from gdoc.mdimport import strip_images
-        content = strip_images(content)
     annotated = getattr(args, "comments", False)
     if want_markdown and not all_tabs and not annotated:
         from gdoc.frontmatter import protect_body
@@ -1790,6 +1791,27 @@ def _write_native_markdown(
         verb = "pushed" if command == "push" else "written"
         print(f"OK {verb} tab {selected['title']!r} ({selected['id']})")
     return 0
+
+
+def _without_inline_objects(tab: dict) -> dict:
+    """A copy of *tab* whose paragraphs, including table cells, hold no
+    inline images or other inline objects."""
+    import copy
+
+    def strip(value):
+        if isinstance(value, list):
+            for child in value:
+                strip(child)
+        elif isinstance(value, dict):
+            elements = value.get("paragraph", {}).get("elements")
+            if isinstance(elements, list):
+                elements[:] = [e for e in elements if "inlineObjectElement" not in e]
+            for child in value.values():
+                strip(child)
+
+    tab = copy.deepcopy(tab)
+    strip(tab.get("body", {}))
+    return tab
 
 
 def _note_tab_scope(document: dict, selected: dict, others: str = "--tab") -> None:

@@ -57,3 +57,16 @@ def test_lists_deeper_than_nine_levels_warn(route):
 def test_nine_levels_do_not_warn(route):
     text = "".join("  " * level + f"1. l{level}\n" for level in range(9))
     assert "nesting levels" not in _write(route, text)
+
+
+def test_no_images_read_keeps_code_and_blank_paragraphs(route):
+    """R7-20: --no-images drops native images, not text shaped like one."""
+    text = ("![](https://example.org/i.png)\n```\n![a](b)\n```\n"
+            "use `![c](d)` here\n\n\nend\n")
+    _write(route, text)
+    full = route.ok("cat")
+    assert "gdoc-image:" in full
+    stripped = route.ok("cat", no_images=True)
+    assert "gdoc-image:" not in stripped
+    assert "```\n![a](b)\n```\n" in stripped
+    assert "use `![c](d)` here\n\n\nend\n" in stripped

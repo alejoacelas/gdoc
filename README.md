@@ -584,6 +584,10 @@ structure may read differently:
   indents or separate lists), so it is unsupported: deeper items are written at
   the ninth level and `write`/`insert` warn with the affected lines. This is a
   gdoc limit, not one of the API gaps below.
+- Open a fenced code block inside a list item on its own line after the item's
+  text (`1. item`, blank line, `` ```text ``` `` indented to the item's content).
+  A fence on the marker line itself (`` 1. ``` ``) is the item's literal text,
+  and a later fence line then opens a code block of its own.
 - When emphasis spans close together, mark the inner one with underscores:
   `**bold _italic_**`, not `**bold *italic***`. Spans that open together read
   as CommonMark does (`***bold** then italic*`).

@@ -406,11 +406,32 @@ _MD_WITH_IMAGE = "# Title\n\n![photo](https://example.com/img.png)\n\nEnd\n"
 _MD_WITHOUT_IMAGE = "# Title\n\nEnd\n"
 
 
+def _render_images(tab, markdown=False):
+    """Stand-in serializer: the image reference appears only while the tab
+    still holds its native image element."""
+    has_image = any("inlineObjectElement" in element
+                    for block in tab.get("body", {}).get("content", [])
+                    for element in block.get("paragraph", {}).get("elements", []))
+    return _MD_WITH_IMAGE if has_image else _MD_WITHOUT_IMAGE
+
+
 class TestCatNoImages:
+    @pytest.fixture(autouse=True)
+    def image_snapshot(self, native_snapshot):
+        """The tab holds one native inline image."""
+        native_snapshot.return_value = {
+            "revisionId": "r1", "tabs": [{
+                "tabProperties": {"tabId": "main", "title": "Main"},
+                "documentTab": {"body": {"content": [{"paragraph": {"elements": [
+                    {"inlineObjectElement": {"inlineObjectId": "img"}},
+                    {"textRun": {"content": "\n"}}]}}]}},
+            }],
+        }
+
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.docs.get_tab_text", return_value=_MD_WITH_IMAGE)
+    @patch("gdoc.api.docs.get_tab_text", side_effect=_render_images)
     def test_no_images_strips(self, _export, _svc, _pf, _update, capsys):
         args = _make_args(no_images=True)
         rc = cmd_cat(args)
@@ -432,7 +453,7 @@ class TestCatNoImages:
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.docs.get_tab_text", return_value=_MD_WITH_IMAGE)
+    @patch("gdoc.api.docs.get_tab_text", side_effect=_render_images)
     def test_no_images_json(self, _export, _svc, _pf, _update, capsys):
         args = _make_args(no_images=True, json=True)
         rc = cmd_cat(args)
@@ -443,7 +464,7 @@ class TestCatNoImages:
     @patch("gdoc.state.update_state_after_command")
     @patch("gdoc.notify.pre_flight", return_value=None)
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.docs.get_tab_text", return_value=_MD_WITH_IMAGE)
+    @patch("gdoc.api.docs.get_tab_text", side_effect=_render_images)
     def test_no_images_before_truncation(self, _export, _svc, _pf, _update, capsys):
         """--no-images strips before --max-bytes truncates."""
         args = _make_args(no_images=True, max_bytes=8)
@@ -459,7 +480,7 @@ class TestCatNoImages:
     @patch("gdoc.api.comments.get_drive_service")
     @patch("gdoc.api.comments.list_comments", return_value=[])
     @patch("gdoc.api.drive.get_drive_service")
-    @patch("gdoc.api.docs.get_tab_text", return_value=_MD_WITH_IMAGE)
+    @patch("gdoc.api.docs.get_tab_text", side_effect=_render_images)
     def test_no_images_with_comments(
         self, _export, _svc, _list, _csvc, _pf, _update, capsys,
     ):

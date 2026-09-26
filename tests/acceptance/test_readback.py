@@ -318,3 +318,28 @@ def test_t03_move_table_section_and_insert_section_with_readback(scenario):
     scenario.record["evidence"] = (
         "request_applied_text_and_cell_styles_with_fixed_API_table_scaffold_then_public_read"
     )
+
+
+def test_review_quoted_list_and_nested_code_changed_roundtrip(scenario):
+    source = '> 1. item\n>    ```\n>    literal *code*\n>    ```\n> 2. next\n'
+    apply_requests = existing_helper('test_review_round1', 'native_readback')
+    read(scenario)
+    scenario.ok('write', tab='draft', text=source)
+    result = apply_requests(parse_markdown(source), batch=requests(scenario))
+    scenario.document['tabs'][0]['documentTab'] = result
+    scenario.document['revisionId'] = 'r2'
+    first = read(scenario)
+    assert '> 1. item' in first and '> 2. next' in first
+    assert '>    literal *code*' in first
+    scenario.service.documents.return_value.batchUpdate.reset_mock()
+    scenario.ok('write', tab='draft', text=first.replace('item', 'revised'))
+    assert scenario.batches[0]['writeControl'] == {'requiredRevisionId': 'r2'}
+    result = apply_requests(parse_markdown(first.replace('item', 'revised')),
+                            batch=requests(scenario))
+    scenario.document['tabs'][0]['documentTab'] = result
+    second = read(scenario)
+    assert '> 1. revised' in second and '> 2. next' in second
+    assert '>    literal *code*' in second
+    scenario.record['evidence'] = (
+        'request-applied quote/list/code public changed readback'
+    )

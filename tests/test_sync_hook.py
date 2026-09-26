@@ -42,7 +42,8 @@ class TestSyncHookBasic:
         self, mock_update_doc, _drv, _update, tmp_path, capsys,
     ):
         f = tmp_path / "spec.md"
-        f.write_text("---\ngdoc: abc123\ntitle: My Doc\n---\n# Hello\n")
+        f.write_text("---\ngdoc: abc123\ngdoc-revision: r1\n"
+                     "title: My Doc\n---\n# Hello\n")
         args = _make_args()
         with patch("sys.stdin", _stdin_json(str(f))):
             rc = cmd_sync_hook(args)
@@ -62,7 +63,7 @@ class TestSyncHookBasic:
         self, mock_update_doc, _drv, _update, tmp_path,
     ):
         f = tmp_path / "spec.md"
-        f.write_text("---\ngdoc: abc123\ntitle: T\n---\nBody text")
+        f.write_text("---\ngdoc: abc123\ngdoc-revision: r1\ntitle: T\n---\nBody text")
         args = _make_args()
         with patch("sys.stdin", _stdin_json(str(f))):
             cmd_sync_hook(args)
@@ -78,7 +79,7 @@ class TestSyncHookBasic:
         self, mock_update_doc, _drv, mock_update, tmp_path,
     ):
         f = tmp_path / "spec.md"
-        f.write_text("---\ngdoc: abc123\ntitle: T\n---\nBody")
+        f.write_text("---\ngdoc: abc123\ngdoc-revision: r1\ntitle: T\n---\nBody")
         args = _make_args()
         with patch("sys.stdin", _stdin_json(str(f))):
             cmd_sync_hook(args)
@@ -146,7 +147,7 @@ class TestSyncHookErrorHandling:
     )
     def test_api_error_reported(self, _update_doc, tmp_path, capsys):
         f = tmp_path / "spec.md"
-        f.write_text("---\ngdoc: abc123\ntitle: T\n---\nBody")
+        f.write_text("---\ngdoc: abc123\ngdoc-revision: r1\ntitle: T\n---\nBody")
         args = _make_args()
         with patch("sys.stdin", _stdin_json(str(f))):
             rc = cmd_sync_hook(args)
@@ -167,7 +168,8 @@ class TestSyncHookMultiTabSafety:
         write = mocker.patch("gdoc.api.drive.update_doc_content", return_value=42)
         mocker.patch("gdoc.state.update_state_after_command")
         f = tmp_path / "spec.md"
-        f.write_text("---\ngdoc: abc123\ntitle: My Doc\n---\n# Hello\n")
+        f.write_text("---\ngdoc: abc123\ngdoc-revision: r1\n"
+                     "title: My Doc\n---\n# Hello\n")
         with patch("sys.stdin", _stdin_json(str(f))):
             assert cmd_sync_hook(_make_args()) == 0
         write.assert_called_once_with(
@@ -178,7 +180,7 @@ class TestSyncHookMultiTabSafety:
 
 def test_sync_refuses_lossy_scope(mocker, tmp_path, capsys):
     f = tmp_path / "spec.md"
-    f.write_text("---\ngdoc: abc123\n---\nBody", encoding="utf-8")
+    f.write_text("---\ngdoc: abc123\ngdoc-revision: r1\n---\nBody", encoding="utf-8")
     mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
         "revisionId": "r1", "tabs": [{
             "tabProperties": {"tabId": "main", "title": "Main"},
@@ -203,7 +205,7 @@ def test_sync_refuses_lossy_scope(mocker, tmp_path, capsys):
 @pytest.mark.parametrize("error", [RuntimeError("offline"), OSError("read failed")])
 def test_sync_safety_read_failure_is_visible(mocker, tmp_path, capsys, error):
     f = tmp_path / "spec.md"
-    f.write_text("---\ngdoc: abc123\n---\nBody", encoding="utf-8")
+    f.write_text("---\ngdoc: abc123\ngdoc-revision: r1\n---\nBody", encoding="utf-8")
     mocker.patch("gdoc.api.docs.get_document_with_tabs", side_effect=error)
     upload = mocker.patch("gdoc.api.drive.update_doc_content")
     with patch("sys.stdin", _stdin_json(str(f))):
@@ -214,7 +216,7 @@ def test_sync_safety_read_failure_is_visible(mocker, tmp_path, capsys, error):
 
 def test_sync_uses_one_safety_snapshot(mocker, tmp_path):
     f = tmp_path / "spec.md"
-    f.write_text("---\ngdoc: abc123\n---\nBody", encoding="utf-8")
+    f.write_text("---\ngdoc: abc123\ngdoc-revision: r1\n---\nBody", encoding="utf-8")
     fetch = mocker.patch("gdoc.api.docs.get_document_with_tabs", side_effect=[
         {"revisionId": "r1", "tabs": [{
             "tabProperties": {"tabId": "main", "title": "Main"},
@@ -245,7 +247,7 @@ def test_sync_reports_refusals_separately_from_failures(
     with patch("sys.stdin", _stdin_json(str(f))):
         assert cmd_sync_hook(_make_args()) == 0
     error = capsys.readouterr().err
-    assert ("SYNC: skipped" if exit_code == 3 else "SYNC: failed") in error
+    assert ("SYNC: skipped" if exit_code == 3 else "ERR: SYNC: failed") in error
     assert f.read_text() == original
 
 

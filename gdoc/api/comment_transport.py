@@ -66,7 +66,12 @@ def execute_mutation_request(
             raise GdocError(uncertainty) from exc
         raise
     except (OSError, HTTPException, httplib2.HttpLib2Error) as exc:
-        raise GdocError(uncertainty) from exc
+        if transport._sent:
+            raise GdocError(uncertainty) from exc
+        raise GdocError(
+            f"network error ({exc}); the write was not sent. "
+            "Check the connection and try again"
+        ) from exc
     except GdocError:
         raise
     except RefreshError as exc:

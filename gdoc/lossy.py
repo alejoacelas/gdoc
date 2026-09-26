@@ -4,6 +4,7 @@ Scan only the caller's replacement scope. See README's hazard inventory;
 ordinary styles and metadata are deliberately not a reason to refuse.
 """
 
+import re
 import sys
 
 from gdoc.util import GdocError
@@ -137,17 +138,30 @@ def check_markdown_replacement(
     styles: set[str] = set()
     numbering: set[str] = set()
 
-    def visit(value, table_depth=0, document_style=None, lists=None, images=None):
+    def visit(value, table_depth=0, document_style=None, lists=None, images=None,
+              prefixes=None, supported_prefix=False):
         """Collect known hazards recursively, tracking nested table depth."""
         if isinstance(value, list):
             for item in value:
-                visit(item, table_depth, document_style, lists, images)
+                visit(item, table_depth, document_style, lists, images,
+                      prefixes, supported_prefix)
         elif isinstance(value, dict):
             # Each documentTab owns its defaults; recursive calls keep them
             # local so a sibling or child tab cannot inherit the wrong style.
             document_style = value.get("documentStyle", document_style or {})
             lists = value.get("lists", {} if "body" in value else lists or {})
             images = value.get("inlineObjects", images or {})
+            if "body" in value or isinstance(value.get("namedRanges"), dict):
+                prefixes = [r for group in value.get("namedRanges", {}).values()
+                            for named in group.get("namedRanges", [])
+                            if re.fullmatch(r"gdoc:prefix:v1:\d+:\d+",
+                                            named.get("name", group.get("name", "")))
+                            for r in named.get("ranges", [])]
+            if "paragraph" in value:
+                supported_prefix = any(
+                    r.get("startIndex", 0) <= value.get("startIndex", -1)
+                    < r.get("endIndex", 0) for r in prefixes or []
+                )
             if "content" in value and isinstance(value["content"], list):
                 numbering.update(_numbered_list_hazards(value["content"], lists))
             if "sectionBreak" in value:
@@ -199,7 +213,7 @@ def check_markdown_replacement(
                              "indentFirstLine") and setting.get("magnitude", 0) == 0:
                     continue
                 if field in ("indentStart", "indentFirstLine") and (
-                    quote or "bullet" in value
+                    quote or "bullet" in value or supported_prefix
                 ):
                     continue
                 if field == "alignment" and table_depth and paragraph_style[field] in (
@@ -223,7 +237,8 @@ def check_markdown_replacement(
             if "bullet" in value:
                 # Inspect definitions only when content references the list.
                 visit(lists.get(value["bullet"].get("listId"), {}),
-                      table_depth, document_style, lists, images)
+                      table_depth, document_style, lists, images,
+                      prefixes, supported_prefix)
             for key, child in value.items():
                 # Defaults are metadata, not replaceable content. Page setup
                 # is checked above; referenced list definitions are checked
@@ -248,9 +263,11 @@ def check_markdown_replacement(
                 if key == "namedRanges" and isinstance(child, dict):
                     for group in child.values():
                         for named in group.get("namedRanges", []):
-                            if named.get("ranges") and named.get(
-                                "name", group.get("name"),
-                            ) != "gdoc:code:v1":
+                            name = named.get("name", group.get("name", ""))
+                            if (named.get("ranges") and name != "gdoc:code:v1"
+                                    and not re.fullmatch(
+                                        r"gdoc:prefix:v1:\d+:\d+", name)):
+
                                 hazards.add("custom named ranges")
                 if key == "link" and isinstance(child, dict) and any(
                     k in child for k in (
@@ -302,10 +319,10 @@ def check_markdown_replacement(
                     # Map entry names are arbitrary, including "person" or
                     # "rowSpan"; only their values have Docs schema fields.
                     visit(list(child.values()), table_depth,
-                          document_style, lists, images)
+                          document_style, lists, images, prefixes, supported_prefix)
                 else:
                     visit(child, table_depth + (key == "table"),
-                          document_style, lists, images)
+                          document_style, lists, images, prefixes, supported_prefix)
 
     visit(scope)
     if hazards and not allow_lossy:

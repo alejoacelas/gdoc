@@ -263,7 +263,7 @@ class TestCmdInsertImage:
         mock_insert.assert_called_once_with(
             "doc123", IMG_URL, 19,
             tab_id="t1", revision_id="rev1",
-            width_pt=None, height_pt=None,
+            width_pt=None, height_pt=None, result_details={},
         )
         assert "OK inserted image kix.newimg" in capsys.readouterr().out
         assert mock_update.call_args.kwargs["command_version"] == 7
@@ -516,7 +516,7 @@ class TestCmdReplaceImage:
         assert rc == 0
         mock_replace.assert_called_once_with(
             "doc123", "kix.img1", IMG_URL,
-            tab_id="t2", revision_id="rev1",
+            tab_id="t2", revision_id="rev1", result_details={},
         )
         assert "OK replaced image kix.img1" in capsys.readouterr().out
         assert mock_update.call_args.kwargs["command_version"] == 8
@@ -586,3 +586,26 @@ class TestCmdReplaceImage:
         assert data["ok"] is True
         assert data["object_id"] == "kix.img1"
         assert data["status"] == "replaced"
+
+
+@pytest.mark.parametrize('command', ['insert-image', 'replace-image'])
+@pytest.mark.parametrize('acknowledged', ['', 'rev2'])
+def test_image_write_advances_only_acknowledged_revision(mocker, command, acknowledged):
+    from copy import deepcopy
+
+    from gdoc.state import load_state, record_content_read
+
+    doc = deepcopy(_ONE_TAB_DOC)
+    doc['tabs'][0]['documentTab']['inlineObjects'] = {'kix.img1': {}}
+    mocker.patch('gdoc.api.docs.get_document_with_tabs', return_value=doc)
+    mocker.patch('gdoc.notify.pre_flight', return_value=None)
+    mocker.patch('gdoc.api.drive.get_file_version', return_value={'version': 7})
+    response = {**_INSERT_OK, 'writeControl': {'requiredRevisionId': acknowledged}}
+    service = _mock_docs_service(batch_response=response)
+    mocker.patch('gdoc.api.docs.get_docs_service', return_value=service)
+    record_content_read('doc123', ['t1'], 'rev1')
+    if command == 'insert-image':
+        assert cmd_insert_image(_make_args(command, after='Architecture')) == 0
+    else:
+        assert cmd_replace_image(_make_args(command, object_id='kix.img1')) == 0
+    assert load_state('doc123').read_revision_ids == {'t1': acknowledged or 'rev1'}

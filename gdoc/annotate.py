@@ -119,6 +119,14 @@ def annotate_markdown(
             search_anchor = fold_unicode_spaces(anchor_text)
             pos = search_text.find(search_anchor)
         if pos == -1:
+            # Exported Markdown escapes literal punctuation. Keep line breaks
+            # while decoding so the matched line still refers to the display.
+            from gdoc.mdparse import _strip_escapes
+
+            search_text = fold_unicode_spaces(_strip_escapes(markdown))
+            search_anchor = fold_unicode_spaces(anchor_text)
+            pos = search_text.find(search_anchor)
+        if pos == -1:
             # Anchor text deleted
             unanchored.append((c, "anchor deleted"))
             continue
@@ -132,8 +140,8 @@ def annotate_markdown(
 
         # Single match — find line number
         # Count newlines up to end of match to find the last line of the span
-        match_end = pos + len(anchor_text)
-        line_idx = markdown[:match_end].count("\n")
+        match_end = pos + len(search_anchor)
+        line_idx = search_text[:match_end].count("\n")
         # Clamp to valid range
         if line_idx >= len(lines):
             line_idx = len(lines) - 1 if lines else 0

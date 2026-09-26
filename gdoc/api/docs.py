@@ -382,7 +382,7 @@ def _style_run_markdown(content: str, style: dict) -> str:
         core = f"~~{core}~~"
     if link:
         destination = "".join(
-            "\\" + char if char in "\\()" else char for char in link
+            "\\" + char if char in "\\()`" else char for char in link
         )
         core = f"[{core}]({destination})"
     return f"{lead}{core}{trail}{newline}"
@@ -421,6 +421,25 @@ def _paragraph_markdown(
     ``ordered_counters`` (nesting level -> running ordinal) is carried across
     paragraphs by the caller so numbered lists count 1, 2, 3.
     """
+    elements = paragraph.get("elements", [])
+    if any("horizontalRule" in e for e in elements):
+        fragments = []
+        chunk = []
+        for element in elements:
+            if "horizontalRule" in element:
+                if chunk and _runs_markdown(chunk).strip():
+                    fragments.append(_paragraph_markdown(
+                        dict(paragraph, elements=chunk), lists, ordered_counters,
+                    ).rstrip("\n") + "\n")
+                fragments.append("---\n")
+                chunk = []
+            else:
+                chunk.append(element)
+        if chunk and _runs_markdown(chunk).strip():
+            fragments.append(_paragraph_markdown(
+                dict(paragraph, elements=chunk), lists, ordered_counters,
+            ).rstrip("\n") + "\n")
+        return "".join(fragments)
     text = _runs_markdown(paragraph.get("elements", []))
     newline = ""
     if text.endswith("\n"):
@@ -469,9 +488,7 @@ def _paragraph_markdown(
     # Preserve counters: a later paragraph can resume the same native list.
 
     paragraph_style = paragraph.get("paragraphStyle", {})
-    if any("horizontalRule" in e for e in paragraph.get("elements", [])) or (
-        not text and paragraph_style.get("borderBottom")
-    ):
+    if not text and paragraph_style.get("borderBottom"):
         return "---" + newline
     if all(paragraph_style.get(key) == {"magnitude": 36, "unit": "PT"}
            for key in ("indentStart", "indentFirstLine")):
@@ -485,6 +502,8 @@ def _paragraph_markdown(
         return "#" * level + " " + text + newline
     # Inline escaping above handles stars, underscores, and code fences. Escape
     # remaining literal block openers only after adding genuine block syntax.
+    if re.fullmatch(r"=== Tab: .+ ===", text):
+        text = "\\" + text
     text = re.sub(r"^([ \t]*)([-+#>|])", r"\1\\\2", text)
     text = re.sub(r"^([ \t]*\d+)\.(?=\s|$)", r"\1\\.", text)
     return text + newline
@@ -601,12 +620,23 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
     ordered_counters: dict = {}
     # Named ranges distinguish fenced code from inline monospace formatting.
     code_ranges = []
+    prefix_ranges = []
     for group in tab.get("namedRanges", {}).values():
         for named in group.get("namedRanges", []):
-            if named.get("name", group.get("name")) == "gdoc:code:v1":
+            name = named.get("name", group.get("name", ""))
+            if name == "gdoc:code:v1":
                 code_ranges.extend(named.get("ranges", []))
+            prefix = re.fullmatch(r"gdoc:prefix:v1:(\d+):(\d+)", name)
+            if prefix:
+                prefix_ranges.extend((r, int(prefix[1]), int(prefix[2]))
+                                     for r in named.get("ranges", []))
     code_parts = []
     active_code = None
+    active_prefix = (0, 0)
+
+    def with_prefix(text, prefix):
+        lead = "> " * prefix[0] + " " * prefix[1]
+        return "".join(lead + line for line in text.splitlines(keepends=True))
 
     def flush_code():
         if not code_parts:
@@ -615,16 +645,21 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
         fence = "`" * max(3, 1 + max(
             (len(m[0]) for m in re.finditer(r"`+", literal)), default=0,
         ))
-        parts.append(fence + "\n" + literal + fence + "\n")
+        parts.append(with_prefix(fence + "\n" + literal + fence + "\n", active_prefix))
         code_parts.clear()
 
     for element in content:
+        prefix = next(((quote, indent) for r, quote, indent in prefix_ranges
+                       if r.get("startIndex", 0) <= element.get("startIndex", -1)
+                       < r.get("endIndex", 0)), (0, 0)) if markdown else (0, 0)
         marker = next((index for index, r in enumerate(code_ranges)
                        if r.get("startIndex", 0) <= element.get("startIndex", -1)
                        < r.get("endIndex", 0)), None) if markdown else None
-        if marker != active_code or "paragraph" not in element:
+        if (marker != active_code or prefix != active_prefix
+                or "paragraph" not in element):
             flush_code()
         active_code = marker
+        active_prefix = prefix
         if marker is not None and "paragraph" in element:
             code_parts.append(_extract_paragraphs_text([element]))
             continue
@@ -632,14 +667,29 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
             if not markdown:
                 parts.append(_extract_paragraphs_text([element]))
                 continue
-            parts.append(
-                _paragraph_markdown(element["paragraph"], lists, ordered_counters)
-            )
+            paragraph = element["paragraph"]
+            if prefix != (0, 0):
+                # Prefix ranges distinguish quote/list containers from incidental
+                # native indentation and avoid inferring a second quote marker.
+                paragraph_style = dict(paragraph.get("paragraphStyle", {}))
+                for key in ("indentStart", "indentFirstLine"):
+                    if "bullet" in paragraph and key in paragraph_style:
+                        paragraph_style[key] = {
+                            **paragraph_style[key],
+                            "magnitude": paragraph_style[key].get("magnitude", 0)
+                            - 36 * prefix[0],
+                        }
+                    else:
+                        paragraph_style.pop(key, None)
+                paragraph = dict(paragraph, paragraphStyle=paragraph_style)
+            parts.append(with_prefix(
+                _paragraph_markdown(paragraph, lists, ordered_counters), prefix,
+            ))
         elif "table" in element:
             table = element["table"]
             rendered = _table_markdown(table) if markdown else None
             if rendered is not None:
-                parts.append(rendered)
+                parts.append(with_prefix(rendered, prefix))
                 continue
             for row in table.get("tableRows", []):
                 cells = []
@@ -1631,6 +1681,7 @@ def insert_inline_image(
     revision_id: str = "",
     width_pt: float | None = None,
     height_pt: float | None = None,
+    result_details: dict | None = None,
 ) -> str:
     """Insert an inline image at a document index via insertInlineImage.
 
@@ -1663,14 +1714,19 @@ def insert_inline_image(
         body["writeControl"] = {"requiredRevisionId": revision_id}
     try:
         service = get_docs_service()
-        result = (
-            service.documents()
-            .batchUpdate(documentId=doc_id, body=body)
-            .execute()
+        from gdoc.api.comment_transport import execute_mutation_request
+
+        result = execute_mutation_request(
+            service.documents().batchUpdate(documentId=doc_id, body=body),
+            uncertainty="Image write outcome is uncertain; inspect before retrying",
         )
     except HttpError as e:
         _raise_if_stale_revision(e)
         _translate_http_error(e, doc_id)
+    if result_details is not None:
+        result_details["acknowledged_revision_id"] = result.get("writeControl", {}).get(
+            "requiredRevisionId", "",
+        )
     replies = result.get("replies", [])
     return (replies[0] if replies else {}).get(
         "insertInlineImage", {},
@@ -1683,6 +1739,7 @@ def replace_image(
     uri: str,
     tab_id: str | None = None,
     revision_id: str = "",
+    result_details: dict | None = None,
 ) -> None:
     """Replace an existing image's content via replaceImage.
 
@@ -1708,12 +1765,20 @@ def replace_image(
         body["writeControl"] = {"requiredRevisionId": revision_id}
     try:
         service = get_docs_service()
-        service.documents().batchUpdate(
-            documentId=doc_id, body=body,
-        ).execute()
+        from gdoc.api.comment_transport import execute_mutation_request
+
+        result = execute_mutation_request(
+            service.documents().batchUpdate(documentId=doc_id, body=body),
+            uncertainty="Image write outcome is uncertain; inspect before retrying",
+        )
     except HttpError as e:
         _raise_if_stale_revision(e)
         _translate_http_error(e, doc_id)
+
+    if result_details is not None:
+        result_details["acknowledged_revision_id"] = result.get("writeControl", {}).get(
+            "requiredRevisionId", "",
+        )
 
 
 def _raise_if_stale_revision(e: HttpError) -> None:
@@ -2072,11 +2137,12 @@ def _image_requests(images, text, insert_index, tab_id):
 
 
 def _native_docs_requests(parsed, insert_index, tab_id=None):
-    from gdoc.mdparse import to_docs_requests
+    from gdoc.mdparse import prefix_indent_requests, to_docs_requests
 
     requests = to_docs_requests(parsed, insert_index, tab_id=tab_id,
                                 include_lists=False)
     requests.extend(_mixed_list_requests(parsed, insert_index, tab_id))
+    requests.extend(prefix_indent_requests(parsed, insert_index, tab_id))
     requests.extend(_image_requests(_parsed_images(parsed), parsed.plain_text,
                                     insert_index, tab_id))
     return requests
@@ -2103,6 +2169,16 @@ def _code_range_requests(parsed, insert_index: int, tab_id: str | None) -> list[
         if tab_id:
             span["tabId"] = tab_id
         requests.append({"createNamedRange": {"name": "gdoc:code:v1", "range": span}})
+    for style in parsed.styles:
+        if style.type != "markdown_prefix":
+            continue
+        start = coordinate(style.start)
+        span = {"startIndex": start,
+                "endIndex": max(start + 1, coordinate(style.end))}
+        if tab_id:
+            span["tabId"] = tab_id
+        name = f"gdoc:prefix:v1:{style.style['quote']}:{style.style['indent']}"
+        requests.append({"createNamedRange": {"name": name, "range": span}})
     return requests
 
 
@@ -3111,6 +3187,7 @@ class SuggestionResult:
     created_suggestion_ids: list[str] = field(default_factory=list)
     updated_suggestion_ids: list[str] = field(default_factory=list)
     comment_update_state: str = ""
+    acknowledged_revision_id: str = ""
 
     @property
     def suggestion_ids(self) -> list[str]:
@@ -3684,6 +3761,9 @@ def suggest_replacement(
             created_suggestion_ids=created,
             updated_suggestion_ids=updated,
             comment_update_state=state,
+            acknowledged_revision_id=result.get("writeControl", {}).get(
+                "requiredRevisionId", "",
+            ),
         )
 
         if state != "ALL_SAVED" or not outcome.suggestion_ids:

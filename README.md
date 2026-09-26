@@ -426,6 +426,18 @@ uses the revision acknowledged by Google, so successive own writes normally need
 no extra read. Missing acknowledgments or a rebased recovery do not bless unseen
 content. An unchanged selected tab returns `already in sync` without mutation.
 
+`push` and the sync hook also check the file's own `gdoc-revision`; reading a newer
+copy elsewhere cannot authorize an older file. Files without revision provenance
+need a fresh pull or an explicit `--force`. An acknowledged push updates only its
+provenance fields, preserving other frontmatter. `gdoc-body-sha256` records the
+last pulled or acknowledged body. The pull hook leaves locally edited files in
+place; pull a separate copy to reconcile them.
+
+Local replacements retain the previous inode at `FILE.gdoc-backup-UNIQUE-ID` and
+print its path. This protects edits racing a pull or provenance update, including
+writes through an editor's open file handle. A concurrent save at the original
+path takes precedence. Recovery copies remain available for manual comparison.
+
 Table creation and filling are revision-protected stages. Partial or uncertain
 completion exits 1 and reports completed stages; a clean refusal before mutation
 exits 3. Mutations are sent once and uncertain requests are never automatically
@@ -446,10 +458,19 @@ images. Use a complete read–modify–write for paragraph splits/merges, sectio
 and row/column changes. Targeted `edit` preserves unrelated native content and does
 not silently fall back to rewriting a rich tab.
 
+`edit` and `suggest` search every tab's body, headers, footers and footnotes by
+default. `--tab` narrows that search to one tab and its segments. A unique match
+can therefore be outside the first tab's body; multiple matches require `--all`,
+which applies to the entire selected scope. Use `--tab` to limit a bulk edit.
+
 This is a semantic Markdown format, not complete CommonMark/GFM conformance.
 Canonical export may escape punctuation or change fence spelling; code text and
 meaningful whitespace survive. Code blocks use native named ranges to retain their
-identity. Tables do not gain incidental header bold. Nested lists use two spaces per
+identity; container ranges retain quoted lists and code nested inside list items.
+Reference links accept full, collapsed and shortcut forms with URI definitions.
+Native horizontal rules sharing a paragraph with text export as separate rule and
+text paragraphs, preserving text order and heading styles. Tables accept short
+alignment delimiters such as `:--`, `--:` and `:-:` and do not gain incidental header bold. Nested lists use two spaces per
 level in exports. Syntax highlighting, native object IDs, pagination, custom fonts,
 colors and arbitrary layout are outside the Markdown promise.
 

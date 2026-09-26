@@ -816,6 +816,7 @@ def test_uncertain_write_never_retries_or_falls_back(comment_command, error):
     saved_comments = []
 
     def save_then_lose_response(**kwargs):
+        kwargs["http"].http._sent = True
         saved_comments.append("c_saved")
         raise error
 

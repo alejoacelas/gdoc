@@ -12,7 +12,7 @@ from gdoc.util import GdocError
 
 native_write = write_tests.native_write
 
-FRONTMATTER = "---\ngdoc: abc123\ntitle: Harbor\n---\n"
+FRONTMATTER = "---\ngdoc: abc123\ngdoc-revision: r10\ntitle: Harbor\n---\n"
 
 
 @pytest.mark.parametrize(
@@ -21,7 +21,7 @@ FRONTMATTER = "---\ngdoc: abc123\ntitle: Harbor\n---\n"
 @pytest.mark.parametrize("body", ["# Heading\n\nBody", "", "Changed\n"])
 def test_push_transports_only_body_with_native_snapshot(native_write, doc, body):
     env = native_write
-    env.path.write_text(f"---\ngdoc: {doc}\n---\n{body}")
+    env.path.write_text(f"---\ngdoc: {doc}\ngdoc-revision: r10\n---\n{body}")
     assert cmd_push(_make_args(file=str(env.path))) == 0
     env.write.assert_called_once_with(
         "abc123",
@@ -126,7 +126,8 @@ def test_push_default_preserves_sibling_and_tab_frontmatter_selects_it(native_wr
     assert cmd_push(_make_args(file=str(env.path))) == 0
     assert env.write.call_args.kwargs["collapse_tabs"] is False
     assert "second" not in state.load_state("abc123").read_revision_ids
-    env.path.write_text("---\ngdoc: abc123\ntab: Reference\n---\nScoped change")
+    env.path.write_text("---\ngdoc: abc123\ngdoc-revision: r10\n"
+                        "tab: Reference\n---\nScoped change")
     with pytest.raises(GdocError, match="complete read baseline"):
         cmd_push(_make_args(file=str(env.path)))
     state.record_content_read("abc123", ["second"], "r10")
@@ -196,3 +197,51 @@ def test_push_state_update_retains_command_identity(native_write, mocker):
     update.assert_called_once_with(
         "abc123", native_write.info, command="push", quiet=False, command_version=42
     )
+
+
+@pytest.mark.parametrize('revision', ['r9', ''])
+def test_file_provenance_cannot_be_healed_by_newer_cat(native_write, revision):
+    env = native_write
+    env.path.write_text(f'---\ngdoc: abc123\ngdoc-revision: {revision}\n'
+                        '---\nStale body')
+    # The shared state already says r10: another cat or pull cannot bless this file.
+    with pytest.raises(GdocError, match='file gdoc-revision is stale'):
+        cmd_push(_make_args(file=str(env.path)))
+    env.write.assert_not_called()
+    env.tab_write.assert_not_called()
+
+
+def test_push_refreshes_file_provenance_for_next_push(native_write):
+    from gdoc.frontmatter import parse_frontmatter
+
+    env = native_write
+    env.path.write_text(FRONTMATTER + 'First edit')
+    args = _make_args(file=str(env.path))
+    assert cmd_push(args) == 0
+    metadata, body = parse_frontmatter(env.path.read_text())
+    assert metadata['gdoc-revision'] == 'r11'
+    assert body == 'First edit'
+    env.document['revisionId'] = 'r11'
+    env.details.update(input_revision_id='r11', acknowledged_revision_id='r12')
+    env.path.write_text(env.path.read_text().replace('First edit', 'Second edit'))
+    assert cmd_push(args) == 0
+    assert parse_frontmatter(env.path.read_text())[0]['gdoc-revision'] == 'r12'
+    assert env.write.call_count == 2
+
+
+def test_pulled_tab_metadata_allows_explicit_collapse(native_write):
+    env = native_write
+    env.document['tabs'].append(native_tab('second', 'Reference'))
+    state.record_content_read('abc123', ['second'], 'r10')
+    env.path.write_text(FRONTMATTER.replace(
+        'title: Harbor', 'title: Harbor\ntab: first') + 'Replacement')
+    assert cmd_push(_make_args(file=str(env.path), force_collapse_tabs=True)) == 0
+    assert env.write.call_args.kwargs['collapse_tabs'] is True
+
+
+def test_tab_push_records_post_write_display_version(native_write):
+    env = native_write
+    env.path.write_text(FRONTMATTER.replace(
+        'title: Harbor', 'title: Harbor\ntab: first') + 'Replacement')
+    assert cmd_push(_make_args(file=str(env.path))) == 0
+    assert state.load_state('abc123').last_version == 42

@@ -24,9 +24,21 @@ All notable changes to `gdoc` are documented here. This project follows
   revision. Metadata/partial reads cannot authorize replacement. Acknowledged
   writes advance known content; rebased or uncertain writes require a fresh read.
 - `comment --quote` refuses ambiguous matches and reports candidates.
+- `edit` and `suggest` search all tabs, including headers, footers and footnotes.
+  `--tab` selects one tab and its segments; `--all` replaces every match in scope.
+- Pushes check the file's revision as well as the shared read baseline. Pull hooks
+  leave unsynced local bodies in place, and local replacements retain recovery
+  copies to protect concurrent editor saves.
 
 ### Fixed
 
+- Loose nested numbered lists retain parent numbering. Reference links retain
+  destinations; quoted lists, quoted code and indented list fences preserve their
+  structure through changed Markdown round trips.
+- Native rules sharing a paragraph preserve surrounding text, escaped comment
+  anchors match correctly, and backticks in link destinations round-trip.
+- A failed display-version lookup no longer hides an acknowledged write. Image
+  and suggestion commands carry exact acknowledged revision provenance forward.
 - Tab replacements reset inherited bullets and direct paragraph/text styles;
   nested list items share a list-creation range and final rules use the retained
   paragraph mark without adding a blank paragraph. `insert --end` applies the

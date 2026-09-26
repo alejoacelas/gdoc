@@ -1387,6 +1387,8 @@ def cmd_suggest(args) -> int:
         expected_token_identity=read_identity, body=plan.replacement_source,
     )
 
+    _record_targeted_write(doc_id, plan.revision_id, result.acknowledged_revision_id)
+
     # The suggestion is saved and verified at this point. A failure of the
     # follow-up version lookup must not turn that into an ordinary error
     # that hides the IDs — report success, then warn that state was not
@@ -1649,7 +1651,7 @@ def cmd_write(args) -> int:
     if not os.path.isfile(file_path):
         raise GdocError(f"file not found: {file_path}", exit_code=3)
     try:
-        with open(file_path, encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8", newline="") as f:
             content = f.read()
     except OSError as e:
         raise GdocError(f"cannot read file: {e}", exit_code=3) from e
@@ -1666,6 +1668,7 @@ def cmd_write(args) -> int:
 
 def _write_native_markdown(
     args, doc_id, content, *, command, tab_name=None, result_details=None,
+    file_revision=None,
 ):
     """Share full-content write semantics across CLI, MCP, push and hooks."""
     import re
@@ -1679,6 +1682,7 @@ def _write_native_markdown(
     )
     from gdoc.api.drive import get_file_version, update_doc_content
     from gdoc.format import format_json, get_output_mode
+    from gdoc.mdparse import _FENCE_CLOSE_RE, _fence_open
     from gdoc.notify import pre_flight
     from gdoc.state import (
         record_content_read,
@@ -1687,7 +1691,18 @@ def _write_native_markdown(
         update_state_after_command,
     )
 
-    if len(re.findall(r"^=== Tab: .+ ===$", content, re.MULTILINE)) > 1:
+    inspection_header = False
+    fence = None
+    for line in content.splitlines():
+        if fence is not None:
+            close = _FENCE_CLOSE_RE.match(line.lstrip())
+            if close and close[1][0] == fence[0] and len(close[1]) >= len(fence):
+                fence = None
+        elif opener := _fence_open(line.lstrip()):
+            fence = opener[1]
+        elif re.fullmatch(r"=== Tab: .+ ===", line):
+            inspection_header = True
+    if inspection_header:
         raise GdocError(
             "combined --all-tabs output is an inspection view; read and write "
             "each tab separately with --tab", 3,
@@ -1717,6 +1732,13 @@ def _write_native_markdown(
                 match.group(1), match.group(1),
             ), content,
         )
+    if file_revision is not None and not getattr(args, "force", False):
+        if file_revision != revision:
+            raise GdocError(
+                "file gdoc-revision is stale; the document changed since this "
+                "file was pulled. Reconcile the local and remote edits, or use "
+                "--force to intentionally overwrite.", 3,
+            )
     unchanged = (
         not (collapse and len(tabs) > 1)
         and _comparable_markdown(get_tab_text(selected, markdown=True))
@@ -1744,7 +1766,8 @@ def _write_native_markdown(
             doc_id, selected["id"], content, replace=True,
             allow_lossy=getattr(args, "allow_lossy", False), document=document,
         )
-        version = None
+        from gdoc.api.drive import version_after_write
+        version = version_after_write(doc_id)
     else:
         version = update_doc_content(
             doc_id, content, expected_version=expected_version, document=document,
@@ -1840,18 +1863,23 @@ def cmd_pull(args) -> int:
     # deliberately omit the `gdoc:` key — push and the sync hooks key
     # off it, and silently pushing a stale revision over the live doc
     # is a footgun.
-    from gdoc.frontmatter import add_frontmatter
+    from gdoc.frontmatter import add_frontmatter, body_fingerprint
 
     if rev is not None:
         front = {"source": doc_id, "revision": rev["id"], "title": title}
     else:
         front = {"gdoc": doc_id, "title": title, "tab": selected["id"],
-                 "gdoc-revision": document.get("revisionId", "")}
+                 "gdoc-revision": document.get("revisionId", ""),
+                 "gdoc-body-sha256": body_fingerprint(markdown)}
     content = add_frontmatter(markdown, front)
 
+    from gdoc.frontmatter import preserve_and_replace
+
     try:
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(content)
+        if not preserve_and_replace(
+            file_path, content, expected=getattr(args, "_expected_local_content", None),
+        ):
+            raise GdocError("local file changed during pull; replacement skipped", 3)
     except OSError as e:
         raise GdocError(f"cannot write file: {e}", exit_code=3)
 
@@ -1910,7 +1938,7 @@ def cmd_push(args) -> int:
     if not os.path.isfile(file_path):
         raise GdocError(f"file not found: {file_path}", exit_code=3)
     try:
-        with open(file_path, encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8", newline="") as f:
             content = f.read()
     except OSError as e:
         raise GdocError(f"cannot read file: {e}", exit_code=3)
@@ -1936,9 +1964,42 @@ def cmd_push(args) -> int:
 
     doc_id = _resolve_doc_id(metadata["gdoc"])
 
-    return _write_native_markdown(
-        args, doc_id, body, command="push", tab_name=metadata.get("tab"),
+    details = {}
+    result = _write_native_markdown(
+        args, doc_id, body, command="push",
+        tab_name=(None if getattr(args, "force_collapse_tabs", False)
+                  else metadata.get("tab")),
+        file_revision=metadata.get("gdoc-revision", ""), result_details=details,
     )
+    _refresh_file_revision(file_path, content, details)
+    return result
+
+
+def _refresh_file_revision(file_path, content, details):
+    """Advance file provenance only for known, acknowledged uploaded content."""
+    acknowledged = details.get("acknowledged_revision_id")
+    if not acknowledged or details.get("rebased", False):
+        return
+    from gdoc.frontmatter import (
+        body_fingerprint,
+        parse_frontmatter,
+        preserve_and_replace,
+        update_frontmatter_value,
+    )
+
+    _, body = parse_frontmatter(content)
+    updated = update_frontmatter_value(content, "gdoc-revision", acknowledged)
+    updated = update_frontmatter_value(
+        updated, "gdoc-body-sha256", body_fingerprint(body),
+    )
+    if updated == content:
+        return
+    try:
+        preserve_and_replace(file_path, updated, expected=content)
+    except OSError as error:
+        print("WARN: upload acknowledged, but file provenance was not updated: "
+              f"{error}",
+              file=sys.stderr)
 
 
 def cmd_sync_hook(args) -> int:
@@ -1960,7 +2021,7 @@ def cmd_sync_hook(args) -> int:
         if not os.path.isfile(file_path):
             return 0
 
-        with open(file_path, encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8", newline="") as f:
             content = f.read()
 
         from gdoc.frontmatter import parse_frontmatter
@@ -1984,28 +2045,19 @@ def cmd_sync_hook(args) -> int:
                 _write_native_markdown(
                     hook_args, doc_id, body, command="push",
                     tab_name=metadata.get("tab"), result_details=write_result,
+                    file_revision=metadata.get("gdoc-revision", ""),
                 )
         except GdocError as error:
             if error.exit_code != 3:
                 raise
             print(f"SYNC: skipped (replacement safety check: {error})", file=sys.stderr)
             return 0
-        acknowledged = write_result.get("acknowledged_revision_id")
-        if acknowledged and not write_result.get("rebased", False):
-            from gdoc.frontmatter import add_frontmatter
-
-            # Do not replace a local edit made while the upload was in flight.
-            with open(file_path, encoding="utf-8") as f:
-                unchanged_file = f.read() == content
-            if unchanged_file:
-                metadata["gdoc-revision"] = acknowledged
-                with open(file_path, "w", encoding="utf-8") as f:
-                    f.write(add_frontmatter(body, metadata))
+        _refresh_file_revision(file_path, content, write_result)
         print(f"SYNC: pushed to {metadata.get('title', doc_id)!r}", file=sys.stderr)
 
     except Exception as e:
         # Keep the hook non-blocking, but never hide a failed read or upload.
-        print(f"SYNC: failed: {e}", file=sys.stderr)
+        print(f"ERR: SYNC: failed: {e}", file=sys.stderr)
 
     return 0
 
@@ -2029,15 +2081,21 @@ def cmd_pull_hook(args) -> int:
         if not os.path.isfile(file_path):
             return 0
 
-        with open(file_path, encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8", newline="") as f:
             content = f.read()
 
         from gdoc.frontmatter import parse_frontmatter
 
-        metadata, _ = parse_frontmatter(content)
+        metadata, body = parse_frontmatter(content)
         if "gdoc" not in metadata:
             return 0
 
+        from gdoc.frontmatter import body_fingerprint
+
+        if metadata.get("gdoc-body-sha256") != body_fingerprint(body):
+            print("SYNC: pull skipped (local edits or no verified local baseline; "
+                  "reconcile with a separate pull)", file=sys.stderr)
+            return 0
         doc_id = _resolve_doc_id(metadata["gdoc"])
 
         from gdoc.api.docs import get_document_with_tabs
@@ -2054,12 +2112,12 @@ def cmd_pull_hook(args) -> int:
             cmd_pull(SimpleNamespace(
                 doc=doc_id, file=file_path, tab=metadata.get("tab"), quiet=True,
                 revision=None, json=False, verbose=False, plain=False,
-                _document_snapshot=snapshot,
+                _document_snapshot=snapshot, _expected_local_content=content,
             ))
         print(f"SYNC: pulled {metadata.get('title', doc_id)!r}", file=sys.stderr)
 
     except Exception as error:
-        print(f"SYNC: pull failed: {error}", file=sys.stderr)
+        print(f"ERR: SYNC: pull failed: {error}", file=sys.stderr)
 
     return 0
 
@@ -3167,6 +3225,20 @@ def _resolve_insert_index(
     return content[-1].get("endIndex", 2) - 1 if content else 1
 
 
+def _record_targeted_write(doc_id, input_revision_id, acknowledged_revision_id):
+    from gdoc.state import record_content_write
+
+    try:
+        record_content_write(
+            doc_id, input_revision_id=input_revision_id,
+            acknowledged_revision_id=acknowledged_revision_id,
+        )
+    except OSError as error:
+        print("WARN: write saved, but content provenance could not be recorded: "
+              f"{error}",
+              file=sys.stderr)
+
+
 def cmd_insert_image(args) -> int:
     """Handler for `gdoc insert-image`: add an image to an existing doc."""
     import math
@@ -3208,20 +3280,24 @@ def cmd_insert_image(args) -> int:
 
     from gdoc.api.docs import insert_inline_image
 
+    details = {}
     try:
         object_id = insert_inline_image(
             doc_id, uri, insert_at,
             tab_id=tab_id,
             revision_id=revision_id,
             width_pt=getattr(args, "width", None),
-            height_pt=getattr(args, "height", None),
+            height_pt=getattr(args, "height", None), result_details=details,
         )
     finally:
         _cleanup_temp_image(temp_file_id)
 
-    from gdoc.api.drive import get_file_version
+    _record_targeted_write(
+        doc_id, revision_id, details.get("acknowledged_revision_id", ""),
+    )
+    from gdoc.api.drive import version_after_write
 
-    command_version = get_file_version(doc_id).get("version")
+    command_version = version_after_write(doc_id)
 
     from gdoc.format import format_json, get_output_mode
 
@@ -3282,17 +3358,21 @@ def cmd_replace_image(args) -> int:
 
     from gdoc.api.docs import replace_image
 
+    details = {}
     try:
         replace_image(
             doc_id, object_id, uri,
-            tab_id=tab_id, revision_id=revision_id,
+            tab_id=tab_id, revision_id=revision_id, result_details=details,
         )
     finally:
         _cleanup_temp_image(temp_file_id)
 
-    from gdoc.api.drive import get_file_version
+    _record_targeted_write(
+        doc_id, revision_id, details.get("acknowledged_revision_id", ""),
+    )
+    from gdoc.api.drive import version_after_write
 
-    command_version = get_file_version(doc_id).get("version")
+    command_version = version_after_write(doc_id)
 
     from gdoc.format import format_json, get_output_mode
 

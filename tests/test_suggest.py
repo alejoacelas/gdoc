@@ -1855,3 +1855,32 @@ def test_suggest_segment_readback_must_contain_reported_ids(mocker):
     with pytest.raises(GdocError, match="read-back"):
         suggest_replacement("doc-one", _mixed_matches(), "REPLACED", "revision-one")
     assert service.documents.return_value.batchUpdate.call_count == 1
+
+
+@pytest.mark.parametrize('acknowledged', ['', 'ack-revision'])
+def test_suggest_carries_only_response_revision_into_known_content(
+    mocker, acknowledged,
+):
+    from gdoc.state import load_state, record_content_read
+
+    mocker.patch('gdoc.notify.pre_flight', return_value=None)
+    mocker.patch('gdoc.api.docs.get_document_structure', return_value=_structure())
+    result = _result()
+    result.acknowledged_revision_id = acknowledged
+    mocker.patch('gdoc.api.docs.suggest_replacement', return_value=result)
+    mocker.patch('gdoc.api.drive.get_file_version', return_value=_VERSION)
+    record_content_read('abc123', ['t.first'], 'rev123')
+    assert cmd_suggest(_args()) == 0
+    assert load_state('abc123').read_revision_ids == {
+        't.first': acknowledged or 'rev123',
+    }
+
+
+def test_suggestion_provenance_comes_from_mutation_not_readback(mocker):
+    response = _ok_response()
+    response['writeControl'] = {'requiredRevisionId': 'ack-revision'}
+    mocker.patch('gdoc.api.docs.get_docs_service', return_value=_service(response))
+    mocker.patch('gdoc.api.docs.get_document_structure',
+                 return_value=_readback('suggest.abc'))
+    result = suggest_replacement('doc1', MATCH, 'world', 'rev123', tab_id='t.0')
+    assert result.acknowledged_revision_id == 'ack-revision'

@@ -145,7 +145,7 @@ def _fence_open(line: str) -> re.Match | None:
 
 # Table patterns
 _TABLE_ROW_RE = re.compile(r"^\|(.+)\|$")
-_TABLE_SEP_RE = re.compile(r"^\|[\s:]*-{3,}[\s:]*(\|[\s:]*-{3,}[\s:]*)*\|$")
+_TABLE_SEP_RE = re.compile(r"^\|[\s:]*-+[\s:]*(\|[\s:]*-+[\s:]*)*\|$")
 
 # Characters a backslash may escape (CommonMark ASCII-punctuation set).
 _ESCAPABLE = set("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~")
@@ -248,6 +248,7 @@ def _parse_inline(
     Emphasis spans nest recursively; backslash escapes are resolved per
     segment (and left intact inside code spans).
     """
+    text = _expand_link_references(text, references or {})
     return _scan(text, _mask_escapes(text), references)
 
 
@@ -348,6 +349,42 @@ def _protect_code(text: str, masked: str) -> str:
             protected[code.start():code.end()] = _MASK * (code.end() - code.start())
             code_end = code.end()
     return "".join(protected)
+
+
+def _expand_link_references(text: str, references: dict) -> str:
+    """Resolve full, collapsed and shortcut links outside literal code."""
+    if not references:
+        return text
+    masked = _protect_code(text, _mask_escapes(text))
+    # Existing image syntax and inline-link destinations are not reference links.
+    protected = list(masked)
+    cursor = 0
+    while found := _find_image(masked[cursor:], references):
+        match, _ = found
+        start, end = cursor + match.start(), cursor + match.end()
+        protected[start:end] = _MASK * (end - start)
+        cursor = end
+    cursor = 0
+    while match := _find_link(masked[cursor:]):
+        start, end = cursor + match.start(), cursor + match.end()
+        protected[start:end] = _MASK * (end - start)
+        cursor = end
+    masked = "".join(protected)
+    pattern = re.compile(r"(?<!!)\[([^\[\]]+)\](?:\[([^\]]*)\])?(?!\()")
+    pieces = []
+    cursor = 0
+    for match in pattern.finditer(masked):
+        label = match[2] or match[1]
+        uri = references.get(_ref_label(label))
+        if uri is None:
+            continue
+        pieces.append(text[cursor:match.start()])
+        title = text[match.start(1):match.end(1)]
+        destination = "".join("\\" + c if c in "\\()`" else c for c in uri)
+        pieces.append(f"[{title}]({destination})")
+        cursor = match.end()
+    pieces.append(text[cursor:])
+    return "".join(pieces)
 
 
 def _expand_image_references(text: str, references: dict) -> str:
@@ -526,6 +563,17 @@ def _ref_label(label: str) -> str:
 
 
 
+def _unquote(line: str, limit: int | None = None) -> tuple[str, int]:
+    depth = 0
+    while limit is None or depth < limit:
+        match = _BLOCKQUOTE_RE.match(line)
+        if not match:
+            break
+        line = match[1]
+        depth += 1
+    return line, depth
+
+
 def parse_markdown(text: str) -> ParsedMarkdown:
     """Parse markdown text into plain text + style annotations.
 
@@ -545,6 +593,8 @@ def parse_markdown(text: str) -> ParsedMarkdown:
     definition_lines = set()
     fence = None
     for line_number, line in enumerate(lines):
+        line, _ = _unquote(line)
+        line = line.lstrip(" ")
         if fence is not None:
             closer = _FENCE_CLOSE_RE.match(line)
             if closer and closer[1][0] == fence[0] and len(closer[1]) >= len(fence):
@@ -555,7 +605,9 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             fence = opener[1]
             continue
         definition = re.fullmatch(r" {0,3}\[([^\]]+)\]:[ \t]*(\S+)[ \t]*", line)
-        if definition:
+        if definition and (re.match(r"<?[a-zA-Z][a-zA-Z0-9+.-]*:", definition[2])
+                           or re.search(r"!\[[^\]]*\]\[" + re.escape(definition[1])
+                                        + r"\]", text)):
             uri = _strip_escapes(definition[2])
             references[_ref_label(definition[1])] = (
                 uri.removeprefix("<").removesuffix(">")
@@ -573,6 +625,8 @@ def parse_markdown(text: str) -> ParsedMarkdown:
     last_list_end = 0
     groups: dict[tuple[int, str], tuple[int, int]] = {}
     next_group = 0
+    quote_depth = 0
+    code_indent = 0
     non_default_list_starts: list[str] = []
 
     def emit_paragraph(
@@ -625,7 +679,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             across_blank = last_list_end != offset
             restart = leading_tabs == 0 and previous and ordered and start_number == 1
             continuation = ordered and previous == (bullet_preset, start_number - 1)
-            if restart or across_blank and not continuation:
+            if restart or (leading_tabs == 0 and across_blank and not continuation):
                 list_levels.clear()
             if not list_levels:
                 list_block += 1
@@ -636,6 +690,10 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             number = previous[1] + 1 if previous and previous[0] == bullet_preset else 1
             list_levels[leading_tabs] = (bullet_preset, number)
         para_start = offset
+        if quote_depth or code_indent:
+            para_style = dict(para_style)
+            indent = {"magnitude": 36 * (quote_depth + bool(code_indent)), "unit": "PT"}
+            para_style.update(indentStart=indent, indentFirstLine=indent)
         if leading_tabs:
             plain_parts.append("\t" * leading_tabs)
             offset += leading_tabs
@@ -658,6 +716,11 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         all_styles.append(StyleRange(
             para_start, offset, para_style, "paragraph_style",
         ))
+        if quote_depth or code_indent:
+            all_styles.append(StyleRange(
+                para_start, offset, {"quote": quote_depth, "indent": code_indent},
+                "markdown_prefix",
+            ))
         if bullet_preset is not None:
             all_styles.append(StyleRange(
                 para_start, offset,
@@ -672,18 +735,27 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         if i in definition_lines:
             i += 1
             continue
-        line = lines[i]
+        line, quote_depth = _unquote(lines[i])
 
         # Fenced code block: ``` (or ~~~) ... ```
-        fence_m = _fence_open(line)
+        fence_indent = len(line) - len(line.lstrip(" "))
+        in_list_code = bool(list_levels) and fence_indent > 0
+        fence_m = _fence_open(line.lstrip(" ") if in_list_code else line)
         if fence_m:
-            list_levels.clear()
+            saved_levels = dict(list_levels) if in_list_code else {}
+            if not in_list_code:
+                list_levels.clear()
+            code_indent = fence_indent if in_list_code else 0
             fence = fence_m.group(1)
             fence_char = fence[0]
             code_start = offset
             i += 1
             while i < len(lines):
-                close = _FENCE_CLOSE_RE.match(lines[i])
+                code_line, _ = _unquote(lines[i], quote_depth)
+                # Fence indentation belongs to the container, not the code.
+                strip = min(fence_indent, len(code_line) - len(code_line.lstrip(" ")))
+                code_line = code_line[strip:]
+                close = _FENCE_CLOSE_RE.match(code_line)
                 if close:
                     close_fence = close.group(1)
                     if close_fence[0] == fence_char and len(
@@ -691,7 +763,6 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                     ) >= len(fence):
                         i += 1
                         break
-                code_line = lines[i]
                 styles = (
                     [StyleRange(0, len(code_line), _CODE_FONT, "text_style")]
                     if code_line else []
@@ -703,6 +774,8 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             if offset == code_start:
                 emit_paragraph("", [], {"namedStyleType": "NORMAL_TEXT"})
             code_blocks.append(CodeBlockData(code_start, offset))
+            list_levels.update(saved_levels)
+            code_indent = 0
             continue
 
         # Table: header row + separator row + data rows
@@ -739,7 +812,8 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                 table_rows.append(cells)
                 i += 1
 
-            table_rows = [[_expand_image_references(cell, references) for cell in row]
+            table_rows = [[_expand_link_references(
+                _expand_image_references(cell, references), references) for cell in row]
                           for row in table_rows]
             para_start = offset
             all_tables.append(TableData(
@@ -793,19 +867,6 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                     "padding": {"magnitude": 1, "unit": "PT"},
                     "dashStyle": "SOLID",
                 },
-            })
-            i += 1
-            continue
-
-        # Blockquote — render as an indented normal paragraph.
-        quote_m = _BLOCKQUOTE_RE.match(line)
-        if quote_m:
-            inline_text, inline_styles = _parse_inline(quote_m.group(1), references)
-            indent = {"magnitude": _QUOTE_INDENT_PT, "unit": "PT"}
-            emit_paragraph(inline_text, inline_styles, {
-                "namedStyleType": "NORMAL_TEXT",
-                "indentStart": indent,
-                "indentFirstLine": indent,
             })
             i += 1
             continue
@@ -956,7 +1017,36 @@ def to_docs_requests(
 
     if include_lists:
         requests.extend(list_requests(parsed, insert_index, tab_id))
+        requests.extend(prefix_indent_requests(parsed, insert_index, tab_id))
 
+    return requests
+
+
+def prefix_indent_requests(parsed, insert_index, tab_id):
+    """Restore container indentation after native bullet creation changes it."""
+    requests = []
+    bullets = [s for s in parsed.styles if s.type == "bullets"]
+    for prefix in (s for s in parsed.styles if s.type == "markdown_prefix"):
+        bullet = next((b for b in bullets if b.start == prefix.start), None)
+        level = prefix.style["quote"] + (bullet.list_depth + 1 if bullet else
+                                          bool(prefix.style["indent"]))
+        removed_before = sum(b.list_depth for b in bullets if b.start < prefix.start)
+        removed_end = sum(b.list_depth for b in bullets if b.start < prefix.end)
+        start = (insert_index + utf16_len(parsed.plain_text[:prefix.start])
+                 - removed_before)
+        end = insert_index + utf16_len(parsed.plain_text[:prefix.end]) - removed_end
+        span = {"startIndex": start, "endIndex": max(start + 1, end)}
+        if tab_id:
+            span["tabId"] = tab_id
+        requests.append({"updateParagraphStyle": {
+            "range": span,
+            "paragraphStyle": {
+                "indentStart": {"magnitude": 36 * level, "unit": "PT"},
+                "indentFirstLine": {"magnitude": 36 * level - (18 if bullet else 0),
+                                    "unit": "PT"},
+            },
+            "fields": "indentStart,indentFirstLine",
+        }})
     return requests
 
 

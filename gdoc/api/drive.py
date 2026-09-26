@@ -163,7 +163,7 @@ def update_doc_content(
     doc_id: str, content: str, *, expected_version: int | None = None,
     document: dict | None = None, allow_lossy: bool = False,
     collapse_tabs: bool = False, result_details: dict | None = None,
-) -> int:
+) -> int | None:
     """Replace the first tab using the exact guard snapshot's Docs revision.
 
     Sibling tabs survive unless the caller explicitly authorizes collapse.
@@ -205,11 +205,22 @@ def update_doc_content(
                 [{"deleteTab": {"tabId": tab["id"]}} for tab in reversed(tabs[1:])],
                 result["acknowledged_revision_id"],
             )
-        progress.stage = "reading the resulting version"
-        version = get_file_version(doc_id)["version"]
     if result_details is not None:
         result_details.update(result)
-    return version
+    return version_after_write(doc_id)
+
+
+def version_after_write(doc_id: str) -> int | None:
+    """An optional display lookup must not hide an acknowledged mutation."""
+    import sys
+
+    try:
+        return get_file_version(doc_id).get("version")
+    except Exception as error:
+        print("WARN: write acknowledged, but display version could not be "
+              f"refreshed: {error}",
+              file=sys.stderr)
+        return None
 
 
 def require_write_version(doc_id: str, expected_version: int) -> None:

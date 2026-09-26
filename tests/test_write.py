@@ -341,3 +341,16 @@ def test_write_local_errors_precede_api_and_state(native_write, kind):
     env.read.assert_not_called()
     env.write.assert_not_called()
     assert state.load_state("abc123") == before
+
+
+def test_single_tab_inspection_header_refused(native_write):
+    native_write.path.write_text('=== Tab: Draft ===\nRemote notes\n')
+    with pytest.raises(GdocError, match='inspection view'):
+        cmd_write(_make_args(file=str(native_write.path)))
+    native_write.write.assert_not_called()
+
+
+def test_inspection_header_inside_code_is_supported_text(native_write):
+    native_write.path.write_text('```\n=== Tab: Draft ===\n```\n')
+    assert cmd_write(_make_args(file=str(native_write.path))) == 0
+    native_write.write.assert_called_once()

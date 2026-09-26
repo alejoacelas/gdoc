@@ -471,7 +471,7 @@ def test_cli_carries_pre_guard_version_even_when_forced(
     # The collaborator changes content after preflight and before the write.
     version.side_effect = [{"version": 11}]
     path = tmp_path / "body.md"
-    path.write_text("---\ngdoc: synthetic\n---\nNew body")
+    path.write_text("---\ngdoc: synthetic\ngdoc-revision: r1\n---\nNew body")
     args = SimpleNamespace(
         doc="synthetic",
         file=str(path),
@@ -544,12 +544,11 @@ def test_native_collapse_lost_response_is_uncertain_and_not_retried(api, drive_a
 def test_native_write_version_read_failure_reports_known_completion(api, drive_api):
     files, version, _ = drive_api
     version.side_effect = [{"version": 10}, OSError("version read failed")]
-    with pytest.raises(
-        GdocError, match="applied: first tab content replaced",
-    ) as caught:
-        update_doc_content("synthetic", "New body", expected_version=10)
-    assert caught.value.exit_code == 1
-    assert "completion uncertain" not in str(caught.value)
+    details = {}
+    assert update_doc_content(
+        "synthetic", "New body", expected_version=10, result_details=details,
+    ) is None
+    assert details["acknowledged_revision_id"]
     assert len(batches(api)) == 1
     files.update.assert_not_called()
 
@@ -669,11 +668,19 @@ def test_transport_network_failure_before_send_is_not_uncertain():
 
 
 def test_transport_lost_response_stays_uncertain():
-    def execute():
+    from unittest.mock import MagicMock
+
+    from googleapiclient.http import HttpRequest
+
+    def execute(**kwargs):
+        kwargs["http"].http._sent = True
         raise OSError("response lost")
 
+    request = MagicMock(spec=HttpRequest)
+    request.http = MagicMock()
+    request.execute.side_effect = execute
     with pytest.raises(GdocError, match="uncertain"):
-        execute_mutation_request(transport_request(execute))
+        execute_mutation_request(request)
 
 
 def test_staged_batch_refresh_failure_keeps_auth_exit_code(api, mocker):
@@ -917,7 +924,7 @@ def test_native_replacement_guards_incoming_list_starts(
     )
     update_state = mocker.patch("gdoc.state.update_state_after_command")
     path = tmp_path / "body.md"
-    path.write_text("---\ngdoc: synthetic\n---\n" + markdown)
+    path.write_text("---\ngdoc: synthetic\ngdoc-revision: r1\n---\n" + markdown)
     args = tab_write_args(
         path, tab="Notes" if command == "write-tab" else None,
         allow_lossy=allow_lossy,

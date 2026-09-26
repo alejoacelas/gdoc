@@ -227,7 +227,8 @@ def test_unchanged_upload_skips_even_rich_page_state(
     mocker, tmp_path, capsys, command, quiet_force,
 ):
     path = tmp_path / "draft.md"
-    path.write_text("---\ngdoc: doc\n---\nSummary\n", encoding="utf-8")
+    path.write_text("---\ngdoc: doc\ngdoc-revision: r1\n---\nSummary\n",
+                    encoding="utf-8")
     argv = [command, "doc", str(path)] if command == "write" else [command, str(path)]
     if quiet_force:
         argv += ["--quiet", "--force"]
@@ -283,7 +284,8 @@ def test_write_and_push_preserve_page_setup_natively(
     mocker, tmp_path, capsys, command, allow_lossy, page_style,
 ):
     path = tmp_path / "draft.md"
-    path.write_text("---\ngdoc: doc\n---\nNew text\n", encoding="utf-8")
+    path.write_text("---\ngdoc: doc\ngdoc-revision: r1\n---\nNew text\n",
+                    encoding="utf-8")
     argv = [command, "doc", str(path)] if command == "write" else [command, str(path)]
     argv += ["--quiet", "--force"]
     if allow_lossy:

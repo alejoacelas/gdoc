@@ -8,6 +8,7 @@ from unittest.mock import ANY, patch
 import pytest
 
 from gdoc.cli import cmd_pull_hook
+from gdoc.frontmatter import body_fingerprint
 
 
 def _make_args():
@@ -38,7 +39,10 @@ class TestPullHookBasic:
         mock_load.return_value = DocState(last_version=55)
 
         f = tmp_path / "spec.md"
-        f.write_text("---\ngdoc: abc123\ntitle: My Doc\n---\n# Old content\n")
+        fingerprint = body_fingerprint("# Old content\n")
+        f.write_text("---\ngdoc: abc123\ntitle: My Doc\n"
+                     f"gdoc-body-sha256: {fingerprint}\n"
+                     "---\n# Old content\n")
         args = _make_args()
         with patch("sys.stdin", _stdin_json(str(f))):
             rc = cmd_pull_hook(args)
@@ -75,7 +79,8 @@ class TestPullHookBasic:
         mock_load.return_value = DocState(last_version=50)
 
         f = tmp_path / "spec.md"
-        f.write_text("---\ngdoc: abc123\ntitle: T\n---\nOld")
+        f.write_text("---\ngdoc: abc123\ntitle: T\n"
+                     f"gdoc-body-sha256: {body_fingerprint('Old')}\n---\nOld")
         args = _make_args()
         with patch("sys.stdin", _stdin_json(str(f))):
             cmd_pull_hook(args)
@@ -94,13 +99,14 @@ class TestPullHookBasic:
     @patch("gdoc.api.docs.get_tab_text", return_value="# Content\n")
     @patch("gdoc.api.drive.get_file_version", return_value={"version": 10})
     @patch("gdoc.state.load_state", return_value=None)
-    def test_pull_unconditionally_when_no_state(
+    def test_pull_clean_file_when_no_global_state(
         self, mock_load, mock_ver, mock_export, mock_info,
         _drv, mock_update, tmp_path,
     ):
-        """First time seeing a doc → always pull (no state to compare)."""
+        """Per-file content baseline is independent of document awareness state."""
         f = tmp_path / "spec.md"
-        f.write_text("---\ngdoc: abc123\ntitle: Doc\n---\nOld")
+        f.write_text("---\ngdoc: abc123\ntitle: Doc\n"
+                     f"gdoc-body-sha256: {body_fingerprint('Old')}\n---\nOld")
         args = _make_args()
         with patch("sys.stdin", _stdin_json(str(f))):
             rc = cmd_pull_hook(args)

@@ -46,7 +46,7 @@ def rejection():
 
 def args_for(tmp_path, quiet=False, force=False, collapse=False):
     path = tmp_path / "body.md"
-    path.write_text("---\ngdoc: synthetic\n---\nNew body")
+    path.write_text("---\ngdoc: synthetic\ngdoc-revision: r1\n---\nNew body")
     return SimpleNamespace(doc="synthetic", file=str(path), quiet=quiet, force=force,
                            tab=None, force_collapse_tabs=collapse, json=False,
                            plain=False, verbose=False, allow_lossy=True)
@@ -128,7 +128,7 @@ def test_second_write_refuses_unseen_edit_after_first_write(mocker, tmp_path,
     assert state.last_version == 12
     assert state.last_read_version == 10
     assert state.read_revision_ids == {"t1": "r2"}
-    with pytest.raises(GdocError, match="changed since last read"):
+    with pytest.raises(GdocError, match="changed since"):
         command(args)
     assert api.batchUpdate.call_count == 1
 

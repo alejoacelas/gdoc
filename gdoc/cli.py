@@ -1642,7 +1642,11 @@ def _write_native_markdown(
         if pulled is None and not tab_name:
             raise GdocError(
                 f"the file was pulled from tab {file_tab}, which this document "
-                "no longer has. Pass --tab to choose the tab to replace.", 3,
+                "no longer has. "
+                + ("Remove the file's frontmatter to collapse the document "
+                   "into this text." if collapse else
+                   "Pass --tab to `write` to choose the tab to replace, or "
+                   "pull a fresh copy."), 3,
             )
         if pulled is not None and tab_name and pulled["id"] != selected["id"]:
             raise GdocError(

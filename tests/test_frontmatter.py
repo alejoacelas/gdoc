@@ -187,3 +187,13 @@ class TestLeadingRuleProse:
     def test_other_tools_frontmatter_keys_still_parse(self, content, meta):
         """Round-8 recheck: spaced, quoted, non-ASCII and unspaced keys."""
         assert parse_frontmatter(content) == (meta, "B\n")
+
+    @pytest.mark.parametrize("line", [
+        "| a | b: c |", "1. step: one", "- item: x", "> quote: x",
+        "Time 10:30 meeting", "C:\\path", "_Note_: x", "~~old~~: x",
+        "**Note**: bold", "See https://e.org for more",
+    ])
+    def test_markdown_shaped_lines_stay_in_the_body(self, line):
+        """Round-8 final recheck: content between rules is not metadata."""
+        content = f"---\n{line}\n---\nafter\n"
+        assert parse_frontmatter(content) == ({}, content)

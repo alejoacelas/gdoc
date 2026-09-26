@@ -215,3 +215,16 @@ def test_push_collapse_refuses_a_file_pulled_from_a_later_tab(monkeypatch, tmp_p
     code, output = run("push", str(path), "--force-collapse-tabs")
     assert code == 3 and "--force-collapse-tabs replaces the first tab" in output
     assert route.service.batches == []
+
+
+def test_collapse_of_a_file_from_a_vanished_tab_gives_usable_advice(
+    monkeypatch, tmp_path,
+):
+    """Final recheck: the refusal does not suggest --tab with a collapse."""
+    route = NativeRoute("cli", monkeypatch, tmp_path)
+    _two_tabs(route)
+    text = _pulled(route, tab_id="t.9")
+    code, output, error = route.call("write", text=text, force_collapse_tabs=True)
+    assert code == 3 and "Remove the file's frontmatter" in output + error
+    assert "Pass --tab" not in output + error
+    assert route.service.batches == []

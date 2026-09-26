@@ -7,10 +7,18 @@ _FRONTMATTER_RE = re.compile(r"^---\r?\n(.*?)\r?\n---\r?\n", re.DOTALL)
 # written after one, so the body's leading rule is never read as metadata.
 _EMPTY_FRONTMATTER_RE = re.compile(r"^---\r?\n---\r?\n")
 _LEADING_RULE_RE = re.compile(r"^---\r?\n")
-# A metadata key line: a key without Markdown link, code or emphasis
-# characters, then a colon that does not start a URL's `//`. Keys may hold
-# spaces, quotes and any letters, as other tools' frontmatter does.
-_KEY_LINE_RE = re.compile(r"([^\s:#\[\]()<>`*\\][^:\[\]()<>`*\\]*?)[ \t]*:(?!//)")
+# A metadata key line: a key, then a colon followed by a space or the line
+# end. A plain identifier key may also be followed directly by a value
+# (`key:value`) unless that value starts a path or URL (`/`, `\\`). Keys
+# hold no Markdown link, code, table or escape characters (`[ ] ( ) < > ` |
+# \\`), no strikethrough (`~`), do not start or end with emphasis marks
+# (`*`, `_`), and are not list items or quotes.
+_PLAIN_KEY_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_.-]*")
+_KEY_LINE_RE = re.compile(
+    r"(?![-+*>]\s|\d+[.)]\s)"
+    r"([^\s:#\[\]()<>`|\\~*_][^:\[\]()<>`|\\~]*?(?<![*_\s]))[ \t]*"
+    r"(?::(?=\s|$)|(?<=[A-Za-z0-9_.-]):(?![/\\])(?=\S))"
+)
 
 
 def protect_body(body: str) -> str:
@@ -29,15 +37,15 @@ def parse_frontmatter(content: str) -> tuple[dict, str]:
     empty block (`---` on two consecutive lines, which `protect_body` adds
     before a body that starts with a rule) or a YAML-style block. A block
     is metadata when its first line after any `#` comments is a key line
-    and so is every unindented line with a colon: a key without Markdown
-    link, code, emphasis or escape characters (`[ ] ( ) < > ` * \\`), then
-    a colon that does not begin a URL's `//`. Comments, nested YAML and
-    colon-free lines are skipped. Any other block stays in the body as
-    rules and paragraphs, such as one opening with a blank line or holding
-    a link (`https://…`) or prose like `See [docs](…)`. `---`,
-    `Note: keep me`, `---` is valid metadata; a body meant to start that
-    way is written after the empty block, as `cat` prints it, or escapes
-    the colon (`Note\\:`).
+    and so is every unindented line with a colon (see `_KEY_LINE_RE`):
+    Markdown-shaped lines (links, code, tables, list items, quotes,
+    emphasis-wrapped keys, paths and URLs such as `https://…`) are not key
+    lines. Comments, nested YAML and colon-free lines are skipped. Any other
+    block, including one opening with a blank line, stays in the body as
+    rules and paragraphs. A prose line shaped like `Note: keep me` is a key
+    line; a body meant to start `---`, `Note: keep me`, `---` is written
+    after the empty block, as `cat` prints it, or escapes the colon
+    (`Note\\:`).
     """
     empty = _EMPTY_FRONTMATTER_RE.match(content)
     if empty:
@@ -59,7 +67,10 @@ def parse_frontmatter(content: str) -> tuple[dict, str]:
         if ":" not in line:
             continue
         key_line = _KEY_LINE_RE.match(line)
-        if not key_line:
+        if not key_line or (
+            not line[key_line.end():][:1].isspace() and line[key_line.end():]
+            and not _PLAIN_KEY_RE.fullmatch(key_line[1])
+        ):
             return {}, content
         key = key_line[1].strip()
         if len(key) > 1 and key[0] == key[-1] and key[0] in "\"'":

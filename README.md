@@ -438,11 +438,11 @@ with a horizontal rule, `cat` and Markdown `export` print that empty block first
 the rule and the text after it stay content. Keep the empty block when writing such
 a read back; `pull` files already carry their own metadata block. Without it, a
 leading `---` block is metadata only when its first line (after `#` comments) is a
-`key: value` line and so is every unindented line with a colon: a key without
-Markdown link, code, emphasis or escape characters, then a colon that does not
-begin a URL's `//`. Otherwise it stays content: `---`, a blank
-line, `Note: keep me`, `---` is a rule, a paragraph and a rule, as is a block
-holding a link such as `https://example.com`. `---`, `Note: keep me`, `---` is
+`key: value` line and so is every unindented line with a colon. Markdown-shaped
+lines are not key lines: links, code, tables, list items, quotes, keys wrapped in
+emphasis, paths and URLs such as `https://example.com`. Otherwise the block stays
+content: `---`, a blank
+line, `Note: keep me`, `---` is a rule, a paragraph and a rule. `---`, `Note: keep me`, `---` is
 metadata; to start a body that way, write the empty block first or escape the
 colon (`Note\: keep me`).
 
@@ -468,7 +468,10 @@ file stale; `--allow-lossy` does not override that. The fingerprint covers the
 tab's text, styles, lists, named ranges, named and document styles, segments and
 suggestions. A tab containing images has no fingerprint: Google issues a fresh
 temporary image URI on every read, and a replaced image can keep its object ID and
-size, so any later revision change makes such a file stale until a fresh pull. Files without revision provenance
+size, so any later revision change makes such a file stale until a fresh pull.
+Because a revision string alone is never a read baseline, such a file also needs a
+fresh read or `--force` when this machine has no local state for the document,
+even at the same revision (for example after moving the file to another machine). Files without revision provenance
 need a fresh pull or an explicit `--force`. An acknowledged push updates only its
 provenance fields, preserving other frontmatter, and reads the document once more
 to fingerprint the written tab; if another edit already landed, the fingerprint is

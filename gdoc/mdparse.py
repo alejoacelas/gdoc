@@ -604,9 +604,11 @@ def _scan(
                     s.start + seg_start, s.end + seg_start, s.style, s.type,
                 ))
             ua, ub = _grp(2)
+            url = _strip_escapes(text[ua:ub])
+            if url.startswith("<") and url.endswith(">"):
+                url = url[1:-1]  # CommonMark's bracketed destination, as for images
             styles.append(StyleRange(
-                seg_start, offset,
-                {"link": {"url": _strip_escapes(text[ua:ub])}}, "text_style",
+                seg_start, offset, {"link": {"url": url}}, "text_style",
             ))
         else:
             # bold / italic alternations capture group 1 or 2; others, group 1.

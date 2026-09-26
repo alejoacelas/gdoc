@@ -148,3 +148,8 @@ def test_documented_leading_rules_spelling_survives_metadata_parsing():
     assert parsed.plain_text == "\n\nText\n"
     assert sum("borderBottom" in s.style for s in parsed.styles
                if s.type == "paragraph_style") == 2
+
+
+def test_bracketed_link_destination_is_unwrapped_like_images():
+    _, styles = parse_inline("[x](<https://example.invalid/a_(b)>)")
+    assert styles[0].style == {"link": {"url": "https://example.invalid/a_(b)"}}

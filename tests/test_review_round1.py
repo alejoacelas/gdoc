@@ -450,7 +450,7 @@ def test_table_container_range_is_on_first_cell_and_owned():
     [request] = _table_prefix_requests([[5], [9]], table, "t")
     assert request == {"createNamedRange": {
         "name": "gdoc:prefix:v1:1:0",
-        "range": {"startIndex": 5, "endIndex": 6, "tabId": "t"},
+        "range": {"startIndex": 5, "endIndex": 7, "tabId": "t"},
     }}
     assert _table_prefix_requests([[5]], parse_markdown("| A |\n| - |").tables[0],
                                   "t") == []
@@ -479,3 +479,33 @@ def test_table_container_range_is_on_first_cell_and_owned():
          "ranges": [{"startIndex": 0, "endIndex": 12}]},
     ]}}
     assert get_tab_text(native, markdown=True).startswith("| A |\n| --- |\n| x |")
+
+
+@pytest.mark.parametrize(
+    ("cell", "length"), [("😀 **big**", 6), ("", 0), ("a😀", 3)],
+)
+def test_table_container_range_covers_first_cell_text_and_terminator(cell, length):
+    from gdoc.api.docs import _table_cell_requests, _table_prefix_requests
+
+    [table] = parse_markdown(f"> | {cell} | B |\n> | - | - |\n> | x | y |").tables
+    [request] = _table_prefix_requests([[5, 9], [13, 17]], table, "t")
+    assert request["createNamedRange"]["range"] == {
+        "startIndex": 5, "endIndex": 5 + length + 1, "tabId": "t",
+    }
+    # Same parsed text as the cell insertion itself.
+    inserted = [r["insertText"] for r in _table_cell_requests(
+        [[5, 9], [13, 17]], table, "t") if "insertText" in r
+        and r["insertText"]["location"]["index"] == 5]
+    assert utf16_len("".join(i["text"] for i in inserted)) == length
+
+
+def test_adjacent_quoted_tables_and_paragraphs_keep_separate_containers():
+    parsed = parse_markdown(
+        "> | A |\n> | - |\n> | 1 |\n> | B |\n> | - |\n> | 2 |\n"
+        "> > | C |\n> > | - |\n> > | 3 |\nplain\n| D |\n| - |\n| 4 |"
+    )
+    assert [t.prefix for t in parsed.tables] == [(1, 0), (1, 0), (2, 0), (0, 0)]
+    assert [t.rows for t in parsed.tables] == [
+        [["A"], ["1"]], [["B"], ["2"]], [["C"], ["3"]], [["D"], ["4"]],
+    ]
+    assert "plain" in parsed.plain_text

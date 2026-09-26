@@ -1344,16 +1344,22 @@ def _table_at(body, index):
 
 
 def _table_prefix_requests(cell_indices, table, tab_id):
-    """Record a quote or list container on the first cell's paragraph.
+    """Record a quote or list container on the whole first-cell paragraph.
 
     Cell text is inserted at or after this index, so the paragraph start is
-    stable within the fill batch. The exporter reads the container from here.
+    stable within the fill batch. The range covers the inserted text and the
+    retained terminator: whole code points, and it survives replacement of the
+    cell's text. The exporter reads the container from here.
     """
+    from gdoc.mdparse import parse_inline, utf16_len
+
     quote, indent = getattr(table, "prefix", (0, 0))
     if not (quote or indent) or not cell_indices or not cell_indices[0]:
         return []
     start = cell_indices[0][0]
-    span = {"startIndex": start, "endIndex": start + 1}
+    raw = table.rows[0][0] if table.rows and table.rows[0] else ""
+    plain = parse_inline(raw)[0] if raw else ""
+    span = {"startIndex": start, "endIndex": start + utf16_len(plain) + 1}
     if tab_id:
         span["tabId"] = tab_id
     return [{"createNamedRange": {

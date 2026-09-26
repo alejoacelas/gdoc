@@ -493,7 +493,14 @@ replacement, tabs and page mode) and every new comment are sent once, and an
 uncertain request is never automatically replayed. Replies, resolve/reopen, Drive
 or Sheets changes, and the images `new --file` inserts into the document it
 creates use the Google client's ordinary transport, which can resend a request
-after a lost response. Inspect the document before retrying. `--force-collapse-tabs` explicitly
+after a lost response. Inspect the document before retrying.
+
+To recover from a partial, uncertain or rebased write, including one that
+inserted or replaced images, do not rerun it: read the tab again with `cat` or
+`pull`, and apply the remaining change to that read. The fresh read shows which
+content and images landed and gives each image its current
+`gdoc-image:OBJECT_ID`; references from the earlier read may no longer resolve,
+so use the new ones. `--force-collapse-tabs` explicitly
 removes sibling tabs after replacing the first tab, using revision-pinned native
 requests; ordinary writes never collapse tabs.
 
@@ -531,7 +538,9 @@ which applies to the entire selected scope. Use `--tab` to limit a bulk edit.
 
 This is a semantic Markdown format, not complete CommonMark/GFM conformance.
 Canonical export may escape punctuation or change fence spelling; code text and
-meaningful whitespace survive. Code blocks use native named ranges to retain their
+meaningful whitespace survive. A fence's info string (such as `python`) is not
+kept, and an empty code block reads back holding one empty line, the paragraph
+Docs needs for it. Code blocks use native named ranges to retain their
 identity; container ranges retain quotes and list item content nested to any depth
 (list nesting itself stops at nine levels, below):
 paragraphs, headings, rules, code, tables and quotes inside list items, and lists,
@@ -584,10 +593,10 @@ structure may read differently:
   indents or separate lists), so it is unsupported: deeper items are written at
   the ninth level and `write`/`insert` warn with the affected lines. This is a
   gdoc limit, not one of the API gaps below.
-- Open a fenced code block inside a list item on its own line after the item's
-  text (`1. item`, blank line, `` ```text ``` `` indented to the item's content).
-  A fence on the marker line itself (`` 1. ``` ``) is the item's literal text,
-  and a later fence line then opens a code block of its own.
+- Open a fenced code block inside a list item on its own line: the item's
+  text, a blank line, then the fence indented to the item's content. A fence on
+  the marker line itself (`` 1. ``` ``) is the item's literal text, and a later
+  fence line then opens a code block of its own.
 - When emphasis spans close together, mark the inner one with underscores:
   `**bold _italic_**`, not `**bold *italic***`. Spans that open together read
   as CommonMark does (`***bold** then italic*`).

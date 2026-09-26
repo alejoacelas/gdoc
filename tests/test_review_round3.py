@@ -38,3 +38,20 @@ def test_table_cell_code_with_backslash_pipes_round_trips(runs):
     assert code == [(starts[i], starts[i + 1]) for i, (_, style) in enumerate(runs)
                     if style]
     assert parse_inline(table.rows[1][1])[0] == "z"
+
+
+def test_linked_image_in_a_table_cell_keeps_its_link():
+    from gdoc.api.docs import _table_cell_requests
+
+    table = parse_markdown(
+        "| Pic |\n| --- |\n"
+        "| [![](https://example.invalid/i.png)](https://example.invalid/t) |\n"
+    ).tables[0]
+    requests = _table_cell_requests([[5], [9]], table, "tab-one")
+    image = next(i for i, r in enumerate(requests) if "insertInlineImage" in r)
+    placed = requests[image]["insertInlineImage"]["location"]["index"]
+    assert requests[image + 1] == {"updateTextStyle": {
+        "range": {"startIndex": placed, "endIndex": placed + 1, "tabId": "tab-one"},
+        "textStyle": {"link": {"url": "https://example.invalid/t"}},
+        "fields": "link",
+    }}

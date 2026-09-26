@@ -498,8 +498,9 @@ level in exports. Syntax highlighting, native object IDs, pagination, custom fon
 colors and arbitrary layout are outside the Markdown promise.
 
 Images accept publicly fetchable HTTP(S) URLs. Existing images export as
-`![](gdoc-image:OBJECT_ID)` (with alt text when available). Those references are
-valid only in their source document; each write resolves a fresh image URI from its
+`![](gdoc-image:OBJECT_ID)` (with alt text when available); a linked image is
+`[![](gdoc-image:OBJECT_ID)](URL)`, and writes keep the link on the image. Those
+references are valid only in their source document; each write resolves a fresh image URI from its
 checked snapshot. Moving or rewriting an image may change its native ID. gdoc does
 not publish existing private images. Drawing/chart identity, image crop and layout
 are richer features.

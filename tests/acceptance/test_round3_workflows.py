@@ -312,3 +312,22 @@ def test_file_diff_compares_the_same_tab_markdown_as_cat_and_pull(
     code, out, _ = _run(["diff", "synthetic", str(pulled)])
     assert code == 1 and "-Beta ✓." in out and "+Gamma ✓." in out
     assert "gdoc:" not in out.split("\n", 2)[2]
+
+
+def test_linked_image_keeps_its_link_through_read_and_rewrite(scenario):
+    existing_image(scenario)
+    image = scenario.document["tabs"][0]["documentTab"]["body"]["content"][1]
+    image["paragraph"]["elements"][0]["inlineObjectElement"]["textStyle"] = {
+        "link": {"url": "https://example.invalid/site_(a)"}}
+    source = read(scenario)
+    assert "[![Map](gdoc-image:map)](https://example.invalid/site_\\(a\\))" in source
+    scenario.ok("write", tab="draft", text=source.replace("Before", "Revised"))
+    sent = requests(scenario)
+    for url in ("https://example.invalid/site_(a)",):
+        link = next(i for i, r in enumerate(sent)
+                    if r.get("updateTextStyle", {}).get("textStyle")
+                    == {"link": {"url": url}}
+                    and r["updateTextStyle"]["fields"] == "link"
+                    and i > 0 and "insertInlineImage" in sent[i - 1])
+        placed = sent[link - 1]["insertInlineImage"]["location"]["index"]
+        assert sent[link]["updateTextStyle"]["range"]["startIndex"] == placed

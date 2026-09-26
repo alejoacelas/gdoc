@@ -398,7 +398,15 @@ def _runs_markdown(elements: list[dict]) -> str:
             object_id = pe["inlineObjectElement"].get("inlineObjectId", "")
             alt = pe.get("_markdown_image_alt", "")
             alt = re.sub(r"([\\\[\]<>])", r"\\\1", alt)
-            parts.append(f"![{alt}](gdoc-image:{object_id})")
+            image = f"![{alt}](gdoc-image:{object_id})"
+            link = (pe["inlineObjectElement"].get("textStyle", {})
+                    .get("link") or {}).get("url")
+            if link:
+                destination = "".join(
+                    "\\" + char if char in "\\()`" else char for char in link
+                )
+                image = f"[{image}]({destination})"
+            parts.append(image)
             continue
         if text_run is None:
             continue
@@ -1498,7 +1506,8 @@ def _table_cell_requests(cell_indices, table, tab_id):
                 image.object_size = getattr(table, "image_sizes", {}).get(
                     style.style["uri"],
                 )
-            text_requests.extend(_image_requests(images, plain, base, tab_id))
+            text_requests.extend(_image_requests(images, plain, base, tab_id,
+                                                 cell_styles))
             shift += utf16_len(plain)
 
     return text_requests
@@ -2221,11 +2230,15 @@ def _prepare_image_sources(parsed, snapshot, aliases=None):
               "will not retain the Markdown alt description.", file=sys.stderr)
 
 
-def _image_requests(images, text, insert_index, tab_id):
+def _image_requests(images, text, insert_index, tab_id, styles=()):
+    """Replace each image placeholder with its image, keeping any link on it."""
     from gdoc.mdparse import utf16_len
 
     requests = []
     for image in images:
+        link = next((s.style["link"] for s in styles
+                     if s.type == "text_style" and "link" in s.style
+                     and s.start <= image.plain_text_offset < s.end), None)
         index = (insert_index + utf16_len(text[:image.plain_text_offset])
                  - image.removed_tabs_before)
         target = {"startIndex": index, "endIndex": index + 1}
@@ -2239,6 +2252,10 @@ def _image_requests(images, text, insert_index, tab_id):
             {"deleteContentRange": {"range": target}},
             {"insertInlineImage": insertion},
         ])
+        if link:
+            requests.append({"updateTextStyle": {
+                "range": dict(target), "textStyle": {"link": link}, "fields": "link",
+            }})
     return requests
 
 
@@ -2250,7 +2267,7 @@ def _native_docs_requests(parsed, insert_index, tab_id=None):
     requests.extend(_mixed_list_requests(parsed, insert_index, tab_id))
     requests.extend(prefix_indent_requests(parsed, insert_index, tab_id))
     requests.extend(_image_requests(_parsed_images(parsed), parsed.plain_text,
-                                    insert_index, tab_id))
+                                    insert_index, tab_id, parsed.styles))
     return requests
 
 

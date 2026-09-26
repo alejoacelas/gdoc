@@ -497,9 +497,19 @@ text paragraphs, preserving text order and heading styles. Tables accept short
 alignment delimiters such as `:--`, `--:` and `:-:` and do not gain incidental header bold.
 Only the line after a table's header is its delimiter row, so data rows of dashes stay
 rows. One blank line separates adjacent tables; further blank lines between them are
-blank paragraphs. Nested lists use two spaces per
-level in exports. Syntax highlighting, native object IDs, pagination, custom fonts,
+blank paragraphs. Syntax highlighting, native object IDs, pagination, custom fonts,
 colors and arbitrary layout are outside the Markdown promise.
+
+Write the canonical spellings that exports use; other spellings of the same
+structure may read differently:
+
+- Nest a list item two spaces per level under any marker (`- a` then `  - b`;
+  `10. a` then `  - b`). Each further two spaces adds a level.
+- When emphasis spans close together, mark the inner one with underscores:
+  `**bold _italic_**`, not `**bold *italic***`.
+- An explicit line break inside a paragraph is Docs' soft break, the vertical-tab
+  character U+000B, which gdoc reads and writes as that character; in table cells
+  it is `<br>`. A trailing backslash or two trailing spaces is not a line break.
 
 Images accept publicly fetchable HTTP(S) URLs. Existing images export as
 `![](gdoc-image:OBJECT_ID)` (with alt text when available); a linked image is

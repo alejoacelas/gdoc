@@ -55,3 +55,30 @@ def test_linked_image_in_a_table_cell_keeps_its_link():
         "textStyle": {"link": {"url": "https://example.invalid/t"}},
         "fields": "link",
     }}
+
+
+@pytest.mark.parametrize("markdown, depths", [
+    ("- a\n  - b\n    - c\n", [0, 1, 2]),
+    ("10. a\n  - b\n", [0, 1]),
+    ("1. a\n   - b\n", [0, 1]),
+])
+def test_documented_list_nesting_spelling(markdown, depths):
+    parsed = parse_markdown(markdown)
+    assert [s.list_depth for s in parsed.styles if s.type == "bullets"] == depths
+
+
+def test_documented_emphasis_and_line_break_spellings_round_trip():
+    parsed = parse_markdown("**bold _italic_** a\x0bb\n")
+    assert parsed.plain_text == "bold italic a\x0bb\n"
+    styles = {(s.start, s.end): s.style for s in parsed.styles
+              if s.type == "text_style"}
+    assert styles == {(0, 11): {"bold": True}, (5, 11): {"italic": True}}
+    exported = get_tab_text({"body": {"content": [_paragraph([
+        ("bold ", {"bold": True}), ("italic", {"bold": True, "italic": True}),
+        (" a\x0bb", {}),
+    ])]}}, markdown=True)
+    again = parse_markdown(exported)
+    assert again.plain_text == parsed.plain_text
+    # Export keeps the boundary space outside the delimiters.
+    assert {(s.start, s.end) for s in again.styles if s.type == "text_style"} == {
+        (0, 4), (5, 11)}

@@ -2747,8 +2747,7 @@ def cmd_comment(args) -> int:
             location = resolution.locations[0]
             print(f"Tab: {location['tabTitle']} ({location['tabId']})")
 
-    from gdoc.state import update_state_after_command
-    update_state_after_command(
+    _update_state_after_write(
         doc_id, change_info, command="comment", quiet=quiet,
         command_version=command_version,
         comment_state_patch={"add_comment_id": new_id},
@@ -2783,8 +2782,7 @@ def cmd_reply(args) -> int:
     else:
         print(f"OK reply on #{comment_id}")
 
-    from gdoc.state import update_state_after_command
-    update_state_after_command(
+    _update_state_after_write(
         doc_id, change_info, command="reply", quiet=quiet,
         command_version=command_version,
         comment_state_patch={"add_comment_id": comment_id},
@@ -2819,8 +2817,7 @@ def cmd_resolve(args) -> int:
     else:
         print(f"OK resolved comment #{comment_id}")
 
-    from gdoc.state import update_state_after_command
-    update_state_after_command(
+    _update_state_after_write(
         doc_id, change_info, command="resolve", quiet=quiet,
         command_version=command_version,
         comment_state_patch={"add_comment_id": comment_id, "add_resolved_id": comment_id},
@@ -2854,8 +2851,7 @@ def cmd_reopen(args) -> int:
     else:
         print(f"OK reopened comment #{comment_id}")
 
-    from gdoc.state import update_state_after_command
-    update_state_after_command(
+    _update_state_after_write(
         doc_id, change_info, command="reopen", quiet=quiet,
         command_version=command_version,
         comment_state_patch={"add_comment_id": comment_id, "remove_resolved_id": comment_id},
@@ -2893,8 +2889,7 @@ def cmd_delete_comment(args) -> int:
     else:
         print(f"OK deleted comment #{comment_id}")
 
-    from gdoc.state import update_state_after_command
-    update_state_after_command(
+    _update_state_after_write(
         doc_id, change_info, command="delete-comment", quiet=quiet,
         command_version=command_version,
         comment_state_patch={"remove_comment_id": comment_id},
@@ -3433,9 +3428,8 @@ def cmd_insert_image(args) -> int:
     else:
         print(f"OK inserted image {object_id}")
 
-    from gdoc.state import update_state_after_command
 
-    update_state_after_command(
+    _update_state_after_write(
         doc_id, change_info, command="insert-image",
         quiet=quiet, command_version=command_version,
     )
@@ -3504,9 +3498,8 @@ def cmd_replace_image(args) -> int:
     else:
         print(f"OK replaced image {object_id}")
 
-    from gdoc.state import update_state_after_command
 
-    update_state_after_command(
+    _update_state_after_write(
         doc_id, change_info, command="replace-image",
         quiet=quiet, command_version=command_version,
     )
@@ -3930,9 +3923,8 @@ def cmd_new(args) -> int:
         print(new_id)
 
     # Seed state for the new doc
-    from gdoc.state import update_state_after_command
 
-    update_state_after_command(
+    _update_state_after_write(
         new_id, None, command="new",
         quiet=False, command_version=version,
     )
@@ -3973,14 +3965,13 @@ def cmd_cp(args) -> int:
         print(new_id)
 
     # Update state for the source doc
-    from gdoc.state import update_state_after_command
 
-    update_state_after_command(
+    _update_state_after_write(
         doc_id, change_info, command="cp", quiet=quiet,
     )
 
     # Seed state for the new copy
-    update_state_after_command(
+    _update_state_after_write(
         new_id, None, command="cp",
         quiet=False, command_version=version,
     )
@@ -4056,9 +4047,8 @@ def cmd_share(args) -> int:
         print(f"OK shared with {target} as {role}{suffix}")
 
     # Update state for the doc
-    from gdoc.state import update_state_after_command
 
-    update_state_after_command(doc_id, change_info, command="share", quiet=quiet)
+    _update_state_after_write(doc_id, change_info, command="share", quiet=quiet)
 
     return 0
 
@@ -4124,9 +4114,8 @@ def cmd_mv(args) -> int:
     else:
         print(f"OK moved to {','.join(parents) or folder_id}")
 
-    from gdoc.state import update_state_after_command
 
-    update_state_after_command(
+    _update_state_after_write(
         doc_id, change_info, command="mv",
         quiet=quiet, command_version=result.get("version"),
         metadata_only_write=True,
@@ -4162,9 +4151,8 @@ def cmd_rename(args) -> int:
     else:
         print(f"OK renamed to {name}")
 
-    from gdoc.state import update_state_after_command
 
-    update_state_after_command(
+    _update_state_after_write(
         doc_id, change_info, command="rename",
         quiet=quiet, command_version=result.get("version"),
         metadata_only_write=True,

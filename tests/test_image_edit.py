@@ -609,3 +609,22 @@ def test_image_write_advances_only_acknowledged_revision(mocker, command, acknow
     else:
         assert cmd_replace_image(_make_args(command, object_id='kix.img1')) == 0
     assert load_state('doc123').read_revision_ids == {'t1': acknowledged or 'rev1'}
+
+
+@patch("gdoc.state.update_state_after_command",
+       side_effect=OSError("read-only state directory"))
+@patch("gdoc.api.drive.get_file_version", return_value={"version": 7})
+@patch("gdoc.api.docs.replace_image")
+@patch("gdoc.api.docs.insert_inline_image", return_value="kix.newimg")
+def test_image_writes_keep_success_when_local_state_fails(
+    _insert, _replace, _ver, _update, capsys,
+):
+    """R7-10: an acknowledged image write is not reported as failed."""
+    with patch("gdoc.api.docs.get_document_with_tabs", return_value=_ONE_TAB_DOC):
+        assert cmd_insert_image(_make_args("insert-image", after="Architecture")) == 0
+    with patch("gdoc.api.docs.get_document_with_tabs", return_value=_REPLACE_DOC):
+        assert cmd_replace_image(_make_args("replace-image", object_id="kix.img1")) == 0
+    captured = capsys.readouterr()
+    assert "OK inserted image kix.newimg" in captured.out
+    assert "OK replaced image kix.img1" in captured.out
+    assert captured.err.count("local state could not be updated") == 2

@@ -480,14 +480,55 @@ def _runs_markdown(elements: list[dict]) -> str:
             continue
         content = text_run.get("content", "")
         if content:
-            rendered = _style_run_markdown(content, text_run.get("textStyle", {}))
-            if (parts and parts[-1][-1:] in ("*", "~", "`")
-                    and rendered[:1] in ("*", "~", "`")):
-                # Standard Markdown's empty comment separates delimiters without
-                # adding a visible character or merging differently styled runs.
-                parts.append("<!-- -->")
-            parts.append(rendered)
-    return "".join(parts)
+            url = (text_run.get("textStyle", {}).get("link") or {}).get("url")
+            if url and parts and isinstance(parts[-1], _LinkGroup) \
+                    and parts[-1].url == url:
+                parts[-1].runs.append(text_run)
+                continue
+            if url:
+                parts.append(_LinkGroup(url, [text_run]))
+                continue
+            _append_rendered(parts, _style_run_markdown(
+                content, text_run.get("textStyle", {})))
+    rendered_parts: list[str] = []
+    for part in parts:
+        _append_rendered(rendered_parts, part.render()
+                         if isinstance(part, _LinkGroup) else part)
+    return "".join(rendered_parts)
+
+
+def _append_rendered(parts: list, rendered: str) -> None:
+    if (parts and isinstance(parts[-1], str) and parts[-1][-1:] in ("*", "~", "`")
+            and rendered[:1] in ("*", "~", "`")):
+        # Standard Markdown's empty comment separates delimiters without
+        # adding a visible character or merging differently styled runs.
+        parts.append("<!-- -->")
+    parts.append(rendered)
+
+
+class _LinkGroup:
+    """Consecutive runs sharing one link, written as one Markdown link."""
+
+    def __init__(self, url, runs):
+        self.url, self.runs = url, runs
+
+    def render(self) -> str:
+        if len(self.runs) == 1:
+            return _style_run_markdown(self.runs[0]["content"],
+                                       self.runs[0].get("textStyle", {}))
+        inner: list[str] = []
+        for run in self.runs:
+            style = {k: v for k, v in run.get("textStyle", {}).items()
+                     if k != "link"}
+            _append_rendered(inner, _style_run_markdown(run["content"], style))
+        text = "".join(inner)
+        newline = "\n" if text.endswith("\n") else ""
+        text = text.removesuffix("\n")
+        lead = text[: len(text) - len(text.lstrip())]
+        trail = text[len(text.rstrip()):]
+        destination = "".join(
+            "\\" + char if char in "\\()`" else char for char in self.url)
+        return f"{lead}[{text.strip()}]({destination}){trail}{newline}"
 
 
 def _indent_nesting_level(native_level: int, indent: dict, definitions: list) -> int:

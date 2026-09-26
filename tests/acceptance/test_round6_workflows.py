@@ -354,3 +354,18 @@ def test_container_blank_and_trailing_definition_round_trip(route, markdown,
     assert _read(route) == expected
     route.ok("write", text=expected)
     assert _read(route) == expected
+
+
+@pytest.mark.parametrize("markdown", [
+    "[**b** *i*](https://u.example/)\n",
+    "see [a **b** c](https://u.example/) now\n",
+    "[x](https://one.example/)[y](https://two.example/)\n",
+])
+def test_a_link_with_mixed_styles_stays_one_link(route, markdown):
+    """R5-14: the spaces between differently styled words stay linked."""
+    doc = _written(route, markdown)
+    assert _read(route) == markdown
+    linked = [u.ch for u in doc.units if "link" in u.ts]
+    route.ok("write", text=markdown.replace("see", "saw"))
+    assert _read(route) == markdown.replace("see", "saw")
+    assert [u.ch for u in doc.units if "link" in u.ts] == linked

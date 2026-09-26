@@ -359,8 +359,10 @@ def test_table_markdown_into_a_cell_is_refused_before_any_write(
     _cell_table_document(scenario)
     read(scenario)
     if scenario.interface == "cli":
-        code, out, error = _run(["edit", "synthetic", "--tab", "draft", "--cell",
-                                 "0,1", replacement])
+        # Positional text precedes options: Python 3.10's argparse otherwise
+        # fills the optional positionals before reading the options.
+        code, out, error = _run(["edit", "synthetic", replacement, "--tab", "draft",
+                                 "--cell", "0,1"])
     else:
         code, out, error = scenario.call("edit", old_text=replacement, cell="0,1",
                                          tab="draft")
@@ -368,8 +370,8 @@ def test_table_markdown_into_a_cell_is_refused_before_any_write(
     assert not scenario.batches
     # Ordinary cell text edits still work.
     if scenario.interface == "cli":
-        code, out, error = _run(["edit", "synthetic", "--tab", "draft", "--cell", "0,1",
-                                  "**new**"])
+        code, out, error = _run(["edit", "synthetic", "**new**", "--tab", "draft",
+                                 "--cell", "0,1"])
     else:
         code, out, error = scenario.call("edit", old_text="**new**", cell="0,1",
                                            tab="draft")

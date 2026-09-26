@@ -418,7 +418,28 @@ def _still_code(paragraph: dict) -> bool:
     return True
 
 
-def _prefix_still_applies(paragraph: dict, prefix: tuple[int, int]) -> bool:
+_PREFIX_RANGE_RE = re.compile(
+    r"gdoc:prefix:(?:v1:(\d+):(\d+)|v2:(\d+):(\d+):(\d+))")
+
+
+def _prefix_range_name(quote: int, indent: int, outer: int = 0) -> str:
+    """Name of a container range: v2 adds a list item's indent before quotes."""
+    if outer:
+        return f"gdoc:prefix:v2:{outer}:{quote}:{indent}"
+    return f"gdoc:prefix:v1:{quote}:{indent}"
+
+
+def _parse_prefix_range_name(name: str) -> tuple[int, int, int] | None:
+    """``(quote, indent, outer)`` of a gdoc container range name."""
+    found = _PREFIX_RANGE_RE.fullmatch(name)
+    if not found:
+        return None
+    if found[1] is not None:
+        return int(found[1]), int(found[2]), 0
+    return int(found[4]), int(found[5]), int(found[3])
+
+
+def _prefix_still_applies(paragraph: dict, prefix: tuple[int, int, int]) -> bool:
     """Whether a paragraph still has the indent its recorded container gave it.
 
     gdoc indents each quote level by 36pt, plus one level for text contained
@@ -427,8 +448,8 @@ def _prefix_still_applies(paragraph: dict, prefix: tuple[int, int]) -> bool:
     indent = paragraph.get("paragraphStyle", {}).get("indentStart", {})
     magnitude = (indent.get("magnitude", 0)
                  if indent.get("unit", "PT") == "PT" else 0)
-    required = 36 * prefix[0] + (36 if prefix[1] and not paragraph.get("bullet")
-                                 else 0)
+    required = 36 * (prefix[0] + bool(prefix[2])) + (
+        36 if prefix[1] and not paragraph.get("bullet") else 0)
     return magnitude >= required - 0.5
 
 
@@ -783,16 +804,15 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
             name = named.get("name", group.get("name", ""))
             if name == "gdoc:code:v1":
                 code_ranges.extend(named.get("ranges", []))
-            prefix = re.fullmatch(r"gdoc:prefix:v1:(\d+):(\d+)", name)
+            prefix = _parse_prefix_range_name(name)
             if prefix:
-                prefix_ranges.extend((r, int(prefix[1]), int(prefix[2]))
-                                     for r in named.get("ranges", []))
+                prefix_ranges.extend((r, prefix) for r in named.get("ranges", []))
     code_parts = []
     active_code = None
-    active_prefix = (0, 0)
+    active_prefix = (0, 0, 0)
 
     def with_prefix(text, prefix):
-        lead = "> " * prefix[0] + " " * prefix[1]
+        lead = " " * prefix[2] + "> " * prefix[0] + " " * prefix[1]
         # Only "\n" ends a Markdown line; a soft break (\x0b) stays in its line.
         return "".join(lead + line for line in re.findall(r"[^\n]*\n|[^\n]+", text))
 
@@ -807,9 +827,9 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
         code_parts.clear()
 
     def prefix_at(index):
-        return next(((quote, indent) for r, quote, indent in prefix_ranges
+        return next((prefix for r, prefix in prefix_ranges
                      if r.get("startIndex", 0) <= index < r.get("endIndex", 0)),
-                    (0, 0))
+                    (0, 0, 0))
 
     def table_prefix(table):
         # Only a range starting inside the first cell marks a contained table,
@@ -817,13 +837,13 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
         cell = next(iter(next(iter(table.get("tableRows", [])), {}).get(
             "tableCells", [])), {})
         low, high = cell.get("startIndex", -1), cell.get("endIndex", -1)
-        return next(((quote, indent) for r, quote, indent in prefix_ranges
-                     if low <= r.get("startIndex", -1) < high), (0, 0))
+        return next((prefix for r, prefix in prefix_ranges
+                     if low <= r.get("startIndex", -1) < high), (0, 0, 0))
 
     table_run = None  # Container of the last pipe table, until non-blank content.
     for element in content:
         if not markdown:
-            prefix = (0, 0)
+            prefix = (0, 0, 0)
         elif "table" in element:
             prefix = table_prefix(element["table"])
         else:
@@ -834,9 +854,9 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
         # gdoc's ranges record what it wrote. A paragraph someone has since
         # restyled in Docs is read from its native content instead.
         if "paragraph" in element:
-            if prefix != (0, 0) and not _prefix_still_applies(
+            if any(prefix) and not _prefix_still_applies(
                     element["paragraph"], prefix):
-                prefix = (0, 0)
+                prefix = (0, 0, 0)
             if marker is not None and not _still_code(element["paragraph"]):
                 marker = None
         if (marker != active_code or prefix != active_prefix
@@ -853,7 +873,7 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
                 parts.append(_extract_paragraphs_text([element]))
                 continue
             paragraph = element["paragraph"]
-            if prefix != (0, 0):
+            if any(prefix):
                 # Prefix ranges distinguish quote/list containers from incidental
                 # native indentation and avoid inferring a second quote marker.
                 paragraph_style = dict(paragraph.get("paragraphStyle", {}))
@@ -862,7 +882,7 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
                         paragraph_style[key] = {
                             **paragraph_style[key],
                             "magnitude": paragraph_style[key].get("magnitude", 0)
-                            - 36 * prefix[0],
+                            - 36 * (prefix[0] + bool(prefix[2])),
                         }
                     else:
                         paragraph_style.pop(key, None)
@@ -1544,6 +1564,7 @@ def _table_prefix_requests(cell_indices, table, tab_id):
     from gdoc.mdparse import parse_inline, utf16_len
 
     quote, indent = getattr(table, "prefix", (0, 0))
+    outer = getattr(table, "outer", 0)
     if not (quote or indent) or not cell_indices or not cell_indices[0]:
         return []
     start = cell_indices[0][0]
@@ -1553,7 +1574,7 @@ def _table_prefix_requests(cell_indices, table, tab_id):
     if tab_id:
         span["tabId"] = tab_id
     return [{"createNamedRange": {
-        "name": f"gdoc:prefix:v1:{quote}:{indent}", "range": span,
+        "name": _prefix_range_name(quote, indent, outer), "range": span,
     }}]
 
 
@@ -2602,12 +2623,14 @@ def _code_range_requests(parsed, insert_index: int, tab_id: str | None) -> list[
                 "endIndex": max(start + 1, coordinate(style.end))}
         if tab_id:
             span["tabId"] = tab_id
-        name = f"gdoc:prefix:v1:{style.style['quote']}:{style.style['indent']}"
+        name = _prefix_range_name(style.style["quote"], style.style["indent"],
+                                  style.style.get("outer", 0))
         requests.append({"createNamedRange": {"name": name, "range": span}})
     return requests
 
 
-_OWNED_RANGE_NAME_RE = re.compile(r"gdoc:code:v1|gdoc:prefix:v1:\d+:\d+")
+_OWNED_RANGE_NAME_RE = re.compile(
+    r"gdoc:code:v1|gdoc:prefix:v1:\d+:\d+|gdoc:prefix:v2:\d+:\d+:\d+")
 
 
 def _owned_named_ranges(tab: dict | None, tab_id: str | None):

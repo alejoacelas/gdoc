@@ -262,3 +262,41 @@ def test_unlinked_wording_loses_the_link_appearance(route, old, new, expected):
     plain = [u for u in doc.units if u.kind == "text" and "link" not in u.ts]
     assert not any(u.ts.get("underline") or "foregroundColor" in u.ts
                    for u in plain)
+
+
+@MERGES
+@pytest.mark.parametrize("markdown", [
+    "1. item\n\n   > quoted\n2. next\n",
+    "- item\n\n  > quoted\n- next\n",
+    "- item\n  > quoted\n",
+    "- a\n  - b\n\n    > deep\n",
+    "1. a\n  1. b\n\n     > q\n2. c\n",
+    "- a\n\n  > one\n  > \n  > two\n- b\n",
+    "- a\n\n  > > deep\n- b\n",
+    "1. a\n\n   > 1. x\n   > 2. y\n2. b\n",
+    "- a\n\n  > 1. x\n  > 2. y\n- b\n",
+    "1. a\n\n   > ```\n   > code\n   > ```\n2. b\n",
+    "1. a\n\n   > | h |\n   > | --- |\n   > | v |\n2. b\n",
+])
+def test_quote_inside_a_list_item_stays_in_the_item(route, markdown, merge):
+    """R5-4: a quote nested in a list item keeps the item's indent and list."""
+    doc = _written(route, markdown, merge)
+    assert _read(route) == markdown
+    shape = _list_shape(doc)
+    route.ok("write", text=markdown.replace("q", "Q"))
+    assert _read(route) == markdown.replace("q", "Q")
+    assert _list_shape(doc) == shape
+
+
+def _list_shape(doc):
+    """Each paragraph's list, numbered by first appearance, and nesting."""
+    lists = {}
+    return [bullet and (lists.setdefault(bullet[0], len(lists)), bullet[1])
+            for _, _, bullet in styles(doc)]
+
+
+def test_quote_in_item_numbering_is_one_list(route):
+    """The item's list continues around the quote; the quoted list is its own."""
+    doc = _written(route, "1. a\n\n   > 1. x\n   > 2. y\n2. b\n")
+    lists = {text: bullet[0] for text, _, bullet in styles(doc) if bullet}
+    assert lists["a"] == lists["b"] != lists["x"] == lists["y"]

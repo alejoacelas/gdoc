@@ -36,6 +36,8 @@ class TableData:
     alignments: list[str | None] = field(default_factory=list)
     # Container prefix (quote depth, list indent) recorded by a named range.
     prefix: tuple[int, int] = (0, 0)
+    # List-item indent before the quote markers of a quote inside an item.
+    outer: int = 0
 
 
 @dataclass
@@ -720,6 +722,11 @@ def parse_markdown(text: str) -> ParsedMarkdown:
     next_group = 0
     quote_depth = 0
     code_indent = 0
+    # A quote inside a list item: its lines, with the item indent removed,
+    # parse as a quote whose container records that indent.
+    contained_outer = 0
+    contained_end = None
+    contained_saved = None
     non_default_list_starts: list[str] = []
 
     def emit_paragraph(
@@ -764,7 +771,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             groups[key] = (group, start_number)
         if bullet_preset is None:
             # Blank paragraphs may separate items of the same numbered list.
-            if content:
+            if content and not contained_outer:
                 list_levels.clear()
         else:
             previous = list_levels.get(leading_tabs)
@@ -785,7 +792,8 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         para_start = offset
         if quote_depth or code_indent:
             para_style = dict(para_style)
-            indent = {"magnitude": 36 * (quote_depth + bool(code_indent)), "unit": "PT"}
+            level = quote_depth + bool(code_indent or contained_outer)
+            indent = {"magnitude": 36 * level, "unit": "PT"}
             para_style.update(indentStart=indent, indentFirstLine=indent)
         if leading_tabs:
             plain_parts.append("\t" * leading_tabs)
@@ -810,9 +818,11 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             para_start, offset, para_style, "paragraph_style",
         ))
         if quote_depth or code_indent:
+            prefix = {"quote": quote_depth, "indent": code_indent}
+            if contained_outer:
+                prefix["outer"] = contained_outer
             all_styles.append(StyleRange(
-                para_start, offset, {"quote": quote_depth, "indent": code_indent},
-                "markdown_prefix",
+                para_start, offset, prefix, "markdown_prefix",
             ))
         if bullet_preset is not None:
             all_styles.append(StyleRange(
@@ -826,6 +836,27 @@ def parse_markdown(text: str) -> ParsedMarkdown:
     i = 0
     table_separators: set[int] = set()
     while i < len(lines):
+        if contained_end is not None and i >= contained_end:
+            list_levels.clear()
+            list_levels.update(contained_saved[0])
+            groups.clear()
+            groups.update(contained_saved[1])
+            contained_outer, contained_end = 0, None
+        if contained_end is None and list_levels:
+            stripped = lines[i].lstrip(" ")
+            outer = len(lines[i]) - len(stripped)
+            if outer and stripped.startswith(">"):
+                end = i
+                while (end < len(lines) and lines[end][:outer] == " " * outer
+                       and lines[end][outer:].startswith(">")):
+                    lines[end] = lines[end][outer:]
+                    end += 1
+                # The quote's own lists are separate; the item's list resumes
+                # after it.
+                contained_saved = (dict(list_levels), dict(groups))
+                list_levels.clear()
+                groups.clear()
+                contained_outer, contained_end = outer, end
         if i in definition_lines or i in table_separators:
             i += 1
             continue
@@ -937,6 +968,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                 removed_tabs_before=removed_tabs,
                 alignments=alignments,
                 prefix=(table_quote, table_indent if in_list_table else 0),
+                outer=contained_outer,
             ))
             list_levels.update(saved_levels)
             # Canonical adjacent tables: the last blank line before a following
@@ -1159,8 +1191,8 @@ def prefix_indent_requests(parsed, insert_index, tab_id):
     bullets = [s for s in parsed.styles if s.type == "bullets"]
     for prefix in (s for s in parsed.styles if s.type == "markdown_prefix"):
         bullet = next((b for b in bullets if b.start == prefix.start), None)
-        level = prefix.style["quote"] + (bullet.list_depth + 1 if bullet else
-                                          bool(prefix.style["indent"]))
+        level = prefix.style["quote"] + bool(prefix.style.get("outer")) + (
+            bullet.list_depth + 1 if bullet else bool(prefix.style["indent"]))
         removed_before = sum(b.list_depth for b in bullets if b.start < prefix.start)
         removed_end = sum(b.list_depth for b in bullets if b.start < prefix.end)
         start = (insert_index + utf16_len(parsed.plain_text[:prefix.start])
@@ -1496,10 +1528,17 @@ def _separated_list_requests(parsed: ParsedMarkdown, insert_index: int,
         if key is None:
             key = (item.list_block, item.list_depth, item.style["bulletPreset"])
         groups.setdefault(key, []).append(item)
+    # A list quoted inside a list item is its own list, even between items
+    # of an enclosing list with the same preset.
+    contained = {id(group[0]) for group in groups.values() if any(
+        s.type == "markdown_prefix" and s.style.get("outer") and s.style["quote"]
+        and s.start <= group[0].start < s.end for s in parsed.styles)}
     # Numbered continuity takes precedence over intervening unordered items.
-    # Independent same-depth restarts are created from bottom to top.
+    # Independent same-depth restarts are created from bottom to top, and
+    # quoted lists after the lists that span them.
     ordered_groups = sorted(groups.values(), key=lambda group: (
         group[0].list_depth,
+        id(group[0]) in contained,
         not group[0].style["bulletPreset"].startswith("NUMBERED"),
         -group[0].start,
     ))
@@ -1511,7 +1550,7 @@ def _separated_list_requests(parsed: ParsedMarkdown, insert_index: int,
         requests.append({"deleteParagraphBullets": {"range": span(start, end)}})
         # This paragraph prevents preceding-list auto-join, even when the
         # preceding parent has the exact same numbered preset.
-        separator = int(first.list_depth > 0)
+        separator = int(first.list_depth > 0 or id(first) in contained)
         if separator:
             requests.append({"insertText": {"location": location(start), "text": "\n"}})
             requests.append({"deleteParagraphBullets": {

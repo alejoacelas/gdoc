@@ -9,6 +9,9 @@ import sys
 
 from gdoc.util import GdocError
 
+# gdoc's own container ranges (see gdoc.api.docs._prefix_range_name).
+_PREFIX_NAME = r"gdoc:prefix:(?:v1:\d+:\d+|v2:\d+:\d+:\d+)"
+
 _ELEMENTS = {
     "person": "people chips",
     "richLink": "rich-link chips",
@@ -183,7 +186,7 @@ def check_markdown_replacement(
             if "body" in value or isinstance(value.get("namedRanges"), dict):
                 prefixes = [r for group in value.get("namedRanges", {}).values()
                             for named in group.get("namedRanges", [])
-                            if re.fullmatch(r"gdoc:prefix:v1:\d+:\d+",
+                            if re.fullmatch(_PREFIX_NAME,
                                             named.get("name", group.get("name", "")))
                             for r in named.get("ranges", [])]
             if "paragraph" in value:
@@ -304,8 +307,7 @@ def check_markdown_replacement(
                         for named in group.get("namedRanges", []):
                             name = named.get("name", group.get("name", ""))
                             if (named.get("ranges") and name != "gdoc:code:v1"
-                                    and not re.fullmatch(
-                                        r"gdoc:prefix:v1:\d+:\d+", name)):
+                                    and not re.fullmatch(_PREFIX_NAME, name)):
 
                                 hazards.add("custom named ranges")
                 if key == "link" and isinstance(child, dict) and any(

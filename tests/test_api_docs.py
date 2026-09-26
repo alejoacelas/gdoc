@@ -1034,6 +1034,10 @@ def test_document_read_google_client_disconnect_retries(
     resource.batchUpdate.assert_not_called()
 
 
+SINGLE_SEND = {"update_doc_content", "create_comment", "replace_all_text",
+               "create_doc_from_markdown"}
+
+
 @pytest.mark.parametrize("module, name, resource_name, method, args", [
     ("docs", "replace_all_text", "documents", "batchUpdate",
      ("sample-doc", "apple", "pear")),
@@ -1087,8 +1091,8 @@ def test_mutation_disconnect_adds_no_google_client_retries(
             {"tabProperties": {"tabId": "tab-two"}, "documentTab": {}},
         ]}}
         mocker.patch.object(api, "require_write_version")
-    if name in {"update_doc_content", "create_comment"}:
-        # #68 also routes Drive comments through #70's single-send transport.
+    if name in SINGLE_SEND:
+        # Every mutation goes through the shared single-send transport.
         mocker.patch(
             "gdoc.api.comment_transport._SingleSendHttp", return_value=transport,
         )
@@ -1099,7 +1103,7 @@ def test_mutation_disconnect_adds_no_google_client_retries(
         getattr(api, name)(*args, **options)
 
     operation.assert_called_once()
-    if name in {"update_doc_content", "create_comment"}:
+    if name in SINGLE_SEND:
         execute.assert_called_once_with(http=mocker.ANY, num_retries=0)
     else:
         execute.assert_called_once_with()
@@ -1107,9 +1111,8 @@ def test_mutation_disconnect_adds_no_google_client_retries(
     sleep.assert_not_called()
 
 
-@pytest.mark.parametrize("mutation", [False, True], ids=["read", "mutation"])
-def test_generated_docs_client_retry_boundary_with_real_httplib2(mocker, mutation):
-    """Reads add two client retries; mutations add none above httplib2 retries."""
+def test_generated_docs_client_read_retry_boundary_with_real_httplib2(mocker):
+    """Reads add two client retries above httplib2's own resends."""
     from http.client import HTTPSConnection, RemoteDisconnected
 
     from googleapiclient.discovery import build
@@ -1127,20 +1130,44 @@ def test_generated_docs_client_retry_boundary_with_real_httplib2(mocker, mutatio
     mocker.patch("gdoc.api.docs.get_docs_service", return_value=service)
 
     with pytest.raises(RemoteDisconnected, match="response lost"):
-        if mutation:
-            replace_all_text("sample-doc", "apple", "pear")
-        else:
-            get_document("sample-doc")
+        get_document("sample-doc")
 
-    assert client_attempts.call_count == (1 if mutation else 3)
-    assert sleep.call_count == (0 if mutation else 2)
+    assert client_attempts.call_count == 3
+    assert sleep.call_count == 2
     # RemoteDisconnected is a BadStatusLine: httplib2 can retry it internally.
-    # Assert the distinction without fixing a dependency's exact send count.
     assert connection.request.call_count > client_attempts.call_count
-    assert all(
-        call.args[0] == ("POST" if mutation else "GET")
-        for call in connection.request.call_args_list
-    )
+    assert all(call.args[0] == "GET" for call in connection.request.call_args_list)
+
+
+@pytest.mark.parametrize("call", [
+    lambda docs: docs.replace_all_text("sample-doc", "apple", "pear"),
+    lambda docs: docs.add_tab("sample-doc", "Notes"),
+    lambda docs: docs.set_page_mode("sample-doc", True),
+], ids=["replace_all_text", "add_tab", "set_page_mode"])
+def test_docs_mutations_send_once_with_real_httplib2(mocker, call):
+    """A lost mutation response is uncertain; httplib2 never resends it."""
+    from http.client import HTTPSConnection, RemoteDisconnected
+
+    from google.oauth2.credentials import Credentials
+    from google_auth_httplib2 import AuthorizedHttp
+    from googleapiclient.discovery import build
+
+    from gdoc.api import comment_transport, docs
+
+    connection = mocker.Mock(spec=HTTPSConnection)
+    connection.sock = mocker.sentinel.socket
+    connection.getresponse.side_effect = RemoteDisconnected("response lost")
+    single = comment_transport._SingleSendHttp()
+    single.connections["https:docs.googleapis.com"] = connection
+    mocker.patch.object(comment_transport, "_SingleSendHttp", return_value=single)
+    credentials = Credentials(token="synthetic-token")
+    service = build("docs", "v1", static_discovery=True,
+                    http=AuthorizedHttp(credentials, http=httplib2.Http()))
+    mocker.patch("gdoc.api.docs.get_docs_service", return_value=service)
+
+    with pytest.raises(GdocError, match="uncertain"):
+        call(docs)
+    assert connection.request.call_count == 1
 
 
 @pytest.mark.parametrize("name", [

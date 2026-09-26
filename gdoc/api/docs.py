@@ -74,10 +74,12 @@ def replace_all_text(
                 }
             ]
         }
-        result = (
-            service.documents()
-            .batchUpdate(documentId=doc_id, body=body)
-            .execute()
+        from gdoc.api.comment_transport import execute_mutation_request
+
+        result = execute_mutation_request(
+            service.documents().batchUpdate(documentId=doc_id, body=body),
+            uncertainty="Replacement outcome is uncertain; inspect the document "
+                        "before retrying",
         )
 
         replies = result.get("replies", [])
@@ -236,7 +238,9 @@ def set_page_mode(doc_id: str, pageless: bool) -> None:
     mode = "PAGELESS" if pageless else "PAGES"
     try:
         service = get_docs_service()
-        service.documents().batchUpdate(
+        from gdoc.api.comment_transport import execute_mutation_request
+
+        execute_mutation_request(service.documents().batchUpdate(
             documentId=doc_id,
             body={
                 "requests": [
@@ -250,7 +254,8 @@ def set_page_mode(doc_id: str, pageless: bool) -> None:
                     }
                 ]
             },
-        ).execute()
+        ), uncertainty="Page mode change outcome is uncertain; check the "
+                       "document's page setup")
     except HttpError as e:
         _translate_http_error(e, doc_id)
 
@@ -2021,13 +2026,16 @@ def add_tab(doc_id: str, title: str) -> dict:
     Returns dict with 'tabId', 'title', 'index'.
     """
     service = get_docs_service()
+    from gdoc.api.comment_transport import execute_mutation_request
+
     try:
-        resp = service.documents().batchUpdate(
+        resp = execute_mutation_request(service.documents().batchUpdate(
             documentId=doc_id,
             body={"requests": [{"addDocumentTab": {
                 "tabProperties": {"title": title},
             }}]},
-        ).execute()
+        ), uncertainty="Tab creation outcome is uncertain; list the document's "
+                       "tabs before retrying")
         try:
             props = resp["replies"][0]["addDocumentTab"]["tabProperties"]
         except (KeyError, IndexError, TypeError) as exc:
@@ -3666,6 +3674,12 @@ def _walk_container_suggestions(node: dict, out: set[str]) -> None:
             _walk_suggestion_ids({key: value}, out)
 
 
+_SUGGEST_UNCERTAIN = (
+    "The outcome is unknown — the suggestion may or may not have been saved. "
+    "Inspect the document before retrying."
+)
+
+
 def _classify_suggest_error(e: HttpError, doc_id: str) -> None:
     """Translate a suggest-mode batchUpdate HttpError, preserving the reason.
 
@@ -4026,14 +4040,19 @@ def suggest_replacement(
                 "different OAuth client project or user). No change was "
                 "made — rerun the command."
             )
+        from gdoc.api.comment_transport import execute_mutation_request
+
         try:
-            result = (
-                service.documents()
-                .batchUpdate(documentId=doc_id, body=body)
-                .execute()
+            # One wire send: a resent suggestion after a lost response would
+            # be refused as stale and misreported as not saved.
+            result = execute_mutation_request(
+                service.documents().batchUpdate(documentId=doc_id, body=body),
+                uncertainty=_SUGGEST_UNCERTAIN,
             )
         except HttpError as e:
             _classify_suggest_error(e, doc_id)
+        except (GdocError, AuthError):
+            raise
         except TransportError as e:
             # Raised only while refreshing the access token, which happens
             # before the request is sent — nothing reached Google.
@@ -4051,10 +4070,8 @@ def suggest_replacement(
             # indeterminate. A generic unexpected error would let the
             # caller retry blindly.
             raise GdocError(
-                "the suggest write failed in transit "
-                f"({str(e) or type(e).__name__}). The outcome is unknown — "
-                "the suggestion may or may not have been saved. Inspect "
-                "the document before retrying."
+                f"the suggest write failed in transit ({str(e) or type(e).__name__})"
+                ". " + _SUGGEST_UNCERTAIN
             )
 
         state = result.get("commentUpdateState", "")

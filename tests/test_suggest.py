@@ -1884,3 +1884,32 @@ def test_suggestion_provenance_comes_from_mutation_not_readback(mocker):
                  return_value=_readback('suggest.abc'))
     result = suggest_replacement('doc1', MATCH, 'world', 'rev123', tab_id='t.0')
     assert result.acknowledged_revision_id == 'ack-revision'
+
+
+def test_lost_suggest_response_is_sent_once_and_reported_unknown(mocker):
+    """httplib2 would resend after a lost response; the resend could only be
+    refused as stale and misreported, so the batch leaves the wire once."""
+    from http.client import HTTPSConnection, RemoteDisconnected
+
+    import httplib2
+    from google.oauth2.credentials import Credentials
+    from google_auth_httplib2 import AuthorizedHttp
+    from googleapiclient.discovery import build
+
+    from gdoc.api import comment_transport
+
+    connection = mocker.Mock(spec=HTTPSConnection)
+    connection.sock = mocker.sentinel.socket
+    connection.getresponse.side_effect = RemoteDisconnected("response lost")
+    single = comment_transport._SingleSendHttp()
+    single.connections["https:docs.googleapis.com"] = connection
+    mocker.patch.object(comment_transport, "_SingleSendHttp", return_value=single)
+    service = build("docs", "v1", static_discovery=True, http=AuthorizedHttp(
+        Credentials(token="synthetic-token"), http=httplib2.Http()))
+    mocker.patch("gdoc.api.docs.get_docs_service", return_value=service)
+
+    with pytest.raises(GdocError) as exc:
+        suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
+    assert "outcome is unknown" in str(exc.value)
+    assert "re-run" not in str(exc.value)
+    assert connection.request.call_count == 1

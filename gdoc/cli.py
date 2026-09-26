@@ -1574,9 +1574,11 @@ def cmd_write(args) -> int:
             "frontmatter to copy the text into this one.", 3,
         )
 
+    # `tab` is source provenance only in a file `pull` wrote for this
+    # document; another tool's `tab` field never selects the tab replaced.
     return _write_native_markdown(
         args, doc_id, content, command="write", tab_name=tab_name,
-        file_tab=metadata.get("tab") or None,
+        file_tab=(metadata.get("tab") or None) if pulled_doc else None,
     )
 
 
@@ -3729,11 +3731,24 @@ def _cmd_new_from_file(args) -> int:
     version = result.get("version")
     url = result.get("webViewLink", "")
 
-    # Insert images if any
-    if images:
-        _insert_images(new_id, images)
+    # The document already exists: a failure from here on must name it, or a
+    # retry would create a second document. Partial completion exits 1.
+    def created_then_failed(step, error):
+        return GdocError(
+            f"created document {new_id} ({url or 'no URL returned'}), but "
+            f"{step} failed: {error}. Inspect that document instead of "
+            "rerunning `new --file`, which would create another.", exit_code=1,
+        )
 
-    new_version = _apply_page_mode(args, new_id)
+    if images:
+        try:
+            _insert_images(new_id, images)
+        except Exception as error:  # noqa: BLE001 — reported with the new ID
+            raise created_then_failed("image insertion", error) from error
+    try:
+        new_version = _apply_page_mode(args, new_id)
+    except Exception as error:  # noqa: BLE001 — reported with the new ID
+        raise created_then_failed("setting page mode", error) from error
     if new_version is None and images:
         # Image inserts advanced the Drive version past the create-time value
         # (a page-mode write already folds in a refresh); re-read it
@@ -3769,9 +3784,7 @@ def _cmd_new_from_file(args) -> int:
         print(new_id)
 
     # Seed state
-    from gdoc.state import update_state_after_command
-
-    update_state_after_command(
+    _update_state_after_write(
         new_id, None, command="new",
         quiet=False, command_version=version,
     )

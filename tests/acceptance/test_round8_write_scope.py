@@ -148,3 +148,46 @@ def test_rule_first_body_with_colon_prose_is_written(route, text):
     assert any(t in ("Note: keep me", "See docs.", "https://example.com")
                for t in texts)
     assert route.ok("cat").startswith("---\n---\n---\n")
+
+
+def test_generic_tab_metadata_without_gdoc_provenance_is_ignored(route):
+    """R7-2 follow-up: another tool's `tab` field never selects the tab."""
+    _two_tabs(route)
+    route.ok("cat", tab="Main")
+    route.ok("cat", tab="Appendix")
+    text = "---\ntitle: Release notes\ntab: Appendix\n---\nNotes.\n"
+    code, output, error = route.call("write", text=text)
+    assert code == 0, output + error
+    assert "'Main' (t.0)" in output
+    assert "t.1" not in _targets(route, 0)
+
+
+@pytest.mark.parametrize("failing", ["_insert_images", "_apply_page_mode"])
+def test_new_from_file_failure_after_creation_names_the_document(
+    monkeypatch, tmp_path, failing,
+):
+    """A failure after `new --file` created the document reports its ID."""
+    import contextlib
+    import io
+    from unittest.mock import patch
+
+    from gdoc import cli
+
+    source = tmp_path / "doc.md"
+    source.write_text("![a](https://example.org/a.png)\n")
+    created = {"id": "created_doc_123", "name": "From File", "version": 1,
+               "webViewLink": "https://docs.example/created_doc_123"}
+    monkeypatch.setattr("gdoc.cli._apply_page_mode", lambda *a, **k: None)
+    monkeypatch.setattr("gdoc.cli._insert_images", lambda *a, **k: None)
+    monkeypatch.setattr(f"gdoc.cli.{failing}",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("lost")))
+    out, err = io.StringIO(), io.StringIO()
+    creating = patch("gdoc.api.drive.create_doc_from_markdown", return_value=created)
+    with creating as create, contextlib.redirect_stdout(out), \
+            contextlib.redirect_stderr(err):
+        code = cli.run_argv(["new", "From File", "--file", str(source)],
+                            check_updates=False)
+    assert create.call_count == 1
+    assert code == 1
+    assert "created document created_doc_123" in err.getvalue()
+    assert "rerunning `new --file`" in err.getvalue()

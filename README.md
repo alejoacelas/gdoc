@@ -430,9 +430,10 @@ the tab needs `--allow-lossy` to discard it while staying revision-protected. `p
 
 `write` and `insert` accept at most one leading metadata block: `pull` frontmatter
 with `key: value` lines, or an empty block of two `---` lines. `write` of a pulled
-file replaces the tab it was pulled from when `--tab` is absent, and refuses a
-different `--tab` or another document; remove the frontmatter to copy the text
-elsewhere. When a tab starts
+file (one whose `gdoc` names this document) replaces the tab it was pulled from
+when `--tab` is absent, and refuses a different `--tab` or another document;
+remove the frontmatter to copy the text elsewhere. A `tab` field without `gdoc`
+provenance is ignored. When a tab starts
 with a horizontal rule, `cat` and Markdown `export` print that empty block first, so
 the rule and the text after it stay content. Keep the empty block when writing such
 a read back; `pull` files already carry their own metadata block. Without it, a

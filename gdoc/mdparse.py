@@ -1180,6 +1180,11 @@ def _simple_list_requests(parsed: ParsedMarkdown, insert_index: int,
         previous_end = None
         restorations = []
         mixed = len({item.style["bulletPreset"] for item in block}) > 1
+        if mixed:
+            requests.extend(_mixed_block_requests(
+                block, root_preset, insert_index, offsets, span, location,
+            ))
+            continue
         for item in block:
             depth = item.list_depth
             start = insert_index + offsets[item.start] - removed
@@ -1223,6 +1228,76 @@ def _simple_list_requests(parsed: ParsedMarkdown, insert_index: int,
                                     "text": "\t" * item.literal_tabs}},
                 ])
         requests.extend(restorations)
+    return requests
+
+
+def _mixed_block_requests(block, root_preset, insert_index, offsets, span, location):
+    """Give each nested list of a mixed block its own preset and identity.
+
+    The block already carries the root preset. A nested list (one
+    ``list_group``) whose preset differs from its enclosing list is recreated
+    over its whole extent at once, including blank paragraphs between its
+    items, so loose items keep one numbering. Blank paragraphs lose their
+    bullets only afterwards, which retains every list's identity.
+    """
+    positions = []
+    removed = 0
+    for item in block:
+        start = insert_index + offsets[item.start] - removed
+        removed += item.list_depth
+        end = max(start + 1, insert_index + offsets[item.end] - removed)
+        positions.append((item, start, end))
+    groups: dict = {}
+    for item, start, end in positions:
+        groups.setdefault(item.list_group, []).append((item, start, end))
+    requests = []
+    created = []  # (start, end, preset) of recreated extents, outermost first
+    for members in sorted(groups.values(), key=lambda m: m[0][1]):
+        preset = members[0][0].style["bulletPreset"]
+        low, high = members[0][1], members[-1][2]
+        enclosing = next((p for lo, hi, p in reversed(created) if lo <= low < hi),
+                         root_preset)
+        if preset == enclosing:
+            continue
+        requests.append({"deleteParagraphBullets": {"range": span(low, high)}})
+        inside = [(item, start) for item, start, _ in positions
+                  if low <= start < high and item.list_depth]
+        for item, start in reversed(inside):
+            requests.append({"insertText": {
+                "location": location(start), "text": "\t" * item.list_depth,
+            }})
+        requests.append({"createParagraphBullets": {
+            "range": span(low, high + sum(item.list_depth for item, _ in inside)),
+            "bulletPreset": preset,
+        }})
+        created.append((low, high, preset))
+    previous_end = None
+    for item, start, end in positions:
+        depth = item.list_depth
+        requests.append({"updateParagraphStyle": {
+            "range": span(start, end),
+            "paragraphStyle": {
+                "indentStart": {"magnitude": 36 * (depth + 1), "unit": "PT"},
+                "indentFirstLine": {"magnitude": 36 * (depth + 1) - 18, "unit": "PT"},
+            },
+            "fields": "indentStart,indentFirstLine",
+        }})
+        if previous_end is not None and previous_end < start:
+            # These blank paragraphs linked the items while the bullet
+            # requests ran; removing their bullets retains identity.
+            requests.append({"deleteParagraphBullets": {
+                "range": span(previous_end, start),
+            }})
+        previous_end = end
+    for item, start, _ in positions:
+        if item.literal_tabs:
+            requests.extend([
+                {"deleteContentRange": {
+                    "range": span(start, start + item.literal_tabs),
+                }},
+                {"insertText": {"location": location(start),
+                                "text": "\t" * item.literal_tabs}},
+            ])
     return requests
 
 

@@ -58,3 +58,34 @@ def test_protected_bodies_survive_metadata_parsing(body):
     # A pull file's own metadata block is removed exactly once.
     pulled = add_frontmatter(body, {"gdoc": "DOC", "title": "T"})
     assert parse_frontmatter(pulled) == ({"gdoc": "DOC", "title": "T"}, body)
+
+
+@pytest.mark.parametrize("markdown, expected", [
+    ("- a\n\n  1. x\n\n  2. y", [1, 2]),
+    ("- a\n  1. x\n\n  2. y\n\n  3. z", [1, 2, 3]),
+    ("- a\n  1. x\n  2. y", [1, 2]),
+    ("- a\n  1. x\n     - deep\n  2. y", [1, 2]),
+    ("- a\n\n  1. x\n\n     - deep\n\n  2. y", [1, 2]),
+    ("- a\n  1. x\n- b\n  1. y", [1, 1]),
+    ("- a\n\n  1. x\n\n- b\n\n  1. y\n\n  2. z", [1, 1, 2]),
+    ("* a\n\n  1. x\n\n     1. d1\n\n     2. d2\n\n  2. y", [1, 1, 2, 2]),
+    ("1. a\n\n   - b\n\n     1. x\n\n     2. y", [1, 1, 2]),
+])
+def test_loose_numbered_lists_nested_in_mixed_lists_keep_numbering(markdown, expected):
+    from gdoc.api.docs import _native_docs_requests, _strip_trailing_newline_unless_hr
+    from gdoc.mdparse import to_docs_requests
+    from tests.test_list_request_semantics import apply_list_requests
+
+    for builder in (to_docs_requests, _native_docs_requests):
+        parsed = parse_markdown(markdown)
+        _strip_trailing_newline_unless_hr(parsed)
+        counters, numbers = {}, []
+        for paragraph in apply_list_requests(builder(parsed, 1, "t")):
+            if paragraph["list"] is None:
+                continue
+            key = paragraph["list"], paragraph["depth"]
+            counters[key] = counters.get(key, 0) + 1
+            if paragraph["preset"].startswith("NUMBERED"):
+                numbers.append(counters[key])
+        assert numbers == expected, builder
+        assert not parsed.non_default_list_starts

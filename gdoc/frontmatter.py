@@ -3,6 +3,15 @@
 import re
 
 _FRONTMATTER_RE = re.compile(r"^---\r?\n(.*?)\r?\n---\r?\n", re.DOTALL)
+# An empty metadata block. Markdown whose body starts with a `---` line is
+# written after one, so the body's leading rule is never read as metadata.
+_EMPTY_FRONTMATTER_RE = re.compile(r"^---\r?\n---\r?\n")
+_LEADING_RULE_RE = re.compile(r"^---\r?\n")
+
+
+def protect_body(body: str) -> str:
+    """Return *body* as Markdown input whose metadata block cannot absorb it."""
+    return "---\n---\n" + body if _LEADING_RULE_RE.match(body) else body
 
 
 def parse_frontmatter(content: str) -> tuple[dict, str]:
@@ -12,12 +21,15 @@ def parse_frontmatter(content: str) -> tuple[dict, str]:
     If no valid frontmatter, returns ({}, content).
     Only supports flat key: value pairs.
 
-    A leading `---\\n...\\n---\\n` block is only treated as frontmatter
-    when at least one `key: value` line parses out of it. Empty blocks
-    or blocks containing only prose (for example, a thematic break
-    followed by another `---`) are left in place to avoid silently
-    eating content.
+    Markdown input carries at most one leading metadata block: either an
+    empty block (`---` on two consecutive lines, which `protect_body` adds
+    before a body that starts with a rule) or a block from which at least
+    one `key: value` line parses. Other leading `---` blocks, such as a
+    rule, a paragraph without a colon and another rule, stay in the body.
     """
+    empty = _EMPTY_FRONTMATTER_RE.match(content)
+    if empty:
+        return {}, content[empty.end():]
     match = _FRONTMATTER_RE.match(content)
     if not match:
         return {}, content

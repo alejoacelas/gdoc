@@ -418,6 +418,12 @@ do not establish a full-content baseline. Truncation is reported on stderr and i
 JSON scope metadata; `--max-bytes 0` retrieves complete content. `pull` and Markdown
 `export` use the same native serializer as `cat`.
 
+`write` and `insert` accept at most one leading metadata block: `pull` frontmatter
+with `key: value` lines, or an empty block of two `---` lines. When a tab starts
+with a horizontal rule, `cat` and Markdown `export` print that empty block first, so
+the rule and the text after it stay content. Keep the empty block when writing such
+a read back; `pull` files already carry their own metadata block.
+
 Writes compare that baseline with the native document revision and pin mutations
 to the checked snapshot. A collaborator edit requires a fresh read. `--force`
 explicitly authorizes replacement from the current snapshot; it never disables the

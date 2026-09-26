@@ -42,3 +42,19 @@ def test_adjacent_quoted_tables_separate_inside_the_quote():
     parsed = parse_markdown("> | A |\n> | - |\n>\n> | B |\n> | - |\n")
     assert [t.prefix for t in parsed.tables] == [(1, 0), (1, 0)]
     assert parsed.plain_text == "\n\n"
+
+
+@pytest.mark.parametrize("body", [
+    "---\nStatus: draft\n---\nBody\n",
+    "---\ngdoc: literal\ntitle: x\n---\n",
+    "---\n---\nTwo rules\n",
+    "---\n",
+    "Intro\n---\n",
+])
+def test_protected_bodies_survive_metadata_parsing(body):
+    from gdoc.frontmatter import add_frontmatter, parse_frontmatter, protect_body
+
+    assert parse_frontmatter(protect_body(body)) == ({}, body)
+    # A pull file's own metadata block is removed exactly once.
+    pulled = add_frontmatter(body, {"gdoc": "DOC", "title": "T"})
+    assert parse_frontmatter(pulled) == ({"gdoc": "DOC", "title": "T"}, body)

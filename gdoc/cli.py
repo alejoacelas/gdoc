@@ -363,6 +363,9 @@ def cmd_cat(args) -> int:
         from gdoc.mdimport import strip_images
         content = strip_images(content)
     annotated = getattr(args, "comments", False)
+    if want_markdown and not all_tabs and not annotated:
+        from gdoc.frontmatter import protect_body
+        content = protect_body(content)
     if annotated:
         from gdoc.annotate import annotate_markdown
         from gdoc.api.comments import list_comments
@@ -3037,8 +3040,10 @@ def cmd_export(args) -> int:
 
     document = selected = None
     if fmt == "md":
+        from gdoc.frontmatter import protect_body
+
         markdown, document, selected = _read_native_tab(doc_id)
-        content = markdown.encode("utf-8")
+        content = protect_body(markdown).encode("utf-8")
     else:
         content = export_doc_bytes(doc_id, _EXPORT_MIME[fmt])
 

@@ -48,6 +48,8 @@ def test_code_line_replacement_is_literal(route, old, new):
     ("a*b*c", "Call `a*b*c` now\n"),
     ("`g_y`", "Call `g_y` now\n"),
     ("[x](y)", "Call `[x](y)` now\n"),
+    ("`😀_y`", "Call `😀_y` now\n"),
+    ("😀*y*", "Call `😀*y*` now\n"),
 ])
 def test_inline_code_replacement_is_literal(route, new, expected):
     """R5-1: inside inline code, only a whole code span is Markdown."""
@@ -67,7 +69,8 @@ def test_prose_replacement_is_still_markdown(route):
 @pytest.mark.parametrize("markdown", [
     "1. a\n\n   ```\n   \tx\n   ```\n2. b\n",
     "- a\n\n  ```\n  \tt\n  \t\tu\n  ```\n- b\n  - c\n",
-    "1. a\n\n   ```\n   \tx\n   ```\n2. b\n  1. c\n\n      | h |\n      | --- |\n      | v |\n",
+    "1. a\n\n   ```\n   \tx\n   ```\n2. b\n  1. c\n\n"
+    "      | h |\n      | --- |\n      | v |\n",
 ])
 def test_list_contained_code_keeps_its_tabs(route, markdown, merge):
     """R5-3: bullet requests spanning code never consume its leading tabs."""
@@ -94,3 +97,22 @@ def test_first_merge_model_is_narrowed_only_to_the_observed_shape():
     # still take the first paragraph's style under the adversarial model.
     assert _model_after_delete(3, 5)[-1] == ("b", "NORMAL_TEXT", None)
     assert _model_after_delete(2, 5)[-1] == ("ab", "HEADING_2", None)
+
+
+@MERGES
+@pytest.mark.parametrize("markdown", [
+    "```\nx c\n```\n\n| h |\n| --- |\n| x v |\n- x item\n",
+    "- x a\n\n  ```\n  x c\n  ```\n\n  | h |\n  | --- |\n  | x v |\n- x b\n",
+    "> x q\n> \n> | h |\n> | --- |\n> | x v |\n- x item\n",
+    "x p\n\n| h |\n| --- |\n| x v |\n1. x one\n2. x two\n",
+])
+def test_blank_line_between_a_container_and_a_table_stays_outside(
+        route, markdown, merge):
+    """R5-2: the blank paragraph before a table never joins a code range."""
+    _written(route, markdown, merge)
+    text = markdown
+    for turn in ("y", "z"):
+        assert _read(route) == text
+        text = text.replace("x" if turn == "y" else "y", turn)
+        route.ok("write", text=text)
+    assert _read(route) == text

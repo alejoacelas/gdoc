@@ -114,11 +114,13 @@ def _decode_prose_escapes(markdown: str) -> str:
 def _displayed_lines(markdown: str) -> str:
     """Each prose line as displayed (no emphasis or link syntax); code lines,
     whose characters are literal, stay as written."""
-    from gdoc.mdparse import _FENCE_CLOSE_RE, _fence_open, _unquote, parse_inline
+    from gdoc.mdparse import _FENCE_CLOSE_RE, _fence_open, parse_inline
 
     out, fence = [], None
     for line in markdown.split("\n"):
-        body = _unquote(line)[0].lstrip(" ")
+        # Container prefixes (quote markers and item indents, in any order)
+        # precede a fence; code characters themselves are never parsed.
+        body = re.sub(r"^[ >]*", "", line)
         if fence is not None:
             close = _FENCE_CLOSE_RE.match(body)
             if close and close[1][0] == fence[0] and len(close[1]) >= len(fence):

@@ -566,7 +566,8 @@ def _scan(
     # Each pattern's last result, with the offset its slice started at. A
     # later slice only differs at its first character (lookbehinds there see
     # nothing), so a result stays valid unless consumed; only a match at the
-    # new start needs checking. This keeps long paragraphs linear.
+    # new start needs checking. This avoids repeating every pattern's search
+    # after each span (slicing the tail still copies it).
     cache: dict = {}
     link_pairs = None
 
@@ -596,6 +597,8 @@ def _scan(
         for index, (pat, kind) in enumerate(_INLINE_PATTERNS):
             if kind == "code":
                 def search_code(first_only=False):
+                    if first_only and not masked.startswith("`", pos):
+                        return None
                     raw_tail = text[pos:]
                     for opener in re.finditer(r"(?<!`)(`+)(?!`)", masked[pos:]):
                         if first_only and opener.start():
@@ -770,6 +773,14 @@ def legacy_prefix(path: tuple) -> tuple[int, int, int] | None:
     return None
 
 
+def _quoted_in_item(path: tuple) -> bool:
+    """Whether some quote in *path* sits inside a list item's content."""
+    if "q" not in path:
+        return False
+    last = len(path) - 1 - path[::-1].index("q")
+    return any(token != "q" for token in path[:last])
+
+
 def _strip_path(line: str, path: tuple, lenient: bool = False) -> str | None:
     """A line with its container markers removed, or None when outside them.
 
@@ -869,6 +880,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
     # item is separate from the item's list, which resumes after the quote.
     contexts: dict[tuple, tuple[dict, dict]] = {(): (list_levels, groups)}
     container: tuple = ()  # the current paragraph's container path
+    context_blocks: dict[tuple, int] = {}  # each context's current list block
     non_default_list_starts: list[str] = []
 
     def enter(path: tuple) -> None:
@@ -961,6 +973,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                 list_levels.clear()
             if not list_levels:
                 list_block += 1
+                context_blocks[container] = list_block
             for level in list(list_levels):
                 if level > leading_tabs:
                     del list_levels[level]
@@ -1007,7 +1020,9 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             all_styles.append(StyleRange(
                 para_start, offset,
                 {"bulletPreset": bullet_preset}, "bullets",
-                list_block=list_block, list_depth=leading_tabs, list_group=group,
+                # A list resumed after a nested container keeps its own block.
+                list_block=context_blocks.get(container, list_block),
+                list_depth=leading_tabs, list_group=group,
                 literal_tabs=len(content) - len(content.lstrip("\t")),
             ))
             last_list_end = offset
@@ -1430,10 +1445,20 @@ def _list_bullet_requests(parsed: ParsedMarkdown, insert_index: int,
     items = [s for s in parsed.styles if s.type == "bullets"]
     active = {}
     previous = {}
+    latest = {}
     for item in items:
         for depth in list(active):
             if depth > item.list_depth:
                 del active[depth]
+        # A list resumed after another list at its depth or shallower (such as
+        # one quoted inside its item) needs its own identity across the gap.
+        resumed = latest.get(item.list_group)
+        if resumed is not None and item.list_group is not None and any(
+                other.list_group != item.list_group
+                and other.list_depth <= item.list_depth
+                and resumed.start < other.start < item.start for other in items):
+            return _separated_list_requests(parsed, insert_index, tab_id)
+        latest[item.list_group] = item
         if item.style["bulletPreset"].startswith("NUMBERED"):
             prior = active.get(item.list_depth)
             if item.list_depth and prior and prior != item.list_group:
@@ -1685,16 +1710,18 @@ def _separated_list_requests(parsed: ParsedMarkdown, insert_index: int,
         groups.setdefault(key, []).append(item)
     # A list quoted inside a list item is its own list, even between items
     # of an enclosing list with the same preset.
-    contained = {id(group[0]) for group in groups.values() if any(
-        s.type == "markdown_prefix" and "q" in s.path
-        and any(token != "q" for token in s.path[:s.path.index("q")])
-        and s.start <= group[0].start < s.end for s in parsed.styles)}
+    def container_of(group):
+        return next((s.path for s in parsed.styles if s.type == "markdown_prefix"
+                     and s.start <= group[0].start < s.end), ())
+
+    contained = {id(group[0]) for group in groups.values()
+                 if _quoted_in_item(container_of(group))}
     # Numbered continuity takes precedence over intervening unordered items.
     # Independent same-depth restarts are created from bottom to top, and
-    # quoted lists after the lists that span them.
+    # quoted lists after the lists that span them (deeper containers later).
     ordered_groups = sorted(groups.values(), key=lambda group: (
         group[0].list_depth,
-        id(group[0]) in contained,
+        len(container_of(group)) if id(group[0]) in contained else 0,
         not group[0].style["bulletPreset"].startswith("NUMBERED"),
         -group[0].start,
     ))

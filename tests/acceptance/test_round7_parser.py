@@ -165,3 +165,19 @@ def test_long_paragraph_links_share_one_delimiter_scan(monkeypatch):
     parsed = parse_markdown("[a](http://e.com/x) " * 500 + "\n")
     assert len([s for s in parsed.styles if "link" in s.style]) == 500
     assert len(calls) == 1
+
+
+@pytest.mark.parametrize("markdown", [
+    "- x\n\n  > ```\n  > a\\*bc **d**\n  > ```\n",
+    "> - x\n> \n>   > ```\n>   > a\\*bc **d**\n>   > ```\n",
+    "- x\n\n  > - y\n  > \n  >   ```\n  >   a\\*bc **d**\n  >   ```\n",
+])
+def test_comment_fallback_never_decodes_nested_code(markdown):
+    """Code in nested containers is literal, even for the display fallback."""
+    for anchor in ("a*bc", "a*bc d"):
+        comment = {"id": "c1", "content": "check",
+                   "quotedFileContent": {"value": anchor}}
+        assert "anchor deleted" in annotate_markdown(markdown, [comment])
+    comment = {"id": "c2", "content": "check",
+               "quotedFileContent": {"value": "a\\*bc **d**"}}
+    assert "anchor deleted" not in annotate_markdown(markdown, [comment])

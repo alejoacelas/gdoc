@@ -752,8 +752,10 @@ class TestSuggestErrors:
         mock_svc.return_value = _service(batch_error=_http_error(
             400, b'{"error": {"message": "The revision ID is stale"}}',
         ))
-        with pytest.raises(GdocError, match="re-run it"):
+        with pytest.raises(GdocError, match="re-run it") as exc:
             suggest_replacement("doc1", MATCH, "x", "rev", tab_id="t.0")
+        # A refused revision applied nothing: a clean refusal, as for edits.
+        assert exc.value.exit_code == 3
 
     @patch("gdoc.api.docs.get_docs_service")
     def test_400_malformed_revision_is_not_reported_as_a_race(self, mock_svc):

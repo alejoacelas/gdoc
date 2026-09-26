@@ -86,3 +86,36 @@ def test_json_edit_reports_the_changed_tab(route):
     result = json.loads(route.ok("edit", old_text="Intro", new_text="Opening",
                                  json=True))
     assert result["replaced"] == 1 and result["tabs"] == {"t.0": 1}
+
+
+@pytest.mark.parametrize("value_key", ["new_text", "old_text"])
+def test_cell_edit_value_is_accepted_in_either_slot(route, value_key):
+    """R6-18: CLI and MCP cell edits take the value as the one positional."""
+    doc = route.load(NativeDoc(("t", [["Name", "Value"], ["Owner", "Ann"]])))
+    route.ok("cat")
+    route.ok("edit", cell="1,1", tab="Main", **{value_key: "Bob"})
+    assert "Bob" in "".join(u.ch for u in doc.units)
+    assert "Ann" not in "".join(u.ch for u in doc.units)
+
+
+def test_mcp_edit_tool_carries_the_cli_usage_rules():
+    from gdoc import mcp
+
+    tools = mcp.build_tools()
+    description = tools["gdoc_edit"]["description"]
+    assert "cat --plain" in description
+
+
+def test_image_revision_refusal_is_a_clean_exit_3():
+    """R6-15: a refused pinned revision applied nothing, as for edits."""
+    from googleapiclient.errors import HttpError
+    from httplib2 import Response
+
+    from gdoc.api.docs import _raise_if_stale_revision
+    from gdoc.util import GdocError
+
+    error = HttpError(Response({"status": 400}),
+                      b'{"error": {"message": "The revision ID is stale"}}')
+    with pytest.raises(GdocError, match="re-run it") as exc:
+        _raise_if_stale_revision(error)
+    assert exc.value.exit_code == 3

@@ -264,3 +264,37 @@ def test_removed_container_indent_reads_without_the_container(route, merge):
     route.service.revision += 1
     # Without its indent the paragraph is no longer in the quoted item's quote.
     assert _read(route) == "> - a\n> \ninner\n> - b\n"
+
+
+def _list_of(doc, text):
+    """The native list (numbered by first appearance) holding paragraph *text*."""
+    lists, found = {}, None
+    for start, mark in doc.paragraphs():
+        unit = doc.units[mark]
+        if unit.bullet:
+            number = lists.setdefault(unit.bullet["list"], len(lists))
+            if "".join(u.ch for u in doc.units[start:mark]) == text:
+                found = number
+    return found
+
+
+@MERGES
+@pytest.mark.parametrize("markdown,outer,inner", [
+    # quote / item / quote: the quoted list is its own list
+    ("> - a\n> \n>   > - x\n>   > - y\n> - b\n", ("a", "b"), ("x", "y")),
+    # item / quote: the item's list resumes after the quoted list
+    ("- a\n\n  > - x\n  > - y\n\n- b\n", ("a", "b"), ("x", "y")),
+    ("1. a\n\n   > 1. x\n   > 2. y\n\n2. b\n", ("a", "b"), ("x", "y")),
+    # item / quote / item / quote
+    ("- a\n\n  > - m\n  > \n  >   > - x\n  >   > - y\n  > - n\n- b\n",
+     ("m", "n"), ("x", "y")),
+])
+def test_alternating_containers_keep_list_identity(route, merge, markdown,
+                                                   outer, inner):
+    """CodeRabbit on 262a937: a list quoted in an item never joins the list
+    around it, and the enclosing list stays one list across it."""
+    doc = _check(route, merge, markdown, [(inner[0] + "\n", inner[0] + "2\n"),
+                                          (outer[1] + "\n", outer[1] + "3\n")])
+    a, b = (_list_of(doc, outer[0]), _list_of(doc, outer[1] + "3"))
+    x, y = (_list_of(doc, inner[0] + "2"), _list_of(doc, inner[1]))
+    assert a == b and x == y and a != x

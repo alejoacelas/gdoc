@@ -2382,8 +2382,11 @@ def replace_image(
 def _raise_if_stale_revision(e: HttpError) -> None:
     """Turn a writeControl revision-mismatch 400 into a clear retry hint."""
     if int(e.resp.status) == 400 and "revision" in str(e).lower():
+        # The server refused the pinned revision, so nothing was applied: a
+        # clean refusal (exit 3), like other revision conflicts.
         raise GdocError(
-            "document changed while the command was running; re-run it"
+            "document changed while the command was running; re-run it",
+            exit_code=3,
         )
 
 
@@ -4491,7 +4494,7 @@ def _classify_suggest_error(e: HttpError, doc_id: str) -> None:
         # must not be reported as "re-run it".
         raise GdocError(
             "document changed while the command was running; re-run it "
-            f"(server: {e.reason})"
+            f"(server: {e.reason})", exit_code=3,
         )
     if status == 400 and (
         "unknown name" in lowered

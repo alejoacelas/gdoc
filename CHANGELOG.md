@@ -16,6 +16,10 @@ All notable changes to `gdoc` are documented here. This project follows
 
 ### Changed
 
+- A pinned revision refused by the server exits 3 for `insert-image`,
+  `replace-image` and `suggest`, as for other writes. The README now says that
+  images inserted by `new --file` use the ordinary client transport.
+
 - Link titles no longer enter link URLs; exported destinations with whitespace
   are bracketed. Table rows may end in whitespace or be indented up to three
   spaces. `***bold** then italic*` reads as CommonMark does. Whitespace-only

@@ -274,6 +274,11 @@ def _description_for(command: str, parser: argparse.ArgumentParser) -> str:
     text = (parser.description or "").strip()
     if not text:
         text = (getattr(parser, "_gdoc_help", "") or "").strip()
+    # The CLI's usage rules (matching, paragraph counts, suggest mode) apply
+    # to the tool as well, so tools carry the same epilog agents see in --help.
+    epilog = (parser.epilog or "").strip()
+    if epilog:
+        text = f"{text}\n\n{epilog}" if text else epilog
     note = _DESCRIPTION_NOTES.get(command)
     if note:
         text = f"{text}\n\n{note}" if text else note
@@ -460,6 +465,13 @@ def call_command(
 
     _reject_local_paths(command, arguments)
     _reject_stdin_sentinels(command, arguments)
+    if (command == "edit" and arguments.get("cell") is not None
+            and arguments.get("new_text") is not None
+            and arguments.get("old_text") is None):
+        # A cell edit has one replacement value; the CLI reads it from either
+        # positional, so a value given as new_text takes the first slot.
+        arguments = {**arguments, "old_text": arguments["new_text"]}
+        del arguments["new_text"]
     if command in ("insert-image", "replace-image"):
         source = arguments.get("image")
         if not isinstance(source, str) or not source.startswith(("https://", "http://")):

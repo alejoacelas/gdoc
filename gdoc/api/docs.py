@@ -801,7 +801,9 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
                         paragraph_style.pop(key, None)
                 paragraph = dict(paragraph, paragraphStyle=paragraph_style)
             rendered = _paragraph_markdown(paragraph, lists, ordered_counters)
-            if rendered.strip():
+            # A blank paragraph outside the tables' container already separates
+            # them; another separator line would read back as a new paragraph.
+            if rendered.strip() or prefix != table_run:
                 table_run = None
             parts.append(with_prefix(rendered, prefix))
         elif "table" in element:

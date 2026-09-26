@@ -343,3 +343,20 @@ def test_editing_link_labels_through_the_interfaces(route, old, new, expected):
     route.ok("write", text="L [Annual report](https://example.test/r) right\n")
     route.ok("edit", old_text=old, new_text=new)
     assert route.ok("cat") == expected
+
+
+@pytest.mark.parametrize("markdown", [
+    "> | a |\n> | --- |\n> | x |\n\n> | b |\n> | --- |\n> | y |\n",
+    "| a |\n| --- |\n| x |\n> \n| b |\n| --- |\n| y |\n",
+])
+def test_tables_around_a_blank_line_are_stable_across_round_trips(route, markdown):
+    """F12: after the first read, rewrites neither add nor remove paragraphs."""
+    doc = route.load(NativeDoc())
+    route.ok("cat")
+    route.ok("write", text=markdown)
+    first, shape = route.ok("cat"), styles(doc)
+    for turn in range(3):
+        changed = first.replace("| x |", f"| x{turn} |")
+        route.ok("write", text=changed)
+        assert route.ok("cat") == changed
+        assert len(styles(doc)) == len(shape)

@@ -357,19 +357,18 @@ def test_table_layout_consumes_only_owned_scaffolding(mocker, collaborator, suff
         markdown += "\n" + suffix
     docs.insert_markdown_into_tab("synthetic", "t1", markdown, replace=True)
     expected = ("COLLAB note. " if collaborator else "") + "Intro line.\n" + "¤" * 8
-    assert model.table_layout == expected + suffix + "\n"
+    # The table splits Intro at its mark; only the emptied mark and the
+    # placeholder after the table are then removed.
+    assert model.table_layout == expected + "\n" * (2 if suffix else 1) + suffix + "\n"
+    assert model.text == expected + suffix + "\n"
     table_batches = [b for b in model.batches
                      if any("insertTable" in r for r in b["requests"])]
     assert len(table_batches) == (2 if collaborator else 1)
-    # The deletion and insertion relocate together under the same revision.
+    assert all(len(b["requests"]) == 1 for b in table_batches)
     if collaborator:
-        before, after = table_batches
-        assert len(before["requests"]) == len(after["requests"])
-        for request_before, request_after in zip(before["requests"], after["requests"]):
-            if "deleteContentRange" in request_before:
-                for key in ("startIndex", "endIndex"):
-                    assert (request_after["deleteContentRange"]["range"][key]
-                            - request_before["deleteContentRange"]["range"][key]) == 13
+        before, after = (b["requests"][0]["insertTable"]["location"]["index"]
+                         for b in table_batches)
+        assert after - before == 13
 
 
 def test_partial_report_identifies_source_table_and_tab(mocker):
@@ -380,7 +379,7 @@ def test_partial_report_identifies_source_table_and_tab(mocker):
     api.batchUpdate.return_value.execute.side_effect = [response(f"r{i}")
                                                        for i in range(2, 6)]
     model = TableDocument()
-    model.text = "First\n\nSecond\n" + "¤" * 8 + "\n"
+    model.text = "First\n\nSecond\n" + "¤" * 8 + "\n\n"
     model.revision = "r3"
     api.get.return_value.execute.side_effect = [model.snapshot(), OSError("lost read")]
     with pytest.raises(GdocError, match="Partial completion") as caught:

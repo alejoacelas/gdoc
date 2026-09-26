@@ -44,7 +44,15 @@ def paragraph(text, start):
     }
 
 
-def snapshot(revision="r1", prefix="Old\n", table=False):
+def snapshot(revision="r1", prefix="Old\n", table=False, trailing=None):
+    """A tab body, optionally just after gdoc inserted an empty 2x1 table.
+
+    A table inserted at the preceding paragraph's mark is followed by that
+    paragraph's emptied original mark (``trailing`` empty paragraphs), then
+    the tab's final paragraph.
+    """
+    if trailing is None:
+        trailing = 1 if prefix else 0
     content = [paragraph(prefix, 1)] if prefix else []
     index = 1 + utf16_len(prefix)
     if table:
@@ -69,7 +77,8 @@ def snapshot(revision="r1", prefix="Old\n", table=False):
         content.append(
             {"startIndex": start, "endIndex": end, "table": {"tableRows": rows}}
         )
-        content.append(paragraph("\n", end))
+        for offset in range(trailing + 1):
+            content.append(paragraph("\n", end + offset))
     else:
         content.append(paragraph("\n", index))
     return {
@@ -570,7 +579,8 @@ def test_two_tables_carry_revision_from_previous_cell_fill(api):
     ]
     api.get.return_value.execute.side_effect = [
         snapshot("r3", "First\n\nSecond\n", table=True),
-        snapshot("r5", "First\n", table=True),
+        # The first table also leaves its placeholder before "Second".
+        snapshot("r5", "First\n", table=True, trailing=2),
     ]
     insert_markdown_into_tab("synthetic", "Notes", markdown, replace=True)
     assert [b["writeControl"]["requiredRevisionId"] for b in batches(api)] == [

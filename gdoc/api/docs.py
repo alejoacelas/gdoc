@@ -1385,6 +1385,16 @@ class _StagedWrite:
             return response.get("writeControl", {}).get("requiredRevisionId", "")
 
 
+def _stage_tab(doc, tab_id):
+    if not tab_id:
+        return {"body": doc.get("body", {}),
+                "namedRanges": doc.get("namedRanges", {})}
+    matches = [t for t in flatten_tabs(doc.get("tabs", [])) if t["id"] == tab_id]
+    if len(matches) != 1:
+        raise GdocError("conflict: target tab disappeared", exit_code=3)
+    return matches[0]
+
+
 def _stage_body(doc, tab_id):
     if tab_id:
         # Only an exact ID is safe once the tab was selected by the caller.
@@ -1565,7 +1575,15 @@ def _table_cell_requests(cell_indices, table, tab_id):
 
 
 def _table_scaffolding(parsed, table):
-    """Only the parser's own separator and placeholder may be consumed."""
+    """Describe where a table goes relative to the parser's placeholder.
+
+    ``before`` is 1 when a paragraph of the inserted Markdown ends directly
+    before the placeholder. The table is then inserted at that paragraph's
+    mark, which splits it: its text keeps a copy of its own paragraph style
+    and list membership, and the emptied original mark lands after the
+    table. ``placeholder`` is 1 when the placeholder paragraph exists. Both
+    are empty paragraphs after the table and are the only ones removed.
+    """
     offset = table.plain_text_offset
     previous_placeholder = any(t.plain_text_offset == offset - 1
                                for t in parsed.tables)
@@ -1573,6 +1591,57 @@ def _table_scaffolding(parsed, table):
               and not previous_placeholder)
     placeholder = offset < len(parsed.plain_text)
     return int(before), int(placeholder)
+
+
+def _table_cleanup_requests(tab, table_element, scaffolding, tab_id):
+    """Remove the table's scaffolding paragraphs and clip grown gdoc ranges.
+
+    Inserting at the preceding paragraph's mark grows a gdoc range that ended
+    after that mark over the new table. Such a range is recreated to end at
+    the paragraph's new mark. Only whole empty paragraphs directly after the
+    table are deleted, and never the tab's final paragraph, so no paragraph
+    that keeps text loses its own mark.
+    """
+    before, placeholder = scaffolding
+    count = before + placeholder
+    content = tab.get("body", {}).get("content", [])
+    start = table_element["startIndex"]
+    position = next(i for i, e in enumerate(content)
+                    if "table" in e and e.get("startIndex") == start)
+    end = table_element["endIndex"]
+    requests = []
+    if before:
+        for named_id, name, spans in _owned_named_ranges(tab, tab_id):
+            if len(spans) == 1 and spans[0][0] < start and spans[0][1] == end + 1:
+                span = {"startIndex": spans[0][0], "endIndex": start}
+                if tab_id:
+                    span["tabId"] = tab_id
+                requests.extend([_delete_owned_range(named_id, tab_id), {
+                    "createNamedRange": {"name": name, "range": span},
+                }])
+    if not count:
+        return requests
+    following = content[position + 1:position + 2 + count]
+    empty = [e for e in following[:count] if _is_empty_paragraph(e)]
+    if (len(empty) != count or len(following) != count + 1
+            or "paragraph" not in following[-1]):
+        raise GdocError(
+            "conflict: the paragraphs around the inserted table changed; "
+            "scaffolding was not removed", exit_code=3,
+        )
+    span = {"startIndex": end, "endIndex": end + count}
+    if tab_id:
+        span["tabId"] = tab_id
+    return [{"deleteContentRange": {"range": span}}] + requests
+
+
+def _is_empty_paragraph(element):
+    paragraph = element.get("paragraph")
+    if not paragraph or paragraph.get("positionedObjectIds"):
+        return False
+    elements = paragraph.get("elements", [])
+    return (len(elements) == 1
+            and elements[0].get("textRun", {}).get("content") == "\n")
 
 
 def _insert_table(
@@ -1598,22 +1667,16 @@ def _insert_table(
     label = f"table {ordinal} in tab {tab_id or 'default'}"
 
     def insertion():
-        before, placeholder = scaffolding
-        location = {"index": index - before}
+        # insertTable supplies its own leading newline. At a paragraph's mark
+        # that newline splits the paragraph, so no mark of a paragraph that
+        # keeps text is ever deleted; the emptied scaffolding after the table
+        # is removed with the cell fill, where its content can be verified.
+        location = {"index": index - scaffolding[0]}
         if tab_id:
             location["tabId"] = tab_id
-        requests = []
-        if before or placeholder:
-            span = {"startIndex": index - before, "endIndex": index + placeholder}
-            if tab_id:
-                span["tabId"] = tab_id
-            requests.append({"deleteContentRange": {"range": span}})
-        # insertTable supplies its own leading newline. Consume our parser's
-        # separators in this same pinned batch so they cannot survive as blanks.
-        requests.append({"insertTable": {
+        return [{"insertTable": {
             "rows": table.num_rows, "columns": table.num_cols, "location": location,
-        }})
-        return requests
+        }}]
 
     def relocate():
         nonlocal index
@@ -1654,7 +1717,10 @@ def _insert_table(
             len(row) != table.num_cols for row in indices
         ):
             raise GdocError("conflict: table dimensions changed", exit_code=3)
-        return (_table_cell_requests(indices, table, tab_id)
+        # Cleanup lies after the table, so the cell indices stay valid.
+        return (_table_cleanup_requests(_stage_tab(snapshot, tab_id), target,
+                                        scaffolding, tab_id)
+                + _table_cell_requests(indices, table, tab_id)
                 + _table_prefix_requests(indices, table, tab_id))
 
     def relocate_cells():

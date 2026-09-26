@@ -171,6 +171,11 @@ def fill_fixed_table(blank, batch):
     assert blank["table"]["tableRows"]
     rows = blank["table"]["tableRows"]
     assert len(rows) == 2 and all(len(r["tableCells"]) == 1 for r in rows)
+    # Scaffolding removal lies after the table and does not move its cells.
+    cleanup = [r for r in batch if "deleteContentRange" in r]
+    assert all(r["deleteContentRange"]["range"]["startIndex"] >= blank["endIndex"]
+               for r in cleanup)
+    batch = [r for r in batch if "deleteContentRange" not in r]
     assert {next(iter(r)) for r in batch} <= {
         "insertText",
         "updateTextStyle",
@@ -242,11 +247,13 @@ def test_t03_move_table_section_and_insert_section_with_readback(scenario):
         "## Arrival\n## Departure\nCheck loads.\n- Cargo\n"
         "| Port |\n|:---|\n| **East** |\n## Sign-off\nConfirm.\n"
     )
-    # Fixed API response for exactly this operation: Arrival, Departure, blank
-    # table anchor, 2x1 empty table, then Sign-off and Confirm.
+    # Fixed API response for exactly this operation: the table is inserted at
+    # Cargo's mark, so a 2x1 empty table follows Cargo, then Cargo's emptied
+    # original mark and the placeholder, then Sign-off and Confirm.
     prefix = "Arrival\nDeparture\nCheck loads.\nCargo\n"
     start = 1 + utf16_len(prefix)
     blank = make_table([["\n"], ["\n"]], start)
+    after = blank["endIndex"]
     scaffold = deepcopy(scenario.document)
     scaffold["revisionId"] = "r2"
     scaffold["tabs"][0]["documentTab"]["body"]["content"] = [
@@ -255,8 +262,10 @@ def test_t03_move_table_section_and_insert_section_with_readback(scenario):
         paragraph("Check loads.\n", 19),
         paragraph("Cargo\n", 32, bullet={"listId": "rebuilt-list"}),
         blank,
-        paragraph("Sign-off\n", blank["endIndex"], style="HEADING_2"),
-        paragraph("Confirm.\n", blank["endIndex"] + 9),
+        paragraph("\n", after, bullet={"listId": "rebuilt-list"}),
+        paragraph("\n", after + 1),
+        paragraph("Sign-off\n", after + 2, style="HEADING_2"),
+        paragraph("Confirm.\n", after + 11),
     ]
     get = scenario.service.documents.return_value.get.return_value.execute
     get.side_effect = lambda **kw: deepcopy(
@@ -270,6 +279,10 @@ def test_t03_move_table_section_and_insert_section_with_readback(scenario):
     assert len(table_request) == 1
     assert (table_request[0]["rows"], table_request[0]["columns"]) == (2, 1)
     assert table_request[0]["location"] == {"index": start - 1, "tabId": "draft"}
+    assert not any("deleteContentRange" in r for r in scenario.batches[1]["requests"])
+    # The fill stage removes exactly the two emptied paragraphs after the table.
+    assert scenario.batches[2]["requests"][0] == {"deleteContentRange": {"range": {
+        "startIndex": after, "endIndex": after + 2, "tabId": "draft"}}}
     # The surrounding text is produced from mutation requests, not copied from
     # target Markdown or the canned scaffold. Table structure is API-shape evidence.
     first_batch = scenario.batches[0]["requests"]
@@ -357,8 +370,12 @@ def _write_table_and_project(scenario, target, before, cells, revision):
     blank = make_table([["\n"], ["\n"]], start)
     scaffold = deepcopy(scenario.document)
     scaffold["revisionId"] = revision
+    # The table is inserted at the preceding paragraph's mark: its emptied
+    # original mark and the placeholder follow the table.
+    after = blank["endIndex"]
     scaffold["tabs"][0]["documentTab"] = {"body": {"content": [
-        paragraph(before, 1), blank, paragraph("\n", blank["endIndex"]),
+        paragraph(before, 1), blank, paragraph("\n", after),
+        paragraph("\n", after + 1), paragraph("\n", after + 2),
     ]}}
     service = scenario.service.documents.return_value
     service.batchUpdate.reset_mock()

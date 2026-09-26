@@ -34,6 +34,8 @@ All notable changes to `gdoc` are documented here. This project follows
   revision. Metadata/partial reads cannot authorize replacement. Acknowledged
   writes advance known content; rebased or uncertain writes require a fresh read.
 - `comment --quote` refuses ambiguous matches and reports candidates.
+- `edit` refuses matches that touch pending suggestions, like `suggest`, and
+  names the changed tab whenever its search covered several tabs.
 - `edit` and `suggest` search all tabs, including headers, footers and footnotes.
   `--tab` selects one tab and its segments; `--all` replaces every match in scope.
 - Pushes check the file's revision as well as the shared read baseline. An older

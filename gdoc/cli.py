@@ -1315,6 +1315,34 @@ def _prepare_text_replacement(
     )
 
 
+def _refuse_suggestion_overlaps(plan) -> None:
+    """Refuse matches that intersect pending suggestions.
+
+    A direct edit there would silently settle someone's suggestion, and a
+    suggested edit could merge into it. Matches elsewhere are unaffected.
+    """
+    from gdoc.api.docs import _search_containers, find_suggestions_in_range
+
+    containers = {
+        (coordinates.get("tabId"), coordinates.get("segmentId")): content
+        for content, coordinates in _search_containers(plan.search_scope)
+    }
+    for m in plan.matches:
+        overlapping = find_suggestions_in_range(
+            # Cell matches carry no coordinates: they are in the searched body.
+            containers.get((m.get("tabId"), m.get("segmentId")), plan.search_body),
+            m["startIndex"], m["endIndex"],
+        )
+        if overlapping:
+            ids = ", ".join(sorted(overlapping))
+            raise GdocError(
+                f"match at index {m['startIndex']} overlaps existing "
+                f"suggestion(s) {ids}; accept or reject them in Docs first, or "
+                "choose wording outside the suggested text. Nothing was "
+                "changed.", exit_code=3,
+            )
+
+
 def cmd_edit(args) -> int:
     """Handler for `gdoc edit`."""
     doc_id = _resolve_doc_id(args.doc)
@@ -1330,6 +1358,7 @@ def cmd_edit(args) -> int:
     from gdoc.mdparse import parse_markdown
 
     check_segment_replacement(parse_markdown(new_text), new_text, matches)
+    _refuse_suggestion_overlaps(plan)
 
     # Perform formatted replacement via Docs API batchUpdate. A table in the
     # replacement is rejected there when more than one match takes the block
@@ -1361,7 +1390,12 @@ def cmd_edit(args) -> int:
     mode = get_output_mode(args)
     label = "occurrence" if occurrences == 1 else "occurrences"
     counts = {}
-    if getattr(args, "all", False) and cell is None:
+    from gdoc.api.docs import flatten_tabs
+
+    # Name the tabs changed whenever the search covered several tabs, so a
+    # unique match outside the tab the agent read is visible.
+    searched_tabs = len(flatten_tabs(plan.search_scope.get("tabs", [])))
+    if cell is None and (getattr(args, "all", False) or searched_tabs > 1):
         for match in matches:
             if match.get("tabId"):
                 key = match["tabId"]
@@ -1420,31 +1454,11 @@ def cmd_suggest(args) -> int:
     # Never touch an existing review thread by accident: Google may merge a
     # change into an overlapping open suggestion, so refuse any match that
     # intersects one (v1; an explicit opt-in can come later).
-    from gdoc.api.docs import (
-        _search_containers,
-        check_segment_replacement,
-        find_suggestions_in_range,
-    )
+    from gdoc.api.docs import check_segment_replacement
     from gdoc.mdparse import parse_markdown
 
     check_segment_replacement(parse_markdown(new_text), new_text, plan.matches)
-    containers = {
-        (coordinates.get("tabId"), coordinates.get("segmentId")): content
-        for content, coordinates in _search_containers(plan.search_scope)
-    }
-    for m in plan.matches:
-        overlapping = find_suggestions_in_range(
-            containers[(m.get("tabId"), m.get("segmentId"))],
-            m["startIndex"], m["endIndex"],
-        )
-        if overlapping:
-            ids = ", ".join(sorted(overlapping))
-            raise GdocError(
-                f"match at index {m['startIndex']} overlaps existing "
-                f"suggestion(s) {ids}; accept or reject them first, or "
-                "choose an anchor outside the suggested text",
-                exit_code=3,
-            )
+    _refuse_suggestion_overlaps(plan)
 
     from gdoc.api.docs import suggest_replacement
 

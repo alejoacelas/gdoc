@@ -610,6 +610,10 @@ paragraphs of a different style, list or code/quote container, gdoc cannot
 reliably render that paragraph from the inline suggestion view, so it marks the
 read incomplete (`scope.complete` is false, with `scope.suggestion_preview_gaps`);
 such a read cannot authorize a rewrite until the suggestions are resolved.
+`edit` refuses a match that touches text with a pending suggestion (exit 3,
+nothing written), so a direct edit never settles someone's suggestion; edits
+elsewhere in the document proceed. When the search covered several tabs, `edit`
+names each changed tab (`tab ID: N`, or `tabs` in JSON).
 
 ```bash
 gdoc write DOC draft.md --tab Notes --allow-lossy

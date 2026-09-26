@@ -1256,12 +1256,13 @@ def _restore_unlisted_tabs(parsed: ParsedMarkdown, insert_index: int,
         start = insert_index + offsets[point] - sum(
             item.list_depth for item in items if item.start < point)
         span = {"startIndex": start, "endIndex": start + tabs}
-        location = {"index": start}
+        location = {"index": start + tabs}
         if tab_id:
             span["tabId"] = location["tabId"] = tab_id
+        # Inserted after the placeholder spaces, the tabs take their style.
         requests.extend([
-            {"deleteContentRange": {"range": span}},
             {"insertText": {"location": location, "text": "\t" * tabs}},
+            {"deleteContentRange": {"range": span}},
         ])
     return requests
 
@@ -1401,11 +1402,13 @@ def _simple_list_requests(parsed: ParsedMarkdown, insert_index: int,
                 }})
             if item.literal_tabs:
                 restorations.extend([
+                    # Inserted after its placeholder spaces, the tab takes their
+                    # parsed style rather than the following text's.
+                    {"insertText": {"location": location(start + item.literal_tabs),
+                                    "text": "\t" * item.literal_tabs}},
                     {"deleteContentRange": {
                         "range": span(start, start + item.literal_tabs),
                     }},
-                    {"insertText": {"location": location(start),
-                                    "text": "\t" * item.literal_tabs}},
                 ])
         requests.extend(restorations)
     return requests
@@ -1472,11 +1475,13 @@ def _mixed_block_requests(block, root_preset, insert_index, offsets, span, locat
     for item, start, _ in positions:
         if item.literal_tabs:
             requests.extend([
+                # Inserted after its placeholder spaces, the tab takes their
+                # parsed style rather than the following text's.
+                {"insertText": {"location": location(start + item.literal_tabs),
+                                "text": "\t" * item.literal_tabs}},
                 {"deleteContentRange": {
                     "range": span(start, start + item.literal_tabs),
                 }},
-                {"insertText": {"location": location(start),
-                                "text": "\t" * item.literal_tabs}},
             ])
     return requests
 
@@ -1603,11 +1608,13 @@ def _separated_list_requests(parsed: ParsedMarkdown, insert_index: int,
         }})
         if item.literal_tabs:
             requests.extend([
+                # Inserted after its placeholder spaces, the tab takes their
+                # parsed style rather than the following text's.
+                {"insertText": {"location": location(start + item.literal_tabs),
+                                "text": "\t" * item.literal_tabs}},
                 {"deleteContentRange": {
                     "range": span(start, start + item.literal_tabs),
                 }},
-                {"insertText": {"location": location(start),
-                                "text": "\t" * item.literal_tabs}},
             ])
     return requests
 

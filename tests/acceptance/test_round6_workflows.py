@@ -323,3 +323,20 @@ def test_a_rule_before_a_final_empty_code_block_is_written(route, markdown,
     assert _read(route) == expected
     route.ok("write", text=expected.replace("---", "***"))
     assert _read(route) == expected
+
+
+@pytest.mark.parametrize("markdown", [
+    "- \t[x](http://a.example/)\n",
+    "- \t~~`b`~~\n",
+    "1. \t**bold** after\n",
+    "- a\n\n  ```\n  \tcode\n  ```\n",
+])
+def test_restored_content_tabs_keep_their_own_style(route, markdown):
+    """R5-13: a literal leading tab never joins the link or code after it."""
+    doc = _written(route, markdown)
+    assert _read(route) == markdown
+    tabs = [u for u in doc.units if u.ch == "\t"]
+    assert tabs and all("link" not in u.ts and "bold" not in u.ts
+                        and "strikethrough" not in u.ts for u in tabs)
+    route.ok("write", text=markdown.replace("a", "A"))
+    assert _read(route) == markdown.replace("a", "A")

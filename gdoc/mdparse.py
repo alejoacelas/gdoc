@@ -207,7 +207,22 @@ def _strip_escapes(s: str) -> str:
 def _table_cells(line: str) -> list[str]:
     """Split unescaped pipes, retaining inline escapes for the cell parser."""
     text = line[1:-1]
-    separators = [m.start() for m in re.finditer(r"\|", _mask_escapes(text))]
+    masked = _mask_escapes(text)
+    # Backslashes are literal inside code spans, where only "\\|" marks a pipe
+    # of the content; elsewhere an escaped backslash leaves the pipe bare.
+    in_code = [False] * len(text)
+    code_end = 0
+    for opener in re.finditer(r"(?<!`)(`+)(?!`)", masked):
+        if opener.start() < code_end:
+            continue
+        if code := _CODE_RE.match(text, opener.start()):
+            in_code[code.start():code.end()] = [True] * (code.end() - code.start())
+            code_end = code.end()
+    separators = [
+        index for index, char in enumerate(text) if char == "|" and not (
+            text[index - 1:index] == "\\" if in_code[index] else masked[index] != "|"
+        )
+    ]
     boundaries = [-1, *separators, len(text)]
     cells = []
     for start, end in zip(boundaries, boundaries[1:]):

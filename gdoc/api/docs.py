@@ -653,14 +653,22 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
                      if r.get("startIndex", 0) <= index < r.get("endIndex", 0)),
                     (0, 0))
 
+    def table_prefix(table):
+        # Only a range starting inside the first cell marks a contained table,
+        # so a neighbouring paragraph's container cannot spread onto it.
+        cell = next(iter(next(iter(table.get("tableRows", [])), {}).get(
+            "tableCells", [])), {})
+        low, high = cell.get("startIndex", -1), cell.get("endIndex", -1)
+        return next(((quote, indent) for r, quote, indent in prefix_ranges
+                     if low <= r.get("startIndex", -1) < high), (0, 0))
+
     for element in content:
-        prefix = prefix_at(element.get("startIndex", -1)) if markdown else (0, 0)
-        if markdown and prefix == (0, 0) and "table" in element:
-            # A table's container lives on its first cell's first paragraph.
-            first_cell = next(iter(next(iter(
-                element["table"].get("tableRows", [])), {}).get("tableCells", [])), {})
-            first = next(iter(first_cell.get("content", [])), {})
-            prefix = prefix_at(first.get("startIndex", -1))
+        if not markdown:
+            prefix = (0, 0)
+        elif "table" in element:
+            prefix = table_prefix(element["table"])
+        else:
+            prefix = prefix_at(element.get("startIndex", -1))
         marker = next((index for index, r in enumerate(code_ranges)
                        if r.get("startIndex", 0) <= element.get("startIndex", -1)
                        < r.get("endIndex", 0)), None) if markdown else None

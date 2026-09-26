@@ -456,10 +456,10 @@ def test_table_container_range_is_on_first_cell_and_owned():
                                   "t") == []
     native = {
         "body": {"content": [{"startIndex": 1, "endIndex": 12, "table": {
-            "tableRows": [{"tableCells": [{"content": [{
+            "tableRows": [{"tableCells": [{"startIndex": 4, "endIndex": 7, "content": [{
                 "startIndex": 5, "endIndex": 7,
                 "paragraph": {"elements": [{"textRun": {"content": "A\n"}}]},
-            }]}]}, {"tableCells": [{"content": [{
+            }]}]}, {"tableCells": [{"startIndex": 8, "endIndex": 11, "content": [{
                 "startIndex": 9, "endIndex": 11,
                 "paragraph": {"elements": [{"textRun": {"content": "x\n"}}]},
             }]}]}],
@@ -471,3 +471,11 @@ def test_table_container_range_is_on_first_cell_and_owned():
     }
     assert get_tab_text(native, markdown=True).startswith("> | A |\n> | --- |\n> | x |")
     check_markdown_replacement(native, tab_body=True)
+
+    # A neighbouring container range that spreads over the whole table does
+    # not start inside the first cell, so it does not quote the table.
+    native["namedRanges"] = {"gdoc:prefix:v1:1:0": {"namedRanges": [
+        {"name": "gdoc:prefix:v1:1:0",
+         "ranges": [{"startIndex": 0, "endIndex": 12}]},
+    ]}}
+    assert get_tab_text(native, markdown=True).startswith("| A |\n| --- |\n| x |")

@@ -577,11 +577,13 @@ Write the canonical spellings that exports use; other spellings of the same
 structure may read differently:
 
 - Nest a list item two spaces per level under any marker (`- a` then `  - b`;
-  `10. a` then `  - b`). Each further two spaces adds a level, up to the nine
-  levels a Docs list has
-  ([`nestingLevels`](https://developers.google.com/workspace/docs/api/reference/rest/v1/documents#listproperties)).
-  Deeper nesting is not supported: such items are written at the ninth level
-  and `write`/`insert` warn with the affected lines.
+  `10. a` then `  - b`). Each further two spaces adds a level. gdoc writes
+  nesting as native list levels, and a Docs list's
+  [`nestingLevels`](https://developers.google.com/workspace/docs/api/reference/rest/v1/documents#listproperties)
+  hold nine. gdoc has no representation for deeper nesting (such as extra
+  indents or separate lists), so it is unsupported: deeper items are written at
+  the ninth level and `write`/`insert` warn with the affected lines. This is a
+  gdoc limit, not one of the API gaps below.
 - When emphasis spans close together, mark the inner one with underscores:
   `**bold _italic_**`, not `**bold *italic***`. Spans that open together read
   as CommonMark does (`***bold** then italic*`).

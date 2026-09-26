@@ -1,5 +1,7 @@
 """Round-5 review regressions: export/parse round trips of supported Markdown."""
 
+import json
+
 import pytest
 
 from gdoc.api.docs import flatten_tabs, get_tab_text
@@ -136,3 +138,58 @@ def test_a_bullet_of_dashes_stays_a_list_item(text, nest):
     assert parsed.plain_text.lstrip("\t") == text + "\n"
     assert [s.type for s in parsed.styles].count("bullets") == 1
     assert not any("borderBottom" in s.style for s in parsed.styles)
+
+
+@pytest.mark.parametrize("reply", [
+    None, {}, {"replies": []}, {"replies": [{}]},
+    {"replies": [{"addDocumentTab": {}}]},
+    {"replies": [{"addDocumentTab": {"tabProperties": {}}}]},
+    {"replies": [{"addDocumentTab": {"tabProperties": {"tabId": ""}}}]},
+    {"replies": [{"addDocumentTab": {"tabProperties": "t.1"}}]},
+])
+def test_unreadable_add_tab_reply_is_uncertain_and_not_resent(mocker, reply):
+    """F20: a sent tab creation with an unreadable reply may have succeeded."""
+    from gdoc.api.docs import add_tab
+    from gdoc.util import GdocError
+
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    send = mocker.patch("gdoc.api.comment_transport.execute_mutation_request",
+                        return_value=reply)
+    with pytest.raises(GdocError) as error:
+        add_tab("d", "Notes")
+    assert "outcome is uncertain" in str(error.value)
+    assert "list the document's tabs before retrying" in str(error.value)
+    assert error.value.exit_code == 1
+    assert send.call_count == 1
+    service.documents.return_value.batchUpdate.assert_called_once()
+
+
+@pytest.mark.parametrize("interface", ["cli", "mcp"])
+def test_add_tab_route_reports_an_unreadable_reply_as_uncertain(
+    mocker, monkeypatch, tmp_path, interface,
+):
+    """F20: both interfaces surface the uncertain outcome, exit 1."""
+    import contextlib
+    import io
+
+    from gdoc import cli, mcp, state
+
+    monkeypatch.setattr(state, "STATE_DIR", tmp_path / "state")
+    monkeypatch.setattr("gdoc.util.get_default_account", lambda: None)
+    mocker.patch("gdoc.api.docs.get_docs_service")
+    mocker.patch("gdoc.api.comment_transport.execute_mutation_request",
+                 return_value={"replies": [{}]})
+    mocker.patch("gdoc.notify.pre_flight", return_value=None)
+    if interface == "mcp":
+        response = mcp.MCPServer().dispatch({
+            "jsonrpc": "2.0", "id": 1, "method": "tools/call",
+            "params": {"name": "gdoc_add_tab",
+                       "arguments": {"doc": "d", "title": "Notes"}}})
+        text = json.dumps(response)
+        assert response["result"]["isError"]
+    else:
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+            assert cli.run_argv(["add-tab", "d", "Notes"], check_updates=False) == 1
+        text = err.getvalue()
+    assert "list the document's tabs before retrying" in text

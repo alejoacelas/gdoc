@@ -483,8 +483,10 @@ class TestAddTab:
         mock_svc.return_value.documents.return_value \
             .batchUpdate.return_value.execute.return_value = {"replies": []}
 
-        with pytest.raises(GdocError, match="Unexpected API response"):
+        # The tab may exist: the error says so rather than inviting a retry.
+        with pytest.raises(GdocError, match="outcome is uncertain") as error:
             add_tab("doc1", "Notes")
+        assert error.value.exit_code == 1
 
 
 def _capture_batch_updates(mock_svc):

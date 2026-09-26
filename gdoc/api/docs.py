@@ -2262,27 +2262,33 @@ def add_tab(doc_id: str, title: str) -> dict:
     service = get_docs_service()
     from gdoc.api.comment_transport import execute_mutation_request
 
+    uncertainty = ("Tab creation outcome is uncertain; list the document's "
+                   "tabs before retrying")
     try:
         resp = execute_mutation_request(service.documents().batchUpdate(
             documentId=doc_id,
             body={"requests": [{"addDocumentTab": {
                 "tabProperties": {"title": title},
             }}]},
-        ), uncertainty="Tab creation outcome is uncertain; list the document's "
-                       "tabs before retrying")
-        try:
-            props = resp["replies"][0]["addDocumentTab"]["tabProperties"]
-        except (KeyError, IndexError, TypeError) as exc:
-            raise GdocError(
-                f"Unexpected API response for addDocumentTab: {exc}",
-            )
+        ), uncertainty=uncertainty)
+    except HttpError as e:
+        _translate_http_error(e, doc_id)
+    # The request was sent and acknowledged, so the tab may exist even when
+    # the reply cannot be read: report that, never a plain failure to retry.
+    try:
+        props = resp["replies"][0]["addDocumentTab"]["tabProperties"]
+        tab_id = props["tabId"]
+        if not isinstance(tab_id, str) or not tab_id:
+            raise TypeError("tabId is not a non-empty string")
         return {
-            "tabId": props["tabId"],
+            "tabId": tab_id,
             "title": props.get("title", title),
             "index": props.get("index", 0),
         }
-    except HttpError as e:
-        _translate_http_error(e, doc_id)
+    except (KeyError, IndexError, TypeError, AttributeError) as exc:
+        raise GdocError(
+            f"{uncertainty}: the response did not identify the new tab ({exc})",
+        ) from exc
 
 
 def _build_cleanup_requests(

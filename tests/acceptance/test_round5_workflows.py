@@ -236,3 +236,18 @@ def test_removing_a_paragraph_after_a_list_item_is_refused(route):
     assert code != 0 and "list item before it" in output + error
     assert route.service.batches == []
     assert styles(doc) == before
+
+
+@pytest.mark.parametrize("markdown", [
+    "- \tlit\n\n---\n",
+    "1. \tone\n  1. two\n\n```\nc\n```\n\n---\n",
+])
+def test_literal_list_tabs_survive_a_trailing_rule(route, markdown):
+    """F5: a trailing rule keeps the shielded list text, tabs and all."""
+    route.load(NativeDoc())
+    route.ok("cat")
+    route.ok("write", text=markdown)
+    first = route.ok("cat")
+    assert first == markdown
+    route.ok("write", text=first.replace("lit", "lit2").replace("two", "two2"))
+    assert route.ok("cat") == first.replace("lit", "lit2").replace("two", "two2")

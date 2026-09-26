@@ -2716,9 +2716,11 @@ def insert_markdown_into_tab(
         # has a range. The mandatory final newline already follows the
         # insertion point and serves as that paragraph's mark, so insert one
         # character less; the style range already lands on it.
-        text = parsed.plain_text[:-1]
-        if text:
-            insertion[0]["insertText"]["text"] = text
+        # Trim the sent text, which shields literal list tabs from bullet
+        # creation, rather than resending the raw parsed text.
+        text = insertion[0]["insertText"]["text"]
+        if text[:-1]:
+            insertion[0]["insertText"]["text"] = text[:-1]
         else:
             del insertion[0]
     if not replace and inherited_bullet and parsed.plain_text:

@@ -1207,9 +1207,14 @@ def list_requests(parsed: ParsedMarkdown, insert_index: int,
                            if earlier.end <= s.start < item.start]
                 interleaved = any(s.type == "bullets" and
                                   s.list_depth <= item.list_depth for s in between)
+                # A table or image between items interrupts the list like prose.
+                objects = {t.plain_text_offset for t in parsed.tables} | {
+                    image.plain_text_offset for image in parsed.images} | {
+                    s.start for s in parsed.styles if s.type == "image"}
                 prose = any(
                     s.type == "paragraph_style"
-                    and parsed.plain_text[s.start:s.end].strip()
+                    and (parsed.plain_text[s.start:s.end].strip()
+                         or any(s.start <= o < s.end for o in objects))
                     and not any(b.start == s.start for b in items)
                     for s in between
                 )

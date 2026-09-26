@@ -276,3 +276,30 @@ def test_list_item_after_a_table_keeps_its_list(route, markdown, merge, request)
     assert all(not start < next(i for i, u in enumerate(doc.units)
                                 if u.kind == "tstart") < end
                for name, start, end in doc.named if name)
+
+
+@MERGES
+@pytest.mark.parametrize("between", [
+    "| x |\n| --- |\n| y |\n", "![](https://example.test/i.png)\n",
+])
+def test_numbering_continues_across_a_table_or_image(route, between, merge):
+    """F6: a numbered list interrupted by a table or image keeps counting."""
+    doc = route.load(NativeDoc(merge=merge))
+    route.ok("cat")
+    markdown = f"1. a\n2. b\n\n{between}\n3. c\n"
+    code, output, error = route.call("write", text=markdown)
+    assert code == 0, output + error
+    assert "start at 1" not in error
+    lists = {b for _, _, b in styles(doc) if b}
+    assert len({list_id for list_id, _ in lists}) == 1
+    assert route.ok("cat").endswith("\n3. c\n")
+
+
+def test_an_arbitrary_start_after_a_table_still_warns(route):
+    """F6: only the documented numbering-start gap remains, and it warns."""
+    route.load(NativeDoc())
+    route.ok("cat")
+    code, output, error = route.call(
+        "write", text="Intro\n\n| x |\n| --- |\n| y |\n\n5. five\n6. six\n")
+    assert code == 0, output + error
+    assert "cannot set arbitrary native list starts" in output + error

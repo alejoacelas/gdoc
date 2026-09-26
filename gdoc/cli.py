@@ -2410,7 +2410,9 @@ def _try_anchored_comment(
         if tab_name is not None:
             tabs = [resolve_tab(tabs, tab_name)]
 
-        locations = []
+        # Matches with the quote's own letter case win; other casings count
+        # only when none exist, so "Apple" is not ambiguous with "apple".
+        by_case = {True: [], False: []}
         for tab in tabs:
             # Keyed segment maps have no document order, so number them by
             # kind and then by segment ID: stable across the conflict re-read.
@@ -2418,15 +2420,17 @@ def _try_anchored_comment(
             for kind in ("headers", "footers", "footnotes"):
                 segments.extend(sorted(tab.get(kind, {}).items()))
             for segment_id, body in segments:
-                matches = find_text_in_document(
-                    None, fold_spaces(quote), body=fold_spaces(body),
-                    normalize=True, allow_native_gaps=True,
-                )
-                for match in matches:
-                    locations.append({
-                        **match, "tabId": tab["id"], "tabTitle": tab["title"],
-                        "segmentId": segment_id,
-                    })
+                for match_case, found in by_case.items():
+                    for match in find_text_in_document(
+                        None, fold_spaces(quote), body=fold_spaces(body),
+                        normalize=True, allow_native_gaps=True,
+                        match_case=match_case,
+                    ):
+                        found.append({
+                            **match, "tabId": tab["id"], "tabTitle": tab["title"],
+                            "segmentId": segment_id,
+                        })
+        locations = by_case[True] or by_case[False]
         if not locations:
             return CommentAnchorResult(
                 "not_found", detail="Quote not found after Unicode normalization",

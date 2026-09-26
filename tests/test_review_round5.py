@@ -244,3 +244,32 @@ def test_rich_table_styling_warns_before_a_rewrite(capsys, cell_style,
         assert f"may reset styles: {warning}" in err
     else:
         assert "table" not in err
+
+
+@pytest.mark.parametrize("quote,status,anchor", [
+    ("Apple", "anchored", (1, 6)),       # one exact-case match wins
+    ("apple", "anchored", (28, 33)),
+    ("apple pie", "anchored", (1, 10)),  # no exact case: case-insensitive
+    ("APPLE", "ambiguous", None),        # two matches in other casings
+])
+def test_comment_quote_prefers_its_own_letter_case(mocker, quote, status, anchor):
+    """F19: an exact-case quote is not ambiguous with other casings."""
+    from gdoc import cli
+
+    def para(text, start):
+        end = start + len(text)
+        return {"startIndex": start, "endIndex": end, "paragraph": {"elements": [
+            {"startIndex": start, "endIndex": end, "textRun": {"content": text}}]}}
+
+    doc = {"revisionId": "r1", "tabs": [{
+        "tabProperties": {"tabId": "t1", "title": "Main"},
+        "documentTab": {"body": {"content": [
+            para("Apple pie is great.\n", 1), para("I like apple juice.\n", 21)]}}}]}
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value=doc)
+    insert = mocker.patch("gdoc.api.docs.insert_comment", return_value="c1")
+    result = cli._try_anchored_comment("d", "note", quote)
+    assert result.status == status
+    if anchor:
+        assert insert.call_args.args[2:4] == anchor
+    else:
+        insert.assert_not_called()

@@ -235,6 +235,8 @@ gdoc cat 1aBcDeFg...
 
 `comment --quote "some doc text"` requires a unique match across all tabs
 (including child tabs), searching the body, headers, footers and footnotes.
+Matches in the quote's own letter case take precedence; other casings count
+only when none exist.
 Use a longer quote to distinguish repeated text, `--tab TITLE_OR_ID` to
 limit the search to one tab, or `--occurrence N` to pick the Nth match in a
 stable order (tabs in outline order; within a tab the body, then headers,
@@ -792,7 +794,9 @@ Requirements and limits:
   rules, tables, and `--cell` are rejected before any API call — use `edit` for
   those. A replacement inside one paragraph must not introduce paragraph
   breaks; block Markdown requires the whole paragraph as its target and must
-  also satisfy the command's supported-format rules. Fenced code blocks are
+  also satisfy the command's supported-format rules. An empty replacement
+  suggests deleting the wording but keeps its paragraph; use `edit` to remove
+  whole paragraphs. Fenced code blocks are
   accepted as code-font paragraphs only when the paragraph-boundary contract
   is satisfied.
 - **No overlap with existing suggestions.** The document is read with

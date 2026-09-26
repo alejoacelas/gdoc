@@ -66,6 +66,21 @@ All notable changes to `gdoc` are documented here. This project follows
 
 ### Fixed
 
+- A list quoted inside a nested list item keeps its own bullets or numbering;
+  the enclosing list no longer absorbs it.
+- `write` of a pulled file replaces the tab it came from and refuses another
+  `--tab` or document. Rule-first bodies whose lines contain a colon or a link
+  stay content instead of being read as metadata.
+- Linked Sheets charts, custom named ranges, and rules or indented paragraphs in
+  table cells are named as read omissions and need `--allow-lossy` to rewrite.
+- `insert` keeps the tab's first or last paragraph in its quote, list item or
+  code block, does not pass those properties to appended content, and starts an
+  appended numbered list as its own list.
+- Reference definitions accept `<...>` destinations with spaces, and blank
+  paragraphs before trailing definitions survive. Lists nested past nine levels
+  warn. Comment, image and Drive commands no longer exit 1 after Google saved the
+  change when local state cannot be written. `push` accepts a pulled file whose
+  tab fingerprint matches without local state. `cat --no-images` keeps code text.
 - Loose nested numbered lists retain parent numbering. Reference links retain
   destinations; quoted lists, quoted code, quoted tables, and fences or tables
   indented inside list items preserve their structure through changed Markdown

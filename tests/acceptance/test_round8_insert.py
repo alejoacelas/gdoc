@@ -81,6 +81,10 @@ CASES = [
     ("1. x\n", "```\n```\n", "end"),
     ("p\n\n---\n", "> \n", "end"),
     ("- a\n\n  para\n", "# \n", "end"),
+    # A lone appended rule does not keep the quote or item indent it copied.
+    ("> q\n", "---\n", "end"),
+    ("- a\n\n  para\n", "---\n", "end"),
+    ("1. a\n\n   ---\n", "---\n", "end"),
     # R7-13: a tab holding only an empty code line is not empty.
     ("```\n\n```\n", "x\n", "start"),
     ("> ---\n\nz\n", "x\n", "start"),

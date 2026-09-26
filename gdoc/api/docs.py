@@ -3189,11 +3189,13 @@ def insert_markdown_into_tab(
             + (final_style is not None and position == "end"),
             "tabId": tab_id,
         }}})
-    if (appending and not leading_table and not parsed.plain_text
+    if (appending and not leading_table
+            and not (insertion and "insertText" in insertion[0])
             and insert_index > original_insert_index):
         # Appended Markdown that is one empty paragraph (an empty heading,
-        # quote or code line) is only the retained final mark, which the
-        # split copied from the old last paragraph: clear what it copied.
+        # quote or code line, or a lone rule whose text was trimmed onto the
+        # mark) is only the retained final mark, which the split copied from
+        # the old last paragraph: clear what it copied.
         mark = {"startIndex": insert_index, "endIndex": insert_index + 1,
                 "tabId": tab_id}
         cleared = [{"deleteParagraphBullets": {"range": dict(mark)}}]

@@ -433,7 +433,10 @@ no extra read. Missing acknowledgments or a rebased recovery do not bless unseen
 content. An unchanged selected tab returns `already in sync` without mutation.
 
 `push` and the sync hook also check the file's own `gdoc-revision`; reading a newer
-copy elsewhere cannot authorize an older file. Files without revision provenance
+copy elsewhere cannot authorize an older file. The revision covers the whole
+document, so an older file is still accepted when its selected tab reads exactly as
+the body recorded in its `gdoc-body-sha256`: edits to other tabs, including your
+own push of a sibling tab's file, leave it pushable. Files without revision provenance
 need a fresh pull or an explicit `--force`. An acknowledged push updates only its
 provenance fields, preserving other frontmatter. `gdoc-body-sha256` records the
 last pulled or acknowledged body. The pull hook leaves locally edited files in

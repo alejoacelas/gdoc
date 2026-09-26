@@ -142,3 +142,87 @@ def test_insert_at_start_keeps_code_marker_on_its_paragraph(scenario, markdown):
                if r.get("createNamedRange", {}).get("name") == "gdoc:code:v1"]
     assert rebuilt == [{"startIndex": 1 + inserted, "endIndex": 6 + inserted,
                         "tabId": "draft"}]
+
+
+def _run(argv, stdin=None):
+    import contextlib
+    import io
+    import sys
+
+    from gdoc import cli
+
+    out, err = io.StringIO(), io.StringIO()
+    old = sys.stdin
+    sys.stdin = io.StringIO(stdin or "")
+    try:
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = cli.run_argv(argv, check_updates=False)
+    finally:
+        sys.stdin = old
+    return code, out.getvalue(), err.getvalue()
+
+
+def _two_tab_files(scenario, tmp_path):
+    from tests.acceptance.conftest import tab
+
+    scenario.document["tabs"] = [
+        tab("t1", "One", [paragraph("Alpha.\n")]),
+        tab("t2", "Two", [paragraph("Beta.\n")]),
+    ]
+    files = tmp_path / "a.md", tmp_path / "b.md"
+    for path, title in zip(files, ("One", "Two")):
+        assert _run(["pull", "synthetic", str(path), "--tab", title])[0] == 0
+    for path, old in zip(files, ("Alpha.", "Beta.")):
+        path.write_text(path.read_text().replace(old, old[:-1] + " edited."))
+    return files
+
+
+def _push_first(scenario, path, via_hook):
+    if via_hook:
+        code, _, err = _run(["_sync-hook"], json.dumps(
+            {"tool_input": {"file_path": str(path)}}))
+        assert code == 0 and "SYNC: pushed" in err, err
+    else:
+        assert _run(["push", str(path)])[0] == 0
+    # Google now serves the acknowledged revision; tab Two is untouched.
+    scenario.document["revisionId"] = "r2"
+    scenario.document["tabs"][0]["documentTab"]["body"]["content"] = [
+        paragraph("Alpha edited.\n")]
+    scenario.service.documents.return_value.batchUpdate.reset_mock()
+
+
+@pytest.mark.parametrize("via_hook", [False, True])
+def test_sibling_tab_file_stays_pushable_after_own_push(scenario, tmp_path, via_hook):
+    if scenario.interface != "cli":
+        pytest.skip("pull and push are file commands")
+    a, b = _two_tab_files(scenario, tmp_path)
+    _push_first(scenario, a, via_hook)
+    if via_hook:
+        code, _, err = _run(["_sync-hook"], json.dumps(
+            {"tool_input": {"file_path": str(b)}}))
+        assert code == 0 and "SYNC: pushed" in err, err
+    else:
+        code, out, err = _run(["push", str(b)])
+        assert code == 0, out + err
+    assert scenario.batches[-1]["writeControl"] == {"requiredRevisionId": "r2"}
+    assert "Beta edited." in _inserted_text(scenario)
+    assert all(r.get("insertText", {}).get("location", {}).get("tabId", "t2") == "t2"
+               for r in requests(scenario))
+    assert "gdoc-revision: r2" in b.read_text()
+
+
+def test_changed_target_tab_still_blocks_stale_file_after_fresh_read(
+    scenario, tmp_path,
+):
+    if scenario.interface != "cli":
+        pytest.skip("pull and push are file commands")
+    a, b = _two_tab_files(scenario, tmp_path)
+    _push_first(scenario, a, via_hook=False)
+    # Someone else edits tab Two; a fresh read of it must not bless b.md.
+    scenario.document["revisionId"] = "r3"
+    scenario.document["tabs"][1]["documentTab"]["body"]["content"] = [
+        paragraph("Beta by a colleague.\n")]
+    assert _run(["cat", "synthetic", "--tab", "Two"])[0] == 0
+    code, _, err = _run(["push", str(b)])
+    assert code == 3 and "stale" in err
+    assert not scenario.batches

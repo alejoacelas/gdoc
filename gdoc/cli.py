@@ -1491,7 +1491,7 @@ def cmd_write(args) -> int:
 
 def _write_native_markdown(
     args, doc_id, content, *, command, tab_name=None, result_details=None,
-    file_revision=None,
+    file_revision=None, file_fingerprint=None,
 ):
     """Share full-content write semantics across CLI, MCP, push and hooks."""
     import re
@@ -1579,7 +1579,17 @@ def _write_native_markdown(
                 "fresh copy and reapply the edits, or use --force to "
                 "intentionally overwrite.", 3,
             )
-        if file_revision != revision:
+        from gdoc.frontmatter import body_fingerprint
+
+        # The revision is document-wide. A change elsewhere (another tab, or
+        # this tool's own write) leaves the file current when the selected
+        # tab still reads exactly as the body this file was pulled with.
+        tab_unchanged = (
+            not collapse and bool(file_fingerprint)
+            and body_fingerprint(get_tab_text(selected, markdown=True))
+            == file_fingerprint
+        )
+        if file_revision != revision and not tab_unchanged:
             raise GdocError(
                 "file gdoc-revision is stale; the document changed since this "
                 "file was pulled. Reconcile the local and remote edits, or use "
@@ -1816,6 +1826,7 @@ def cmd_push(args) -> int:
         tab_name=(None if getattr(args, "force_collapse_tabs", False)
                   else metadata.get("tab")),
         file_revision=metadata.get("gdoc-revision", ""), result_details=details,
+        file_fingerprint=metadata.get("gdoc-body-sha256"),
     )
     _refresh_file_revision(file_path, content, details)
     return result
@@ -1909,6 +1920,7 @@ def cmd_sync_hook(args) -> int:
                     hook_args, doc_id, body, command="push",
                     tab_name=metadata.get("tab"), result_details=write_result,
                     file_revision=metadata.get("gdoc-revision", ""),
+                    file_fingerprint=metadata.get("gdoc-body-sha256"),
                 )
         except GdocError as error:
             if error.exit_code != 3:

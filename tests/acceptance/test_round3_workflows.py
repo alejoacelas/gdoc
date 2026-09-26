@@ -81,6 +81,9 @@ def test_repeated_image_and_literal_token_survive_successive_writes(scenario):
 
 def test_quoted_soft_line_break_round_trips_through_cat(scenario):
     quoted = paragraph("line one\x0bline two\n")
+    quoted["paragraph"]["paragraphStyle"].update(
+        indentStart={"magnitude": 36, "unit": "PT"},
+        indentFirstLine={"magnitude": 36, "unit": "PT"})
     native = scenario.document["tabs"][0]["documentTab"]
     native["body"]["content"] = [quoted]
     native["namedRanges"] = {"gdoc:prefix:v1:1:0": {"namedRanges": [{
@@ -372,3 +375,50 @@ def test_table_markdown_into_a_cell_is_refused_before_any_write(
                                            tab="draft")
     assert code == 0, out + error
     assert "new" in _inserted_text(scenario)
+
+
+def _owned(name, start, end):
+    return {name: {"namedRanges": [{"namedRangeId": name, "name": name, "ranges": [
+        {"startIndex": start, "endIndex": end, "tabId": "draft"}]}]}}
+
+
+def test_native_edits_inside_gdoc_blocks_win_over_recorded_ranges(scenario):
+    code = paragraph("x = 1\n")
+    code["paragraph"]["elements"][0]["textRun"]["textStyle"] = {
+        "weightedFontFamily": {"fontFamily": "Courier New"}}
+    # Someone pressed Enter at the end of the code block and wrote a linked,
+    # bold heading with an image; the code range grew over it.
+    heading = paragraph("Plan \n", 7, style="HEADING_2")
+    heading["paragraph"]["elements"] = [
+        {"startIndex": 7, "endIndex": 11, "textRun": {
+            "content": "Plan", "textStyle": {"bold": True, "link": {
+                "url": "https://example.invalid/plan"}}}},
+        {"startIndex": 11, "endIndex": 12, "inlineObjectElement": {
+            "inlineObjectId": "pic"}},
+        {"startIndex": 12, "endIndex": 13, "textRun": {"content": "\n"}},
+    ]
+    heading["endIndex"] = 13
+    # A quote whose indent was removed in Docs is ordinary text again.
+    unquoted = paragraph("Was quoted\n", 13)
+    native = scenario.document["tabs"][0]["documentTab"]
+    native["body"]["content"] = [code, heading, unquoted]
+    native["inlineObjects"] = {"pic": {"inlineObjectProperties": {"embeddedObject": {
+        "imageProperties": {"contentUri": "https://example.invalid/pic.png"}}}}}
+    native["namedRanges"] = {**_owned("gdoc:code:v1", 1, 13),
+                             **_owned("gdoc:prefix:v1:1:0", 13, 24)}
+    source = read(scenario)
+    assert source.startswith("```\nx = 1\n```\n")
+    assert "## [**Plan**](https://example.invalid/plan)![](gdoc-image:pic)" in source
+    assert "\nWas quoted\n" in source and "> Was quoted" not in source
+    # An unrelated change needs no loss consent and keeps every feature.
+    scenario.ok("write", tab="draft", text=source.replace("Was quoted", "Now plain"))
+    sent = requests(scenario)
+    assert any("insertInlineImage" in r for r in sent)
+    assert any(r.get("updateTextStyle", {}).get("textStyle", {}).get("link")
+               == {"url": "https://example.invalid/plan"} for r in sent)
+    assert any(r.get("updateParagraphStyle", {}).get("paragraphStyle", {})
+               .get("namedStyleType") == "HEADING_2" for r in sent)
+    prefixed = [r["createNamedRange"] for r in sent
+                if r.get("createNamedRange", {}).get("name", "").startswith(
+                    "gdoc:prefix")]
+    assert prefixed == []

@@ -364,9 +364,7 @@ def _style_run_markdown(content: str, style: dict) -> str:
         for char in text.strip()
     )
 
-    if style.get("weightedFontFamily", {}).get("fontFamily") in (
-        "Courier New", "Consolas", "monospace",
-    ):
+    if style.get("weightedFontFamily", {}).get("fontFamily") in _MONOSPACE_FONTS:
         lead = trail = ""
         fence = "`" * (1 + max((len(m[0]) for m in re.finditer(r"`+", text)),
                                default=0))
@@ -392,6 +390,46 @@ def _style_run_markdown(content: str, style: dict) -> str:
         )
         core = f"[{core}]({destination})"
     return f"{lead}{core}{trail}{newline}"
+
+
+_MONOSPACE_FONTS = ("Courier New", "Consolas", "monospace")
+
+
+def _still_code(paragraph: dict) -> bool:
+    """Whether a paragraph in a gdoc code range can still be code-block text.
+
+    Headings, list items, images, links and emphasis cannot be code-block
+    content, so a paragraph carrying any of them is exported natively. Fonts
+    are not Markdown meaning and leave the block intact.
+    """
+    style = paragraph.get("paragraphStyle", {})
+    if paragraph.get("bullet") or style.get("namedStyleType",
+                                            "NORMAL_TEXT") != "NORMAL_TEXT":
+        return False
+    for element in paragraph.get("elements", []):
+        run = element.get("textRun")
+        if run is None:
+            return False
+        text_style = run.get("textStyle", {})
+        if run.get("content", "").strip() and any(text_style.get(key) for key in
+                                                  ("bold", "italic", "strikethrough",
+                                                   "link")):
+            return False
+    return True
+
+
+def _prefix_still_applies(paragraph: dict, prefix: tuple[int, int]) -> bool:
+    """Whether a paragraph still has the indent its recorded container gave it.
+
+    gdoc indents each quote level by 36pt, plus one level for text contained
+    in a list item; removing that indent in Docs removes the container.
+    """
+    indent = paragraph.get("paragraphStyle", {}).get("indentStart", {})
+    magnitude = (indent.get("magnitude", 0)
+                 if indent.get("unit", "PT") == "PT" else 0)
+    required = 36 * prefix[0] + (36 if prefix[1] and not paragraph.get("bullet")
+                                 else 0)
+    return magnitude >= required - 0.5
 
 
 def _runs_markdown(elements: list[dict]) -> str:
@@ -718,6 +756,14 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
         marker = next((index for index, r in enumerate(code_ranges)
                        if r.get("startIndex", 0) <= element.get("startIndex", -1)
                        < r.get("endIndex", 0)), None) if markdown else None
+        # gdoc's ranges record what it wrote. A paragraph someone has since
+        # restyled in Docs is read from its native content instead.
+        if "paragraph" in element:
+            if prefix != (0, 0) and not _prefix_still_applies(
+                    element["paragraph"], prefix):
+                prefix = (0, 0)
+            if marker is not None and not _still_code(element["paragraph"]):
+                marker = None
         if (marker != active_code or prefix != active_prefix
                 or "paragraph" not in element):
             flush_code()

@@ -2848,17 +2848,26 @@ def _empty_paragraph_range(content: list[dict], match: dict):
     for i, element in enumerate(content):
         if element.get("startIndex", 0) == last[1] and "paragraph" in element:
             start, end = first[1], last[2] + 1
-            if i == len(content) - 1:
+            # Docs cannot delete the paragraph mark before a table either, so
+            # that paragraph is removed like the final one.
+            before_table = i + 1 < len(content) and "table" in content[i + 1]
+            if i == len(content) - 1 or before_table:
                 end -= 1
                 previous = next((e for e in content
                                  if e.get("endIndex") == start), None)
                 if previous and "paragraph" in previous:
                     if not previous["paragraph"].get("positionedObjectIds"):
                         start -= 1
-                elif previous and "table" in previous:
+                elif previous and "table" in previous and not before_table:
                     raise GdocError(
                         "cannot remove the mandatory final paragraph after a table; "
                         "replace its wording instead", exit_code=3,
+                    )
+                elif before_table:
+                    raise GdocError(
+                        "cannot remove the paragraph directly before a table "
+                        "when no paragraph precedes it; replace its wording, or "
+                        "rewrite the tab with write --tab", exit_code=3,
                     )
             return {**match, "startIndex": start, "endIndex": end}
         for row in element.get("table", {}).get("tableRows", []):

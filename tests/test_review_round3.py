@@ -82,3 +82,26 @@ def test_documented_emphasis_and_line_break_spellings_round_trip():
     # Export keeps the boundary space outside the delimiters.
     assert {(s.start, s.end) for s in again.styles if s.type == "text_style"} == {
         (0, 4), (5, 11)}
+
+
+def test_paragraph_before_a_table_is_removed_with_the_preceding_mark(mocker):
+    from gdoc.api.docs import find_text_in_document, replace_formatted
+    from gdoc.util import GdocError
+    from tests.test_paragraph_edits import _body, _requests
+
+    body = _body(("Intro", "NORMAL_TEXT", False), ("Obsolete", "HEADING_2", False))
+    body["content"].append({"startIndex": 16, "endIndex": 30, "table": {}})
+    requests = _requests(mocker, body, "Obsolete", "")
+    # Docs refuses to delete the mark before a table; the preceding one goes.
+    assert requests == [{"deleteContentRange": {"range": {
+        "startIndex": 6, "endIndex": 15, "tabId": "synthetic-tab"}}}]
+
+    first = _body(("Obsolete", "HEADING_2", False))
+    first["content"].append({"startIndex": 10, "endIndex": 20, "table": {}})
+    service = mocker.patch("gdoc.api.docs.get_docs_service")
+    with pytest.raises(GdocError, match="directly before a table") as error:
+        replace_formatted("synthetic-doc",
+                          find_text_in_document(None, "Obsolete", body=first), "",
+                          "synthetic-rev", tab_id="synthetic-tab", body=first)
+    assert error.value.exit_code == 3
+    service.assert_not_called()

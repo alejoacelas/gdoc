@@ -1,5 +1,6 @@
 """Round-2 review regressions through real CLI dispatch and MCP tools/call."""
 
+import pytest
 from conftest import paragraph, tab
 from test_workflows import read, requests
 
@@ -175,3 +176,21 @@ def test_failed_display_lookup_does_not_hide_acknowledged_edit_or_insert(scenari
     code, _, error = scenario.call("insert", tab="draft", text="More\n",
                                    position="end")
     assert code == 0 and "write acknowledged" in error, error
+
+
+def test_markdown_export_names_its_single_tab_scope(scenario):
+    if scenario.interface == "mcp":
+        pytest.skip("export writes local files and is a CLI-only command")
+    scenario.document["tabs"].append(tab("notes", "Notes", [paragraph("Else\n")]))
+    code, output, error = scenario.call("export", format="md")
+    assert code == 0, output + error
+    assert output == "Original sentence.\n"
+    assert "read tab 'Draft' (draft); 2 tabs exist" in error
+    code, output, _ = scenario.call("export", format="md", json=True)
+    import json
+
+    assert {k: json.loads(output)[k] for k in ("tab", "tab_id")} == {
+        "tab": "Draft", "tab_id": "draft"}
+    code, _, error = scenario.call("pull", file=str(scenario.tmp_path / "d.md"),
+                                   json=True)
+    assert code == 0 and "2 tabs exist" in error

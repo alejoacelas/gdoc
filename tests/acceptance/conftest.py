@@ -201,6 +201,8 @@ class Scenario:
                 "info": ("doc",),
                 "write": ("doc", "file"),
                 "insert": ("doc", "file"),
+                "export": ("doc",),
+                "pull": ("doc", "file"),
                 "edit": ("doc", "old_text", "new_text"),
                 "comment": ("doc", "text"),
                 "images": ("doc",),

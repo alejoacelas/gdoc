@@ -391,12 +391,8 @@ def cmd_cat(args) -> int:
         print(format_json(content=displayed, scope=scope, **extra))
     else:
         print(displayed, end="")
-        if len(tabs) > 1 and not all_tabs:
-            print(
-                f"NOTE: read tab {selected[0]['title']!r} ({selected[0]['id']}); "
-                f"{len(tabs)} tabs exist. Use --all-tabs or --tab to read others.",
-                file=sys.stderr,
-            )
+        if not all_tabs:
+            _note_tab_scope(document, selected[0], "--all-tabs or --tab")
         if truncated:
             print(
                 f"NOTE: partial output ({len(displayed.encode('utf-8'))} of "
@@ -1816,6 +1812,19 @@ def _write_native_markdown(
     return 0
 
 
+def _note_tab_scope(document: dict, selected: dict, others: str = "--tab") -> None:
+    """Say on stderr when a Markdown read covered one of several tabs."""
+    from gdoc.api.docs import flatten_tabs
+
+    count = len(flatten_tabs(document.get("tabs", [])))
+    if count > 1:
+        print(
+            f"NOTE: read tab {selected['title']!r} ({selected['id']}); "
+            f"{count} tabs exist. Use {others} to read others.",
+            file=sys.stderr,
+        )
+
+
 def _read_native_tab(doc_id: str, tab_name: str | None = None, *, document=None):
     """Return editable Markdown and its exact native snapshot provenance."""
     from gdoc.api.docs import (
@@ -1899,6 +1908,8 @@ def cmd_pull(args) -> int:
 
     rev_label = f" @ rev {rev['id']}" if rev is not None else ""
     mode = get_output_mode(args)
+    if document is not None:
+        _note_tab_scope(document, selected)
     if mode == "json":
         if rev is not None:
             print(format_json(
@@ -1906,7 +1917,8 @@ def cmd_pull(args) -> int:
                 revision=rev["id"],
             ))
         else:
-            print(format_json(pulled=True, title=title, file=file_path))
+            print(format_json(pulled=True, title=title, file=file_path,
+                              tab=selected["title"], tab_id=selected["id"]))
     elif mode == "plain":
         print(f"path\t{file_path}")
         if rev is not None:
@@ -3044,8 +3056,11 @@ def cmd_export(args) -> int:
 
         markdown, document, selected = _read_native_tab(doc_id)
         content = protect_body(markdown).encode("utf-8")
+        _note_tab_scope(document, selected)
     else:
         content = export_doc_bytes(doc_id, _EXPORT_MIME[fmt])
+    tab_scope = ({"tab": selected["title"], "tab_id": selected["id"]}
+                 if selected is not None else {})
 
     if out:
         try:
@@ -3058,7 +3073,7 @@ def cmd_export(args) -> int:
 
         mode = get_output_mode(args)
         if mode == "json":
-            print(format_json(path=out, format=fmt, bytes=len(content)))
+            print(format_json(path=out, format=fmt, bytes=len(content), **tab_scope))
         elif mode == "plain":
             print(f"path\t{out}")
             print(f"format\t{fmt}")
@@ -3075,7 +3090,8 @@ def cmd_export(args) -> int:
 
         text = content.decode("utf-8")
         if get_output_mode(args) == "json":
-            print(format_json(format=fmt, bytes=len(content), content=text))
+            print(format_json(format=fmt, bytes=len(content), content=text,
+                              **tab_scope))
         else:
             # terse/plain/verbose: the document content IS the output
             sys.stdout.write(text)

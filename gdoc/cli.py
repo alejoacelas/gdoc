@@ -708,8 +708,7 @@ def cmd_insert(args) -> int:
         verb="inserted",
     )
 
-    from gdoc.state import update_state_after_command
-    update_state_after_command(
+    _update_state_after_write(
         doc_id, change_info, command="insert",
         quiet=quiet, command_version=command_version,
     )
@@ -1312,10 +1311,7 @@ def cmd_edit(args) -> int:
         for key, count in counts.items():
             print(f"  tab {key}: {count}")
 
-    # Update state
-    from gdoc.state import update_state_after_command
-
-    update_state_after_command(
+    _update_state_after_write(
         doc_id, plan.change_info, command="edit",
         quiet=plan.quiet, command_version=command_version,
     )
@@ -1511,11 +1507,7 @@ def _write_native_markdown(
     from gdoc.format import format_json, get_output_mode
     from gdoc.mdparse import _FENCE_CLOSE_RE, _fence_open
     from gdoc.notify import pre_flight
-    from gdoc.state import (
-        record_content_read,
-        require_content_baseline,
-        update_state_after_command,
-    )
+    from gdoc.state import record_content_read, require_content_baseline
 
     inspection_header = False
     fence = None
@@ -1620,14 +1612,9 @@ def _write_native_markdown(
     acknowledged = details.get("acknowledged_revision_id", "")
     if result_details is not None:
         result_details.update(details)
-    try:
-        update_state_after_command(
-            doc_id, change_info, command=command, quiet=quiet,
-            command_version=version,
-        )
-    except OSError as error:
-        print(f"WARN: write saved, but local state could not be updated: {error}",
-              file=sys.stderr)
+    _update_state_after_write(
+        doc_id, change_info, command=command, quiet=quiet, command_version=version,
+    )
     _record_acknowledged_write(
         doc_id, input_revision_id=details.get("input_revision_id", revision),
         acknowledged_revision_id=acknowledged,
@@ -3134,6 +3121,21 @@ def _record_targeted_write(doc_id, input_revision_id, acknowledged_revision_id):
         doc_id, input_revision_id=input_revision_id,
         acknowledged_revision_id=acknowledged_revision_id,
     )
+
+
+def _update_state_after_write(doc_id, change_info, **details):
+    """Update awareness state after a write Google acknowledged.
+
+    A local failure leaves the read baseline stale, which only asks for a
+    fresh read; it must not report the saved write as failed.
+    """
+    from gdoc.state import update_state_after_command
+
+    try:
+        update_state_after_command(doc_id, change_info, **details)
+    except OSError as error:
+        print(f"WARN: write saved, but local state could not be updated: {error}",
+              file=sys.stderr)
 
 
 def _record_acknowledged_write(doc_id, **provenance):

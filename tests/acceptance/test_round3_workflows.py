@@ -430,17 +430,27 @@ def test_native_edits_inside_gdoc_blocks_win_over_recorded_ranges(scenario):
 def test_local_state_failure_after_acknowledged_write_is_a_warning(
     scenario, monkeypatch, command,
 ):
+    from gdoc import state
+
     read(scenario)
+    save = state.save_state
 
-    def full_disk(*args, **kwargs):
-        raise OSError("No space left on device")
+    def full_disk_after_send(*args, **kwargs):
+        # Every local state save fails once the mutation has left.
+        if scenario.batches:
+            raise OSError("No space left on device")
+        return save(*args, **kwargs)
 
-    monkeypatch.setattr("gdoc.state.record_content_write", full_disk)
+    monkeypatch.setattr(state, "save_state", full_disk_after_send)
     if command == "edit":
         arguments = {"old_text": "Original", "new_text": "Revised"}
     else:
         arguments = {"text": "Revised sentence.\n"}
     code, out, error = scenario.call(command, tab="draft", **arguments)
     assert code == 0, out + error
+    assert "write saved, but local state could not be updated" in error
     assert "write saved, but content provenance could not be recorded" in error
     assert scenario.batches
+    # The baseline stayed at the pre-write revision, so the next write asks
+    # for a fresh read rather than trusting unrecorded content.
+    assert state.load_state("synthetic").read_revision_ids == {"draft": "r1"}

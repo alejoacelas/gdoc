@@ -157,8 +157,10 @@ def test_appending_a_leading_table_keeps_the_last_paragraph(route, last, merge):
     route.ok("insert", text="| a |\n|---|\n| c |\n\nafter", tab="Main",
              position="end")
     after = styles(doc)
-    # Exactly the table's two cells and "after" are added: no blank paragraph.
+    # Exactly the table's two cells, the Markdown's one blank line and "after"
+    # are added: no scaffolding paragraph survives.
     assert after == before + [("a", None, None), ("c", None, None),
+                              ("", "NORMAL_TEXT", None),
                               ("after", "NORMAL_TEXT", None)]
 
 

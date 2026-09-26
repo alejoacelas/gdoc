@@ -20,6 +20,9 @@ class DocState:
     known_resolved_ids: list[str] = field(default_factory=list)
     # Only content actually exposed to the caller establishes these baselines.
     read_revision_ids: dict[str, str] = field(default_factory=dict)
+    # Reads that named native content their Markdown leaves out: they pin the
+    # revision for targeted edits, but a replacement also needs loss consent.
+    limited_read_revision_ids: dict[str, str] = field(default_factory=dict)
     image_reference_ids: dict[str, str] = field(default_factory=dict)
 
 
@@ -166,14 +169,26 @@ def update_state_after_command(
     save_state(doc_id, state)
 
 
-def record_content_read(doc_id: str, tab_ids: list[str], revision_id: str) -> None:
-    """Record complete exposed tab content from one native snapshot."""
+def record_content_read(
+    doc_id: str, tab_ids: list[str], revision_id: str, *,
+    limited_tab_ids: list[str] = (),
+) -> None:
+    """Record exposed tab content from one native snapshot.
+
+    Tabs in ``limited_tab_ids`` were read with named omissions (content the
+    Markdown cannot show); they get limited coverage, never complete coverage.
+    """
     if not isinstance(revision_id, str) or not revision_id:
         return
     state = load_state(doc_id) or DocState()
     for tab_id in tab_ids:
         if isinstance(tab_id, str) and tab_id:
-            state.read_revision_ids[tab_id] = revision_id
+            if tab_id in limited_tab_ids:
+                state.read_revision_ids.pop(tab_id, None)
+                state.limited_read_revision_ids[tab_id] = revision_id
+            else:
+                state.limited_read_revision_ids.pop(tab_id, None)
+                state.read_revision_ids[tab_id] = revision_id
     save_state(doc_id, state)
 
 
@@ -192,11 +207,12 @@ def record_content_write(
         return
     state = load_state(doc_id) or DocState()
     if not rebased and isinstance(input_revision_id, str) and input_revision_id:
-        state.read_revision_ids = {
-            tab_id: (acknowledged_revision_id if revision == input_revision_id
-                     else revision)
-            for tab_id, revision in state.read_revision_ids.items()
-        }
+        state.read_revision_ids, state.limited_read_revision_ids = (
+            {tab_id: (acknowledged_revision_id if revision == input_revision_id
+                      else revision)
+             for tab_id, revision in known.items()}
+            for known in (state.read_revision_ids,
+                          state.limited_read_revision_ids))
     if not rebased and image_reference_ids:
         state.image_reference_ids = {
             original: image_reference_ids.get(current, current)
@@ -204,16 +220,24 @@ def record_content_write(
         }
         state.image_reference_ids.update(image_reference_ids)
     if not rebased:
+        # A replacement writes exactly the caller's Markdown: complete coverage.
         for tab_id in replaced_tab_ids or []:
             if isinstance(tab_id, str) and tab_id:
+                state.limited_read_revision_ids.pop(tab_id, None)
                 state.read_revision_ids[tab_id] = acknowledged_revision_id
     save_state(doc_id, state)
 
 
 def require_content_baseline(
     doc_id: str, tab_ids: list[str], revision_id: str, *, force: bool = False,
+    accept_limited: bool = False, omitted: str = "",
 ) -> None:
-    """Require complete tab exposure at the exact revision about to be written."""
+    """Require tab exposure at the exact revision about to be written.
+
+    A read that named omitted native content counts only when
+    ``accept_limited`` says the write keeps it (a targeted insertion) or the
+    caller consented to discard it (``--allow-lossy``).
+    """
     from gdoc.util import GdocError
 
     if not isinstance(revision_id, str) or not revision_id:
@@ -221,13 +245,24 @@ def require_content_baseline(
     if force:
         return
     state = load_state(doc_id) or DocState()
-    if any(not state.read_revision_ids.get(tab_id) for tab_id in tab_ids):
-        raise GdocError(
-            "no complete read baseline for the selected tab. Run 'gdoc cat' "
-            "with the same --tab and without --max-bytes/--no-images, "
-            "or use --force to intentionally overwrite.", exit_code=3,
-        )
-    if any(state.read_revision_ids[tab_id] != revision_id for tab_id in tab_ids):
+    for tab_id in tab_ids:
+        complete = state.read_revision_ids.get(tab_id)
+        limited = state.limited_read_revision_ids.get(tab_id)
+        if complete == revision_id or (limited == revision_id and accept_limited):
+            continue
+        if limited == revision_id:
+            raise GdocError(
+                "the last read of the selected tab left out native content"
+                + (f" ({omitted})" if omitted else "")
+                + ". Pass --allow-lossy to discard it, or use targeted edits "
+                "to keep it.", exit_code=3,
+            )
+        if not (complete or limited):
+            raise GdocError(
+                "no complete read baseline for the selected tab. Run 'gdoc cat' "
+                "with the same --tab and without --max-bytes/--no-images, "
+                "or use --force to intentionally overwrite.", exit_code=3,
+            )
         raise GdocError(
             "doc changed since last read. Read the selected tab again, "
             "or use --force to intentionally overwrite.", exit_code=3,

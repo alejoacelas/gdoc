@@ -27,11 +27,11 @@ def with_rich(service, where):
     """Add a footnote reference to the first paragraph, or a person chip to
     the first table cell."""
     snapshot = service.snapshot
-    written = len(service.batches)
+    service.rich_from = len(service.batches)
 
     def rich():
         value = snapshot()
-        if len(service.batches) > written:
+        if len(service.batches) > service.rich_from:
             return value  # a consented rewrite discarded the rich element
         content = value["tabs"][0]["documentTab"]["body"]["content"]
         if where == "cell":
@@ -125,3 +125,73 @@ def test_pull_and_markdown_export_report_omissions(
     assert result["complete"] is False and result["omitted"] == [label]
     code, out, err = _run("export", "synthetic", "--out", str(tmp_path / "x.md"))
     assert code == 0 and f"leaves out native content: {label}" in err
+
+
+def _state():
+    from gdoc.state import load_state
+    return load_state("synthetic")
+
+
+@pytest.mark.parametrize("where,block,label", CASES)
+def test_omitting_reads_record_limited_coverage_only(route, where, block, label):
+    route.load(NativeDoc(block, ("p", "After.")))
+    with_rich(route.service, where)
+    text = parse_frontmatter(route.ok("cat"))[1]
+    state = _state()
+    assert state.limited_read_revision_ids == {"t.0": "r1"}
+    assert "t.0" not in state.read_revision_ids
+    # An unchanged write-back neither writes nor upgrades the coverage.
+    assert "already in sync" in route.ok("write", text=text)
+    assert _state().read_revision_ids.get("t.0") is None
+    # Targeted insertion keeps the omitted content, so limited coverage allows it.
+    batches = len(route.service.batches)
+    route.ok("insert", text="Inserted.", tab="Main", position="end")
+    assert len(route.service.batches) > batches
+    route.service.rich_from = len(route.service.batches)  # insertion keeps it
+    assert _state().limited_read_revision_ids == {"t.0": f"r{route.service.revision}"}
+    # A consented replacement writes exactly the Markdown: complete coverage.
+    text = parse_frontmatter(route.ok("cat"))[1]
+    code, output, error = route.call("write", text=text.replace("After.", "Later."))
+    assert code != 0 and label in output + error
+    route.ok("write", text=text.replace("After.", "Later."), allow_lossy=True)
+    state = _state()
+    assert state.read_revision_ids == {"t.0": f"r{route.service.revision}"}
+    assert state.limited_read_revision_ids == {}
+
+
+@pytest.mark.parametrize("where,block,label", CASES)
+def test_pulled_file_with_omissions_needs_consent_even_after_sibling_edits(
+    monkeypatch, tmp_path, where, block, label,
+):
+    route = NativeRoute("cli", monkeypatch, tmp_path)
+    route.load(NativeDoc(block, ("p", "After.")))
+    route.service.extra_tabs = [{
+        "tabProperties": {"tabId": "t.1", "title": "Notes", "index": 1},
+        "documentTab": {"body": {"content": [
+            {"startIndex": 0, "endIndex": 1, "sectionBreak": {}}]}}}]
+    with_rich(route.service, where)
+    path = tmp_path / "doc.md"
+    assert _run("pull", "synthetic", str(path))[0] == 0
+    assert _state().limited_read_revision_ids == {"t.0": "r1"}
+    # A sibling edit changes the revision; the tab's native content is the same.
+    route.service.extra_tabs[0]["documentTab"]["body"]["content"].append(
+        {"startIndex": 1, "endIndex": 3, "paragraph": {"elements": [
+            {"startIndex": 1, "endIndex": 3, "textRun": {"content": "N\n"}}]}})
+    route.service.revision += 1
+    path.write_text(path.read_text().replace("After.", "Later."))
+    code, out, err = _run("push", str(path))
+    assert code == 3 and label in err
+    assert _state().limited_read_revision_ids == {"t.0": "r2"}
+    code, out, err = _run("push", str(path), "--allow-lossy")
+    assert code == 0, err
+    assert _state().read_revision_ids["t.0"] == f"r{route.service.revision}"
+
+
+def test_markdown_export_records_limited_coverage(monkeypatch, tmp_path):
+    route = NativeRoute("cli", monkeypatch, tmp_path)
+    route.load(NativeDoc(("p", "See it."), ("p", "After.")))
+    with_rich(route.service, "body")
+    assert _run("export", "synthetic", "--out", str(tmp_path / "x.md"))[0] == 0
+    state = _state()
+    assert state.limited_read_revision_ids == {"t.0": "r1"}
+    assert "t.0" not in state.read_revision_ids

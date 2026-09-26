@@ -346,7 +346,7 @@ def cmd_cat(args) -> int:
         resolve_tab,
     )
     from gdoc.format import format_json, get_output_mode
-    from gdoc.state import record_content_read, update_state_after_command
+    from gdoc.state import update_state_after_command
 
     document = get_document_with_tabs(doc_id)
     tabs = flatten_tabs(document.get("tabs", []))
@@ -428,8 +428,20 @@ def cmd_cat(args) -> int:
     # rewrite then needs --allow-lossy to discard them (the loss guard), and
     # stays revision-protected.
     if baseline:
-        record_content_read(doc_id, scope["tab_ids"], scope["revision_id"])
+        _record_read(doc_id, selected, scope["revision_id"])
     return 0
+
+
+def _record_read(doc_id: str, tabs: list[dict], revision: str) -> None:
+    """Record a Markdown read; a tab whose read named omissions gets limited
+    coverage, which a replacement accepts only with --allow-lossy."""
+    from gdoc.api.docs import markdown_read_omissions
+    from gdoc.state import record_content_read
+
+    record_content_read(
+        doc_id, [tab["id"] for tab in tabs], revision,
+        limited_tab_ids=[tab["id"] for tab in tabs if markdown_read_omissions(tab)],
+    )
 
 
 def _read_omissions(tabs: list[dict]) -> list[str]:
@@ -718,8 +730,10 @@ def cmd_insert(args) -> int:
     _require_doc(doc_id, change_info)
     document = get_document_with_tabs(doc_id)
     selected = resolve_tab(flatten_tabs(document.get("tabs", [])), tab_name)
+    # An insertion keeps any content the last read had to leave out.
     require_content_baseline(
         doc_id, [selected["id"]], document.get("revisionId", ""), force=force,
+        accept_limited=True,
     )
 
     result = insert_markdown_into_tab(
@@ -1544,7 +1558,7 @@ def _write_native_markdown(
     from gdoc.format import format_json, get_output_mode
     from gdoc.mdparse import _FENCE_CLOSE_RE, _fence_open
     from gdoc.notify import pre_flight
-    from gdoc.state import record_content_read, require_content_baseline
+    from gdoc.state import require_content_baseline
 
     inspection_header = False
     fence = None
@@ -1616,7 +1630,7 @@ def _write_native_markdown(
         # Matching Markdown is not a read: invisible native changes may differ.
         # Only a file whose own provenance covers this snapshot advances.
         if file_current and _preview_complete([selected]):
-            record_content_read(doc_id, [selected["id"]], revision)
+            _record_read(doc_id, [selected], revision)
         if mode == "json":
             print(format_json(
                 in_sync=True, tab_id=selected["id"], revision_id=revision,
@@ -1645,10 +1659,12 @@ def _write_native_markdown(
         if file_revision != revision and _preview_complete([selected]):
             # The native tab is identical to the one the file recorded, so the
             # file is a complete read of that tab at this revision.
-            record_content_read(doc_id, [selected["id"]], revision)
+            _record_read(doc_id, [selected], revision)
     require_content_baseline(
         doc_id, [t["id"] for t in tabs] if collapse else [selected["id"]],
         revision, force=getattr(args, "force", False),
+        accept_limited=getattr(args, "allow_lossy", False),
+        omitted=", ".join(_read_omissions([selected])),
     )
     details = {}
     if tab_name:
@@ -1888,8 +1904,7 @@ def cmd_pull(args) -> int:
     )
 
     if document is not None and _preview_complete([selected]):
-        from gdoc.state import record_content_read
-        record_content_read(doc_id, [selected["id"]], document.get("revisionId", ""))
+        _record_read(doc_id, [selected], document.get("revisionId", ""))
     return 0
 
 
@@ -3088,8 +3103,7 @@ def cmd_export(args) -> int:
         doc_id, change_info, command="export-content", quiet=quiet,
     )
     if document is not None and _preview_complete([selected]):
-        from gdoc.state import record_content_read
-        record_content_read(doc_id, [selected["id"]], document.get("revisionId", ""))
+        _record_read(doc_id, [selected], document.get("revisionId", ""))
     return 0
 
 

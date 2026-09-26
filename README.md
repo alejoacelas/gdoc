@@ -422,9 +422,9 @@ also reports `tab_count`. When a tab holds content Markdown cannot show (footnot
 chips, equations, page breaks, positioned objects, generated contents, tables that
 cannot be pipe tables, or lists and headings inside table cells), `cat`, `pull` and
 Markdown `export` name it on stderr, and JSON reports `complete: false` with an
-`omitted` list. Such a read still pins its revision: targeted edits keep the
-omitted content, and a rewrite of the tab needs `--allow-lossy` to discard it while
-staying revision-protected. `pull` and Markdown
+`omitted` list. Such a read records only limited coverage of its revision:
+targeted edits and `insert` keep the omitted content and proceed, and a rewrite of
+the tab needs `--allow-lossy` to discard it while staying revision-protected. `pull` and Markdown
 `export` use the same native serializer as `cat`.
 
 `write` and `insert` accept at most one leading metadata block: `pull` frontmatter

@@ -649,7 +649,7 @@ gdoc cat --all-tabs DOC
 # ...content...
 ```
 
-`--tab` and `--all-tabs` are mutually exclusive with `--comments`. They work with `--json` and `--plain`.
+`--comments` annotates one tab: the first, or the one `--tab` selects. Drive does not record which tab a comment's quoted text is in, so a comment whose text appears only in another tab is listed as `anchor in another tab`, and one whose text appears in several tabs as `anchor ambiguous`. `--all-tabs` cannot be combined with `--comments`. Both tab flags work with `--json` and `--plain`.
 
 Tab Markdown export escapes literal syntax: a plain `1. Hello` paragraph now
 prints as `1\. Hello`, and `_`, `[`, and `<` gain backslashes. It also emits

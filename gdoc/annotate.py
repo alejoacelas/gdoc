@@ -111,10 +111,28 @@ def _decode_prose_escapes(markdown: str) -> str:
     return "\n".join(lines)
 
 
+def _find_anchor(markdown: str, anchor_text: str) -> tuple[str, str, int]:
+    """Locate an anchor exactly, then space-folded, then without prose escapes."""
+    search_text, search_anchor = markdown, anchor_text
+    pos = search_text.find(search_anchor)
+    if pos == -1:
+        search_text = fold_unicode_spaces(markdown)
+        search_anchor = fold_unicode_spaces(anchor_text)
+        pos = search_text.find(search_anchor)
+    if pos == -1:
+        # Exported Markdown escapes literal punctuation. Keep line breaks
+        # while decoding so the matched line still refers to the display.
+        search_text = fold_unicode_spaces(_decode_prose_escapes(markdown))
+        search_anchor = fold_unicode_spaces(anchor_text)
+        pos = search_text.find(search_anchor)
+    return search_text, search_anchor, pos
+
+
 def annotate_markdown(
     markdown: str,
     comments: list[dict],
     show_resolved: bool = False,
+    other_tabs: list[str] | None = None,
 ) -> str:
     """Produce line-numbered annotated output with inline comment annotations.
 
@@ -123,6 +141,9 @@ def annotate_markdown(
         comments: Comment dicts from list_comments(include_anchor=True).
         show_resolved: If True, include resolved comments. If False,
             filter them out (defensive — caller should pre-filter).
+        other_tabs: Markdown of the document's unselected tabs. Drive does
+            not say which tab an anchor is in, so an anchor found only there
+            is reported as in another tab, and one found in both as ambiguous.
 
     Returns:
         Annotated string with numbered content lines and un-numbered
@@ -156,27 +177,17 @@ def annotate_markdown(
             unanchored.append((c, "anchor too short"))
             continue
 
-        # Find anchor in full markdown string
-        search_text, search_anchor = markdown, anchor_text
-        pos = search_text.find(search_anchor)
+        search_text, search_anchor, pos = _find_anchor(markdown, anchor_text)
+        elsewhere = any(_find_anchor(other, anchor_text)[2] != -1
+                        for other in other_tabs or [])
         if pos == -1:
-            search_text = fold_unicode_spaces(markdown)
-            search_anchor = fold_unicode_spaces(anchor_text)
-            pos = search_text.find(search_anchor)
-        if pos == -1:
-            # Exported Markdown escapes literal punctuation. Keep line breaks
-            # while decoding so the matched line still refers to the display.
-            search_text = fold_unicode_spaces(_decode_prose_escapes(markdown))
-            search_anchor = fold_unicode_spaces(anchor_text)
-            pos = search_text.find(search_anchor)
-        if pos == -1:
-            # Anchor text deleted
-            unanchored.append((c, "anchor deleted"))
+            unanchored.append((c, "anchor in another tab" if elsewhere
+                               else "anchor deleted"))
             continue
 
         # Check for multiple matches
         second_pos = search_text.find(search_anchor, pos + 1)
-        if second_pos != -1:
+        if second_pos != -1 or elsewhere:
             # Ambiguous
             unanchored.append((c, "anchor ambiguous"))
             continue

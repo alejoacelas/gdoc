@@ -259,3 +259,31 @@ def test_markdown_export_selects_a_tab_and_other_formats_refuse_tab(
     code, _, err = _run(["export", "synthetic", "--out", str(tmp_path / "x.pdf"),
                          "--tab", "Two"])
     assert code == 3 and "every tab" in err
+
+
+def test_comment_annotation_is_scoped_to_the_selected_tab(scenario, monkeypatch):
+    from tests.acceptance.conftest import tab
+
+    scenario.document["tabs"] = [
+        tab("t1", "One", [paragraph("First tab prose.\n")]),
+        tab("t2", "Two", [paragraph("Second tab  prose here.\n")]),
+    ]
+    comments = [
+        {"id": "c1", "content": "Is this right?", "author": {"displayName": "Ann"},
+         "quotedFileContent": {"value": "Second tab  prose"}},
+        {"id": "c2", "content": "Typo", "author": {"displayName": "Bo"},
+         "quotedFileContent": {"value": "First tab"}},
+        {"id": "c3", "content": "Gone", "author": {"displayName": "Cy"},
+         "quotedFileContent": {"value": "removed sentence"}},
+        {"id": "c4", "content": "Which?", "author": {"displayName": "Di"},
+         "quotedFileContent": {"value": "prose"}},
+    ]
+    monkeypatch.setattr("gdoc.api.comments.list_comments", lambda *a, **kw: comments)
+    first = scenario.ok("cat", comments=True)
+    assert "[#c1 open] [anchor in another tab]" in first
+    assert '[#c2 open] Bo on "First tab"' in first
+    assert "[#c3 open] [anchor deleted]" in first
+    assert "[#c4 open] [anchor ambiguous]" in first
+    second = scenario.ok("cat", comments=True, tab="Two")
+    assert '[#c1 open] Ann on "Second tab  prose"' in second
+    assert "[#c2 open] [anchor in another tab]" in second

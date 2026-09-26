@@ -225,11 +225,6 @@ class TestCatAllTabs:
 
 
 class TestCatTabMutualExclusivity:
-    def test_tab_and_comments_conflict(self):
-        args = _make_args(tab="Tab 1", comments=True, quiet=True)
-        with pytest.raises(GdocError, match="mutually exclusive"):
-            cmd_cat(args)
-
     def test_all_tabs_and_comments_conflict(self):
         args = _make_args(all_tabs=True, comments=True, quiet=True)
         with pytest.raises(GdocError, match="mutually exclusive"):

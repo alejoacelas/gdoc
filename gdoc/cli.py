@@ -269,9 +269,10 @@ def cmd_cat(args) -> int:
     if getattr(args, "comments", False) and getattr(args, "plain", False):
         raise GdocError("--comments and --plain are mutually exclusive", exit_code=3)
 
-    if (tab or all_tabs) and getattr(args, "comments", False):
+    if all_tabs and getattr(args, "comments", False):
         raise GdocError(
-            "--tab/--all-tabs and --comments are mutually exclusive",
+            "--all-tabs and --comments are mutually exclusive; annotate one "
+            "tab at a time with --tab",
             exit_code=3,
         )
 
@@ -373,7 +374,10 @@ def cmd_cat(args) -> int:
         comments = list_comments(
             doc_id, include_resolved=include_resolved, include_anchor=True,
         )
-        content = annotate_markdown(content, comments, show_resolved=include_resolved)
+        others = [get_tab_text(other, markdown=True) for other in tabs
+                  if other["id"] != selected[0]["id"]]
+        content = annotate_markdown(content, comments, show_resolved=include_resolved,
+                                    other_tabs=others)
 
     total_bytes = len(content.encode("utf-8"))
     displayed = _truncate_bytes(content, max_bytes)
@@ -392,7 +396,8 @@ def cmd_cat(args) -> int:
     else:
         print(displayed, end="")
         if not all_tabs:
-            _note_tab_scope(document, selected[0], "--all-tabs or --tab")
+            _note_tab_scope(document, selected[0],
+                            "--tab" if annotated else "--all-tabs or --tab")
         if truncated:
             print(
                 f"NOTE: partial output ({len(displayed.encode('utf-8'))} of "

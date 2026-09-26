@@ -98,8 +98,9 @@ def _table_style_losses(table: dict) -> set[str]:
     for row in table.get("tableRows", []):
         for cell in row.get("tableCells", []):
             style = cell.get("tableCellStyle", {})
-            if style.get("backgroundColor", {}).get("color", {}).get(
-                    "rgbColor"):
+            # An empty backgroundColor is no shading; any rgbColor, even an
+            # empty one (black, its zero components omitted), is shading.
+            if "rgbColor" in style.get("backgroundColor", {}).get("color", {}):
                 losses.add("table cell shading")
             for side in ("borderLeft", "borderRight", "borderTop", "borderBottom"):
                 border = style.get(side)

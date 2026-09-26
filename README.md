@@ -457,8 +457,11 @@ its link.
 
 Table creation and filling are revision-protected stages. Partial or uncertain
 completion exits 1 and reports completed stages; a clean refusal before mutation
-exits 3. Mutations are sent once and uncertain requests are never automatically
-replayed. Inspect the document before retrying. `--force-collapse-tabs` explicitly
+exits 3. Every Docs API write (tab content, edits, suggestions, images, tabs and
+page mode) and every new comment is sent once, and an uncertain request is never
+automatically replayed. Replies, resolve/reopen and Drive or Sheets changes use the
+Google client's ordinary transport, which can resend a request after a lost
+response. Inspect the document before retrying. `--force-collapse-tabs` explicitly
 removes sibling tabs after replacing the first tab, using revision-pinned native
 requests; ordinary writes never collapse tabs.
 

@@ -70,7 +70,9 @@ All notable changes to `gdoc` are documented here. This project follows
   with section breaks as one section. Table shading, borders and fixed widths
   produce the style warning. `comment --quote` prefers its own letter case.
 - A pulled file stays pushable after a collaborator edits another tab. An
-  unreadable add-tab reply reports an uncertain outcome instead of an error.
+  unreadable add-tab reply is reported as an uncertain outcome (still an
+  `ERR:` with exit 1) that says to list the tabs before retrying, instead of
+  a generic unexpected-response error.
 - `edit` and `insert` record an acknowledged write before the optional version
   lookup. Markdown `export` and `pull` name the tab they read. Sync hooks
   report skips to the agent, identical local replacements leave the file in

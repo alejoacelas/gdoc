@@ -475,8 +475,14 @@ def test_file_stays_pushable_after_a_collaborator_edits_a_sibling_tab(
         code, out, err = _run(["push", str(a)])
         assert code == 0, out + err
     assert scenario.batches[-1]["writeControl"] == {"requiredRevisionId": "r5"}
-    assert all(next(iter(r.values())).get("range", {}).get("tabId", "t1") == "t1"
-               for r in requests(scenario))
+    # Every request names tab One itself; an omitted tabId would apply to the
+    # first tab by default and must fail here.
+    for request in requests(scenario):
+        data = next(iter(request.values()))
+        if "range" in data or "location" in data:
+            assert data.get("range", data.get("location")).get("tabId") == "t1"
+        else:
+            assert data["tabsCriteria"] == {"tabIds": ["t1"]}, request
 
 
 def test_collaborator_edit_in_the_same_tab_still_blocks_the_file(

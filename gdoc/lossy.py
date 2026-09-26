@@ -107,8 +107,11 @@ def _table_style_losses(table: dict) -> set[str]:
                 losses.add("table cell shading")
             for side in ("borderLeft", "borderRight", "borderTop", "borderBottom"):
                 border = style.get(side)
+                # A width whose magnitude is omitted is 0pt (the API omits
+                # zero values); only a missing width is the 1pt default.
+                width = (border or {}).get("width")
                 if border and (
-                    border.get("width", {}).get("magnitude", 1) != 1
+                    (width is not None and width.get("magnitude", 0) != 1)
                     or border.get("dashStyle", "SOLID") != "SOLID"
                     or any(border.get("color", {}).get("color", {})
                            .get("rgbColor", {}).values())

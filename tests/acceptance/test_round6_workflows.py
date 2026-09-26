@@ -61,3 +61,36 @@ def test_prose_replacement_is_still_markdown(route):
     _written(route, "Call `fn_x` now\n")
     route.ok("edit", old_text="now", new_text="*soon*")
     assert _read(route) == "Call `fn_x` *soon*\n"
+
+
+@MERGES
+@pytest.mark.parametrize("markdown", [
+    "1. a\n\n   ```\n   \tx\n   ```\n2. b\n",
+    "- a\n\n  ```\n  \tt\n  \t\tu\n  ```\n- b\n  - c\n",
+    "1. a\n\n   ```\n   \tx\n   ```\n2. b\n  1. c\n\n      | h |\n      | --- |\n      | v |\n",
+])
+def test_list_contained_code_keeps_its_tabs(route, markdown, merge):
+    """R5-3: bullet requests spanning code never consume its leading tabs."""
+    _written(route, markdown, merge)
+    first = _read(route)
+    assert first.strip("\n") == markdown.strip("\n")
+    route.ok("write", text=first.replace("a\n", "a2\n", 1))
+    assert _read(route) == first.replace("a\n", "a2\n", 1)
+
+
+def _model_after_delete(start, end):
+    doc = NativeDoc(("p", "a", "HEADING_2"), ("p", ""), ("p", ""),
+                    ("p", "b", "NORMAL_TEXT", {"preset": "NUMBERED", "list": 1,
+                                               "nest": 0}), merge="first")
+    doc.op_delete_content_range({"range": {"startIndex": start, "endIndex": end}})
+    return styles(doc)
+
+
+def test_first_merge_model_is_narrowed_only_to_the_observed_shape():
+    """R5-10: only one whole empty paragraph per deletion keeps its successor."""
+    # Units: 1 'a', 2 LF(H2), 3 LF, 4 LF, 5 'b', 6 LF(list).
+    assert _model_after_delete(3, 4)[-1] == ("b", "NORMAL_TEXT", (1, 0))
+    # Two empty paragraphs at once, or a deletion starting mid-paragraph,
+    # still take the first paragraph's style under the adversarial model.
+    assert _model_after_delete(3, 5)[-1] == ("b", "NORMAL_TEXT", None)
+    assert _model_after_delete(2, 5)[-1] == ("ab", "HEADING_2", None)

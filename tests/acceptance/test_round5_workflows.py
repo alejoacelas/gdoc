@@ -261,14 +261,13 @@ DIFFERENT_LISTS = "- a\n| h |\n| --- |\n| v |\n1. b\n"
     "---\n| h |\n| --- |\n| v |\n1. one\n",
     DIFFERENT_LISTS,
 ])
-def test_list_item_after_a_table_keeps_its_list(route, markdown, merge, request):
-    """F1: a list item directly after a table never merges through its mark."""
-    if markdown == DIFFERENT_LISTS and merge == "first":
-        request.applymarker(pytest.mark.xfail(strict=True, reason=(
-            "Unresolved and unprobed: two different lists directly around a "
-            "table. Under first-paragraph merge inheritance the list after the "
-            "table would take the earlier list's membership, which the API "
-            "cannot re-create.")))
+def test_list_item_after_a_table_keeps_its_list(route, markdown, merge):
+    """F1: a list item directly after a table never merges through its mark.
+
+    DIFFERENT_LISTS relies on the one observed merge shape (see
+    tests/native_model.py): the fill stage removes each emptied paragraph
+    after the table with its own single-paragraph deletion.
+    """
     doc = route.load(NativeDoc(merge=merge))
     route.ok("cat")
     route.ok("write", text=markdown)

@@ -283,9 +283,10 @@ def test_t03_move_table_section_and_insert_section_with_readback(scenario):
     assert (table_request[0]["rows"], table_request[0]["columns"]) == (2, 1)
     assert table_request[0]["location"] == {"index": start - 1, "tabId": "draft"}
     assert not any("deleteContentRange" in r for r in scenario.batches[1]["requests"])
-    # The fill stage removes exactly the two emptied paragraphs after the table.
-    assert scenario.batches[2]["requests"][0] == {"deleteContentRange": {"range": {
-        "startIndex": after, "endIndex": after + 2, "tabId": "draft"}}}
+    # The fill stage removes exactly the two emptied paragraphs after the
+    # table, one single empty paragraph per request.
+    assert scenario.batches[2]["requests"][:2] == [{"deleteContentRange": {"range": {
+        "startIndex": after, "endIndex": after + 1, "tabId": "draft"}}}] * 2
     # The surrounding text is produced from mutation requests, not copied from
     # target Markdown or the canned scaffold. Table structure is API-shape evidence.
     first_batch = scenario.batches[0]["requests"]

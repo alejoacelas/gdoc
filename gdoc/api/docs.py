@@ -1694,8 +1694,10 @@ def _table_cleanup_requests(tab, table_element, scaffolding, tab_id, expected=No
             span["tabId"] = tab_id
         return {**body, "range": span}
 
-    cleanup = [{"deleteContentRange": ranged({})}]
-    cleanup[0]["deleteContentRange"]["range"]["endIndex"] = end + count
+    # One empty paragraph per request: deleting a single empty paragraph at
+    # a paragraph start is the merge shape observed live to leave the
+    # following paragraph's style and list membership intact.
+    cleanup = [{"deleteContentRange": ranged({})} for _ in range(count)]
     survivor = following[-1]["paragraph"]
     first = removed[0]["paragraph"]
     kept = survivor.get("paragraphStyle", {})

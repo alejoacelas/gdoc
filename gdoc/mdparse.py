@@ -1188,11 +1188,61 @@ def _list_insert_text(parsed: ParsedMarkdown) -> str:
         if item.type == "bullets" and item.literal_tabs:
             start = item.start + item.list_depth
             text[start:start + item.literal_tabs] = " " * item.literal_tabs
+    for start, tabs in _unlisted_leading_tabs(parsed):
+        text[start:start + tabs] = " " * tabs
     return "".join(text)
+
+
+def _unlisted_leading_tabs(parsed: ParsedMarkdown) -> list[tuple[int, int]]:
+    """Leading tabs of paragraphs that are not list items, such as code lines.
+
+    A bullet request spanning a list-contained code block or continuation
+    paragraph would consume those tabs as nesting, so they are inserted as
+    spaces and restored after every bullet request.
+    """
+    if not any(s.type == "bullets" for s in parsed.styles):
+        return []
+    items = {s.start for s in parsed.styles if s.type == "bullets"}
+    found = []
+    for style in parsed.styles:
+        if style.type != "paragraph_style" or style.start in items:
+            continue
+        line = parsed.plain_text[style.start:style.end]
+        tabs = len(line) - len(line.lstrip("\t"))
+        if tabs:
+            found.append((style.start, tabs))
+    return found
+
+
+def _restore_unlisted_tabs(parsed: ParsedMarkdown, insert_index: int,
+                           tab_id: str | None) -> list[dict]:
+    items = [s for s in parsed.styles if s.type == "bullets"]
+    offsets = _utf16_prefix(parsed.plain_text)
+    requests = []
+    for point, tabs in reversed(_unlisted_leading_tabs(parsed)):
+        # Nesting tabs of earlier items were consumed by the bullet requests.
+        start = insert_index + offsets[point] - sum(
+            item.list_depth for item in items if item.start < point)
+        span = {"startIndex": start, "endIndex": start + tabs}
+        location = {"index": start}
+        if tab_id:
+            span["tabId"] = location["tabId"] = tab_id
+        requests.extend([
+            {"deleteContentRange": {"range": span}},
+            {"insertText": {"location": location, "text": "\t" * tabs}},
+        ])
+    return requests
 
 
 def list_requests(parsed: ParsedMarkdown, insert_index: int,
                   tab_id: str | None = None) -> list[dict]:
+    """Bullet requests, then the shielded tabs of non-item paragraphs."""
+    return (_list_bullet_requests(parsed, insert_index, tab_id)
+            + _restore_unlisted_tabs(parsed, insert_index, tab_id))
+
+
+def _list_bullet_requests(parsed: ParsedMarkdown, insert_index: int,
+                          tab_id: str | None = None) -> list[dict]:
     """Use isolated groups for nested restarts and interleaved continuation."""
     items = [s for s in parsed.styles if s.type == "bullets"]
     active = {}

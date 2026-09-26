@@ -7,10 +7,16 @@ list entry, and fails loudly on requests Docs rejects:
   newline). Inserting a newline splits a paragraph and gives both halves its
   style.
 - Which paragraph's style survives when a deletion removes a mark has not
-  been probed live. ``merge="mark"`` (the default) keeps the surviving
+  been probed directly. ``merge="mark"`` (the default) keeps the surviving
   mark's style; ``merge="first"`` gives the merged paragraph the style of
   the paragraph where the deletion starts. Tests that depend on a merge run
-  under both.
+  under both. One shape is observed rather than assumed: deleting one whole
+  empty paragraph, ``[start, start + 1)`` at a paragraph start, left the
+  following paragraph's style and list membership intact in a live write of
+  nested numbered restarts (source dda5741, which removed each temporary
+  empty separator paragraph that way). ``merge="first"``
+  therefore applies to every other deletion that removes a mark, including
+  one that removes several empty paragraphs at once.
 - insertTable inserts a newline, which splits the paragraph at the location,
   then the table. The newline directly before a table and the segment's
   final newline cannot be deleted.
@@ -153,8 +159,10 @@ class NativeDoc:
                 "delete includes the newline before a table")
         first = self._paragraph_end(start)
         inherited = (self.units[first].ps, self.units[first].bullet)
+        observed = (end == start + 1 and self.units[start].ch == "\n"
+                    and any(a == start for a, _ in self.paragraphs()))
         del self.units[start:end]
-        if self.merge == "first" and first < end:
+        if self.merge == "first" and first < end and not observed:
             mark = self.units[self._paragraph_end(start)]
             mark.ps, mark.bullet = dict(inherited[0]), copy.deepcopy(inherited[1])
         for named in self.named:

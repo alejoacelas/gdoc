@@ -257,6 +257,8 @@ DIFFERENT_LISTS = "- a\n| h |\n| --- |\n| v |\n1. b\n"
     "> quoted\n| h |\n| --- |\n| v |\n- item\n",
     "- a\n| h |\n| --- |\n| v |\n- b\n",
     "```\ncode\n```\n| h |\n| --- |\n| v |\n- item\n",
+    "| h |\n| --- |\n| v |\n- item\n\n  | t |\n  | --- |\n  | u |\n",
+    "---\n| h |\n| --- |\n| v |\n1. one\n",
     DIFFERENT_LISTS,
 ])
 def test_list_item_after_a_table_keeps_its_list(route, markdown, merge, request):
@@ -270,10 +272,15 @@ def test_list_item_after_a_table_keeps_its_list(route, markdown, merge, request)
     doc = route.load(NativeDoc(merge=merge))
     route.ok("cat")
     route.ok("write", text=markdown)
-    assert route.ok("cat") == markdown
-    changed = markdown.replace("| v |", "| w |")
+    # A tab starting with a table or rule reads with Docs' leading paragraph
+    # or an empty metadata block, and a trailing table with its final one.
+    first = parse_frontmatter(route.ok("cat"))[1]
+    assert first.strip("\n") == markdown.strip("\n")
+    shape = _shape(styles(doc), set())
+    changed = first.replace("| v |", "| w |")
     route.ok("write", text=changed)
-    assert route.ok("cat") == changed
+    assert parse_frontmatter(route.ok("cat"))[1] == changed
+    assert _shape(styles(doc), {"w"}) == [p for p in shape if p[0] != "v"]
     assert all(not start < next(i for i, u in enumerate(doc.units)
                                 if u.kind == "tstart") < end
                for name, start, end in doc.named if name)

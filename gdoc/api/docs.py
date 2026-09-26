@@ -1584,7 +1584,7 @@ def _table_cell_requests(cell_indices, table, tab_id):
     return text_requests
 
 
-def _table_scaffolding(parsed, table):
+def _table_scaffolding(parsed, table, own_placeholder=True):
     """Describe where a table goes relative to the parser's placeholder.
 
     Returns ``(before, placeholder, preceding_style)``. ``before`` is 1 when a
@@ -1601,7 +1601,10 @@ def _table_scaffolding(parsed, table):
     not a list item, ``preceding_style`` holds that paragraph's parsed
     style instead: the table is inserted at the list item's start, which
     stays untouched, and the preceding paragraph's text is joined to the
-    table's leading mark, then given back its own style and no bullet.
+    table's leading mark, then given back its own style and no bullet. A
+    table that nothing in the Markdown precedes does the same with its own
+    placeholder, unless ``own_placeholder`` is false because the placeholder
+    is an existing paragraph's mark.
     """
     offset = table.plain_text_offset
     previous_placeholder = any(t.plain_text_offset == offset - 1
@@ -1610,15 +1613,19 @@ def _table_scaffolding(parsed, table):
               and not previous_placeholder)
     placeholder = offset < len(parsed.plain_text)
     preceding_style = None
-    if before and placeholder and offset + 1 < len(parsed.plain_text):
+    joinable = before or (offset == 0 and own_placeholder)
+    if joinable and placeholder and offset + 1 < len(parsed.plain_text):
         bullets = [s for s in parsed.styles if s.type == "bullets"]
         follows_item = any(s.start == offset + 1 for s in bullets)
-        is_item = any(s.start <= offset - 1 < s.end for s in bullets)
+        # The paragraph joined to the table's leading mark: the preceding
+        # one, or the placeholder itself when nothing precedes the table.
+        joined = offset - before
+        is_item = any(s.start <= joined < s.end for s in bullets)
         if follows_item and not is_item:
             preceding_style = {}
             for style in parsed.styles:
                 if (style.type == "paragraph_style"
-                        and style.start <= offset - 1 < style.end):
+                        and style.start <= joined < style.end):
                     preceding_style.update(style.style)
     return int(before), int(placeholder), preceding_style
 
@@ -1775,17 +1782,18 @@ def _insert_table(
             location["tabId"] = tab_id
         from gdoc.mdparse import _PARAGRAPH_STYLE_FIELDS
         fields = sorted(_PARAGRAPH_STYLE_FIELDS)
+        joined = index - before
         return [
             {"insertTable": {"rows": table.num_rows, "columns": table.num_cols,
                              "location": location}},
-            {"deleteContentRange": {"range": spanned(index - 1, index + 1)}},
+            {"deleteContentRange": {"range": spanned(joined, index + 1)}},
             {"updateParagraphStyle": {
-                "range": spanned(index - 1, index),
+                "range": spanned(joined, joined + 1),
                 "paragraphStyle": {f: preceding_style[f] for f in fields
                                    if f in preceding_style},
                 "fields": ",".join(fields),
             }},
-            {"deleteParagraphBullets": {"range": spanned(index - 1, index)}},
+            {"deleteParagraphBullets": {"range": spanned(joined, joined + 1)}},
         ]
 
     def relocate():
@@ -2784,7 +2792,10 @@ def insert_markdown_into_tab(
         _reset_list_indents(parsed)
     _prepare_image_sources(parsed, doc, image_aliases)
     insertion = _native_docs_requests(parsed, insert_index, tab_id=tab_id)
-    if at_end and parsed.plain_text.endswith("\n") and any(
+    # A table placed after the rule is the tab's last block instead.
+    table_last = any(t.plain_text_offset == len(parsed.plain_text)
+                     for t in parsed.tables)
+    if at_end and not table_last and parsed.plain_text.endswith("\n") and any(
         s.type == "paragraph_style" and s.end == len(parsed.plain_text)
         and "borderBottom" in s.style for s in parsed.styles
     ):
@@ -2884,7 +2895,9 @@ def insert_markdown_into_tab(
                     - table.removed_tabs_before,
                     table, tab_id=tab_id, revision_id=revision_id, progress=progress,
                     resolve_index=_table_position_resolver(parsed, table, tab_id),
-                    ordinal=ordinal, scaffolding=_table_scaffolding(parsed, table),
+                    ordinal=ordinal, scaffolding=_table_scaffolding(
+                        parsed, table,
+                        own_placeholder=not (leading_table and ordinal == 1)),
                 )
 
     return {

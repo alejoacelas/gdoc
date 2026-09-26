@@ -3301,7 +3301,11 @@ def _replacement_text_style(runs: list[dict], match: dict, text: str,
             continue
         raw = source["content"].encode("utf-16-le")
         label = raw[(lo - offset) * 2:(hi - offset) * 2].decode("utf-16-le")
+        # Linked wording carries the link's colour and underline; they go
+        # with the link if it does not follow the replacement.
         style = {k: v for k, v in style.items() if k != "link"}
+        if link:
+            style["_linked"] = True
         if targets and targets[-1][1] == style:
             targets[-1] = (targets[-1][0] + label, style)
         else:
@@ -3362,7 +3366,29 @@ def _replacement_text_style(runs: list[dict], match: dict, text: str,
                 split.append((left, right, {**style, **(
                     {"link": link} if pos <= left < stop else {})}))
         result = split
-    return result
+    unlinked = []
+    for lo, hi, style in result:
+        style = dict(style)
+        if style.pop("_linked", False) and "link" not in style:
+            style = _without_link_appearance(style)
+        unlinked.append((lo, hi, style))
+    return unlinked
+
+
+# Docs gives a link it sets this colour and an underline (observed in a live
+# readback); custom colours on linked text are the author's own styling.
+_LINK_BLUE = (0.06666667, 0.33333334, 0.8)
+
+
+def _without_link_appearance(style: dict) -> dict:
+    """Drop Docs' default link colour and underline from unlinked wording."""
+    rgb = style.get("foregroundColor", {}).get("color", {}).get("rgbColor", {})
+    blue = all(abs(rgb.get(key, 0) - value) < 0.002
+               for key, value in zip(("red", "green", "blue"), _LINK_BLUE))
+    if not (blue and style.get("underline")):
+        return style
+    return {k: v for k, v in style.items()
+            if k not in ("foregroundColor", "underline")}
 
 
 def _inline_baseline(paragraph: dict, match: dict, text: str,

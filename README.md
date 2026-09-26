@@ -749,6 +749,8 @@ An edit inside one link's text stays in that link, so correcting or extending pa
 of a label keeps the link. When a match covers a whole link, or reaches past it,
 the link follows only its own words that reappear once, as whole words, in the
 replacement. Write `[label](url)` in the replacement to set a link explicitly.
+Wording that does not keep a link also loses Docs' default link colour and
+underline; a custom colour on the linked text stays.
 
 ### Deleting across paragraphs
 

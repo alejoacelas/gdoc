@@ -238,3 +238,27 @@ def test_unchanged_write_after_a_suggestion_read_sends_nothing(route, monkeypatc
     code, output, error = route.call("write", text=read.replace("ran", "sat"))
     assert code != 0 and "pending suggestions" in output + error
     assert route.service.batches == []
+
+
+DOCS_LINK = {"link": {"url": "https://example.test/"}, "underline": True,
+             "foregroundColor": {"color": {"rgbColor": {
+                 "red": 0.06666667, "green": 0.33333334, "blue": 0.8}}}}
+
+
+@pytest.mark.parametrize("old,new,expected", [
+    ("here", "there", "click there now\n"),
+    ("click here now", "click here here now", "click here here now\n"),
+    ("k he", "k the", "click the[re](https://example.test/) now\n"),
+    ("here", "[here](https://new.test/)", "click [here](https://new.test/) now\n"),
+])
+def test_unlinked_wording_loses_the_link_appearance(route, old, new, expected):
+    """R5-7: wording that loses its link also loses Docs' link blue/underline."""
+    doc = route.load(NativeDoc(("p", "click here now"), ("p", "x")))
+    for unit in doc.units[7:11]:
+        unit.ts.update(DOCS_LINK)
+    route.ok("cat")
+    route.ok("edit", old_text=old, new_text=new)
+    assert _read(route) == expected + "x\n"
+    plain = [u for u in doc.units if u.kind == "text" and "link" not in u.ts]
+    assert not any(u.ts.get("underline") or "foregroundColor" in u.ts
+                   for u in plain)

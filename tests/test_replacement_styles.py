@@ -482,3 +482,4 @@ def test_partial_paragraph_fence_refuses_before_write(mocker, command):
         _batch(mocker, body, "TOKEN", "```\nRevised\n```", command)
     from gdoc.api.docs import get_docs_service
     get_docs_service.return_value.documents().batchUpdate.assert_not_called()
+

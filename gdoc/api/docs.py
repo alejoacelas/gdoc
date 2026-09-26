@@ -2555,8 +2555,13 @@ def insert_markdown_into_tab(
     requests.extend(insertion)
     if not replace and requests:
         # Existing markers at the insertion point must not absorb new text.
-        inserted = sum(utf16_len(r["insertText"]["text"])
-                       for r in requests if "insertText" in r) - parsed.removed_tabs
+        # List compilation also sends temporary tabs and separators that later
+        # requests consume, so measure the text that remains: the parsed text
+        # as inserted, less its nesting tabs, plus any end-of-body split.
+        main = (insertion[0]["insertText"]["text"]
+                if insertion and "insertText" in insertion[0] else "")
+        inserted = (utf16_len(main) - (parsed.removed_tabs if main else 0)
+                    + (insert_index - original_insert_index))
         owned_deletions, rebuilt = _owned_range_requests(
             tab_match, tab_id,
             [(original_insert_index, original_insert_index, inserted, False)],

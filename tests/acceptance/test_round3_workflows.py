@@ -2,6 +2,9 @@
 
 import json
 
+import pytest
+
+from gdoc.mdparse import parse_markdown, utf16_len
 from tests.acceptance.conftest import paragraph
 from tests.acceptance.test_workflows import existing_image, read, requests
 
@@ -117,3 +120,25 @@ def test_rename_image_references_changes_only_image_destinations():
         "[![i](gdoc-image:new)](https://example.invalid/a)\n"
     )
     assert json.dumps(renamed)  # stays plain text
+
+
+@pytest.mark.parametrize("markdown", [
+    "1. Step\n   - detail\n2. Next\n",
+    "- a\n  1. b\n",
+    "Plain 😀 text\n",
+])
+def test_insert_at_start_keeps_code_marker_on_its_paragraph(scenario, markdown):
+    native = scenario.document["tabs"][0]["documentTab"]
+    native["body"]["content"] = [paragraph("code\n"), paragraph("after\n", 6)]
+    native["namedRanges"] = {"gdoc:code:v1": {"namedRanges": [{
+        "namedRangeId": "code", "name": "gdoc:code:v1",
+        "ranges": [{"startIndex": 1, "endIndex": 6, "tabId": "draft"}],
+    }]}}
+    read(scenario)
+    scenario.ok("insert", tab="draft", text=markdown)
+    parsed = parse_markdown(markdown)
+    inserted = utf16_len(parsed.plain_text) - parsed.removed_tabs
+    rebuilt = [r["createNamedRange"]["range"] for r in requests(scenario)
+               if r.get("createNamedRange", {}).get("name") == "gdoc:code:v1"]
+    assert rebuilt == [{"startIndex": 1 + inserted, "endIndex": 6 + inserted,
+                        "tabId": "draft"}]

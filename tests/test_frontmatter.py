@@ -141,3 +141,26 @@ class TestAddFrontmatter:
         meta, body = parse_frontmatter(content)
         assert meta == original_meta
         assert body == original_body
+
+
+class TestLeadingRuleProse:
+    """R7-8: a body opening with a rule keeps prose that contains a colon."""
+
+    @pytest.mark.parametrize("content", [
+        "---\n\nNote: keep me\n\n---\n\nafter\n",
+        "---\n\nSee [docs](https://e.org/).\n\n---\n",
+        "---\nSee [docs](https://e.org/).\n---\nafter\n",
+    ])
+    def test_prose_between_rules_stays_in_the_body(self, content):
+        assert parse_frontmatter(content) == ({}, content)
+
+    @pytest.mark.parametrize("content,meta", [
+        ("---\ngdoc: abc\ntitle: A: B\ntab: t.1\ngdoc-revision: r1\n---\nbody\n",
+         {"gdoc": "abc", "title": "A: B", "tab": "t.1", "gdoc-revision": "r1"}),
+        ("---\ntitle: x\ntags:\n  - a\n  - name: b\n# c: d\n---\nbody\n",
+         {"title": "x", "tags": ""}),
+        ("---\r\ngdoc: abc\r\ntitle: T\r\n---\r\nbody\r\n",
+         {"gdoc": "abc", "title": "T"}),
+    ])
+    def test_known_frontmatter_still_parses(self, content, meta):
+        assert parse_frontmatter(content)[0] == meta

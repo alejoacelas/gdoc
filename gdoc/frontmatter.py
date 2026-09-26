@@ -7,6 +7,7 @@ _FRONTMATTER_RE = re.compile(r"^---\r?\n(.*?)\r?\n---\r?\n", re.DOTALL)
 # written after one, so the body's leading rule is never read as metadata.
 _EMPTY_FRONTMATTER_RE = re.compile(r"^---\r?\n---\r?\n")
 _LEADING_RULE_RE = re.compile(r"^---\r?\n")
+_KEY_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_.-]*")
 
 
 def protect_body(body: str) -> str:
@@ -24,8 +25,11 @@ def parse_frontmatter(content: str) -> tuple[dict, str]:
     Markdown input carries at most one leading metadata block: either an
     empty block (`---` on two consecutive lines, which `protect_body` adds
     before a body that starts with a rule) or a block from which at least
-    one `key: value` line parses. Other leading `---` blocks, such as a
-    rule, a paragraph without a colon and another rule, stay in the body.
+    one `key: value` line with a plain key (letters, digits, `_`, `-`, `.`)
+    parses; comments, nested YAML and colon-free lines are skipped. A block
+    that opens with a blank line, has no such line, or has a colon line
+    whose key is not plain (prose such as `See [docs](https://…)`) stays in
+    the body as rules and paragraphs.
     """
     empty = _EMPTY_FRONTMATTER_RE.match(content)
     if empty:
@@ -35,18 +39,21 @@ def parse_frontmatter(content: str) -> tuple[dict, str]:
         return {}, content
 
     raw = match.group(1)
+    lines = raw.splitlines()
+    if not lines or not lines[0].strip():
+        return {}, content
     metadata: dict[str, str] = {}
-    for line in raw.splitlines():
+    for line in lines:
+        # Nested YAML (indented lines, list items) and comments are skipped.
+        if line[:1] in (" ", "\t") or line.startswith(("#", "-")):
+            continue
         line = line.strip()
-        if not line:
+        key, colon, value = line.partition(":")
+        if not colon:
             continue
-        colon = line.find(":")
-        if colon == -1:
-            continue
-        key = line[:colon].strip()
-        value = line[colon + 1 :].strip()
-        if key:
-            metadata[key] = value
+        if not _KEY_RE.fullmatch(key.strip()):
+            return {}, content
+        metadata[key.strip()] = value.strip()
 
     if not metadata:
         return {}, content

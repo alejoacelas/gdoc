@@ -435,7 +435,10 @@ different `--tab` or another document; remove the frontmatter to copy the text
 elsewhere. When a tab starts
 with a horizontal rule, `cat` and Markdown `export` print that empty block first, so
 the rule and the text after it stay content. Keep the empty block when writing such
-a read back; `pull` files already carry their own metadata block.
+a read back; `pull` files already carry their own metadata block. Without it, a
+leading `---` block is metadata only when its first line is a `key: value` line and
+every colon line has a plain key: `---`, a blank line, `Note: keep me`, `---` stays
+a rule, a paragraph and a rule, but `---`, `Note: keep me`, `---` is metadata.
 
 Writes compare that baseline with the native document revision and pin mutations
 to the checked snapshot. A collaborator edit requires a fresh read. `--force`

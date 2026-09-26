@@ -57,7 +57,7 @@ class TestInsertBasic:
         assert 'OK inserted into "TODO"' in out
         mock_insert.assert_called_once_with(
             "abc123", "t.todo", "# Hello",
-            position="start", replace=False, document=ANY,
+            position="start", replace=False, document=ANY, image_aliases={},
         )
 
     @patch("gdoc.state.update_state_after_command")
@@ -92,7 +92,7 @@ class TestInsertBasic:
         cmd_insert(args)
         mock_insert.assert_called_once_with(
             "abc123", "t.todo", "tail",
-            position="end", replace=False, document=ANY,
+            position="end", replace=False, document=ANY, image_aliases={},
         )
 
 

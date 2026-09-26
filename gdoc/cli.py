@@ -432,6 +432,17 @@ def cmd_cat(args) -> int:
     return 0
 
 
+def _known_image_aliases(known, tab_id: str, revision: str) -> dict:
+    """References to images gdoc's own acknowledged writes re-created, usable
+    while this tab's recorded coverage (complete or limited) is exactly the
+    revision being written; the Markdown itself is sent as written."""
+    if known is None or not revision or revision not in (
+            known.read_revision_ids.get(tab_id),
+            known.limited_read_revision_ids.get(tab_id)):
+        return {}
+    return known.image_reference_ids
+
+
 def _record_read(doc_id: str, tabs: list[dict], revision: str) -> None:
     """Record a Markdown read; a tab whose read named omissions gets limited
     coverage, which a replacement accepts only with --allow-lossy."""
@@ -736,9 +747,14 @@ def cmd_insert(args) -> int:
         accept_limited=True,
     )
 
+    from gdoc.state import load_state
+
+    # Old image references resolve like a write's. An insertion only adds
+    # copies (the originals stay), so its new image IDs are not recorded.
     result = insert_markdown_into_tab(
         doc_id, selected["id"], content, position=position, replace=False,
-        document=document,
+        document=document, image_aliases=_known_image_aliases(
+            load_state(doc_id), selected["id"], document.get("revisionId", "")),
     )
 
     # Record the acknowledged write before any optional follow-up lookup.
@@ -1595,11 +1611,7 @@ def _write_native_markdown(
     revision = document.get("revisionId", "")
     from gdoc.state import load_state
 
-    known = load_state(doc_id)
-    # References to images that gdoc's own acknowledged writes re-created
-    # resolve to their copies; the Markdown itself is sent as written.
-    aliases = (known.image_reference_ids if known
-               and known.read_revision_ids.get(selected["id"]) == revision else {})
+    aliases = _known_image_aliases(load_state(doc_id), selected["id"], revision)
     from gdoc.mdparse import rename_image_references
     unchanged = (
         not (collapse and len(tabs) > 1)

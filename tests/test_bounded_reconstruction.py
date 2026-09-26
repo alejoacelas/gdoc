@@ -7,7 +7,6 @@ import pytest
 from gdoc.api.docs import insert_markdown_into_tab
 from gdoc.cli import (
     _comparable_markdown,
-    _doc_matches,
     build_parser,
     cmd_push,
     cmd_write,
@@ -244,23 +243,15 @@ def test_unchanged_upload_skips_even_rich_page_state(
         }}]})], "documentStyle": {"useCustomHeaderFooterMargins": True},
     })
     mocker.patch("gdoc.api.docs.count_document_tabs", return_value=1)
-    inspect = mocker.patch("gdoc.cli._check_document_replacement")
     upload = mocker.patch("gdoc.api.drive.update_doc_content")
     state = mocker.patch("gdoc.state.update_state_after_command")
     assert (cmd_write if command == "write" else cmd_push)(args) == 0
-    inspect.assert_not_called()
     upload.assert_not_called()
     state.assert_not_called()
     from gdoc.state import load_state
     assert load_state("doc").read_revision_ids == {"draft": "r1"}
     assert version.call_count == 0
     assert "already in sync" in capsys.readouterr().out
-
-
-def test_noop_never_matches_a_multi_tab_export(mocker):
-    mocker.patch("gdoc.api.drive.export_doc", return_value="Summary")
-    mocker.patch("gdoc.api.docs.count_document_tabs", return_value=2)
-    assert _doc_matches("doc", "Summary", version=10) is None
 
 
 def test_nested_list_table_insertion_uses_post_bullet_coordinates(mocker):

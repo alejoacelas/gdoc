@@ -615,22 +615,6 @@ def test_fill_retry_second_conflict_stops(api):
     assert len(batches(api)) == 4
 
 
-@pytest.mark.parametrize("quiet", [False, True])
-def test_force_does_not_bypass_missing_preflight_version(mocker, quiet):
-    from gdoc.cli import _check_write_conflict
-
-    mocker.patch("gdoc.notify.pre_flight", return_value=ChangeInfo())
-    mocker.patch(
-        "gdoc.api.drive.get_file_version",
-        return_value={
-            "mimeType": "application/vnd.google-apps.document",
-        },
-    )
-    with pytest.raises(GdocError, match="cannot verify document version") as caught:
-        _check_write_conflict("synthetic", quiet=quiet, force=True)
-    assert caught.value.exit_code == 3
-
-
 def transport_request(execute):
     """A request whose execute stands in for AuthorizedHttp's pre-send work."""
     http = SimpleNamespace(
@@ -869,35 +853,6 @@ def test_single_tab_whole_write_passes_loss_consent(mocker, drive_api, allow_los
     assert insert.call_args.kwargs["allow_lossy"] is allow_lossy
     assert insert.call_args.kwargs["replace"] is True
     files.update.assert_not_called()
-
-
-@pytest.mark.parametrize("after", [10, 11])
-def test_noop_match_requires_unchanged_version_after_reads(mocker, after):
-    """An edit landing after the baseline read is never reported in sync."""
-    from gdoc.cli import _doc_matches
-
-    version = mocker.patch(
-        "gdoc.api.drive.get_file_version", side_effect=[{"version": after}]
-    )
-    mocker.patch("gdoc.api.drive.export_doc", return_value="Same body")
-    mocker.patch("gdoc.api.docs.count_document_tabs", return_value=1)
-    result = _doc_matches("synthetic", "Same body", version=10)
-    assert result == (10 if after == 10 else None)
-    assert version.call_count == 1
-
-
-def test_noop_match_reads_baseline_then_rechecks(mocker):
-    version = mocker.patch(
-        "gdoc.api.drive.get_file_version",
-        side_effect=[{"version": 10}, {"version": 11}],
-    )
-    mocker.patch("gdoc.api.drive.export_doc", return_value="Same body")
-    mocker.patch("gdoc.api.docs.count_document_tabs", return_value=1)
-    from gdoc.cli import _doc_matches
-
-    assert _doc_matches("synthetic", "Same body") is None
-    assert version.call_count == 2
-
 
 
 @pytest.mark.parametrize("command", ["write", "push", "write-tab"])

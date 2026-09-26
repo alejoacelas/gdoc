@@ -105,3 +105,46 @@ def test_paragraph_before_a_table_is_removed_with_the_preceding_mark(mocker):
                           "synthetic-rev", tab_id="synthetic-tab", body=first)
     assert error.value.exit_code == 3
     service.assert_not_called()
+
+
+@pytest.mark.parametrize("line, style", [
+    ("##", "HEADING_2"), ("## ", "HEADING_2"), ("######", "HEADING_6"),
+    ("<!-- gdoc:TITLE -->", "TITLE"), ("<!-- gdoc:SUBTITLE --> ", "SUBTITLE"),
+    ("- ##", "HEADING_2"),
+])
+def test_empty_heading_markers_survive_trimmed_whitespace(line, style):
+    parsed = parse_markdown(line + "\nbody\n")
+    assert parsed.plain_text == "\nbody\n"
+    assert [s.style["namedStyleType"] for s in parsed.styles
+            if s.type == "paragraph_style"] == [style, "NORMAL_TEXT"]
+
+
+@pytest.mark.parametrize("text", ["#", "##", "#######", "#tag", "<!-- gdoc:TITLE -->"])
+def test_literal_heading_markers_stay_text(text):
+    exported = get_tab_text({"body": {"content": [_paragraph([(text, {})])]}},
+                            markdown=True)
+    assert parse_markdown(exported).plain_text == text + "\n"
+
+
+@pytest.mark.parametrize("between", [["   "], ["\t"], [" ", ""], ["", " "]])
+def test_whitespace_paragraphs_between_tables_keep_their_text(between):
+    from tests.test_markdown_roundtrip import _table
+
+    content = [_table([["h"], ["c"]])]
+    content += [_paragraph([(text, {})] if text else []) for text in between]
+    content += [_table([["h2"], ["d"]])]
+    exported = get_tab_text({"body": {"content": content}}, markdown=True)
+    parsed = parse_markdown(exported)
+    assert [t.plain_text_offset for t in parsed.tables] == [0, parsed.tables[1]
+                                                           .plain_text_offset]
+    assert parsed.plain_text == "\n" + "".join(t + "\n" for t in between) + "\n"
+
+
+def test_documented_leading_rules_spelling_survives_metadata_parsing():
+    from gdoc.frontmatter import parse_frontmatter
+
+    _, body = parse_frontmatter("***\n***\nText\n")
+    parsed = parse_markdown(body)
+    assert parsed.plain_text == "\n\nText\n"
+    assert sum("borderBottom" in s.style for s in parsed.styles
+               if s.type == "paragraph_style") == 2

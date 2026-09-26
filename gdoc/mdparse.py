@@ -122,9 +122,10 @@ _STYLES_FOR_KIND = {
 _CODE_FONT = {"weightedFontFamily": {"fontFamily": "Courier New"}}
 
 # Heading pattern
-_HEADING_RE = re.compile(r"^(#{1,6})[ \t](.*)$")
+# A lone marker is an empty heading, so a trimmed "## " keeps its level.
+_HEADING_RE = re.compile(r"^(#{1,6})(?:[ \t](.*))?$")
 # Docs has two named styles with no ordinary Markdown heading equivalent.
-_NAMED_STYLE_RE = re.compile(r"^<!-- gdoc:(TITLE|SUBTITLE) --> (.*)$")
+_NAMED_STYLE_RE = re.compile(r"^<!-- gdoc:(TITLE|SUBTITLE) -->(?: (.*))?$")
 
 # List item patterns (capture leading indentation for nesting)
 _BULLET_RE = re.compile(r"^([ \t]*)[-*+](?:[ \t](.*)|$)")
@@ -808,8 +809,9 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             last_list_end = offset
 
     i = 0
+    table_separators: set[int] = set()
     while i < len(lines):
-        if i in definition_lines:
+        if i in definition_lines or i in table_separators:
             i += 1
             continue
         line, quote_depth = _unquote(lines[i])
@@ -922,9 +924,9 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                 prefix=(table_quote, table_indent if in_list_table else 0),
             ))
             list_levels.update(saved_levels)
-            # Canonical adjacent tables: the first blank line between a table and
-            # a following table in the same container separates them; further
-            # blank lines are blank paragraphs.
+            # Canonical adjacent tables: the last blank line before a following
+            # table in the same container separates them; earlier blank or
+            # whitespace-only lines are paragraphs.
             j = i
             while j < len(lines):
                 text, depth = _unquote(lines[j], table_quote)
@@ -933,7 +935,7 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                 j += 1
             if (j > i and _TABLE_ROW_RE.match(table_line(j))
                     and _TABLE_SEP_RE.match(table_line(j + 1))):
-                i += 1
+                table_separators.add(j - 1)
             plain_parts.append("\n")
             offset += 1
             all_styles.append(StyleRange(
@@ -945,7 +947,9 @@ def parse_markdown(text: str) -> ParsedMarkdown:
 
         named_m = _NAMED_STYLE_RE.match(line)
         if named_m:
-            inline_text, inline_styles = _parse_inline(named_m.group(2), references)
+            inline_text, inline_styles = _parse_inline(
+                named_m.group(2) or "", references,
+            )
             emit_paragraph(
                 inline_text, inline_styles, {"namedStyleType": named_m.group(1)},
             )
@@ -956,7 +960,9 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         heading_m = _HEADING_RE.match(line)
         if heading_m:
             level = len(heading_m.group(1))
-            inline_text, inline_styles = _parse_inline(heading_m.group(2), references)
+            inline_text, inline_styles = _parse_inline(
+                heading_m.group(2) or "", references,
+            )
             emit_paragraph(
                 inline_text, inline_styles,
                 {"namedStyleType": f"HEADING_{level}"},
@@ -990,10 +996,10 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             item_style = "NORMAL_TEXT"
             if heading:
                 item_style = f"HEADING_{len(heading.group(1))}"
-                item = heading.group(2)
+                item = heading.group(2) or ""
             elif named:
                 item_style = named.group(1)
-                item = named.group(2)
+                item = named.group(2) or ""
             inline_text, inline_styles = _parse_inline(item, references)
             emit_paragraph(
                 inline_text, inline_styles,
@@ -1013,10 +1019,10 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             item_style = "NORMAL_TEXT"
             if heading:
                 item_style = f"HEADING_{len(heading.group(1))}"
-                item = heading.group(2)
+                item = heading.group(2) or ""
             elif named:
                 item_style = named.group(1)
-                item = named.group(2)
+                item = named.group(2) or ""
             inline_text, inline_styles = _parse_inline(item, references)
             emit_paragraph(
                 inline_text, inline_styles,

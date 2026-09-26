@@ -510,6 +510,8 @@ structure may read differently:
 - An explicit line break inside a paragraph is Docs' soft break, the vertical-tab
   character U+000B, which gdoc reads and writes as that character; in table cells
   it is `<br>`. A trailing backslash or two trailing spaces is not a line break.
+- To begin a file with two thematic breaks, spell them `***`: a file whose first
+  two lines are `---` is read as an empty metadata block.
 
 Images accept publicly fetchable HTTP(S) URLs. Existing images export as
 `![](gdoc-image:OBJECT_ID)` (with alt text when available); a linked image is

@@ -170,8 +170,8 @@ def test_custom_first_level_indent_is_not_nesting(definition_indent, paragraph_i
 @pytest.mark.parametrize("data_alignment, lossy", [
     ("CENTER", False), (None, True), ("END", True)])
 def test_cell_alignment_unlike_its_header_needs_loss_consent(data_alignment, lossy):
-    from gdoc.util import GdocError
     from gdoc.lossy import check_markdown_replacement
+    from gdoc.util import GdocError
 
     table = _table([["H"], ["v"]])
     for row, alignment in ((0, "CENTER"), (1, data_alignment)):

@@ -47,6 +47,19 @@ All notable changes to `gdoc` are documented here. This project follows
   same rule handling, so an appended `---` no longer leaves a blank paragraph.
 - Unchanged single-tab `write`/`push` uploads skip reconstruction even without
   a conflict and report that nothing was written.
+- A table data row of dashes stays a row; one blank line separates adjacent
+  tables. A tab starting with a rule reads with an empty metadata block first,
+  so `write` keeps the rule and the text after it.
+- `edit` and `insert` create and maintain code and container ranges, and tab
+  replacements remove gdoc's old ones. Loose numbered lists nested under
+  bullets keep their numbering, a list item containing a rule stays one item,
+  and custom first-level list indents no longer read as nesting.
+- An indented paragraph's heading style and literal punctuation survive inside
+  its quote. Cells aligned unlike their column header need loss consent.
+- `edit` and `insert` record an acknowledged write before the optional version
+  lookup. Markdown `export` and `pull` name the tab they read. Sync hooks
+  report skips to the agent, identical local replacements leave the file in
+  place, and comment anchors no longer match through escapes in code.
 
 ## [0.21.0] — 2026-08-26
 

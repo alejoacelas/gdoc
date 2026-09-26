@@ -1581,12 +1581,21 @@ def _table_cell_requests(cell_indices, table, tab_id):
 def _table_scaffolding(parsed, table):
     """Describe where a table goes relative to the parser's placeholder.
 
-    ``before`` is 1 when a paragraph of the inserted Markdown ends directly
-    before the placeholder. The table is then inserted at that paragraph's
-    mark, which splits it: its text keeps a copy of its own paragraph style
-    and list membership, and the emptied original mark lands after the
-    table. ``placeholder`` is 1 when the placeholder paragraph exists. Both
-    are empty paragraphs after the table and are the only ones removed.
+    Returns ``(before, placeholder, preceding_style)``. ``before`` is 1 when a
+    paragraph of the inserted Markdown ends directly before the placeholder;
+    ``placeholder`` is 1 when the placeholder paragraph exists.
+
+    Ordinarily the table is inserted at the preceding paragraph's mark,
+    which splits that paragraph: its text keeps a copy of its own style and
+    list membership, and its emptied original mark and the placeholder land
+    after the table, where only they are removed. Which paragraph's style
+    Docs keeps when those removals merge into the following paragraph is
+    unprobed, and the following paragraph's list membership could not be
+    restored. So when a list item follows and the preceding paragraph is
+    not a list item, ``preceding_style`` holds that paragraph's parsed
+    style instead: the table is inserted at the list item's start, which
+    stays untouched, and the preceding paragraph's text is joined to the
+    table's leading mark, then given back its own style and no bullet.
     """
     offset = table.plain_text_offset
     previous_placeholder = any(t.plain_text_offset == offset - 1
@@ -1594,7 +1603,18 @@ def _table_scaffolding(parsed, table):
     before = (offset > 0 and parsed.plain_text[offset - 1] == "\n"
               and not previous_placeholder)
     placeholder = offset < len(parsed.plain_text)
-    return int(before), int(placeholder)
+    preceding_style = None
+    if before and placeholder and offset + 1 < len(parsed.plain_text):
+        bullets = [s for s in parsed.styles if s.type == "bullets"]
+        follows_item = any(s.start == offset + 1 for s in bullets)
+        is_item = any(s.start <= offset - 1 < s.end for s in bullets)
+        if follows_item and not is_item:
+            preceding_style = {}
+            for style in parsed.styles:
+                if (style.type == "paragraph_style"
+                        and style.start <= offset - 1 < style.end):
+                    preceding_style.update(style.style)
+    return int(before), int(placeholder), preceding_style
 
 
 def _table_cleanup_requests(tab, table_element, scaffolding, tab_id, expected=None):
@@ -1612,7 +1632,10 @@ def _table_cleanup_requests(tab, table_element, scaffolding, tab_id, expected=No
     paragraphs after the table; with ``expected`` (the fingerprint from the
     pinned read), a relocated fill refuses if a collaborator changed them.
     """
-    before, placeholder = scaffolding
+    before, placeholder, preceding_style = scaffolding
+    joined = preceding_style is not None
+    if joined:
+        before = placeholder = 0  # Nothing was inserted after the table.
     count = before + placeholder
     content = tab.get("body", {}).get("content", [])
     start = table_element["startIndex"]
@@ -1627,15 +1650,21 @@ def _table_cleanup_requests(tab, table_element, scaffolding, tab_id, expected=No
             "scaffolding was not removed", exit_code=3,
         )
     requests = []
-    if before:
-        for named_id, name, spans in _owned_named_ranges(tab, tab_id):
-            if len(spans) == 1 and spans[0][0] < start and spans[0][1] == end + 1:
-                span = {"startIndex": spans[0][0], "endIndex": start}
-                if tab_id:
-                    span["tabId"] = tab_id
-                requests.extend([_delete_owned_range(named_id, tab_id), {
-                    "createNamedRange": {"name": name, "range": span},
-                }])
+    # A split grew a range over the table (it ended after the split mark);
+    # a join shrank one to end before the table's leading mark (it ended
+    # after the removed mark). Either way it is recreated to end at the
+    # paragraph's new mark, directly before the table.
+    grown_end = end + 1 if before else None
+    shrunk_end = start - 1 if joined else None
+    for named_id, name, spans in _owned_named_ranges(tab, tab_id):
+        if (len(spans) == 1 and spans[0][0] < start - 1
+                and spans[0][1] in (grown_end, shrunk_end)):
+            span = {"startIndex": spans[0][0], "endIndex": start}
+            if tab_id:
+                span["tabId"] = tab_id
+            requests.extend([_delete_owned_range(named_id, tab_id), {
+                "createNamedRange": {"name": name, "range": span},
+            }])
     if not count:
         return requests, neighbors
     removed = [e for e in following[:count] if _is_empty_paragraph(e)]
@@ -1696,7 +1725,7 @@ def _insert_table(
     table,
     tab_id: str | None = None,
     *, revision_id: str = "", progress=None, resolve_index=None,
-    ordinal: int = 1, scaffolding: tuple[int, int] = (0, 0),
+    ordinal: int = 1, scaffolding: tuple = (0, 0, None),
 ) -> str:
     """Insert and fill a table with revision-pinned, single-shot stages."""
     if progress is None:
@@ -1717,12 +1746,41 @@ def _insert_table(
         # that newline splits the paragraph, so no mark of a paragraph that
         # keeps text is ever deleted; the emptied scaffolding after the table
         # is removed with the cell fill, where its content can be verified.
-        location = {"index": index - scaffolding[0]}
+        before, placeholder, preceding_style = scaffolding
+        if preceding_style is None:
+            location = {"index": index - before}
+            if tab_id:
+                location["tabId"] = tab_id
+            return [{"insertTable": {
+                "rows": table.num_rows, "columns": table.num_cols,
+                "location": location,
+            }}]
+
+        # Insert at the following list item's start; join the preceding
+        # paragraph's text to the table's leading mark and restore it.
+        def spanned(start, end):
+            span = {"startIndex": start, "endIndex": end}
+            if tab_id:
+                span["tabId"] = tab_id
+            return span
+
+        location = {"index": index + 1}
         if tab_id:
             location["tabId"] = tab_id
-        return [{"insertTable": {
-            "rows": table.num_rows, "columns": table.num_cols, "location": location,
-        }}]
+        from gdoc.mdparse import _PARAGRAPH_STYLE_FIELDS
+        fields = sorted(_PARAGRAPH_STYLE_FIELDS)
+        return [
+            {"insertTable": {"rows": table.num_rows, "columns": table.num_cols,
+                             "location": location}},
+            {"deleteContentRange": {"range": spanned(index - 1, index + 1)}},
+            {"updateParagraphStyle": {
+                "range": spanned(index - 1, index),
+                "paragraphStyle": {f: preceding_style[f] for f in fields
+                                   if f in preceding_style},
+                "fields": ",".join(fields),
+            }},
+            {"deleteParagraphBullets": {"range": spanned(index - 1, index)}},
+        ]
 
     def relocate():
         nonlocal index

@@ -105,15 +105,8 @@ def _shape(paragraphs, edited):
     "heading-table", "item-table", "table-heading", "table-item",
     "heading-table-end", "empty-heading-table",
 ])
-def test_rewrite_keeps_styles_at_table_boundaries(route, layout, merge, request):
+def test_rewrite_keeps_styles_at_table_boundaries(route, layout, merge):
     """F1: exporter-shaped tables directly beside styled paragraphs survive."""
-    if layout == "table-item" and merge == "first":
-        # The paragraph after the table keeps its restored style either way,
-        # but a bullet cannot be re-added to its original list through the
-        # API. Only first-paragraph inheritance would drop it; unprobed live.
-        request.applymarker(pytest.mark.xfail(
-            strict=True,
-            reason="list identity after a table under first-paragraph merge"))
     bullet = _bullet()
     blocks = {
         "heading-table": [("p", "Heading", "HEADING_2"), ("t", TABLE),
@@ -251,3 +244,35 @@ def test_literal_list_tabs_survive_a_trailing_rule(route, markdown):
     assert first == markdown
     route.ok("write", text=first.replace("lit", "lit2").replace("two", "two2"))
     assert route.ok("cat") == first.replace("lit", "lit2").replace("two", "two2")
+
+
+DIFFERENT_LISTS = "- a\n| h |\n| --- |\n| v |\n1. b\n"
+
+
+@MERGES
+@pytest.mark.parametrize("markdown", [
+    "before\n| h |\n| --- |\n| v |\n- item\n- next\n",
+    "## Heading\n| h |\n| --- |\n| v |\n1. one\n2. two\n",
+    "> quoted\n| h |\n| --- |\n| v |\n- item\n",
+    "- a\n| h |\n| --- |\n| v |\n- b\n",
+    "```\ncode\n```\n| h |\n| --- |\n| v |\n- item\n",
+    DIFFERENT_LISTS,
+])
+def test_list_item_after_a_table_keeps_its_list(route, markdown, merge, request):
+    """F1: a list item directly after a table never merges through its mark."""
+    if markdown == DIFFERENT_LISTS and merge == "first":
+        request.applymarker(pytest.mark.xfail(strict=True, reason=(
+            "Unresolved and unprobed: two different lists directly around a "
+            "table. Under first-paragraph merge inheritance the list after the "
+            "table would take the earlier list's membership, which the API "
+            "cannot re-create.")))
+    doc = route.load(NativeDoc(merge=merge))
+    route.ok("cat")
+    route.ok("write", text=markdown)
+    assert route.ok("cat") == markdown
+    changed = markdown.replace("| v |", "| w |")
+    route.ok("write", text=changed)
+    assert route.ok("cat") == changed
+    assert all(not start < next(i for i, u in enumerate(doc.units)
+                                if u.kind == "tstart") < end
+               for name, start, end in doc.named if name)

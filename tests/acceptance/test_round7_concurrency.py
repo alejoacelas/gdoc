@@ -8,7 +8,6 @@ native model.
 """
 
 import contextlib
-import copy
 import io
 import json
 
@@ -282,6 +281,8 @@ def test_image_tab_file_needs_a_fresh_pull_after_any_edit(env):
                                  "textStyle": {"fontSize": {"magnitude": 20}}}]}),
     ("documentStyle", {"background": {"color": {}}}),
     ("footnotes", {"f": {"content": []}}),
+    ("suggestedDocumentStyleChanges", {"s9": {"documentStyle": {}}}),
+    ("suggestedNamedStylesChanges", {"s9": {"namedStyles": {}}}),
 ])
 def test_tab_dependencies_outside_the_body_make_the_file_stale(env, key, value):
     pull(env)

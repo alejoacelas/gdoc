@@ -293,7 +293,9 @@ def flatten_tabs(tabs: list[dict], _level: int = 0) -> list[dict]:
             **{key: doc_tab[key] for key in ("headers", "footers", "footnotes",
                                                 "namedRanges", "inlineObjects",
                                                 "positionedObjects", "namedStyles",
-                                                "documentStyle")
+                                                "documentStyle",
+                                                "suggestedDocumentStyleChanges",
+                                                "suggestedNamedStylesChanges")
                if key in doc_tab},
         })
         for child in tab.get("childTabs", []):
@@ -307,8 +309,9 @@ def native_tab_fingerprint(tab: dict) -> str:
     Two snapshots of an unchanged tab fingerprint equally even at different
     document revisions, so edits to other tabs do not change it. Any native
     change in the tab does: text, paragraph and text styles, lists, named
-    ranges, named and document styles, segments, and pending suggestions that
-    Markdown does not show. A tab with images returns "": each read issues a
+    ranges, named and document styles, segments, and pending suggestions
+    (including suggested tab style changes) that Markdown does not show.
+    A tab with images returns "": each read issues a
     fresh temporary ``contentUri``, and a replaced image's bytes can change
     under the same object ID and size, so no stable field proves the image is
     unchanged. Callers treat "" as unknown and refuse to carry provenance.

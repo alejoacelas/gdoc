@@ -424,6 +424,63 @@ def _expand_image_references(text: str, references: dict) -> str:
     return "".join(parts)
 
 
+def rename_image_references(text: str, renames: dict[str, str]) -> str:
+    """Rename ``gdoc-image:ID`` only where it is an inline image destination.
+
+    Fenced code, code spans, escaped syntax, link destinations and prose keep
+    the literal token.
+    """
+    if not renames or "gdoc-image:" not in text:
+        return text
+
+    def rename(chunk: str) -> str:
+        masked = _protect_code(chunk, _mask_escapes(chunk))
+        protected = list(masked)
+        cursor = 0
+        while link := _find_link(masked[cursor:]):
+            start, end = cursor + link.start(2), cursor + link.end(2)
+            protected[start:end] = _MASK * (end - start)
+            cursor += link.end()
+        masked = "".join(protected)
+        parts = []
+        cursor = 0
+        while found := _find_image(masked[cursor:], {}):
+            match = found[0]
+            start, end = cursor + match.start(2), cursor + match.end(2)
+            destination = chunk[start:end]
+            target = re.fullmatch(r"(\s*<?gdoc-image:)([A-Za-z0-9_.-]+)(>?\s*)",
+                                  destination)
+            parts.append(chunk[cursor:start])
+            if target and target[2] in renames:
+                destination = target[1] + renames[target[2]] + target[3]
+            parts.append(destination)
+            cursor = end
+        parts.append(chunk[cursor:])
+        return "".join(parts)
+
+    out = []
+    prose = []
+    fence = None
+    for line in re.findall(r"[^\n]*\n|[^\n]+", text):
+        bare = re.sub(r"^(?:[ \t]*>)*[ \t]*", "", line.rstrip("\r\n"))
+        if fence is not None:
+            out.append(line)
+            close = _FENCE_CLOSE_RE.match(bare)
+            if close and close[1][0] == fence[0] and len(close[1]) >= len(fence):
+                fence = None
+            continue
+        opener = _fence_open(bare)
+        if opener:
+            out.append(rename("".join(prose)))
+            prose.clear()
+            out.append(line)
+            fence = opener[1]
+            continue
+        prose.append(line)
+    out.append(rename("".join(prose)))
+    return "".join(out)
+
+
 def _scan(
     text: str, masked: str, references: dict | None = None,
 ) -> tuple[str, list[StyleRange]]:

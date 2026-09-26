@@ -1,5 +1,6 @@
 """Google Docs API v1 wrapper functions with error translation."""
 
+import json
 import re
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -666,7 +667,8 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
 
     def with_prefix(text, prefix):
         lead = "> " * prefix[0] + " " * prefix[1]
-        return "".join(lead + line for line in text.splitlines(keepends=True))
+        # Only "\n" ends a Markdown line; a soft break (\x0b) stays in its line.
+        return "".join(lead + line for line in re.findall(r"[^\n]*\n|[^\n]+", text))
 
     def flush_code():
         if not code_parts:
@@ -1232,7 +1234,8 @@ class _StagedWrite:
     stage: str = "preparing content"
     sent: bool = False
     rebased: bool = False
-    inserted_images: dict[str, list[str]] = field(default_factory=dict)
+    # (content URI, object size) -> object IDs in request order.
+    inserted_images: dict[tuple, list[str]] = field(default_factory=dict)
 
     def __enter__(self):
         return self
@@ -1312,10 +1315,12 @@ class _StagedWrite:
                 self.rebased = True
                 continue
             for operation, reply in zip(requests, response.get("replies", [])):
-                uri = operation.get("insertInlineImage", {}).get("uri")
+                insertion = operation.get("insertInlineImage", {})
                 object_id = reply.get("insertInlineImage", {}).get("objectId")
-                if uri and isinstance(object_id, str) and object_id:
-                    self.inserted_images.setdefault(uri, []).append(object_id)
+                if insertion.get("uri") and isinstance(object_id, str) and object_id:
+                    self.inserted_images.setdefault(_image_key(
+                        insertion["uri"], insertion.get("objectSize"),
+                    ), []).append(object_id)
             self.applied.append(stage)
             self.sent = False
             return response.get("writeControl", {}).get("requiredRevisionId", "")
@@ -2122,6 +2127,11 @@ def _parsed_images(parsed):
     return images
 
 
+def _image_key(uri, size):
+    """Identify inserted images that are interchangeable in later writes."""
+    return uri, json.dumps(size, sort_keys=True) if size else ""
+
+
 def _image_reference_properties(uri, snapshot):
     if not uri.startswith("gdoc-image:"):
         return {}
@@ -2168,13 +2178,13 @@ def _prepare_image_sources(parsed, snapshot):
                     if style.type == "image":
                         source = style.style["uri"]
                         sources[source] = _resolve_image_uri(source, snapshot)
-                        if source.startswith("gdoc-image:"):
-                            parsed.image_reference_sources[source[11:]] = (
-                                sources[source]
-                            )
                         sizes[source] = _image_reference_properties(
                             source, snapshot,
                         ).get("size")
+                        if source.startswith("gdoc-image:"):
+                            parsed.image_reference_sources[source[11:]] = (
+                                _image_key(sources[source], sizes[source])
+                            )
                         if style.style.get("alt"):
                             has_alt = True
         table.image_sources = sources
@@ -2185,7 +2195,9 @@ def _prepare_image_sources(parsed, snapshot):
         ).get("size")
         resolved = _resolve_image_uri(image.uri, snapshot)
         if image.uri.startswith("gdoc-image:"):
-            parsed.image_reference_sources[image.uri[11:]] = resolved
+            parsed.image_reference_sources[image.uri[11:]] = _image_key(
+                resolved, image.object_size,
+            )
         image.uri = resolved
         for style in parsed.styles:
             if style.type == "image" and style.start == image.plain_text_offset:
@@ -2566,9 +2578,11 @@ def insert_markdown_into_tab(
         "acknowledged_revision_id": revision_id,
         "rebased": progress.rebased,
         "image_reference_ids": {
-            original: progress.inserted_images[uri][0]
-            for original, uri in parsed.image_reference_sources.items()
-            if len(progress.inserted_images.get(uri, [])) == 1
+            # Copies of one image share its content and size; any copy
+            # stands in for the original reference in later writes.
+            original: progress.inserted_images[key][0]
+            for original, key in parsed.image_reference_sources.items()
+            if progress.inserted_images.get(key)
         },
     }
 

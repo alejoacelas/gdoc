@@ -1549,12 +1549,8 @@ def _write_native_markdown(
 
     known = load_state(doc_id)
     if known and known.read_revision_ids.get(selected["id"]) == revision:
-        content = re.sub(
-            r"gdoc-image:([A-Za-z0-9_.-]+)",
-            lambda match: "gdoc-image:" + known.image_reference_ids.get(
-                match.group(1), match.group(1),
-            ), content,
-        )
+        from gdoc.mdparse import rename_image_references
+        content = rename_image_references(content, known.image_reference_ids)
     unchanged = (
         not (collapse and len(tabs) > 1)
         and _comparable_markdown(get_tab_text(selected, markdown=True))

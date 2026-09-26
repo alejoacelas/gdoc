@@ -424,3 +424,23 @@ def test_native_edits_inside_gdoc_blocks_win_over_recorded_ranges(scenario):
                 if r.get("createNamedRange", {}).get("name", "").startswith(
                     "gdoc:prefix")]
     assert prefixed == []
+
+
+@pytest.mark.parametrize("command", ["write", "insert", "edit"])
+def test_local_state_failure_after_acknowledged_write_is_a_warning(
+    scenario, monkeypatch, command,
+):
+    read(scenario)
+
+    def full_disk(*args, **kwargs):
+        raise OSError("No space left on device")
+
+    monkeypatch.setattr("gdoc.state.record_content_write", full_disk)
+    if command == "edit":
+        arguments = {"old_text": "Original", "new_text": "Revised"}
+    else:
+        arguments = {"text": "Revised sentence.\n"}
+    code, out, error = scenario.call(command, tab="draft", **arguments)
+    assert code == 0, out + error
+    assert "write saved, but content provenance could not be recorded" in error
+    assert scenario.batches

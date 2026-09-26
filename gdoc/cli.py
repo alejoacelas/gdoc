@@ -675,7 +675,7 @@ def cmd_insert(args) -> int:
         resolve_tab,
     )
     from gdoc.notify import pre_flight
-    from gdoc.state import record_content_write, require_content_baseline
+    from gdoc.state import require_content_baseline
 
     change_info = pre_flight(doc_id, quiet=quiet)
     _require_doc(doc_id, change_info)
@@ -691,7 +691,7 @@ def cmd_insert(args) -> int:
     )
 
     # Record the acknowledged write before any optional follow-up lookup.
-    record_content_write(
+    _record_acknowledged_write(
         doc_id,
         input_revision_id=result.get(
             "input_revision_id", document.get("revisionId", ""),
@@ -1278,8 +1278,7 @@ def cmd_edit(args) -> int:
     )
 
     # Record the acknowledged write before any optional follow-up lookup.
-    from gdoc.state import record_content_write
-    record_content_write(
+    _record_acknowledged_write(
         doc_id, input_revision_id=result_details.get("input_revision_id", ""),
         acknowledged_revision_id=result_details.get("acknowledged_revision_id", ""),
         rebased=result_details.get("rebased", False),
@@ -1514,7 +1513,6 @@ def _write_native_markdown(
     from gdoc.notify import pre_flight
     from gdoc.state import (
         record_content_read,
-        record_content_write,
         require_content_baseline,
         update_state_after_command,
     )
@@ -1622,10 +1620,15 @@ def _write_native_markdown(
     acknowledged = details.get("acknowledged_revision_id", "")
     if result_details is not None:
         result_details.update(details)
-    update_state_after_command(
-        doc_id, change_info, command=command, quiet=quiet, command_version=version,
-    )
-    record_content_write(
+    try:
+        update_state_after_command(
+            doc_id, change_info, command=command, quiet=quiet,
+            command_version=version,
+        )
+    except OSError as error:
+        print(f"WARN: write saved, but local state could not be updated: {error}",
+              file=sys.stderr)
+    _record_acknowledged_write(
         doc_id, input_revision_id=details.get("input_revision_id", revision),
         acknowledged_revision_id=acknowledged,
         replaced_tab_ids=[selected["id"]], rebased=details.get("rebased", False),
@@ -3127,13 +3130,18 @@ def _resolve_insert_index(
 
 
 def _record_targeted_write(doc_id, input_revision_id, acknowledged_revision_id):
+    _record_acknowledged_write(
+        doc_id, input_revision_id=input_revision_id,
+        acknowledged_revision_id=acknowledged_revision_id,
+    )
+
+
+def _record_acknowledged_write(doc_id, **provenance):
+    """Record a write Google acknowledged; a local failure must not hide it."""
     from gdoc.state import record_content_write
 
     try:
-        record_content_write(
-            doc_id, input_revision_id=input_revision_id,
-            acknowledged_revision_id=acknowledged_revision_id,
-        )
+        record_content_write(doc_id, **provenance)
     except OSError as error:
         print("WARN: write saved, but content provenance could not be recorded: "
               f"{error}",

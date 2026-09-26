@@ -193,3 +193,23 @@ def test_add_tab_route_reports_an_unreadable_reply_as_uncertain(
             assert cli.run_argv(["add-tab", "d", "Notes"], check_updates=False) == 1
         text = err.getvalue()
     assert "list the document's tabs before retrying" in text
+
+
+def test_linked_paragraph_shaped_like_a_definition_survives():
+    """F13: escaped brackets never make a paragraph a reference definition."""
+    link = {"link": {"url": "https://example.org/spec"}}
+    tab = _tab([_paragraph(("[1]: https://example.org/spec", link), ("\n", {}))])
+    parsed = parse_markdown(get_tab_text(tab, markdown=True))
+    assert parsed.plain_text == "[1]: https://example.org/spec\n"
+    assert any(s.style.get("link") == link["link"] for s in parsed.styles)
+
+
+@pytest.mark.parametrize("text", ["x\xa0", "\xa0x", "x ", "　x"])
+def test_table_cell_edge_whitespace_other_than_spaces_is_text(text):
+    """F14: only spaces and tabs around a cell are Markdown padding."""
+    from gdoc.mdparse import parse_inline
+
+    tab = _tab([_table([(("H", {}), ("\n", {}))], [((text, {}), ("\n", {}))]),
+                _paragraph(("\n", {}))])
+    parsed = parse_markdown(get_tab_text(tab, markdown=True))
+    assert parse_inline(parsed.tables[0].rows[1][0])[0] == text

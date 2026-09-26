@@ -235,7 +235,8 @@ def _table_cells(line: str) -> list[str]:
     boundaries = [-1, *separators, len(text)]
     cells = []
     for start, end in zip(boundaries, boundaries[1:]):
-        cell = text[start + 1:end].strip()
+        # Markdown trims only spaces and tabs; other edge whitespace is text.
+        cell = text[start + 1:end].strip(" \t")
         parts = []
         cursor = 0
         for code in _code_spans(cell):
@@ -692,12 +693,16 @@ def parse_markdown(text: str) -> ParsedMarkdown:
         if opener:
             fence = opener[1]
             continue
-        definition = re.fullmatch(r" {0,3}\[([^\]]+)\]:[ \t]*(\S+)[ \t]*", line)
-        if definition and (re.match(r"<?[a-zA-Z][a-zA-Z0-9+.-]*:", definition[2])
-                           or re.search(r"!\[[^\]]*\]\[" + re.escape(definition[1])
+        # Escaped brackets cannot delimit a definition's label.
+        masked = re.fullmatch(r" {0,3}\[([^\]]+)\]:[ \t]*(\S+)[ \t]*",
+                              _mask_escapes(line))
+        definition = masked and (line[masked.start(1):masked.end(1)],
+                                 line[masked.start(2):masked.end(2)])
+        if definition and (re.match(r"<?[a-zA-Z][a-zA-Z0-9+.-]*:", definition[1])
+                           or re.search(r"!\[[^\]]*\]\[" + re.escape(definition[0])
                                         + r"\]", text)):
-            uri = _strip_escapes(definition[2])
-            references[_ref_label(definition[1])] = (
+            uri = _strip_escapes(definition[1])
+            references[_ref_label(definition[0])] = (
                 uri.removeprefix("<").removesuffix(">")
             )
             definition_lines.add(line_number)

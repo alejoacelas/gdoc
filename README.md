@@ -533,7 +533,11 @@ alignment delimiters such as `:--`, `--:` and `:-:` and do not gain incidental h
 As in GFM, table rows may end in whitespace and be indented up to three spaces.
 Only the line after a table's header is its delimiter row, so data rows of dashes stay
 rows. One blank line separates adjacent tables; further blank lines between them are
-blank paragraphs. Syntax highlighting, native object IDs, pagination, custom fonts,
+blank paragraphs. Docs keeps a paragraph before a table that starts a tab, between
+two tables, and after a table that ends a tab. Reads show each as a blank line (so
+adjacent tables read with two blank lines between them), and writing that read
+back keeps exactly those paragraphs; blank paragraphs you add beyond them are kept
+too. This is stable across rewrites. Syntax highlighting, native object IDs, pagination, custom fonts,
 colors and arbitrary layout are outside the Markdown promise.
 
 Write the canonical spellings that exports use; other spellings of the same

@@ -298,3 +298,28 @@ def test_alternating_containers_keep_list_identity(route, merge, markdown,
     a, b = (_list_of(doc, outer[0]), _list_of(doc, outer[1] + "3"))
     x, y = (_list_of(doc, inner[0] + "2"), _list_of(doc, inner[1]))
     assert a == b and x == y and a != x
+
+
+@MERGES
+@pytest.mark.parametrize("source,expected,before", [
+    # The paragraph Docs keeps before a first table reads as a blank line.
+    ("| h |\n| --- |\n| v |\nplain\n", "\n| h |\n| --- |\n| v |\nplain\n", 1),
+    # A user blank line beyond it is a real paragraph and is kept.
+    ("\n\n| h |\n| --- |\n| v |\nplain\n", "\n\n| h |\n| --- |\n| v |\nplain\n", 2),
+    # A table ending the tab keeps Docs' final paragraph after it.
+    ("plain\n| h |\n| --- |\n| v |\n", "plain\n| h |\n| --- |\n| v |\n\n", 1),
+])
+def test_table_boundary_paragraphs_are_stable(route, merge, source, expected, before):
+    """R6-12: mandatory native paragraphs around tables are explicit and stable;
+    user-authored blank paragraphs are never erased."""
+    doc = route.load(NativeDoc(merge=merge))
+    route.ok("cat")
+    route.ok("write", text=source)
+    assert _read(route) == expected
+    start = next(i for i, u in enumerate(doc.units) if u.kind == "tstart")
+    assert sum(u.ch == "\n" and u.kind == "text"
+               for u in doc.units[:start]) == before
+    for n in range(2):
+        changed = _read(route).replace("v |", f"v{n} |", 1)
+        route.ok("write", text=changed)
+        assert _read(route) == changed

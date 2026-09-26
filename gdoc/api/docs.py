@@ -425,20 +425,26 @@ def _paragraph_markdown(
     if any("horizontalRule" in e for e in elements):
         fragments = []
         chunk = []
+        # One native item stays one Markdown item: only its first text keeps
+        # the list marker, so the rule cannot add an item or advance numbering.
+        marked = [dict(paragraph)]
+
+        def flush():
+            if chunk and _runs_markdown(chunk).strip():
+                part = dict(marked[0], elements=chunk)
+                fragments.append(_paragraph_markdown(
+                    part, lists, ordered_counters,
+                ).rstrip("\n") + "\n")
+                marked[0] = {k: v for k, v in marked[0].items() if k != "bullet"}
+
         for element in elements:
             if "horizontalRule" in element:
-                if chunk and _runs_markdown(chunk).strip():
-                    fragments.append(_paragraph_markdown(
-                        dict(paragraph, elements=chunk), lists, ordered_counters,
-                    ).rstrip("\n") + "\n")
+                flush()
                 fragments.append("---\n")
                 chunk = []
             else:
                 chunk.append(element)
-        if chunk and _runs_markdown(chunk).strip():
-            fragments.append(_paragraph_markdown(
-                dict(paragraph, elements=chunk), lists, ordered_counters,
-            ).rstrip("\n") + "\n")
+        flush()
         return "".join(fragments)
     text = _runs_markdown(paragraph.get("elements", []))
     newline = ""

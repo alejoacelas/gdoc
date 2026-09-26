@@ -125,3 +125,22 @@ def test_indented_heading_keeps_its_style_inside_its_quote(style, expected):
     parsed = parse_markdown(exported)
     assert parsed.plain_text == "Section\n"
     assert any(s.style.get("namedStyleType") == style for s in parsed.styles)
+
+
+def test_numbered_item_containing_a_rule_stays_one_item():
+    from gdoc.api.docs import _native_docs_requests, _strip_trailing_newline_unless_hr
+    from tests.test_list_request_semantics import apply_list_requests, labels
+
+    bullet = {"listId": "L", "nestingLevel": 0}
+    first = _paragraph([("a", {})], bullet=bullet)
+    first["paragraph"]["elements"][1:1] = [{"horizontalRule": {}},
+                                           {"textRun": {"content": "b"}}]
+    lists = {"L": {"listProperties": {"nestingLevels": [{"glyphType": "DECIMAL"}]}}}
+    exported = get_tab_text({"body": {"content": [
+        first, _paragraph([("c", {})], bullet=bullet)]}, "lists": lists},
+        markdown=True)
+    assert exported == "1. a\n---\nb\n2. c\n"
+    parsed = parse_markdown(exported)
+    _strip_trailing_newline_unless_hr(parsed)
+    assert labels(apply_list_requests(_native_docs_requests(parsed, 1, "t"))) == [1, 2]
+    assert not parsed.non_default_list_starts

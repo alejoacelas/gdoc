@@ -92,6 +92,14 @@ def _bullet(list_id=1, preset="BULLET_DISC_CIRCLE_SQUARE", nest=0):
 NUMBERED = "NUMBERED_DECIMAL_ALPHA_ROMAN"
 
 
+def _shape(paragraphs, edited):
+    """Paragraph structure with lists numbered by first appearance."""
+    lists = {}
+    return [(text, style, bullet and (lists.setdefault(bullet[0], len(lists)),
+                                      bullet[1]))
+            for text, style, bullet in paragraphs if text not in edited]
+
+
 @MERGES
 @pytest.mark.parametrize("layout", [
     "heading-table", "item-table", "table-heading", "table-item",
@@ -149,8 +157,9 @@ def test_appending_a_leading_table_keeps_the_last_paragraph(route, last, merge):
     route.ok("insert", text="| a |\n|---|\n| c |\n\nafter", tab="Main",
              position="end")
     after = styles(doc)
-    assert after[:len(before)] == before
-    assert after[-1] == ("after", "NORMAL_TEXT", None)
+    # Exactly the table's two cells and "after" are added: no blank paragraph.
+    assert after == before + [("a", None, None), ("c", None, None),
+                              ("after", "NORMAL_TEXT", None)]
 
 
 @MERGES
@@ -171,8 +180,23 @@ def test_written_table_layouts_read_back_unchanged(route, markdown, merge):
     doc = route.load(NativeDoc(merge=merge))
     route.ok("cat")
     route.ok("write", text=markdown)
-    # A tab ending in a table keeps Docs' final paragraph, read as a blank line.
-    assert route.ok("cat").rstrip("\n") == markdown.rstrip("\n")
+    first = route.ok("cat")
+    # A tab ending in a table keeps Docs' final paragraph, read as one blank
+    # line; otherwise the Markdown reads back byte for byte.
+    ends_in_table = markdown.rstrip("\n").endswith("|")
+    assert first == markdown + ("\n" if ends_in_table else "")
+    structure = styles(doc)
+    top_level = [u for u in doc.units[1:] if u.kind == "tstart" or u.ch == "\n"]
+    blank_lines = markdown.count("\n\n") + ends_in_table
+    assert sum(1 for s in structure if s[0] == "" and s[1]) == blank_lines, (
+        structure)
+    assert top_level[-1].ch == "\n"
+    # Changed round trips neither grow nor lose paragraphs.
+    for turn in range(2):
+        changed = route.ok("cat").replace("| v |", f"| v{turn} |")
+        route.ok("write", text=changed)
+        assert route.ok("cat") == changed
+        assert _shape(styles(doc), {"v0", "v1"}) == _shape(structure, {"v"})
     # gdoc's code and container ranges end at their block, never over the table.
     table = next(i for i, u in enumerate(doc.units) if u.kind == "tstart")
     assert all(not start < table < end for name, start, end in doc.named if name)

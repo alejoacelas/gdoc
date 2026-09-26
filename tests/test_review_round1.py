@@ -35,7 +35,8 @@ def test_loose_nested_lists_keep_parent_numbering(builder, child):
 def test_reference_links_keep_url_and_visible_label(reference):
     parsed = parse_markdown(f"See {reference}.\n\n[1]: https://example.org/report")
     expected = "the report" if "the report" in reference else "1"
-    assert parsed.plain_text == f"See {expected}.\n\n"
+    # The blank line only separated the trailing definition from the text.
+    assert parsed.plain_text == f"See {expected}.\n"
     assert any(
         s.style == {"link": {"url": "https://example.org/report"}}
         and parsed.plain_text[s.start : s.end] == expected

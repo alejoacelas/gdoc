@@ -1729,14 +1729,21 @@ def _table_cleanup_requests(tab, table_element, scaffolding, tab_id, expected=No
     # the table.
     grown_end = end + 1 if before else None
     for named_id, name, spans in _owned_named_ranges(tab, tab_id):
-        if (len(spans) == 1 and spans[0][0] < start - 1
-                and spans[0][1] == grown_end):
+        if len(spans) != 1:
+            continue
+        if spans[0][0] < start - 1 and spans[0][1] == grown_end:
             span = {"startIndex": spans[0][0], "endIndex": start}
-            if tab_id:
-                span["tabId"] = tab_id
-            requests.extend([_delete_owned_range(named_id, tab_id), {
-                "createNamedRange": {"name": name, "range": span},
-            }])
+        elif before and spans[0][0] == end and spans[0][1] <= end + count:
+            # A range of the empty paragraph before the table moved with its
+            # original mark past the table; it belongs on the new mark.
+            span = {"startIndex": start - 1, "endIndex": start}
+        else:
+            continue
+        if tab_id:
+            span["tabId"] = tab_id
+        requests.extend([_delete_owned_range(named_id, tab_id), {
+            "createNamedRange": {"name": name, "range": span},
+        }])
     if not count:
         return _final_paragraph_reset(content, position, placeholder,
                                       tab_id) + requests, neighbors

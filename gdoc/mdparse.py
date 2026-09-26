@@ -708,6 +708,13 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                 uri.removeprefix("<").removesuffix(">")
             )
             definition_lines.add(line_number)
+    # Blank lines that only separate trailing reference definitions from the
+    # text are not paragraphs of the document.
+    tail = len(lines)
+    while tail and (tail - 1 in definition_lines or not lines[tail - 1].strip()):
+        tail -= 1
+    if any(line_number >= tail for line_number in definition_lines):
+        definition_lines.update(range(tail, len(lines)))
     plain_parts: list[str] = []
     all_styles: list[StyleRange] = []
     all_tables: list[TableData] = []

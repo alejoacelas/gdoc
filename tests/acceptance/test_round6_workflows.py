@@ -340,3 +340,17 @@ def test_restored_content_tabs_keep_their_own_style(route, markdown):
                         and "strikethrough" not in u.ts for u in tabs)
     route.ok("write", text=markdown.replace("a", "A"))
     assert _read(route) == markdown.replace("a", "A")
+
+
+@pytest.mark.parametrize("markdown,expected", [
+    ("> > - a\n> > \n> >   | t |\n> >   | --- |\n> >   | v |\n",
+     "> > - a\n> > \n> >   | t |\n> >   | --- |\n> >   | v |\n\n"),
+    ("see [x][r]\n\n[r]: https://u.example/\n", "see [x](https://u.example/)\n"),
+])
+def test_container_blank_and_trailing_definition_round_trip(route, markdown,
+                                                            expected):
+    """R5-14: a contained blank keeps its prefix; a definition adds no blank."""
+    _written(route, markdown)
+    assert _read(route) == expected
+    route.ok("write", text=expected)
+    assert _read(route) == expected

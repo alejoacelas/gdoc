@@ -146,3 +146,32 @@ def test_insert_at_start_moves_a_leading_marker_after_new_text(scenario):
     text = _apply_text(scenario, batch)
     assert _ranges(batch, text) == (
         ["code-1"], [("gdoc:code:v1", "Intro\na = 1\nb = 2\nc = 3\n")])
+
+
+def test_failed_display_lookup_does_not_hide_acknowledged_edit_or_insert(scenario):
+    from gdoc import state
+
+    lookup = scenario.boundaries["get_file_version"]
+    original = lookup.side_effect
+
+    seen = [0]
+
+    def after_write(*args, **kwargs):
+        # Fail the first lookup after each new write.
+        if len(scenario.batches) > seen[0]:
+            seen[0] = len(scenario.batches)
+            raise OSError("drive unavailable")
+        return original(*args, **kwargs)
+
+    lookup.side_effect = after_write
+    read(scenario)
+    code, _, error = scenario.call("edit", old_text="Original", new_text="Edited",
+                                   tab="draft")
+    assert code == 0 and "write acknowledged" in error, error
+    assert len(scenario.batches) == 1
+    # The acknowledged revision authorizes the next own write without a reread.
+    state.require_content_baseline("synthetic", ["draft"], "r2")
+    scenario.document["revisionId"] = "r2"
+    code, _, error = scenario.call("insert", tab="draft", text="More\n",
+                                   position="end")
+    assert code == 0 and "write acknowledged" in error, error

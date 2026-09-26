@@ -569,8 +569,8 @@ def cmd_add_tab(args) -> int:
     result = add_tab(doc_id, title)
     tab_id = result["tabId"]
 
-    from gdoc.api.drive import get_file_version
-    command_version = get_file_version(doc_id).get("version")
+    from gdoc.api.drive import version_after_write
+    command_version = version_after_write(doc_id)
 
     from gdoc.util import build_doc_url
     url = build_doc_url(doc_id, tab_id=tab_id)
@@ -689,9 +689,17 @@ def cmd_insert(args) -> int:
         document=document,
     )
 
-    from gdoc.api.drive import get_file_version
-    version_data = get_file_version(doc_id)
-    command_version = version_data.get("version")
+    # Record the acknowledged write before any optional follow-up lookup.
+    record_content_write(
+        doc_id,
+        input_revision_id=result.get(
+            "input_revision_id", document.get("revisionId", ""),
+        ),
+        acknowledged_revision_id=result.get("acknowledged_revision_id", ""),
+        rebased=result.get("rebased", False),
+    )
+    from gdoc.api.drive import version_after_write
+    command_version = version_after_write(doc_id)
 
     from gdoc.format import get_output_mode
     _print_tab_write_result(
@@ -703,14 +711,6 @@ def cmd_insert(args) -> int:
     update_state_after_command(
         doc_id, change_info, command="insert",
         quiet=quiet, command_version=command_version,
-    )
-    record_content_write(
-        doc_id,
-        input_revision_id=result.get(
-            "input_revision_id", document.get("revisionId", ""),
-        ),
-        acknowledged_revision_id=result.get("acknowledged_revision_id", ""),
-        rebased=result.get("rebased", False),
     )
     return 0
 
@@ -786,9 +786,9 @@ def cmd_cells(args) -> int:
 
     # Record the post-write version so the next pre-flight doesn't report
     # this command's own write as an external edit.
-    from gdoc.api.drive import get_file_version
+    from gdoc.api.drive import version_after_write
 
-    command_version = get_file_version(doc_id).get("version")
+    command_version = version_after_write(doc_id)
 
     from gdoc.format import format_json, get_output_mode
 
@@ -1276,11 +1276,18 @@ def cmd_edit(args) -> int:
         **({"replace_paragraphs": True} if cell is not None else {}),
     )
 
-    # Get post-edit version for state tracking (Decision #12)
-    from gdoc.api.drive import get_file_version
+    # Record the acknowledged write before any optional follow-up lookup.
+    from gdoc.state import record_content_write
+    record_content_write(
+        doc_id, input_revision_id=result_details.get("input_revision_id", ""),
+        acknowledged_revision_id=result_details.get("acknowledged_revision_id", ""),
+        rebased=result_details.get("rebased", False),
+    )
 
-    version_data = get_file_version(doc_id)
-    command_version = version_data.get("version")
+    # Get post-edit version for state tracking (Decision #12)
+    from gdoc.api.drive import version_after_write
+
+    command_version = version_after_write(doc_id)
 
     # Output
     from gdoc.format import format_json, get_output_mode
@@ -1311,13 +1318,6 @@ def cmd_edit(args) -> int:
     update_state_after_command(
         doc_id, plan.change_info, command="edit",
         quiet=plan.quiet, command_version=command_version,
-    )
-
-    from gdoc.state import record_content_write
-    record_content_write(
-        doc_id, input_revision_id=result_details.get("input_revision_id", ""),
-        acknowledged_revision_id=result_details.get("acknowledged_revision_id", ""),
-        rebased=result_details.get("rebased", False),
     )
 
     return 0
@@ -2654,8 +2654,8 @@ def cmd_comment(args) -> int:
         if quote:
             print(f"Comment created unanchored: {resolution.detail}", file=sys.stderr)
 
-    from gdoc.api.drive import get_file_version
-    command_version = get_file_version(doc_id).get("version")
+    from gdoc.api.drive import version_after_write
+    command_version = version_after_write(doc_id)
 
     from gdoc.format import get_output_mode, format_json
     mode = get_output_mode(args)
@@ -2703,8 +2703,8 @@ def cmd_reply(args) -> int:
     result = create_reply(doc_id, comment_id, content=args.text)
     reply_id = result["id"]
 
-    from gdoc.api.drive import get_file_version
-    command_version = get_file_version(doc_id).get("version")
+    from gdoc.api.drive import version_after_write
+    command_version = version_after_write(doc_id)
 
     from gdoc.format import get_output_mode, format_json
     mode = get_output_mode(args)
@@ -2739,8 +2739,8 @@ def cmd_resolve(args) -> int:
     from gdoc.api.comments import create_reply
     create_reply(doc_id, comment_id, content=message, action="resolve")
 
-    from gdoc.api.drive import get_file_version
-    command_version = get_file_version(doc_id).get("version")
+    from gdoc.api.drive import version_after_write
+    command_version = version_after_write(doc_id)
 
     from gdoc.format import get_output_mode, format_json
     mode = get_output_mode(args)
@@ -2774,8 +2774,8 @@ def cmd_reopen(args) -> int:
     from gdoc.api.comments import create_reply
     create_reply(doc_id, comment_id, action="reopen")
 
-    from gdoc.api.drive import get_file_version
-    command_version = get_file_version(doc_id).get("version")
+    from gdoc.api.drive import version_after_write
+    command_version = version_after_write(doc_id)
 
     from gdoc.format import get_output_mode, format_json
     mode = get_output_mode(args)
@@ -2813,8 +2813,8 @@ def cmd_delete_comment(args) -> int:
     from gdoc.api.comments import delete_comment
     delete_comment(doc_id, comment_id)
 
-    from gdoc.api.drive import get_file_version
-    command_version = get_file_version(doc_id).get("version")
+    from gdoc.api.drive import version_after_write
+    command_version = version_after_write(doc_id)
 
     from gdoc.format import get_output_mode, format_json
     mode = get_output_mode(args)

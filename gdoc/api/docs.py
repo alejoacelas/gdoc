@@ -439,8 +439,12 @@ def _runs_markdown(elements: list[dict]) -> str:
         text_run = pe.get("textRun")
         if "inlineObjectElement" in pe:
             object_id = pe["inlineObjectElement"].get("inlineObjectId", "")
-            alt = pe.get("_markdown_image_alt", "")
-            alt = re.sub(r"([\\\[\]<>])", r"\\\1", alt)
+            # Alt text stays on one line, and its brackets, backticks and
+            # angle brackets are escaped so it cannot open other syntax. The
+            # Docs API cannot set alt text, so folding its line breaks into
+            # spaces loses nothing a write could keep.
+            alt = " ".join(pe.get("_markdown_image_alt", "").split())
+            alt = re.sub(r"([\\\[\]<>`])", r"\\\1", alt)
             image = f"![{alt}](gdoc-image:{object_id})"
             link = (pe["inlineObjectElement"].get("textStyle", {})
                     .get("link") or {}).get("url")

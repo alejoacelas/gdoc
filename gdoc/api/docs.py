@@ -3122,6 +3122,32 @@ def _empty_paragraph_range(content: list[dict], match: dict):
     return None
 
 
+def _joined_deletion(content: list[dict], match: dict) -> dict | None:
+    """Delete wording across a paragraph break the way a Markdown edit would.
+
+    Removing ``lo\nwor`` from ``Hello`` / ``## world`` leaves one paragraph,
+    ``Helld``, in the first paragraph's style: in the Markdown source the
+    second line's heading marker lies inside the deleted text. A deletion of
+    whole paragraphs is not a join and returns None.
+    """
+    paragraphs = list(_replacement_paragraphs(content, match))
+    if len(paragraphs) < 2 or _empty_paragraph_range(content, match) is not None:
+        return None
+    first, last = paragraphs[0], paragraphs[-1]
+    if match["startIndex"] == first[1] and match["endIndex"] > last[2]:
+        return None
+    if any(p.get("positionedObjectIds") for p, _, _ in paragraphs[1:]):
+        raise GdocError(
+            "cannot join these paragraphs: a later one anchors a positioned "
+            "object; delete each paragraph's wording separately", exit_code=3,
+        )
+    restore = _retained_mark_restore(first[0], last[0])
+    joined = {**match}
+    if restore:
+        joined["retainedMarkRestore"] = restore
+    return joined
+
+
 def _retained_mark_restore(kept: dict, removed: dict) -> dict | None:
     """Keep a paragraph whose text moves onto a removed paragraph's mark.
 
@@ -3735,7 +3761,8 @@ def replace_formatted(
             parts = [(match, (selected, baseline))]
         elif body is not None and not new_markdown and not replace_paragraphs:
             from gdoc.mdparse import ParsedMarkdown
-            parts = [
+            joined = _joined_deletion(body.get("content", []), match)
+            parts = [(joined, (ParsedMarkdown(""), []))] if joined else [
                 (_empty_paragraph_range(body.get("content", []), part) or part,
                  (ParsedMarkdown(""), []))
                 for part, _ in _paragraph_wording_matches(body, match, "")

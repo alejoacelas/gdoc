@@ -153,3 +153,29 @@ def test_removing_a_middle_paragraph_keeps_its_successor(route, markdown, old,
     _written(route, markdown, merge)
     route.ok("edit", old_text=old, new_text="")
     assert _read(route) == expected
+
+
+@MERGES
+@pytest.mark.parametrize("markdown,old,expected", [
+    ("Hello\n## world\ntail\n", "lo\nwor", "Helld\ntail\n"),
+    ("## Hello\nworld\ntail\n", "lo\nwor", "## Helld\ntail\n"),
+    ("Hello\nmid\n## world\n", "lo\nmid\nwor", "Helld\n"),
+    ("Hello\n- world\n", "Hello\nwor", "ld\n"),
+    ("- a b\n- c d\n", "b\nc", "- a  d\n"),
+])
+def test_empty_replacement_across_paragraphs_joins_them(route, markdown, old,
+                                                        expected, merge):
+    """R5-6: the joined paragraph keeps the first paragraph's style."""
+    _written(route, markdown, merge)
+    route.ok("edit", old_text=old, new_text="")
+    assert _read(route) == expected
+
+
+def test_join_that_would_move_a_list_item_is_refused(route):
+    """R5-6: the API cannot give the joined text the item's list back."""
+    _written(route, "- a b\nc d\n")
+    batches = len(route.service.batches)
+    code, output, error = route.call("edit", old_text="b\nc", new_text="")
+    assert code != 0 and "list item" in output + error
+    assert len(route.service.batches) == batches
+    assert _read(route) == "- a b\nc d\n"

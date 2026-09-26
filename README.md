@@ -743,6 +743,15 @@ of a label keeps the link. When a match covers a whole link, or reaches past it,
 the link follows only its own words that reappear once, as whole words, in the
 replacement. Write `[label](url)` in the replacement to set a link explicitly.
 
+### Deleting across paragraphs
+
+An empty replacement removes complete matched paragraphs. A match that starts or
+ends inside a paragraph and spans a paragraph break joins the remaining text into
+one paragraph with the first paragraph's style, as the same deletion in the
+Markdown file would: `edit DOC "lo\nwor" ""` turns `Hello` and `## world` into
+`Helld`. A join that would move a list item's text off its list is refused; use
+`write --tab` for that change.
+
 ### Multi-line arguments from stdin
 
 Pass `-` for the old or new argument to read it from stdin (one stream, so at most one `-`):

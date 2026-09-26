@@ -1561,18 +1561,27 @@ def cmd_write(args) -> int:
         raise GdocError(f"cannot read file: {e}", exit_code=3) from e
 
     # Strip frontmatter — pull prepends it, and leaving it in the upload
-    # dumps visible YAML into the doc body.
+    # dumps visible YAML into the doc body. A pulled file names its source
+    # document and tab; writing it elsewhere must be explicit.
     from gdoc.frontmatter import parse_frontmatter
-    _, content = parse_frontmatter(content)
+    metadata, content = parse_frontmatter(content)
+    pulled_doc = metadata.get("gdoc")
+    if pulled_doc and _resolve_doc_id(pulled_doc) != doc_id:
+        raise GdocError(
+            f"{file_path} was pulled from document {pulled_doc}, not {doc_id}. "
+            "Use `gdoc push` to update its own document, or remove its "
+            "frontmatter to copy the text into this one.", 3,
+        )
 
     return _write_native_markdown(
         args, doc_id, content, command="write", tab_name=tab_name,
+        file_tab=metadata.get("tab") or None,
     )
 
 
 def _write_native_markdown(
     args, doc_id, content, *, command, tab_name=None, result_details=None,
-    file_revision=None, file_tab_fingerprint=None,
+    file_revision=None, file_tab_fingerprint=None, file_tab=None,
 ):
     """Share full-content write semantics across CLI, MCP, push and hooks."""
     import re
@@ -1622,6 +1631,32 @@ def _write_native_markdown(
     if not tabs:
         raise GdocError("document has no writable tabs", 3)
     selected = resolve_tab(tabs, tab_name) if tab_name else tabs[0]
+    if file_tab:
+        # A pulled file's `tab` is where its text came from: it selects the
+        # tab when --tab is absent and must agree with an explicit --tab.
+        from gdoc.api.docs import _match_tab
+        pulled = _match_tab(tabs, file_tab)
+        if pulled is None and not tab_name:
+            raise GdocError(
+                f"the file was pulled from tab {file_tab}, which this document "
+                "no longer has. Pass --tab to choose the tab to replace.", 3,
+            )
+        if pulled is not None and tab_name and pulled["id"] != selected["id"]:
+            raise GdocError(
+                f"the file was pulled from tab {pulled['title']!r} "
+                f"({pulled['id']}), but --tab selects {selected['title']!r} "
+                f"({selected['id']}). Remove the file's frontmatter to copy "
+                "its text into another tab.", 3,
+            )
+        if pulled is not None and collapse and pulled["id"] != tabs[0]["id"]:
+            raise GdocError(
+                f"the file was pulled from tab {pulled['title']!r} "
+                f"({pulled['id']}); --force-collapse-tabs replaces the first "
+                "tab. Remove the file's frontmatter to collapse the document "
+                "into this text.", 3,
+            )
+        if pulled is not None and not tab_name and not collapse:
+            selected, tab_name = pulled, pulled["id"]
     revision = document.get("revisionId", "")
     from gdoc.state import load_state
 

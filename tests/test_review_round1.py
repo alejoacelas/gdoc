@@ -389,3 +389,41 @@ def test_empty_final_quote_prefix_owns_retained_newline():
         'name': 'gdoc:prefix:v1:1:0',
         'range': {'startIndex': 1, 'endIndex': 2, 'tabId': 't'},
     }}]
+
+
+def test_uncontested_publication_leaves_no_recovery_copy(tmp_path, capsys):
+    path = tmp_path / "document.md"
+    path.write_text("original")
+    assert preserve_and_replace(str(path), "published", expected="original")
+    assert preserve_and_replace(str(path), "again")
+    assert path.read_text() == "again"
+    assert not list(tmp_path.glob("*.gdoc-backup-*"))
+    assert "retained" not in capsys.readouterr().err
+
+
+def test_open_descriptor_write_keeps_one_announced_recovery_copy(
+    tmp_path, monkeypatch, capsys
+):
+    import os
+
+    path = tmp_path / "document.md"
+    path.write_text("original")
+    opened = path.open("r+")
+    real_link = os.link
+
+    def link(source, destination):
+        if str(source).split("/")[-1].startswith(".gdoc-publish-"):
+            opened.seek(0)
+            opened.write("concurrent")
+            opened.truncate()
+            opened.flush()
+        return real_link(source, destination)
+
+    monkeypatch.setattr(os, "link", link)
+    try:
+        assert preserve_and_replace(str(path), "published", expected="original")
+    finally:
+        opened.close()
+    [backup] = tmp_path.glob("*.gdoc-backup-*")
+    assert backup.read_text() == "concurrent"
+    assert capsys.readouterr().err.count(str(backup)) == 1

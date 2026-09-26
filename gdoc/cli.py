@@ -1732,13 +1732,6 @@ def _write_native_markdown(
                 match.group(1), match.group(1),
             ), content,
         )
-    if file_revision is not None and not getattr(args, "force", False):
-        if file_revision != revision:
-            raise GdocError(
-                "file gdoc-revision is stale; the document changed since this "
-                "file was pulled. Reconcile the local and remote edits, or use "
-                "--force to intentionally overwrite.", 3,
-            )
     unchanged = (
         not (collapse and len(tabs) > 1)
         and _comparable_markdown(get_tab_text(selected, markdown=True))
@@ -1756,6 +1749,21 @@ def _write_native_markdown(
         else:
             print("OK already in sync (selected tab matches; nothing to write)")
         return 0
+    # A file that already matches the live tab is in sync whatever its
+    # provenance says; only a differing body needs the file's own baseline.
+    if file_revision is not None and not getattr(args, "force", False):
+        if not file_revision:
+            raise GdocError(
+                "file has no gdoc-revision, so its baseline is unknown. Pull a "
+                "fresh copy and reapply the edits, or use --force to "
+                "intentionally overwrite.", 3,
+            )
+        if file_revision != revision:
+            raise GdocError(
+                "file gdoc-revision is stale; the document changed since this "
+                "file was pulled. Reconcile the local and remote edits, or use "
+                "--force to intentionally overwrite.", 3,
+            )
     require_content_baseline(
         doc_id, [t["id"] for t in tabs] if collapse else [selected["id"]],
         revision, force=getattr(args, "force", False),

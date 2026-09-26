@@ -88,10 +88,11 @@ def preserve_and_replace(
 ) -> bool:
     """Publish a file without discarding any concurrently edited inode.
 
-    Move the previous inode to a retained recovery file before publishing with
-    exclusive hard-link creation. Editors with an already-open descriptor keep
-    writing to that recovery file; editors saving a new inode at the original
-    path win the race. This is recovery-backed publication, not filesystem CAS.
+    Move the previous inode aside before publishing with exclusive hard-link
+    creation. Editors with an already-open descriptor keep writing to that
+    moved inode; editors saving a new inode at the original path win the race.
+    The moved copy is kept as a recovery file only when its text differs from
+    the replaced baseline. This is recovery-backed publication, not filesystem CAS.
     """
     import os
     import sys
@@ -105,6 +106,7 @@ def preserve_and_replace(
         return False
     fd, staging = tempfile.mkstemp(prefix=".gdoc-publish-", dir=target.parent)
     backup = target.with_name(target.name + ".gdoc-backup-" + uuid4().hex)
+    baseline = expected
     moved = False
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as stream:
@@ -112,13 +114,19 @@ def preserve_and_replace(
             stream.flush()
             os.fsync(stream.fileno())
         if target.exists():
+            if baseline is None:
+                try:
+                    baseline = read_local_text(target)
+                except (OSError, UnicodeDecodeError):
+                    baseline = None
             os.chmod(staging, target.stat().st_mode & 0o777)
             os.rename(target, backup)
             moved = True
-            print(f"LOCAL: previous file retained at {backup}", file=sys.stderr)
             if expected is not None and read_local_text(backup) != expected:
                 try:
                     os.link(backup, target)
+                    # The restored path now holds the only needed name.
+                    os.unlink(backup)
                 except FileExistsError:
                     pass
                 print("WARN: local file changed; replacement skipped", file=sys.stderr)
@@ -141,6 +149,23 @@ def preserve_and_replace(
         raise
     finally:
         os.unlink(staging)
+        if moved and backup.exists():
+            _discard_unchanged_backup(backup, baseline)
+
+
+def _discard_unchanged_backup(backup, baseline: str | None) -> None:
+    """Keep a moved inode only when a concurrent write reached it."""
+    import os
+    import sys
+
+    try:
+        unchanged = baseline is not None and read_local_text(backup) == baseline
+    except (OSError, UnicodeDecodeError):
+        unchanged = False
+    if unchanged:
+        os.unlink(backup)
+    else:
+        print(f"LOCAL: previous file retained at {backup}", file=sys.stderr)
 
 
 def body_fingerprint(body: str) -> str:

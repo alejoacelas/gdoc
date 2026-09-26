@@ -433,10 +433,11 @@ provenance fields, preserving other frontmatter. `gdoc-body-sha256` records the
 last pulled or acknowledged body. The pull hook leaves locally edited files in
 place; pull a separate copy to reconcile them.
 
-Local replacements retain the previous inode at `FILE.gdoc-backup-UNIQUE-ID` and
-print its path. This protects edits racing a pull or provenance update, including
-writes through an editor's open file handle. A concurrent save at the original
-path takes precedence. Recovery copies remain available for manual comparison.
+When a local edit races a pull or provenance update, gdoc keeps it. A concurrent
+save at the original path takes precedence over gdoc's replacement. A write through
+an editor's already-open file handle lands in a recovery copy at
+`FILE.gdoc-backup-UNIQUE-ID`, whose path gdoc prints. Uncontested replacements
+leave no recovery copy.
 
 Table creation and filling are revision-protected stages. Partial or uncertain
 completion exits 1 and reports completed stages; a clean refusal before mutation

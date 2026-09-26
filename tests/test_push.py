@@ -199,14 +199,21 @@ def test_push_state_update_retains_command_identity(native_write, mocker):
     )
 
 
-@pytest.mark.parametrize('revision', ['r9', ''])
-def test_file_provenance_cannot_be_healed_by_newer_cat(native_write, revision):
+@pytest.mark.parametrize(
+    ('line', 'error'),
+    [
+        ('gdoc-revision: r9\n', 'file gdoc-revision is stale'),
+        ('gdoc-revision: \n', 'no gdoc-revision'),
+        ('', 'no gdoc-revision'),
+    ],
+)
+def test_file_provenance_cannot_be_healed_by_newer_cat(native_write, line, error):
     env = native_write
-    env.path.write_text(f'---\ngdoc: abc123\ngdoc-revision: {revision}\n'
-                        '---\nStale body')
+    env.path.write_text(f'---\ngdoc: abc123\n{line}---\nStale body')
     # The shared state already says r10: another cat or pull cannot bless this file.
-    with pytest.raises(GdocError, match='file gdoc-revision is stale'):
+    with pytest.raises(GdocError, match=error) as refused:
         cmd_push(_make_args(file=str(env.path)))
+    assert refused.value.exit_code == 3
     env.write.assert_not_called()
     env.tab_write.assert_not_called()
 
@@ -245,3 +252,23 @@ def test_tab_push_records_post_write_display_version(native_write):
         'title: Harbor', 'title: Harbor\ntab: first') + 'Replacement')
     assert cmd_push(_make_args(file=str(env.path))) == 0
     assert state.load_state('abc123').last_version == 42
+
+
+def test_missing_file_revision_pushes_with_explicit_force(native_write):
+    env = native_write
+    env.path.write_text('---\ngdoc: abc123\n---\nForced body')
+    assert cmd_push(_make_args(file=str(env.path), force=True)) == 0
+    env.write.assert_called_once()
+
+
+def test_stale_file_matching_live_tab_is_in_sync_and_refreshed(native_write, capsys):
+    from gdoc.frontmatter import body_fingerprint, parse_frontmatter
+
+    env = native_write
+    env.path.write_text('---\ngdoc: abc123\ngdoc-revision: r9\n---\nRemote notes\n')
+    assert cmd_push(_make_args(file=str(env.path))) == 0
+    assert 'already in sync' in capsys.readouterr().out
+    env.write.assert_not_called()
+    metadata, body = parse_frontmatter(env.path.read_text())
+    assert metadata['gdoc-revision'] == 'r10'
+    assert metadata['gdoc-body-sha256'] == body_fingerprint(body)

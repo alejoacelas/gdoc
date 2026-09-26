@@ -822,9 +822,9 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                     alignments.append(None)
             alignments = (alignments + [None] * num_cols)[:num_cols]
             i += 2  # skip header + separator
+            # Only the line after the header is a separator, so a data row of
+            # dashes stays a row, as in GFM.
             while i < len(lines) and _TABLE_ROW_RE.match(table_line(i)):
-                if _TABLE_SEP_RE.match(table_line(i + 1)):
-                    break  # Adjacent exported tables remain separate tables.
                 cells = _table_cells(table_line(i))
                 if len(cells) < num_cols:
                     cells.extend([""] * (num_cols - len(cells)))
@@ -847,6 +847,18 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                 prefix=(table_quote, table_indent if in_list_table else 0),
             ))
             list_levels.update(saved_levels)
+            # Canonical adjacent tables: the first blank line between a table and
+            # a following table in the same container separates them; further
+            # blank lines are blank paragraphs.
+            j = i
+            while j < len(lines):
+                text, depth = _unquote(lines[j], table_quote)
+                if depth != table_quote or text.strip():
+                    break
+                j += 1
+            if (j > i and _TABLE_ROW_RE.match(table_line(j))
+                    and _TABLE_SEP_RE.match(table_line(j + 1))):
+                i += 1
             plain_parts.append("\n")
             offset += 1
             all_styles.append(StyleRange(

@@ -501,7 +501,7 @@ def test_table_container_range_covers_first_cell_text_and_terminator(cell, lengt
 
 def test_adjacent_quoted_tables_and_paragraphs_keep_separate_containers():
     parsed = parse_markdown(
-        "> | A |\n> | - |\n> | 1 |\n> | B |\n> | - |\n> | 2 |\n"
+        "> | A |\n> | - |\n> | 1 |\n>\n> | B |\n> | - |\n> | 2 |\n"
         "> > | C |\n> > | - |\n> > | 3 |\nplain\n| D |\n| - |\n| 4 |"
     )
     assert [t.prefix for t in parsed.tables] == [(1, 0), (1, 0), (2, 0), (0, 0)]

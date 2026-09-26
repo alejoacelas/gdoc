@@ -662,6 +662,7 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
         return next(((quote, indent) for r, quote, indent in prefix_ranges
                      if low <= r.get("startIndex", -1) < high), (0, 0))
 
+    table_run = None  # Container of the last pipe table, until non-blank content.
     for element in content:
         if not markdown:
             prefix = (0, 0)
@@ -679,6 +680,7 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
         active_prefix = prefix
         if marker is not None and "paragraph" in element:
             code_parts.append(_extract_paragraphs_text([element]))
+            table_run = None
             continue
         if "paragraph" in element:
             if not markdown:
@@ -699,15 +701,22 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
                     else:
                         paragraph_style.pop(key, None)
                 paragraph = dict(paragraph, paragraphStyle=paragraph_style)
-            parts.append(with_prefix(
-                _paragraph_markdown(paragraph, lists, ordered_counters), prefix,
-            ))
+            rendered = _paragraph_markdown(paragraph, lists, ordered_counters)
+            if rendered.strip():
+                table_run = None
+            parts.append(with_prefix(rendered, prefix))
         elif "table" in element:
             table = element["table"]
             rendered = _table_markdown(table) if markdown else None
             if rendered is not None:
+                if table_run == prefix:
+                    # A table following a table (across any blank paragraphs)
+                    # gets one separating blank line, which the parser drops.
+                    parts.append(with_prefix("\n", prefix))
                 parts.append(with_prefix(rendered, prefix))
+                table_run = prefix
                 continue
+            table_run = None
             for row in table.get("tableRows", []):
                 cells = []
                 for cell in row.get("tableCells", []):

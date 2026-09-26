@@ -473,7 +473,10 @@ cell.
 Reference links accept full, collapsed and shortcut forms with URI definitions.
 Native horizontal rules sharing a paragraph with text export as separate rule and
 text paragraphs, preserving text order and heading styles. Tables accept short
-alignment delimiters such as `:--`, `--:` and `:-:` and do not gain incidental header bold. Nested lists use two spaces per
+alignment delimiters such as `:--`, `--:` and `:-:` and do not gain incidental header bold.
+Only the line after a table's header is its delimiter row, so data rows of dashes stay
+rows. One blank line separates adjacent tables; further blank lines between them are
+blank paragraphs. Nested lists use two spaces per
 level in exports. Syntax highlighting, native object IDs, pagination, custom fonts,
 colors and arbitrary layout are outside the Markdown promise.
 

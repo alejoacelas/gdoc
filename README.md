@@ -513,7 +513,10 @@ inside a list item is written with the item's content indent (`1. item`, blank l
 item's list continues after the content. Raw indentation after a list item therefore
 means item content: literal leading whitespace in a paragraph is written as a
 numeric entity (`&#32; text`). A contained table's container is recorded on its first
-cell, and the paragraph Docs keeps between two tables belongs to their container. `edit` and `insert` create these ranges for new code and containers. Wording
+cell, and the paragraph Docs keeps between two tables belongs to their container.
+Contained paragraphs are indented 36pt per enclosing quote or list item; a
+contained table keeps its container in Markdown but is not visually indented in
+Docs. `edit` and `insert` create these ranges for new code and containers. Wording
 edited inside a code line or quote stays in its block; a structural replacement
 splits the block around it. A replacement inside code is literal text (`*`, links
 and `#` stay characters); inside inline code in prose, a replacement written as one

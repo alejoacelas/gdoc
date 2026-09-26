@@ -443,7 +443,10 @@ Local replacements retain the previous file at `FILE.gdoc-backup-UNIQUE-ID` and
 print its path. This protects edits racing a pull or provenance update, including
 writes through an editor's already-open file handle, even after gdoc finishes. A
 concurrent save at the original path takes precedence. gdoc never deletes recovery
-copies; remove them after comparing.
+copies; remove them after comparing. A replacement with identical content leaves the
+file in place without a copy. Replacement needs a filesystem with hard links;
+elsewhere it fails before touching the file. A symlinked file is replaced through
+its link.
 
 Table creation and filling are revision-protected stages. Partial or uncertain
 completion exits 1 and reports completed stages; a clean refusal before mutation

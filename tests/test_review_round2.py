@@ -201,3 +201,61 @@ def test_comment_anchors_decode_prose_escapes_but_not_code(markdown, found):
     comment = {"id": "c1", "content": "check", "quotedFileContent": {"value": "a*bc"}}
     result = annotate_markdown(markdown, [comment])
     assert ("anchor deleted" not in result) is found
+
+
+def test_unchanged_publication_keeps_the_inode_and_makes_no_copy(tmp_path):
+    from gdoc.frontmatter import preserve_and_replace
+
+    path = tmp_path / "document.md"
+    path.write_text("same")
+    inode = path.stat().st_ino
+    assert preserve_and_replace(str(path), "same", expected="same")
+    assert path.stat().st_ino == inode
+    assert not list(tmp_path.glob("*.gdoc-backup-*"))
+    # The conflict check still runs first.
+    assert not preserve_and_replace(str(path), "same", expected="other")
+
+
+def test_publication_without_hard_links_leaves_the_original(tmp_path, monkeypatch):
+    import os
+
+    from gdoc.frontmatter import preserve_and_replace
+
+    path = tmp_path / "document.md"
+    path.write_text("original")
+
+    def no_links(*args):
+        raise PermissionError(1, "Operation not permitted")
+
+    monkeypatch.setattr(os, "link", no_links)
+    with pytest.raises(OSError, match="does not support hard links"):
+        preserve_and_replace(str(path), "published", expected="original")
+    assert path.read_text() == "original"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["document.md"]
+
+
+def test_publication_through_a_symlink_keeps_the_link(tmp_path):
+    from gdoc.frontmatter import preserve_and_replace
+
+    real = tmp_path / "real.md"
+    real.write_text("original")
+    link = tmp_path / "link.md"
+    link.symlink_to(real)
+    assert preserve_and_replace(str(link), "published", expected="original")
+    assert link.is_symlink() and real.read_text() == "published"
+    [backup] = tmp_path.glob("real.md.gdoc-backup-*")
+    assert backup.read_text() == "original"
+
+
+def test_new_file_gets_ordinary_permissions(tmp_path):
+    import os
+
+    from gdoc.frontmatter import preserve_and_replace
+
+    umask = os.umask(0o022)
+    try:
+        path = tmp_path / "new.md"
+        assert preserve_and_replace(str(path), "content")
+        assert path.stat().st_mode & 0o777 == 0o644
+    finally:
+        os.umask(umask)

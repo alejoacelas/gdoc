@@ -112,9 +112,17 @@ def preserve_and_replace(
     from uuid import uuid4
 
     target = Path(path)
+    if target.is_symlink():
+        # Replace the linked file and keep the link itself.
+        target = Path(os.path.realpath(target))
     if expected is not None and read_local_text(target) != expected:
         print(f"WARN: local file changed; left {path} untouched", file=sys.stderr)
         return False
+    try:
+        if target.read_bytes() == content.encode("utf-8"):
+            return True  # Already published: no move, no recovery copy.
+    except FileNotFoundError:
+        pass
     fd, staging = tempfile.mkstemp(prefix=".gdoc-publish-", dir=target.parent)
     backup = target.with_name(target.name + ".gdoc-backup-" + uuid4().hex)
     moved = False
@@ -123,6 +131,16 @@ def preserve_and_replace(
             stream.write(content)
             stream.flush()
             os.fsync(stream.fileno())
+        # Publication needs hard links; check before the original moves.
+        probe = staging + ".link"
+        try:
+            os.link(staging, probe)
+        except OSError as error:
+            raise OSError(
+                f"{target.parent} does not support hard links; {path} left "
+                f"unchanged ({error})"
+            ) from error
+        os.unlink(probe)
         if target.exists():
             os.chmod(staging, target.stat().st_mode & 0o777)
             os.rename(target, backup)
@@ -135,6 +153,10 @@ def preserve_and_replace(
                     pass
                 print("WARN: local file changed; replacement skipped", file=sys.stderr)
                 return False
+        if not moved:
+            umask = os.umask(0)
+            os.umask(umask)
+            os.chmod(staging, 0o666 & ~umask)
         try:
             os.link(staging, target)
         except FileExistsError:

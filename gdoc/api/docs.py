@@ -2586,15 +2586,18 @@ def _build_cleanup_requests(
     return []
 
 
-def _structured_empty_paragraph(body: dict) -> bool:
-    """True for a lone empty paragraph that Markdown reads as structure."""
+def _structured_empty_paragraph(body: dict, tab: dict | None = None,
+                                tab_id: str | None = None) -> bool:
+    """True for a lone empty paragraph that Markdown reads as structure,
+    including an empty code line or quote held by one of gdoc's ranges."""
     paragraphs = [e["paragraph"] for e in body.get("content", []) if "paragraph" in e]
     if len(paragraphs) != 1 or len(body.get("content", [])) > 2:
         return False
     style = paragraphs[0].get("paragraphStyle", {})
     return bool(paragraphs[0].get("bullet")
                 or style.get("namedStyleType", "NORMAL_TEXT") != "NORMAL_TEXT"
-                or any(style.get(f) for f in _INSERT_INHERITED_FIELDS))
+                or any(style.get(f) for f in _INSERT_INHERITED_FIELDS)
+                or any(True for _ in _owned_named_ranges(tab, tab_id)))
 
 
 def _tab_body_range(body: dict) -> tuple[int, int]:
@@ -2868,7 +2871,8 @@ def _delete_owned_range(named_id: str, tab_id: str | None) -> dict:
     return {"deleteNamedRange": request}
 
 
-def _owned_range_requests(tab, tab_id, parts, *, keep_after=True):
+def _owned_range_requests(tab, tab_id, parts, *, keep_after=True,
+                          split_mark=False):
     """Rebuild gdoc-owned ranges that replaced body parts intersect.
 
     Each part is ``(start, end, inserted_length, stays_inside)`` in original
@@ -2877,6 +2881,9 @@ def _owned_range_requests(tab, tab_id, parts, *, keep_after=True):
     wording within a code line or quote) remains part of the range. With
     *keep_after* False, a range's portion after an insertion point is dropped
     (an appended tab keeps the retained final mark for the new content).
+    With *split_mark*, the first inserted character is the newline that
+    split the old last paragraph and now ends it, so that paragraph's
+    ranges keep it, even when the paragraph has no text of its own.
     Returns ``(deletions, creations)`` for one revision-pinned batch.
     """
     parts = sorted(parts)
@@ -2899,8 +2906,9 @@ def _owned_range_requests(tab, tab_id, parts, *, keep_after=True):
                 shift += length - (e - s)
                 if inside and a <= s and e <= b:
                     continue
-                if start > cur:
-                    pieces.append((cur, start))
+                mark = int(split_mark and not keep_after and a < s + 1 <= b)
+                if start + mark > cur:
+                    pieces.append((cur, start + mark))
                 cur = start + length
             if keep_after and b + shift > cur:
                 pieces.append((cur, b + shift))
@@ -2980,7 +2988,7 @@ def insert_markdown_into_tab(
     # A tab whose only paragraph is a rule, an empty heading or an empty
     # list item still holds content: insertion splits it like any paragraph.
     occupied = body_end > body_start or (
-        not replace and _structured_empty_paragraph(body))
+        not replace and _structured_empty_paragraph(body, tab_match, tab_id))
     at_end = replace or not occupied or position == "end"
     if at_end:
         _strip_trailing_newline_unless_hr(parsed)
@@ -2998,6 +3006,22 @@ def insert_markdown_into_tab(
     leading_table = (
         appending and bool(parsed.tables) and parsed.tables[0].plain_text_offset == 0
     )
+    # An appended leading table splits the tab's last paragraph at its mark.
+    # When that paragraph is empty and one of gdoc's ranges holds it (an
+    # empty code line, a rule in a quote), the range has no text to keep
+    # during the text batch, so it is restored over its original spans once
+    # the table's newline has become that paragraph's mark.
+    restored_ranges = []
+    if leading_table:
+        last_elements = next((e["paragraph"].get("elements", [])
+                              for e in reversed(body.get("content", []))
+                              if "paragraph" in e), [])
+        last_start = last_elements[0].get("startIndex", 0) if last_elements else 0
+        if last_start == body_end:
+            restored_ranges = [
+                (name, spans)
+                for _, name, spans in _owned_named_ranges(tab_match, tab_id)
+                if any(a <= last_start < b for a, b in spans)]
     if leading_table:
         # The placeholder newline ends the existing paragraph, whose style
         # and list membership must stay untouched.
@@ -3018,6 +3042,29 @@ def insert_markdown_into_tab(
             insert_index += 1
         # At start, the parser's final newline separates the inserted text
         # from the existing first paragraph; do not strip it.
+
+    # createParagraphBullets joins a preceding list of the same preset, so an
+    # appended numbered list would continue the tab's last list (even one
+    # inside a quote). An unbulleted separator paragraph keeps it a list of
+    # its own, as in the concatenated Markdown; it is removed in the same
+    # batch once the bullets exist.
+    separator_index = None
+    first_item = next((s for s in parsed.styles if s.type == "bullets"), None)
+    last_paragraph = next((e["paragraph"] for e in reversed(body.get("content", []))
+                           if "paragraph" in e), {})
+    if (appending and not leading_table and first_item is not None
+            and first_item.start == 0 and first_item.list_depth == 0
+            and first_item.style["bulletPreset"].startswith("NUMBERED")
+            and last_paragraph.get("bullet")):
+        separator_index = insert_index
+        separator = {"startIndex": insert_index, "endIndex": insert_index + 1,
+                     "tabId": tab_id}
+        requests.extend([
+            {"insertText": {"location": {"index": insert_index, "tabId": tab_id},
+                            "text": "\n"}},
+            {"deleteParagraphBullets": {"range": dict(separator)}},
+        ])
+        insert_index += 1
 
     owned_deletions = []
     if replace:
@@ -3116,7 +3163,10 @@ def insert_markdown_into_tab(
         # border, which would read back as a quote or a second rule. Clear
         # them before the parsed styles apply what the Markdown asks for.
         first = insert_index + (1 if leading_table else 0)
-        last = insert_index + utf16_len(insertion[0]["insertText"]["text"])
+        # Appended content ends at the tab's retained final mark, which the
+        # split copied from the old last paragraph: it is new content too.
+        last = (insert_index + utf16_len(insertion[0]["insertText"]["text"])
+                + (position == "end"))
         if last > first:
             insertion.insert(1, {"updateParagraphStyle": {
                 "range": {"startIndex": first, "endIndex": last, "tabId": tab_id},
@@ -3144,7 +3194,12 @@ def insert_markdown_into_tab(
         }})
     insertion.extend(_code_range_requests(parsed, insert_index, tab_id))
     requests.extend(insertion)
-    if not replace and requests:
+    if separator_index is not None:
+        requests.append({"deleteContentRange": {"range": {
+            "startIndex": separator_index, "endIndex": separator_index + 1,
+            "tabId": tab_id}}})
+        insert_index -= 1
+    if not replace and (requests or parsed.tables):
         # Existing markers at the insertion point must not absorb new text.
         # List compilation also sends temporary tabs and separators that later
         # requests consume, so measure the text that remains: the parsed text
@@ -3157,8 +3212,13 @@ def insert_markdown_into_tab(
             tab_match, tab_id,
             [(original_insert_index, original_insert_index, inserted, False)],
             keep_after=position != "end",
+            split_mark=insert_index > original_insert_index,
         )
-        requests.extend(rebuilt)
+        # A restored range replaces the pieces rebuilt from its own spans.
+        requests.extend(
+            request for request in rebuilt
+            if not any(a <= request["createNamedRange"]["range"]["startIndex"] < b
+                       for _, spans in restored_ranges for a, b in spans))
     requests[:0] = owned_deletions
 
     with _StagedWrite(doc_id) as progress:
@@ -3178,6 +3238,14 @@ def insert_markdown_into_tab(
                     resolve_index=_table_position_resolver(parsed, table, tab_id),
                     ordinal=ordinal, scaffolding=_table_scaffolding(parsed, table),
                 )
+        if restored_ranges:
+            revision_id = progress.batch(
+                "code and container ranges restored",
+                [{"createNamedRange": {"name": name, "range": {
+                    "startIndex": a, "endIndex": b, "tabId": tab_id}}}
+                 for name, spans in restored_ranges for a, b in spans],
+                revision_id,
+            )
 
     return {
         "tab_id": tab_id,

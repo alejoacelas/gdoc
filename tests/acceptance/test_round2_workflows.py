@@ -135,7 +135,9 @@ def test_append_after_final_code_keeps_new_text_out_of_the_block(scenario):
     text = _apply_text(scenario, batch)
     deleted, created = _ranges(batch, text)
     assert deleted == ["code-1"]
-    assert created == [("gdoc:code:v1", "a = 1\nb = 2\nc = 3")]
+    # The range keeps the newline that split the old last paragraph and now
+    # ends it, like every code range; the appended text stays outside.
+    assert created == [("gdoc:code:v1", "a = 1\nb = 2\nc = 3\n")]
     assert text.endswith("c = 3\nMore\n")
 
 

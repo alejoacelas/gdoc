@@ -85,3 +85,35 @@ def test_quoted_list_inside_nested_item_keeps_its_own_identity(
         text = changed
         expected = [((renamed[t] if t == old else t), *rest) for t, *rest in expected]
         assert _lists(doc) == expected
+
+
+# A quoted list that an outer list's range spans, outside any list item.
+SPANNED = [
+    ("- a\n\n> 1. g\n> 2. h\n\n- b\n",
+     [("a", 0, "bullet", 0, "-"), ("g", 1, "num", 0, 1), ("h", 1, "num", 0, 2),
+      ("b", 0, "bullet", 0, "-")]),
+    ("- a\n\n> 1. g\n\nsep\n\n- b\n",
+     [("a", 0, "bullet", 0, "-"), ("g", 1, "num", 0, 1), ("b", 0, "bullet", 0, "-")]),
+    ("> - a\n> \n> > 1. g\n> \n> - b\n",
+     [("a", 0, "bullet", 0, "-"), ("g", 1, "num", 0, 1), ("b", 0, "bullet", 0, "-")]),
+    ("1. a\n\n> 1. g\n\n2. b\n",
+     [("a", 0, "num", 0, 1), ("g", 1, "num", 0, 1), ("b", 0, "num", 0, 2)]),
+]
+
+
+@MERGES
+@pytest.mark.parametrize("markdown,expected", SPANNED)
+def test_quoted_list_spanned_by_an_outer_list_keeps_its_own_identity(
+    route, merge, markdown, expected,
+):
+    doc = route.load(NativeDoc(merge=merge))
+    route.ok("cat")
+    route.ok("write", text=markdown)
+    assert _read(route) == markdown
+    assert _lists(doc) == expected
+    changed = markdown.replace("g", "g2", 1)
+    batches = len(route.service.batches)
+    route.ok("write", text=changed)
+    assert len(route.service.batches) > batches
+    assert _read(route) == changed
+    assert _lists(doc) == [(("g2" if t == "g" else t), *rest) for t, *rest in expected]

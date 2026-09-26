@@ -1744,8 +1744,17 @@ def _separated_list_requests(parsed: ParsedMarkdown, insert_index: int,
         return next((s.path for s in parsed.styles if s.type == "markdown_prefix"
                      and s.start <= group[0].start < s.end), ())
 
+    # So is a quoted list that another list's range spans, such as one in a
+    # top-level quote between items of an outer list.
+    def spanned(group):
+        path = container_of(group)
+        return "q" in path and any(
+            container_of(other) != path
+            and other[0].start < group[0].start and group[-1].end <= other[-1].end
+            for other in groups.values())
+
     contained = {id(group[0]) for group in groups.values()
-                 if _quoted_in_item(container_of(group))}
+                 if _quoted_in_item(container_of(group)) or spanned(group)}
     # A quoted list is created after every list that spans it, whatever
     # their depths (deeper containers later): a later spanning bullet request
     # would overwrite its preset and identity. Within one container,

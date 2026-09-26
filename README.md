@@ -468,6 +468,7 @@ This is a semantic Markdown format, not complete CommonMark/GFM conformance.
 Canonical export may escape punctuation or change fence spelling; code text and
 meaningful whitespace survive. Code blocks use native named ranges to retain their
 identity; container ranges retain quoted lists and code nested inside list items.
+A table inside a quote is written as literal pipe text; keep tables outside quotes.
 Reference links accept full, collapsed and shortcut forms with URI definitions.
 Native horizontal rules sharing a paragraph with text export as separate rule and
 text paragraphs, preserving text order and heading styles. Tables accept short

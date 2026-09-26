@@ -1034,8 +1034,7 @@ def test_document_read_google_client_disconnect_retries(
     resource.batchUpdate.assert_not_called()
 
 
-SINGLE_SEND = {"update_doc_content", "create_comment", "replace_all_text",
-               "create_doc_from_markdown"}
+SINGLE_SEND = {"update_doc_content", "create_comment", "replace_all_text"}
 
 
 @pytest.mark.parametrize("module, name, resource_name, method, args", [

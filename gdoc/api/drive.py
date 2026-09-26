@@ -38,16 +38,6 @@ def _escape_query_value(value: str) -> str:
     return value
 
 
-def _mutate(request, action: str) -> dict:
-    """Send one Drive mutation once; a lost response is reported as uncertain."""
-    from gdoc.api.comment_transport import execute_mutation_request
-
-    return execute_mutation_request(
-        request, uncertainty=f"{action} outcome is uncertain; check Drive before "
-                             "retrying",
-    )
-
-
 def export_doc(doc_id: str, mime_type: str = "text/markdown") -> str:
     """Export a Google Docs document as the given MIME type.
 
@@ -305,14 +295,14 @@ def create_doc_from_markdown(
 
     try:
         service = get_drive_service()
-        result = _mutate(
+        result = (
             service.files()
             .create(
                 body=body,
                 media_body=media,
                 fields="id, name, version, webViewLink",
-            ),
-            "Document creation",
+            )
+            .execute()
         )
         if "version" in result:
             result["version"] = int(result["version"])
@@ -339,28 +329,28 @@ def upload_temp_image(file_path: str, mime_type: str) -> dict:
     try:
         service = get_drive_service()
         media = MediaFileUpload(file_path, mimetype=mime_type)
-        result = _mutate(
-            service.files().create(
+        result = (
+            service.files()
+            .create(
                 body={"name": f"gdoc-temp-{id(file_path)}"},
                 media_body=media,
                 fields="id, webContentLink",
-            ),
-            "Temporary image upload",
+            )
+            .execute()
         )
         # Make publicly readable for inline image insertion. If that is
         # blocked (e.g. a Workspace policy forbids anyone-sharing), the
         # caller never learns the file ID, so delete the orphan here
         # rather than leaving a gdoc-temp-* file behind on every attempt.
         try:
-            _mutate(service.permissions().create(
+            service.permissions().create(
                 fileId=result["id"],
                 body={"type": "anyone", "role": "reader"},
-            ), "Temporary image sharing")
-        except (HttpError, GdocError):
+            ).execute()
+        except HttpError:
             try:
-                _mutate(service.files().delete(fileId=result["id"]),
-                        "Temporary image cleanup")
-            except (HttpError, GdocError):
+                service.files().delete(fileId=result["id"]).execute()
+            except HttpError:
                 pass
             raise
         return result
@@ -372,8 +362,7 @@ def delete_file(file_id: str) -> None:
     """Delete a file from Drive."""
     try:
         service = get_drive_service()
-        _mutate(service.files().delete(fileId=file_id, supportsAllDrives=True),
-                "Deletion")
+        service.files().delete(fileId=file_id, supportsAllDrives=True).execute()
     except HttpError as e:
         _translate_http_error(e, file_id)
 
@@ -396,13 +385,13 @@ def create_doc(title: str, folder_id: str | None = None) -> dict:
         body["parents"] = [folder_id]
     try:
         service = get_drive_service()
-        result = _mutate(
+        result = (
             service.files()
             .create(
                 body=body,
                 fields="id, name, version, webViewLink",
-            ),
-            "Document creation",
+            )
+            .execute()
         )
         if "version" in result:
             result["version"] = int(result["version"])
@@ -429,14 +418,14 @@ def create_folder(title: str, parent_id: str | None = None) -> dict:
         body["parents"] = [parent_id]
     try:
         service = get_drive_service()
-        return _mutate(
+        return (
             service.files()
             .create(
                 body=body,
                 fields="id, name, webViewLink",
                 supportsAllDrives=True,
-            ),
-            "Folder creation",
+            )
+            .execute()
         )
     except HttpError as e:
         _translate_http_error(e, parent_id or "")
@@ -477,15 +466,15 @@ def move_file(file_id: str, folder_id: str) -> dict:
             if "version" in current:
                 current["version"] = int(current["version"])
             return current
-        result = _mutate(
+        result = (
             service.files()
             .update(
                 fileId=file_id,
                 fields="id, name, parents, version",
                 supportsAllDrives=True,
                 **kwargs,
-            ),
-            "Move",
+            )
+            .execute()
         )
         if "version" in result:
             result["version"] = int(result["version"])
@@ -502,15 +491,15 @@ def rename_file(file_id: str, title: str) -> dict:
     """
     try:
         service = get_drive_service()
-        result = _mutate(
+        result = (
             service.files()
             .update(
                 fileId=file_id,
                 body={"name": title},
                 fields="id, name, version",
                 supportsAllDrives=True,
-            ),
-            "Rename",
+            )
+            .execute()
         )
         if "version" in result:
             result["version"] = int(result["version"])
@@ -555,15 +544,15 @@ def copy_doc(doc_id: str, title: str) -> dict:
     """
     try:
         service = get_drive_service()
-        result = _mutate(
+        result = (
             service.files()
             .copy(
                 fileId=doc_id,
                 body={"name": title},
                 fields="id, name, version, webViewLink",
                 supportsAllDrives=True,
-            ),
-            "Copy",
+            )
+            .execute()
         )
         if "version" in result:
             result["version"] = int(result["version"])
@@ -620,15 +609,15 @@ def create_permission(
         raise GdocError("share target required (email, domain, or anyone)")
     try:
         service = get_drive_service()
-        result = _mutate(
+        result = (
             service.permissions()
             .create(
                 fileId=doc_id,
                 body=body,
                 supportsAllDrives=True,
                 **kwargs,
-            ),
-            "Sharing",
+            )
+            .execute()
         )
         return result
     except HttpError as e:

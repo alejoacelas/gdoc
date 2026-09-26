@@ -130,20 +130,11 @@ def write_values(
             "body": {"values": values},
         }
         api = service.spreadsheets().values()
-        from gdoc.api.comment_transport import execute_mutation_request
-
-        # One wire send: a resent append after a lost response adds rows twice.
-        uncertainty = ("Cell write outcome is uncertain; read the range before "
-                       "retrying")
         if append:
-            result = execute_mutation_request(
-                api.append(insertDataOption="INSERT_ROWS", **kwargs),
-                uncertainty=uncertainty,
-            )
+            result = api.append(insertDataOption="INSERT_ROWS", **kwargs).execute()
             result = result.get("updates", {})
         else:
-            result = execute_mutation_request(api.update(**kwargs),
-                                              uncertainty=uncertainty)
+            result = api.update(**kwargs).execute()
         return {
             "range": result.get("updatedRange", range_),
             "rows": result.get("updatedRows", 0),

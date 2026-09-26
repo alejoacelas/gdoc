@@ -2,7 +2,7 @@
 
 from googleapiclient.errors import HttpError
 
-from gdoc.api import comment_transport, get_drive_service
+from gdoc.api import get_drive_service
 from gdoc.api.comment_transport import execute_comment_request
 from gdoc.util import AuthError, GdocError
 
@@ -116,10 +116,9 @@ def delete_comment(file_id: str, comment_id: str) -> None:
     """Delete a comment from a file."""
     try:
         service = get_drive_service()
-        comment_transport.execute_mutation_request(service.comments().delete(
+        service.comments().delete(
             fileId=file_id, commentId=comment_id,
-        ), uncertainty="Comment deletion outcome is uncertain; list comments "
-                       "before retrying")
+        ).execute()
     except HttpError as e:
         _translate_http_error(e, file_id)
 
@@ -182,13 +181,12 @@ def create_reply(
             body["content"] = content
         if action:
             body["action"] = action
-        result = comment_transport.execute_mutation_request(service.replies().create(
+        result = service.replies().create(
             fileId=file_id,
             commentId=comment_id,
             body=body,
             fields="id, content, action, author(displayName, emailAddress), createdTime",
-        ), uncertainty="Reply outcome is uncertain; inspect the comment thread "
-                       "before retrying")
+        ).execute()
         return result
     except HttpError as e:
         _translate_http_error(e, file_id)

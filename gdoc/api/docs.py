@@ -2299,6 +2299,17 @@ def _build_cleanup_requests(
     return []
 
 
+def _structured_empty_paragraph(body: dict) -> bool:
+    """True for a lone empty paragraph that Markdown reads as structure."""
+    paragraphs = [e["paragraph"] for e in body.get("content", []) if "paragraph" in e]
+    if len(paragraphs) != 1 or len(body.get("content", [])) > 2:
+        return False
+    style = paragraphs[0].get("paragraphStyle", {})
+    return bool(paragraphs[0].get("bullet")
+                or style.get("namedStyleType", "NORMAL_TEXT") != "NORMAL_TEXT"
+                or any(style.get(f) for f in _INSERT_INHERITED_FIELDS))
+
+
 def _tab_body_range(body: dict) -> tuple[int, int]:
     """Return (startIndex, endIndex_exclusive_final_newline) for a tab body.
 
@@ -2680,7 +2691,11 @@ def insert_markdown_into_tab(
               + "; ".join(parsed.non_default_list_starts), file=sys.stderr)
     requests: list[dict] = []
 
-    at_end = replace or body_end == body_start or position == "end"
+    # A tab whose only paragraph is a rule, an empty heading or an empty
+    # list item still holds content: insertion splits it like any paragraph.
+    occupied = body_end > body_start or (
+        not replace and _structured_empty_paragraph(body))
+    at_end = replace or not occupied or position == "end"
     if at_end:
         _strip_trailing_newline_unless_hr(parsed)
     # Trimming an empty final paragraph leaves its annotation at zero width.
@@ -2693,7 +2708,7 @@ def insert_markdown_into_tab(
     # existing paragraph's mark. Anything else that starts with a newline (a
     # thematic break, a deliberate blank line) is a new paragraph of its own
     # and keeps the separator so its mark never lands on existing text.
-    appending = not replace and body_end > body_start and position == "end"
+    appending = not replace and occupied and position == "end"
     leading_table = (
         appending and bool(parsed.tables) and parsed.tables[0].plain_text_offset == 0
     )
@@ -2705,7 +2720,7 @@ def insert_markdown_into_tab(
                                  and s.start == 0 and s.end <= 1)]
         if not parsed.plain_text:
             final_style = None
-    if (not replace and body_end > body_start and not leading_table
+    if (not replace and occupied and not leading_table
             and (parsed.plain_text or parsed.tables or final_style is not None)):
         if position == "end":
             # The mandatory final newline belongs to the existing paragraph.
@@ -2781,6 +2796,40 @@ def insert_markdown_into_tab(
             insertion[0]["insertText"]["text"] = text[:-1]
         else:
             del insertion[0]
+    boundary_style = next((paragraph.get("paragraphStyle", {})
+                           for paragraph, _, _ in _replacement_paragraphs(
+                               body.get("content", []),
+                               {"startIndex": boundary, "endIndex": boundary + 1})),
+                          {})
+    inherited_fields = [f for f in _INSERT_INHERITED_FIELDS if boundary_style.get(f)]
+    boundary_runs = [run.get("textRun", {}).get("textStyle")
+                     for paragraph, _, _ in _replacement_paragraphs(
+                         body.get("content", []),
+                         {"startIndex": boundary, "endIndex": boundary + 1})
+                     for run in paragraph.get("elements", [])]
+    if (not replace and any(boundary_runs) and parsed.plain_text and insertion
+            and "insertText" in insertion[0]):
+        # Inserted text copies the text style beside it (bold, a link, code
+        # font). Markdown text is plain unless it says otherwise.
+        first = insert_index + (1 if leading_table else 0)
+        last = insert_index + utf16_len(insertion[0]["insertText"]["text"])
+        if last > first:
+            insertion.insert(1, {"updateTextStyle": {
+                "range": {"startIndex": first, "endIndex": last, "tabId": tab_id},
+                "textStyle": {}, "fields": "*",
+            }})
+    if (not replace and inherited_fields and parsed.plain_text and insertion
+            and "insertText" in insertion[0]):
+        # New paragraphs split from a quote or rule copy its indent or
+        # border, which would read back as a quote or a second rule. Clear
+        # them before the parsed styles apply what the Markdown asks for.
+        first = insert_index + (1 if leading_table else 0)
+        last = insert_index + utf16_len(insertion[0]["insertText"]["text"])
+        if last > first:
+            insertion.insert(1, {"updateParagraphStyle": {
+                "range": {"startIndex": first, "endIndex": last, "tabId": tab_id},
+                "paragraphStyle": {}, "fields": ",".join(inherited_fields),
+            }})
     if not replace and inherited_bullet and parsed.plain_text:
         # After a leading table placeholder the reset starts past the
         # newline that now ends the existing list item.
@@ -2850,6 +2899,11 @@ def insert_markdown_into_tab(
             if progress.inserted_images.get(key)
         },
     }
+
+
+# Paragraph properties the exporter reads as Markdown structure (a quote's
+# indent, a rule's border) that newly inserted paragraphs must not inherit.
+_INSERT_INHERITED_FIELDS = ("indentStart", "indentFirstLine", "borderBottom")
 
 
 def check_tab_body_replacement(tab: dict, *, allow_lossy: bool = False) -> None:

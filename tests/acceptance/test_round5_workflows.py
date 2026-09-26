@@ -13,6 +13,7 @@ import pytest
 
 from gdoc import cli, mcp
 from gdoc.api import comment_transport, docs, drive
+from gdoc.frontmatter import parse_frontmatter
 from tests.native_model import NativeDoc, NativeService, styles
 
 TABLE = [["h"], ["v"]]
@@ -303,3 +304,27 @@ def test_an_arbitrary_start_after_a_table_still_warns(route):
         "write", text="Intro\n\n| x |\n| --- |\n| y |\n\n5. five\n6. six\n")
     assert code == 0, output + error
     assert "cannot set arbitrary native list starts" in output + error
+
+
+@MERGES
+@pytest.mark.parametrize("position", ["start", "end"])
+@pytest.mark.parametrize("existing", [
+    "> quoted\n", "---\n", "**bold**\n", "[link](https://example.test/)\n",
+    "`code`\n", "## \n",
+])
+def test_inserted_markdown_does_not_inherit_its_neighbor(
+    route, existing, position, merge,
+):
+    """F7, F17, F18: inserted text is only what its Markdown says."""
+    doc = route.load(NativeDoc(merge=merge))
+    route.ok("cat")
+    route.ok("write", text=existing)
+    route.ok("cat", tab="Main")
+    route.ok("insert", text="plain *em*\n\n> q", tab="Main", position=position)
+    added = "plain *em*\n\n> q\n"
+    expected = added + existing if position == "start" else existing + added
+    if position == "end" and existing == "## \n":
+        expected = "## \n" + added  # The empty heading stays its own paragraph.
+    # A tab starting with a rule reads after an empty metadata block.
+    assert parse_frontmatter(route.ok("cat"))[1] == expected
+    assert len(doc.paragraphs()) == expected.count("\n")

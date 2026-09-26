@@ -2233,6 +2233,74 @@ def _code_range_requests(parsed, insert_index: int, tab_id: str | None) -> list[
     return requests
 
 
+_OWNED_RANGE_NAME_RE = re.compile(r"gdoc:code:v1|gdoc:prefix:v1:\d+:\d+")
+
+
+def _owned_named_ranges(tab: dict | None, tab_id: str | None):
+    """Yield ``(namedRangeId, name, spans)`` for gdoc's own ranges in a tab body.
+
+    Only code and container markers that gdoc creates qualify; other named
+    ranges, and ranges in headers, footers or footnotes, are never touched.
+    """
+    for group in (tab or {}).get("namedRanges", {}).values():
+        for named in group.get("namedRanges", []):
+            name = named.get("name", group.get("name", ""))
+            ranges = named.get("ranges", [])
+            if (not _OWNED_RANGE_NAME_RE.fullmatch(name)
+                    or not named.get("namedRangeId") or not ranges
+                    or any(r.get("segmentId") for r in ranges)
+                    or any(tab_id and r.get("tabId", tab_id) != tab_id
+                           for r in ranges)):
+                continue
+            yield named["namedRangeId"], name, [
+                (r.get("startIndex", 0), r.get("endIndex", 0)) for r in ranges
+            ]
+
+
+def _owned_range_requests(tab, tab_id, parts, *, keep_after=True):
+    """Rebuild gdoc-owned ranges that replaced body parts intersect.
+
+    Each part is ``(start, end, inserted_length, stays_inside)`` in original
+    body indexes. A range a part touches is deleted and recreated over its
+    unreplaced portions in final indexes; text that ``stays_inside`` (inline
+    wording within a code line or quote) remains part of the range. With
+    *keep_after* False, a range's portion after an insertion point is dropped
+    (an appended tab keeps the retained final mark for the new content).
+    Returns ``(deletions, creations)`` for one revision-pinned batch.
+    """
+    parts = sorted(parts)
+    deletions, creations = [], []
+    for named_id, name, spans in _owned_named_ranges(tab, tab_id):
+        def overlaps(part, a, b):
+            s, e = part[0], part[1]
+            return (s < b and e > a) or (s == e and a <= s < b)
+
+        if not any(overlaps(p, a, b) for p in parts for a, b in spans):
+            continue
+        deletions.append({"deleteNamedRange": {"namedRangeId": named_id}})
+        for a, b in spans:
+            shift = sum(length - (e - s) for s, e, length, _ in parts
+                        if not overlaps((s, e), a, b) and e <= a)
+            cur = a + shift
+            pieces = []
+            for s, e, length, inside in (p for p in parts if overlaps(p, a, b)):
+                start = s + shift
+                shift += length - (e - s)
+                if inside and a <= s and e <= b:
+                    continue
+                if start > cur:
+                    pieces.append((cur, start))
+                cur = start + length
+            if keep_after and b + shift > cur:
+                pieces.append((cur, b + shift))
+            for lo, hi in pieces:
+                span = {"startIndex": lo, "endIndex": hi}
+                if tab_id:
+                    span["tabId"] = tab_id
+                creations.append({"createNamedRange": {"name": name, "range": span}})
+    return deletions, creations
+
+
 def insert_markdown_into_tab(
     doc_id: str,
     tab_name: str,
@@ -2290,6 +2358,7 @@ def insert_markdown_into_tab(
         insert_index = body_end
     else:
         insert_index = body_start
+    original_insert_index = insert_index
 
     parsed = parse_markdown(markdown)
     if parsed.non_default_list_starts:
@@ -2338,6 +2407,12 @@ def insert_markdown_into_tab(
         # At start, the parser's final newline separates the inserted text
         # from the existing first paragraph; do not strip it.
 
+    owned_deletions = []
+    if replace:
+        # The replaced body's code and container markers would otherwise
+        # survive, shrunk onto the retained final mark.
+        owned_deletions = [{"deleteNamedRange": {"namedRangeId": named_id}}
+                           for named_id, _, _ in _owned_named_ranges(tab_match, tab_id)]
     if replace and body_end > body_start:
         delete_range = {
             "startIndex": body_start,
@@ -2412,6 +2487,17 @@ def insert_markdown_into_tab(
         }})
     insertion.extend(_code_range_requests(parsed, insert_index, tab_id))
     requests.extend(insertion)
+    if not replace and requests:
+        # Existing markers at the insertion point must not absorb new text.
+        inserted = sum(utf16_len(r["insertText"]["text"])
+                       for r in requests if "insertText" in r) - parsed.removed_tabs
+        owned_deletions, rebuilt = _owned_range_requests(
+            tab_match, tab_id,
+            [(original_insert_index, original_insert_index, inserted, False)],
+            keep_after=position != "end",
+        )
+        requests.extend(rebuilt)
+    requests[:0] = owned_deletions
 
     with _StagedWrite(doc_id) as progress:
         if requests:
@@ -2581,6 +2667,7 @@ def _wording_contexts(body: dict, match: dict, markdown: str):
         parts = _paragraph_wording_matches(body, clipped, text)
         offset = 0
         result = []
+        group = object()
         for part, line in parts:
             end = offset + len(line)
             selected = ParsedMarkdown(line, [
@@ -2588,7 +2675,7 @@ def _wording_contexts(body: dict, match: dict, markdown: str):
                            min(s.end, end) - offset, s.style, s.type)
                 for s in parsed.styles if s.type == "text_style"
                 and s.start < end and s.end > offset
-            ])
+            ], code_group=group if parsed.code_blocks else None)
             found = _replacement_paragraph(body.get("content", []), part)
             baseline = _inline_baseline(found[0], part, line) if found else []
             result.append((part, (selected, baseline)))
@@ -2975,6 +3062,70 @@ def _build_replacement_requests(
     return sorted_matches, all_requests
 
 
+def _snapshot_tab(source: dict | None, tab_id: str | None) -> dict | None:
+    """Return the flattened tab for *tab_id* from a replacement source."""
+    if not source:
+        return None
+    if "tabs" in source:
+        return next((tab for tab in flatten_tabs(source["tabs"])
+                     if tab["id"] == tab_id), None)
+    if "body" in source and (not tab_id or source.get("id") == tab_id):
+        return source
+    return None
+
+
+def _replacement_range_requests(source, matches, contexts, tab_id):
+    """Create ranges for replaced code/containers and keep untouched portions.
+
+    Body matches are grouped by tab. Inline wording inside a code line or quote
+    stays in that marker; structural replacements split it and get their own.
+    """
+    from gdoc.mdparse import utf16_len
+
+    by_tab: dict = {}
+    for match in matches:
+        if match.get("segmentId"):
+            continue
+        selected, baseline = contexts[_match_key(match)]
+        length = utf16_len(selected.plain_text) - selected.removed_tabs
+        if baseline is not None and selected.plain_text == "\n" and any(
+            s.type == "paragraph_style" and "borderBottom" in s.style
+            for s in selected.styles
+        ):
+            length = 0  # The rule styles the retained LF; nothing is inserted.
+        structural = (bool(selected.code_blocks) or selected.code_group is not None
+                      or any(s.type == "markdown_prefix" for s in selected.styles))
+        by_tab.setdefault(match.get("tabId", tab_id), []).append((
+            match["startIndex"], match["endIndex"], length,
+            baseline is not None and not structural, selected,
+        ))
+    deletions, creations = [], []
+    for match_tab, parts in by_tab.items():
+        parts.sort(key=lambda part: part[0])
+        removed, rebuilt = _owned_range_requests(
+            _snapshot_tab(source, match_tab), match_tab,
+            [part[:4] for part in parts],
+        )
+        deletions += removed
+        creations += rebuilt
+        shift = 0
+        groups: dict = {}
+        for start, end, length, _, selected in parts:
+            creations += _code_range_requests(selected, start + shift, match_tab)
+            if selected.code_group is not None:
+                # Span the group's paragraphs, including the last one's mark.
+                low, _ = groups.get(id(selected.code_group), (start + shift, 0))
+                groups[id(selected.code_group)] = (low, start + shift + length + 1)
+            shift += length - (end - start)
+        for low, high in groups.values():
+            span = {"startIndex": low, "endIndex": high}
+            if match_tab:
+                span["tabId"] = match_tab
+            creations.append({"createNamedRange": {"name": "gdoc:code:v1",
+                                                   "range": span}})
+    return deletions, creations
+
+
 def replace_formatted(
     doc_id: str,
     matches: list[dict],
@@ -3149,6 +3300,11 @@ def replace_formatted(
         parsed, matches, tab_id=tab_id, contexts=contexts,
         reset_bullets=reset_bullets,
     )
+    if all_requests:
+        deletions, creations = _replacement_range_requests(
+            source, sorted_matches, contexts, tab_id,
+        )
+        all_requests = deletions + all_requests + creations
 
     if not all_requests:
         if result_details is not None:

@@ -72,6 +72,9 @@ class ParsedMarkdown:
     non_default_list_starts: list[str] = field(default_factory=list)
     code_blocks: list[CodeBlockData] = field(default_factory=list)
     images: list[ImageData] = field(default_factory=list)
+    # Per-paragraph pieces of one fenced replacement share this marker, so
+    # the paragraphs they replace become one code block.
+    code_group: object = None
 
 
 # Inline patterns — order matters (bold+italic before bold/italic)

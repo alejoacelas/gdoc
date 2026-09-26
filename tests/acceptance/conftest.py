@@ -190,7 +190,7 @@ class Scenario:
             }
         else:
             prepared = dict(arguments)
-            if command == "write":
+            if command in ("write", "insert"):
                 path = self.tmp_path / "rewrite.md"
                 path.write_text(prepared.pop("text"))
                 prepared["file"] = str(path)
@@ -200,6 +200,7 @@ class Scenario:
                 "structure": ("doc",),
                 "info": ("doc",),
                 "write": ("doc", "file"),
+                "insert": ("doc", "file"),
                 "edit": ("doc", "old_text", "new_text"),
                 "comment": ("doc", "text"),
                 "images": ("doc",),
@@ -220,7 +221,7 @@ class Scenario:
                     code = exc.code if isinstance(exc.code, int) else 1
             output, error = out.getvalue(), err.getvalue()
             sequence = {"argv": argv}
-            if command == "write":
+            if command in ("write", "insert"):
                 sequence["input_markdown"] = arguments["text"]
         self.record["commands"].append(
             {

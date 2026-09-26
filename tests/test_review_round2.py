@@ -89,3 +89,39 @@ def test_loose_numbered_lists_nested_in_mixed_lists_keep_numbering(markdown, exp
                 numbers.append(counters[key])
         assert numbers == expected, builder
         assert not parsed.non_default_list_starts
+
+
+def _indented(text, named_style="NORMAL_TEXT"):
+    element = _paragraph([(text, {})], named_style)
+    element["paragraph"]["paragraphStyle"].update({
+        "indentStart": {"magnitude": 36, "unit": "PT"},
+        "indentFirstLine": {"magnitude": 36, "unit": "PT"},
+    })
+    return element
+
+
+@pytest.mark.parametrize("text", ["- not a list", "1. not numbered", "# not heading",
+                                  "> x", "| a | b |", "+ plus"])
+def test_indented_literal_text_stays_literal_inside_its_quote(text):
+    exported = get_tab_text({"body": {"content": [_indented(text)]}}, markdown=True)
+    parsed = parse_markdown(exported)
+    assert parsed.plain_text == text + "\n"
+    assert not [s for s in parsed.styles if s.type == "bullets"]
+    assert not parsed.tables
+    assert [s.style for s in parsed.styles if s.type == "markdown_prefix"] == [
+        {"quote": 1, "indent": 0}]
+    assert all(s.style.get("namedStyleType", "NORMAL_TEXT") == "NORMAL_TEXT"
+               for s in parsed.styles if s.type == "paragraph_style")
+
+
+@pytest.mark.parametrize("style, expected", [
+    ("HEADING_2", "> ## Section\n"),
+    ("TITLE", "> <!-- gdoc:TITLE --> Section\n"),
+])
+def test_indented_heading_keeps_its_style_inside_its_quote(style, expected):
+    exported = get_tab_text({"body": {"content": [_indented("Section", style)]}},
+                            markdown=True)
+    assert exported == expected
+    parsed = parse_markdown(exported)
+    assert parsed.plain_text == "Section\n"
+    assert any(s.style.get("namedStyleType") == style for s in parsed.styles)

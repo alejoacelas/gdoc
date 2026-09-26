@@ -490,23 +490,25 @@ def _paragraph_markdown(
     paragraph_style = paragraph.get("paragraphStyle", {})
     if not text and paragraph_style.get("borderBottom"):
         return "---" + newline
-    if all(paragraph_style.get(key) == {"magnitude": 36, "unit": "PT"}
-           for key in ("indentStart", "indentFirstLine")):
-        return "> " + text + newline
+    # A single native indent reads as one quote level around the same
+    # heading, title or escaped prose as an unindented paragraph.
+    quote = "> " if all(
+        paragraph_style.get(key) == {"magnitude": 36, "unit": "PT"}
+        for key in ("indentStart", "indentFirstLine")) else ""
     named_style = paragraph_style.get("namedStyleType", "")
     level = _HEADING_LEVELS.get(named_style)
     if named_style in ("TITLE", "SUBTITLE"):
-        return f"<!-- gdoc:{named_style} --> {text}{newline}"
+        return f"{quote}<!-- gdoc:{named_style} --> {text}{newline}"
     if level:
         # The parser consumes exactly the one syntactic separator space.
-        return "#" * level + " " + text + newline
+        return quote + "#" * level + " " + text + newline
     # Inline escaping above handles stars, underscores, and code fences. Escape
     # remaining literal block openers only after adding genuine block syntax.
-    if re.fullmatch(r"=== Tab: .+ ===", text):
+    if re.fullmatch(r"=== Tab: .+ ===", text) and not quote:
         text = "\\" + text
     text = re.sub(r"^([ \t]*)([-+#>|])", r"\1\\\2", text)
     text = re.sub(r"^([ \t]*\d+)\.(?=\s|$)", r"\1\\.", text)
-    return text + newline
+    return quote + text + newline
 
 
 # One cell of a pipe-table header separator (``---``, ``:---:``).

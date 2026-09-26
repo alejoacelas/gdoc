@@ -51,6 +51,7 @@ class TestSyncHookBasic:
         mock_update_doc.assert_called_once_with(
             "abc123", "# Hello\n", expected_version=1, document=ANY,
             allow_lossy=False, collapse_tabs=False, result_details=ANY,
+            image_aliases={},
         )
         err = capsys.readouterr().err
         assert "SYNC:" in err
@@ -70,6 +71,7 @@ class TestSyncHookBasic:
         mock_update_doc.assert_called_once_with(
             "abc123", "Body text", expected_version=1, document=ANY,
             allow_lossy=False, collapse_tabs=False, result_details=ANY,
+            image_aliases={},
         )
 
     @patch("gdoc.state.update_state_after_command")
@@ -175,6 +177,7 @@ class TestSyncHookMultiTabSafety:
         write.assert_called_once_with(
             "abc123", "# Hello\n", expected_version=1, document=document,
             allow_lossy=False, collapse_tabs=False, result_details=ANY,
+            image_aliases={},
         )
 
 

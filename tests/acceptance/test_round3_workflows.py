@@ -36,8 +36,14 @@ def test_repeated_image_and_literal_token_survive_successive_writes(scenario):
     source = read(scenario)
     assert "![Map](gdoc-image:map)" in source
     _reply_with_image_ids(scenario)
+    literal = [
+        "```\nsee ![](gdoc-image:map)\n```\n",
+        "> ```\n> ![](gdoc-image:map)\n> ```\n",
+        "1. Step\n\n   ```\n   ![](gdoc-image:map)\n   ```\n",
+        "Inline `![](gdoc-image:map)` and \\![](gdoc-image:map) stay text.\n",
+    ]
     revised = (source.replace("Before", "Revised")
-               + "![Map](gdoc-image:map)\n\n```\nsee gdoc-image:map\n```\n")
+               + "![Map](gdoc-image:map)\n\n" + "\n".join(literal))
     scenario.ok("write", tab="draft", text=revised)
     assert sum("insertInlineImage" in r for r in requests(scenario)) == 2
 
@@ -51,15 +57,23 @@ def test_repeated_image_and_literal_token_survive_successive_writes(scenario):
     scenario.document["revisionId"] = "r2"
     scenario.service.documents.return_value.batchUpdate.reset_mock()
 
-    # The agent keeps editing its own text, which still names the old object.
-    scenario.ok("write", tab="draft", text=revised.replace("Revised", "Again"))
+    # The agent keeps editing its own text, which still names the old object,
+    # including a linked copy and a reference-style copy.
+    again = (revised.replace("Revised", "Again")
+             + "\n[![Map](gdoc-image:map)](https://example.invalid/site)\n"
+             + "\n![Map][map]\n\n[map]: gdoc-image:map\n")
+    scenario.ok("write", tab="draft", text=again)
     images = [r["insertInlineImage"] for r in requests(scenario)
               if "insertInlineImage" in r]
-    assert len(images) == 2
+    assert len(images) == 4
     assert {image["uri"] for image in images} == {
         "https://example.invalid/temporary-map.png"}
-    # Literal code keeps the token the agent wrote.
-    assert "see gdoc-image:map" in _inserted_text(scenario)
+    # Literal code and escaped syntax keep the token the agent wrote.
+    inserted = _inserted_text(scenario)
+    assert "see ![](gdoc-image:map)" in inserted
+    assert inserted.count("![](gdoc-image:map)") == 4
+    # Nothing but real image destinations resolves through the alias.
+    assert "gdoc-image:copy" not in json.dumps(requests(scenario))
 
 
 def test_quoted_soft_line_break_round_trips_through_cat(scenario):
@@ -78,7 +92,7 @@ def test_quoted_soft_line_break_round_trips_through_cat(scenario):
 
 
 def test_rename_image_references_changes_only_image_destinations():
-    from gdoc.mdparse import rename_image_references
+    from gdoc.mdparse import parse_markdown, rename_image_references
 
     source = (
         "```\n![](gdoc-image:old)\n```\n"
@@ -89,6 +103,11 @@ def test_rename_image_references_changes_only_image_destinations():
         "[![i](gdoc-image:old)](https://example.invalid/a)\n"
     )
     renamed = rename_image_references(source, {"old": "new"})
+    listed = "- ```\n  ![](gdoc-image:old)\n  ```\n"
+    # gdoc reads a fence on a list marker line as item text, so this
+    # destination is an image, as the writer also treats it.
+    assert parse_markdown(listed).images[0].uri == "gdoc-image:old"
+    assert "gdoc-image:new" in rename_image_references(listed, {"old": "new"})
     assert renamed == (
         "```\n![](gdoc-image:old)\n```\n"
         "![](gdoc-image:new) prose gdoc-image:old `![](gdoc-image:old)` "

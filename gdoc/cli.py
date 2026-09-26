@@ -1548,13 +1548,15 @@ def _write_native_markdown(
     from gdoc.state import load_state
 
     known = load_state(doc_id)
-    if known and known.read_revision_ids.get(selected["id"]) == revision:
-        from gdoc.mdparse import rename_image_references
-        content = rename_image_references(content, known.image_reference_ids)
+    # References to images that gdoc's own acknowledged writes re-created
+    # resolve to their copies; the Markdown itself is sent as written.
+    aliases = (known.image_reference_ids if known
+               and known.read_revision_ids.get(selected["id"]) == revision else {})
+    from gdoc.mdparse import rename_image_references
     unchanged = (
         not (collapse and len(tabs) > 1)
         and _comparable_markdown(get_tab_text(selected, markdown=True))
-        == _comparable_markdown(content)
+        == _comparable_markdown(rename_image_references(content, aliases))
     )
     mode = get_output_mode(args)
     if unchanged:
@@ -1592,6 +1594,7 @@ def _write_native_markdown(
         details = insert_markdown_into_tab(
             doc_id, selected["id"], content, replace=True,
             allow_lossy=getattr(args, "allow_lossy", False), document=document,
+            image_aliases=aliases,
         )
         from gdoc.api.drive import version_after_write
         version = version_after_write(doc_id)
@@ -1599,7 +1602,7 @@ def _write_native_markdown(
         version = update_doc_content(
             doc_id, content, expected_version=expected_version, document=document,
             allow_lossy=getattr(args, "allow_lossy", False),
-            collapse_tabs=collapse, result_details=details,
+            collapse_tabs=collapse, result_details=details, image_aliases=aliases,
         )
     acknowledged = details.get("acknowledged_revision_id", "")
     if result_details is not None:

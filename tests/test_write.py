@@ -121,6 +121,7 @@ def test_write_transports_content_and_native_snapshot(native_write, doc, text):
         allow_lossy=False,
         collapse_tabs=False,
         result_details=env.details,
+        image_aliases={},
     )
     assert env.document == before
     assert state.load_state("abc123").read_revision_ids == {"first": "r11"}
@@ -280,6 +281,7 @@ def test_tab_write_uses_same_snapshot_and_preserves_unread_sibling(native_write,
         replace=True,
         allow_lossy=False,
         document=env.document,
+        image_aliases={},
     )
     env.write.assert_not_called()
     assert state.load_state("abc123").read_revision_ids == {

@@ -31,6 +31,7 @@ def test_push_transports_only_body_with_native_snapshot(native_write, doc, body)
         allow_lossy=False,
         collapse_tabs=False,
         result_details=env.details,
+        image_aliases={},
     )
     assert state.load_state("abc123").read_revision_ids == {"first": "r11"}
 
@@ -139,6 +140,7 @@ def test_push_default_preserves_sibling_and_tab_frontmatter_selects_it(native_wr
         replace=True,
         allow_lossy=False,
         document=env.document,
+        image_aliases={},
     )
 
 

@@ -2160,11 +2160,24 @@ def _resolve_image_uri(uri, snapshot):
     return uri
 
 
-def _prepare_image_sources(parsed, snapshot):
-    """Resolve all sources before destructive requests, including table cells."""
+def _prepare_image_sources(parsed, snapshot, aliases=None):
+    """Resolve all sources before destructive requests, including table cells.
+
+    ``aliases`` maps an image reference that an acknowledged gdoc write
+    replaced to its copy; it applies only when the original object is gone.
+    """
     import sys
 
     from gdoc.mdparse import parse_inline
+
+    scopes = flatten_tabs(snapshot["tabs"]) if "tabs" in snapshot else [snapshot]
+
+    def current(uri):
+        object_id = uri.removeprefix("gdoc-image:")
+        if (uri == object_id or object_id not in (aliases or {})
+                or any(object_id in s.get("inlineObjects", {}) for s in scopes)):
+            return uri
+        return "gdoc-image:" + aliases[object_id]
 
     parsed.image_reference_sources = {}
     has_alt = any(image.alt for image in _parsed_images(parsed))
@@ -2177,9 +2190,9 @@ def _prepare_image_sources(parsed, snapshot):
                 for style in styles:
                     if style.type == "image":
                         source = style.style["uri"]
-                        sources[source] = _resolve_image_uri(source, snapshot)
+                        sources[source] = _resolve_image_uri(current(source), snapshot)
                         sizes[source] = _image_reference_properties(
-                            source, snapshot,
+                            current(source), snapshot,
                         ).get("size")
                         if source.startswith("gdoc-image:"):
                             parsed.image_reference_sources[source[11:]] = (
@@ -2191,9 +2204,9 @@ def _prepare_image_sources(parsed, snapshot):
         table.image_sizes = sizes
     for image in _parsed_images(parsed):
         image.object_size = _image_reference_properties(
-            image.uri, snapshot,
+            current(image.uri), snapshot,
         ).get("size")
-        resolved = _resolve_image_uri(image.uri, snapshot)
+        resolved = _resolve_image_uri(current(image.uri), snapshot)
         if image.uri.startswith("gdoc-image:"):
             parsed.image_reference_sources[image.uri[11:]] = _image_key(
                 resolved, image.object_size,
@@ -2361,7 +2374,7 @@ def insert_markdown_into_tab(
     position: str = "start",
     replace: bool = False,
     allow_lossy: bool = False,
-    *, document: dict | None = None,
+    *, document: dict | None = None, image_aliases: dict | None = None,
 ) -> dict:
     """Insert (or replace) markdown content in a tab via Docs API.
 
@@ -2506,7 +2519,7 @@ def insert_markdown_into_tab(
     )
     if not replace and inherited_bullet:
         _reset_list_indents(parsed)
-    _prepare_image_sources(parsed, doc)
+    _prepare_image_sources(parsed, doc, image_aliases)
     insertion = _native_docs_requests(parsed, insert_index, tab_id=tab_id)
     if at_end and parsed.plain_text.endswith("\n") and any(
         s.type == "paragraph_style" and s.end == len(parsed.plain_text)

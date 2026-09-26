@@ -176,3 +176,37 @@ def test_written_table_layouts_read_back_unchanged(route, markdown, merge):
     # gdoc's code and container ranges end at their block, never over the table.
     table = next(i for i, u in enumerate(doc.units) if u.kind == "tstart")
     assert all(not start < table < end for name, start, end in doc.named if name)
+
+
+@MERGES
+@pytest.mark.parametrize("layout", ["final", "before-table", "heading-over-item"])
+def test_removing_a_boundary_paragraph_keeps_the_one_before(route, layout, merge):
+    """P-1: the paragraph whose mark is borrowed keeps its own style."""
+    blocks, expected = {
+        "final": ([("p", "Body"), ("p", "Obsolete", "HEADING_2")],
+                  [("Body", "NORMAL_TEXT", None)]),
+        "before-table": (
+            [("p", "Intro"), ("p", "Obsolete", "HEADING_2"), ("t", TABLE),
+             ("p", "after")],
+            [("Intro", "NORMAL_TEXT", None), ("h", None, None), ("v", None, None),
+             ("after", "NORMAL_TEXT", None)]),
+        "heading-over-item": (
+            [("p", "Title", "HEADING_1"), ("p", "Obsolete", "NORMAL_TEXT", _bullet())],
+            [("Title", "HEADING_1", None)]),
+    }[layout]
+    doc = route.load(NativeDoc(*blocks, merge=merge))
+    route.ok("cat")
+    route.ok("edit", old_text="Obsolete", new_text="")
+    assert styles(doc) == expected
+
+
+def test_removing_a_paragraph_after_a_list_item_is_refused(route):
+    """P-1: a list item's membership cannot be restored, so nothing is sent."""
+    doc = route.load(NativeDoc(("p", "item", "NORMAL_TEXT", _bullet()),
+                               ("p", "Obsolete", "HEADING_2")))
+    before = styles(doc)
+    route.ok("cat")
+    code, output, error = route.call("edit", old_text="Obsolete", new_text="")
+    assert code != 0 and "list item before it" in output + error
+    assert route.service.batches == []
+    assert styles(doc) == before

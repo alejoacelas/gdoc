@@ -201,11 +201,30 @@ def test_empty_heading_does_not_mutate_neighbor(mocker, neighbor, last):
                               tab_id="synthetic-tab", body=body)
         service.assert_not_called()
         return
+    if last and neighbor == "list":
+        # The retained final mark belongs to the heading; the list item's
+        # membership could not be restored on it, so nothing is sent.
+        service = mocker.patch("gdoc.api.docs.get_docs_service")
+        with pytest.raises(GdocError, match="list item before it") as error:
+            replace_formatted("synthetic-doc",
+                              find_text_in_document(None, "Heading", body=body), "",
+                              "synthetic-rev", tab_id="synthetic-tab", body=body)
+        assert error.value.exit_code == 3
+        service.assert_not_called()
+        return
     requests = _requests(mocker, body, "Heading", "")
-    assert requests == [{"deleteContentRange": {"range": {
+    deletion = {"deleteContentRange": {"range": {
         "startIndex": 9 if last else 10,
         "endIndex": 17 if last else 18, "tabId": "synthetic-tab",
-    }}}]
+    }}}
+    # A final heading keeps its own mark; the neighbor's style is restored on
+    # it whichever paragraph's style Docs keeps on the merge.
+    restore = [{"updateParagraphStyle": {
+        "range": {"startIndex": 9, "endIndex": 10, "tabId": "synthetic-tab"},
+        "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
+        "fields": "namedStyleType",
+    }}] if last else []
+    assert requests == [deletion, *restore]
 
 
 @pytest.mark.parametrize("position", ["start", "end"])
@@ -704,10 +723,13 @@ def test_replay_192037_removes_final_heading_using_preceding_newline(mocker):
                  ('Obsolete section', 'HEADING_2', False))
     requests = _requests(mocker, body, 'Obsolete section', '')
     assert _apply_text_requests(body, requests) == 'Intro\nBody\n'
-    assert len(requests) == 1
+    assert len(requests) == 2
     assert requests[0]['deleteContentRange']['range']['endIndex'] == (
         body['content'][-1]['endIndex'] - 1
     )
+    # Body's own style is restored on the heading's retained mark.
+    assert requests[1]['updateParagraphStyle']['paragraphStyle'] == {
+        'namedStyleType': 'NORMAL_TEXT'}
 
 
 @pytest.mark.parametrize('position', ['start', 'end'])
@@ -782,7 +804,9 @@ def test_adjacent_complete_paragraph_removals_delete_shared_mark_once(mocker, ol
                  ('Gone', 'HEADING_2', False))
     requests = _requests(mocker, body, old, '')
     assert _apply_text_requests(body, requests) == 'Keep\n'
-    assert len(requests) == 1
+    # One deletion, then Keep's style restored on the retained heading mark.
+    assert [next(iter(r)) for r in requests] == [
+        'deleteContentRange', 'updateParagraphStyle']
 
 
 def test_partial_multiline_deletion_removes_fully_covered_final_paragraph(mocker):

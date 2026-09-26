@@ -2970,6 +2970,11 @@ def _empty_paragraph_range(content: list[dict], match: dict):
                 if previous and "paragraph" in previous:
                     if not previous["paragraph"].get("positionedObjectIds"):
                         start -= 1
+                        restore = _retained_mark_restore(
+                            previous["paragraph"], last[0])
+                        if restore:
+                            return {**match, "startIndex": start, "endIndex": end,
+                                    "retainedMarkRestore": restore}
                 elif previous and "table" in previous and not before_table:
                     raise GdocError(
                         "cannot remove the mandatory final paragraph after a table; "
@@ -2988,6 +2993,62 @@ def _empty_paragraph_range(content: list[dict], match: dict):
                         cell.get("content", []), match)):
                     return _empty_paragraph_range(cell.get("content", []), match)
     return None
+
+
+def _retained_mark_restore(kept: dict, removed: dict) -> dict | None:
+    """Keep a paragraph whose text moves onto a removed paragraph's mark.
+
+    Removing a final paragraph, or one before a table, deletes the preceding
+    paragraph's mark instead of its own. Which paragraph's style Docs keeps
+    on that merge is not probed live, so the preceding paragraph's style is
+    restored on the retained mark and a bullet it lacks is removed. A list
+    item's membership cannot be re-created through the API: a removal that
+    would move it onto another list state is refused before any write.
+    """
+    kept_bullet, removed_bullet = kept.get("bullet"), removed.get("bullet")
+
+    def identity(bullet):
+        return bullet.get("listId"), bullet.get("nestingLevel", 0)
+
+    if kept_bullet and (not removed_bullet
+                        or identity(kept_bullet) != identity(removed_bullet)):
+        raise GdocError(
+            "cannot remove this paragraph without moving the list item before "
+            "it off its list; replace its wording, or rewrite the tab with "
+            "write --tab", exit_code=3,
+        )
+    style = kept.get("paragraphStyle", {})
+    merged = removed.get("paragraphStyle", {})
+    fields = [f for f in _RESTORED_PARAGRAPH_FIELDS
+              if (f in style or f in merged) and style.get(f) != merged.get(f)]
+    restore = {}
+    if fields:
+        restore["paragraphStyle"] = {f: style[f] for f in fields if f in style}
+        restore["fields"] = ",".join(fields)
+    if removed_bullet and not kept_bullet:
+        restore["deleteBullets"] = True
+    return restore or None
+
+
+def _retained_mark_requests(match: dict, tab_id: str | None) -> list[dict]:
+    """Requests restoring the paragraph that now ends at a retained mark."""
+    restore = match.get("retainedMarkRestore")
+    if not restore:
+        return []
+    span = {"startIndex": match["startIndex"], "endIndex": match["startIndex"] + 1}
+    if tab_id:
+        span["tabId"] = tab_id
+    if match.get("segmentId"):
+        span["segmentId"] = match["segmentId"]
+    requests = []
+    if "fields" in restore:
+        requests.append({"updateParagraphStyle": {
+            "range": span, "paragraphStyle": restore["paragraphStyle"],
+            "fields": restore["fields"],
+        }})
+    if restore.get("deleteBullets"):
+        requests.append({"deleteParagraphBullets": {"range": dict(span)}})
+    return requests
 
 
 def _replacement_text_style(runs: list[dict], match: dict, text: str):
@@ -3230,6 +3291,7 @@ def _build_replacement_requests(
             all_requests.append({
                 "deleteContentRange": {"range": delete_range}
             })
+            all_requests.extend(_retained_mark_requests(match, match_tab))
         selected, baseline = (contexts[_match_key(match)] if contexts is not None
                               else (parsed, None))
         requests = _native_docs_requests(

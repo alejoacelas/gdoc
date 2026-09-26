@@ -3316,12 +3316,14 @@ def _empty_paragraph_range(content: list[dict], match: dict):
 
 
 def _joined_deletion(content: list[dict], match: dict) -> dict | None:
-    """Delete wording across a paragraph break the way a Markdown edit would.
+    """Delete wording across a paragraph break, joining the paragraphs.
 
-    Removing ``lo\nwor`` from ``Hello`` / ``## world`` leaves one paragraph,
-    ``Helld``, in the first paragraph's style: in the Markdown source the
-    second line's heading marker lies inside the deleted text. A deletion of
-    whole paragraphs is not a join and returns None.
+    Matches are native text: ``lo\nwor`` matches across the paragraphs
+    ``Hello`` and the heading ``world``, and deleting it leaves one
+    paragraph, ``Helld``. The joined paragraph always keeps the first
+    paragraph's style, restored explicitly because which style Docs keeps on
+    such a merge is unobserved. A deletion of whole paragraphs is not a join
+    and returns None.
     """
     paragraphs = list(_replacement_paragraphs(content, match))
     if len(paragraphs) < 2 or _empty_paragraph_range(content, match) is not None:

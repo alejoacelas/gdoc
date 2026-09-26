@@ -581,9 +581,14 @@ only the replaced wording.
 Markdown reads show a tab's text without its pending suggestions: suggested
 insertions are left out and wording suggested for deletion stays. `cat` notes on
 stderr how many suggestions are pending (`scope.pending_suggestions` with `--json`).
-Writing that text back unchanged sends nothing. A changed rewrite is refused unless
-`--allow-lossy` is given; with it, the suggestions are discarded, never applied as
-direct edits.
+Writing that text back unchanged sends nothing. Resolve the suggestions in Docs
+(accept or reject them) before a changed rewrite; otherwise it is refused unless
+`--allow-lossy` is given, which discards the suggestions and keeps the text as read,
+never applying them as direct edits. When a suggested paragraph break joins
+paragraphs of a different style, list or code/quote container, the text without
+suggestions has no exact Markdown form: the read is marked incomplete
+(`scope.complete` is false, with `scope.suggestion_preview_gaps`) and cannot
+authorize a rewrite until the suggestions are resolved.
 
 ```bash
 gdoc write DOC draft.md --tab Notes --allow-lossy
@@ -773,10 +778,10 @@ underline; a custom colour on the linked text stays.
 
 An empty replacement removes complete matched paragraphs. A match that starts or
 ends inside a paragraph and spans a paragraph break joins the remaining text into
-one paragraph with the first paragraph's style, as the same deletion in the
-Markdown file would: `edit DOC "lo\nwor" ""` turns `Hello` and `## world` into
-`Helld`. A join that would move a list item's text off its list is refused; use
-`write --tab` for that change.
+one paragraph, which always keeps the first paragraph's style. Matches are on the
+document's text, so `edit DOC "lo\nwor" ""` on the paragraph `Hello` followed by
+the heading `world` leaves the paragraph `Helld`. A join that would move a list
+item's text off its list is refused; use `write --tab` for that change.
 
 ### Multi-line arguments from stdin
 

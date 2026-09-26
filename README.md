@@ -458,7 +458,9 @@ Markdown, so an `already in sync` result never establishes a new baseline.
 copy elsewhere cannot authorize an older file. The revision covers the whole
 document, so an older file is still accepted when its selected tab's native content
 matches the `gdoc-tab-sha256` fingerprint recorded at that revision: edits to other
-tabs, including your own push of a sibling tab's file, leave it pushable. Any change
+tabs, including your own push of a sibling tab's file, leave it pushable. A matching
+fingerprint also serves as the tab's read baseline, so a pulled file stays pushable
+on another machine or after local state is cleared. Any change
 to the selected tab itself, including text colour or a pending suggestion, makes the
 file stale; `--allow-lossy` does not override that. The fingerprint covers the
 tab's text, styles, lists, named ranges, named and document styles, segments and

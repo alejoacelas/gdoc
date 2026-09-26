@@ -1717,9 +1717,11 @@ def _write_native_markdown(
                 "this file was pulled. Reconcile the local and remote edits, or "
                 "use --force to intentionally overwrite.", 3,
             )
-        if file_revision != revision and _preview_complete([selected]):
+        if tab_unchanged and _preview_complete([selected]):
             # The native tab is identical to the one the file recorded, so the
-            # file is a complete read of that tab at this revision.
+            # file is a complete read of that tab at this revision, whether
+            # or not the revision moved and even without local state. A
+            # revision string alone is not such evidence.
             _record_read(doc_id, [selected], revision)
     require_content_baseline(
         doc_id, [t["id"] for t in tabs] if collapse else [selected["id"]],

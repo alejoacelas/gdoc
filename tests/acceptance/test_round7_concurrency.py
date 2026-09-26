@@ -358,3 +358,36 @@ def test_post_write_read_after_a_race_carries_no_fingerprint(env, monkeypatch):
     code, output = push(env)
     assert code == 3 and "stale" in output
     assert coloured(env) == "beta"
+
+
+def test_file_at_the_current_revision_is_pushable_without_local_state(env):
+    """R7-11: the file's own provenance covers its tab without local state."""
+    import shutil
+
+    from gdoc import state
+
+    pull(env)
+    shutil.rmtree(state.STATE_DIR, ignore_errors=True)
+    edit_file(env, "Second.", "Second, edited.")
+    batches = len(env.service.batches)
+    code, output = push(env)
+    assert code == 0, output
+    assert len(env.service.batches) > batches
+    assert "Second, edited." in body(env)
+
+
+def test_same_revision_file_without_fingerprint_still_needs_a_read(env):
+    """R7-11 boundary: a revision string alone does not authorize a push."""
+    import shutil
+
+    from gdoc import state
+    from gdoc.frontmatter import update_frontmatter_value
+
+    pull(env)
+    shutil.rmtree(state.STATE_DIR, ignore_errors=True)
+    env.file.write_text(update_frontmatter_value(
+        env.file.read_text(), "gdoc-tab-sha256", ""))
+    edit_file(env, "Second.", "Second, edited.")
+    code, output = push(env)
+    assert code == 3 and "complete read baseline" in output
+    assert env.service.batches == []

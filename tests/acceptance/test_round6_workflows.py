@@ -27,6 +27,30 @@ def _written(route, markdown, merge="mark"):
     return doc
 
 
+def _native_shape(doc):
+    """Paragraph styles, list shape (lists numbered by first appearance) and
+    gdoc range names: the structure a wording edit must leave unchanged."""
+    lists = {}
+    paragraphs = [(style, bullet and (lists.setdefault(bullet[0], len(lists)),
+                                      bullet[1]))
+                  for _, style, bullet in styles(doc)]
+    return paragraphs, sorted(name for name, *_ in doc.named if name)
+
+
+def _rewrite(route, doc, text, old, new):
+    """Write a real wording change; it must send a batch and read back exactly
+    while the native structure stays the same."""
+    changed = text.replace(old, new)
+    assert changed != text, (old, text)
+    shape = _native_shape(doc)
+    batches = len(route.service.batches)
+    route.ok("write", text=changed)
+    assert len(route.service.batches) > batches
+    assert _read(route) == changed
+    assert _native_shape(doc) == shape
+    return changed
+
+
 FENCE = "before\n\n```\nfoo = 1\nbar = 2\n```\n\nafter\n"
 
 
@@ -74,11 +98,10 @@ def test_prose_replacement_is_still_markdown(route):
 ])
 def test_list_contained_code_keeps_its_tabs(route, markdown, merge):
     """R5-3: bullet requests spanning code never consume its leading tabs."""
-    _written(route, markdown, merge)
+    doc = _written(route, markdown, merge)
     first = _read(route)
     assert first.strip("\n") == markdown.strip("\n")
-    route.ok("write", text=first.replace("a\n", "a2\n", 1))
-    assert _read(route) == first.replace("a\n", "a2\n", 1)
+    _rewrite(route, doc, first, "a\n", "a2\n")
 
 
 def _model_after_delete(start, end):
@@ -109,13 +132,10 @@ def test_first_merge_model_is_narrowed_only_to_the_observed_shape():
 def test_blank_line_between_a_container_and_a_table_stays_outside(
         route, markdown, merge):
     """R5-2: the blank paragraph before a table never joins a code range."""
-    _written(route, markdown, merge)
-    text = markdown
-    for turn in ("y", "z"):
-        assert _read(route) == text
-        text = text.replace("x" if turn == "y" else "y", turn)
-        route.ok("write", text=text)
-    assert _read(route) == text
+    doc = _written(route, markdown, merge)
+    assert _read(route) == markdown
+    text = _rewrite(route, doc, markdown, "x", "y")
+    _rewrite(route, doc, text, "y", "z")
 
 
 TABLE_MD = "| a |\n| --- |\n| b |\n"
@@ -265,34 +285,27 @@ def test_unlinked_wording_loses_the_link_appearance(route, old, new, expected):
 
 
 @MERGES
-@pytest.mark.parametrize("markdown", [
-    "1. item\n\n   > quoted\n2. next\n",
-    "- item\n\n  > quoted\n- next\n",
-    "- item\n  > quoted\n",
-    "- a\n  - b\n\n    > deep\n",
-    "1. a\n  1. b\n\n     > q\n2. c\n",
-    "- a\n\n  > one\n  > \n  > two\n- b\n",
-    "- a\n\n  > > deep\n- b\n",
-    "1. a\n\n   > 1. x\n   > 2. y\n2. b\n",
-    "- a\n\n  > 1. x\n  > 2. y\n- b\n",
-    "1. a\n\n   > ```\n   > code\n   > ```\n2. b\n",
-    "1. a\n\n   > | h |\n   > | --- |\n   > | v |\n2. b\n",
+@pytest.mark.parametrize("markdown,edits", [
+    ("1. item\n\n   > quoted\n2. next\n", [("quoted", "quoted two")]),
+    ("- item\n\n  > quoted\n- next\n", [("quoted", "said"), ("next", "then")]),
+    ("- item\n  > quoted\n", [("quoted", "cited")]),
+    ("- a\n  - b\n\n    > deep\n", [("deep", "deeper")]),
+    ("1. a\n  1. b\n\n     > q\n2. c\n", [("q\n", "quote\n"), ("c\n", "see\n")]),
+    ("- a\n\n  > one\n  > \n  > two\n- b\n", [("two", "three")]),
+    ("- a\n\n  > > deep\n- b\n", [("deep", "deeper")]),
+    ("1. a\n\n   > 1. x\n   > 2. y\n2. b\n", [("y\n", "why\n"), ("b\n", "be\n")]),
+    ("- a\n\n  > 1. x\n  > 2. y\n- b\n", [("x\n", "ex\n")]),
+    ("1. a\n\n   > ```\n   > code\n   > ```\n2. b\n", [("code", "code two")]),
+    ("1. a\n\n   > | h |\n   > | --- |\n   > | v |\n2. b\n",
+     [("| v |", "| w |"), ("b\n", "be\n")]),
 ])
-def test_quote_inside_a_list_item_stays_in_the_item(route, markdown, merge):
+def test_quote_inside_a_list_item_stays_in_the_item(route, markdown, edits, merge):
     """R5-4: a quote nested in a list item keeps the item's indent and list."""
     doc = _written(route, markdown, merge)
     assert _read(route) == markdown
-    shape = _list_shape(doc)
-    route.ok("write", text=markdown.replace("q", "Q"))
-    assert _read(route) == markdown.replace("q", "Q")
-    assert _list_shape(doc) == shape
-
-
-def _list_shape(doc):
-    """Each paragraph's list, numbered by first appearance, and nesting."""
-    lists = {}
-    return [bullet and (lists.setdefault(bullet[0], len(lists)), bullet[1])
-            for _, _, bullet in styles(doc)]
+    text = markdown
+    for old, new in edits:
+        text = _rewrite(route, doc, text, old, new)
 
 
 def test_quote_in_item_numbering_is_one_list(route):
@@ -307,7 +320,9 @@ def test_a_soft_break_before_a_tab_header_can_be_written_back(route, separator):
     """R5-11: only a line of its own is an --all-tabs tab header."""
     doc = route.load(NativeDoc(("p", f"intro{separator}=== Tab: Notes ===")))
     read = route.ok("cat")
+    batches = len(route.service.batches)
     route.ok("write", text=read.replace("intro", "intro2"))
+    assert len(route.service.batches) > batches
     assert styles(doc)[0][0] == f"intro2{separator}=== Tab: Notes ==="
 
 
@@ -319,56 +334,64 @@ def test_a_soft_break_before_a_tab_header_can_be_written_back(route, separator):
 def test_a_rule_before_a_final_empty_code_block_is_written(route, markdown,
                                                            expected):
     """R5-12: the empty code line owns the final mark; the rule keeps its own."""
-    _written(route, markdown)
+    doc = _written(route, markdown)
     assert _read(route) == expected
-    route.ok("write", text=expected.replace("---", "***"))
-    assert _read(route) == expected
+    _rewrite(route, doc, expected, "```\n\n```", "```\nfilled\n```")
 
 
-@pytest.mark.parametrize("markdown", [
-    "- \t[x](http://a.example/)\n",
-    "- \t~~`b`~~\n",
-    "1. \t**bold** after\n",
-    "- a\n\n  ```\n  \tcode\n  ```\n",
+@pytest.mark.parametrize("markdown,old,new", [
+    ("- \t[x](http://a.example/)\n", "[x]", "[xy]"),
+    ("- \t~~`b`~~\n", "`b`", "`bc`"),
+    ("1. \t**bold** after\n", "after", "later"),
+    ("- a\n\n  ```\n  \tcode\n  ```\n", "code", "code two"),
 ])
-def test_restored_content_tabs_keep_their_own_style(route, markdown):
+def test_restored_content_tabs_keep_their_own_style(route, markdown, old, new):
     """R5-13: a literal leading tab never joins the link or code after it."""
     doc = _written(route, markdown)
     assert _read(route) == markdown
-    tabs = [u for u in doc.units if u.ch == "\t"]
-    assert tabs and all("link" not in u.ts and "bold" not in u.ts
-                        and "strikethrough" not in u.ts for u in tabs)
-    route.ok("write", text=markdown.replace("a", "A"))
-    assert _read(route) == markdown.replace("a", "A")
+    for text in (markdown, _rewrite(route, doc, markdown, old, new)):
+        tabs = [u for u in doc.units if u.ch == "\t"]
+        assert tabs and all("link" not in u.ts and "bold" not in u.ts
+                            and "strikethrough" not in u.ts for u in tabs), text
 
 
-@pytest.mark.parametrize("markdown,expected", [
+@pytest.mark.parametrize("markdown,expected,old,new", [
     ("> > - a\n> > \n> >   | t |\n> >   | --- |\n> >   | v |\n",
-     "> > - a\n> > \n> >   | t |\n> >   | --- |\n> >   | v |\n\n"),
-    ("see [x][r]\n\n[r]: https://u.example/\n", "see [x](https://u.example/)\n"),
+     "> > - a\n> > \n> >   | t |\n> >   | --- |\n> >   | v |\n\n",
+     "| v |", "| w |"),
+    ("see [x][r]\n\n[r]: https://u.example/\n", "see [x](https://u.example/)\n",
+     "see", "saw"),
 ])
 def test_container_blank_and_trailing_definition_round_trip(route, markdown,
-                                                            expected):
+                                                            expected, old, new):
     """R5-14: a contained blank keeps its prefix; a definition adds no blank."""
-    _written(route, markdown)
+    doc = _written(route, markdown)
     assert _read(route) == expected
-    route.ok("write", text=expected)
-    assert _read(route) == expected
+    _rewrite(route, doc, expected, old, new)
 
 
-@pytest.mark.parametrize("markdown", [
-    "[**b** *i*](https://u.example/)\n",
-    "see [a **b** c](https://u.example/) now\n",
-    "[x](https://one.example/)[y](https://two.example/)\n",
+@pytest.mark.parametrize("markdown,old,new", [
+    ("[**b** *i*](https://u.example/)\n", "*i*", "*it*"),
+    ("see [a **b** c](https://u.example/) now\n", "see", "saw"),
+    ("[x](https://one.example/)[y](https://two.example/)\n", "[y]", "[yz]"),
 ])
-def test_a_link_with_mixed_styles_stays_one_link(route, markdown):
+def test_a_link_with_mixed_styles_stays_one_link(route, markdown, old, new):
     """R5-14: the spaces between differently styled words stay linked."""
+    from gdoc.mdparse import parse_markdown
+
+    def linked(doc):
+        return [(u.ch, u.ts["link"]["url"]) for u in doc.units if "link" in u.ts]
+
+    def requested(text):
+        parsed = parse_markdown(text)
+        return [(ch, s.style["link"]["url"]) for s in parsed.styles
+                if "link" in s.style for ch in parsed.plain_text[s.start:s.end]]
+
     doc = _written(route, markdown)
     assert _read(route) == markdown
-    linked = [u.ch for u in doc.units if "link" in u.ts]
-    route.ok("write", text=markdown.replace("see", "saw"))
-    assert _read(route) == markdown.replace("see", "saw")
-    assert [u.ch for u in doc.units if "link" in u.ts] == linked
+    assert linked(doc) == requested(markdown)
+    changed = _rewrite(route, doc, markdown, old, new)
+    assert linked(doc) == requested(changed)
 
 
 def _cell(text, start, **extra):
@@ -409,3 +432,119 @@ def test_suggested_tables_rows_and_columns_are_not_read(route, monkeypatch):
     assert read.startswith("| H |\n| --- |\n| V |\n")
     for suggested in ("New", "| R", "| S", "| T", "dog"):
         assert suggested not in read
+
+
+def _tab_of(content, named=None):
+    """A one-tab document in the inline suggestion view."""
+    body = [{"startIndex": 0, "endIndex": 1, "sectionBreak": {}}, *content]
+    tab = {"body": {"content": body}}
+    if named:
+        tab["namedRanges"] = named
+    return {"documentId": "synthetic", "revisionId": "r1", "tabs": [{
+        "tabProperties": {"tabId": "t.0", "title": "Main", "index": 0},
+        "documentTab": tab}]}
+
+
+def _para(runs, start, **paragraph):
+    end = runs[-1]["endIndex"]
+    return {"startIndex": start, "endIndex": end,
+            "paragraph": {"elements": runs, **paragraph}}
+
+
+def _image(object_id, start, **extra):
+    return {"startIndex": start, "endIndex": start + 1,
+            "inlineObjectElement": {"inlineObjectId": object_id, **extra}}
+
+
+class _Recorder:
+    """Accepts pinned batches without applying them, recording requests."""
+
+    def __init__(self):
+        self.revision, self.batches = 1, []
+
+    def documents(self):
+        return self
+
+    def batchUpdate(self, documentId, body):  # noqa: N802, N803 (Docs API names)
+        recorder = self
+
+        class Request:
+            def execute(self, **_):
+                recorder.batches.append(body["requests"])
+                recorder.revision += 1
+                return {"replies": [{} for _ in body["requests"]],
+                        "writeControl": {
+                            "requiredRevisionId": f"r{recorder.revision}"}}
+        return Request()
+
+
+def _serve(route, monkeypatch, document):
+    from gdoc.api import docs
+
+    route.load(NativeDoc())
+    route.service = _Recorder()
+    monkeypatch.setattr(docs, "get_document_with_tabs", lambda *a, **k: document)
+
+
+IMAGES = [_para([_run("A ", 1), _image("kept", 3, suggestedDeletionIds=["d"]),
+                 _image("new", 4, suggestedInsertionIds=["i"]), _run(" z\n", 5)], 1)]
+SAME_FORM_BREAK = [
+    _para([_run("one", 1), _run("\n", 4, suggestedInsertionIds=["b"])], 1,
+          paragraphStyle={"namedStyleType": "HEADING_2"}),
+    _para([_run("two\n", 5)], 5, paragraphStyle={"namedStyleType": "HEADING_2"})]
+STYLE_BREAK = [
+    _para([_run("one", 1), _run("\n", 4, suggestedInsertionIds=["b"])], 1,
+          paragraphStyle={"namedStyleType": "HEADING_2"}),
+    _para([_run("two\n", 5)], 5, paragraphStyle={"namedStyleType": "NORMAL_TEXT"})]
+LIST_BREAK = [
+    _para([_run("one", 1), _run("\n", 4, suggestedInsertionIds=["b"])], 1,
+          bullet={"listId": "L"}),
+    _para([_run("two\n", 5)], 5)]
+CODE_BREAK = [
+    _para([_run("code", 1), _run("\n", 5, suggestedInsertionIds=["b"])], 1),
+    _para([_run("prose\n", 6)], 6)]
+CODE_RANGE = {"gdoc:code:v1": {"name": "gdoc:code:v1", "namedRanges": [
+    {"name": "gdoc:code:v1", "ranges": [{"startIndex": 1, "endIndex": 6}]}]}}
+
+
+@pytest.mark.parametrize("content,named,expected,faithful", [
+    (IMAGES, None, "A ![](gdoc-image:kept) z\n", True),
+    (SAME_FORM_BREAK, None, "## onetwo\n", True),
+    (STYLE_BREAK, None, None, False),
+    (LIST_BREAK, None, None, False),
+    (CODE_BREAK, CODE_RANGE, None, False),
+])
+def test_suggestion_preview_is_complete_only_when_faithful(
+        route, monkeypatch, content, named, expected, faithful):
+    """R5-5: an image, row, cell or break suggestion reads as before it; a
+    break joining paragraphs of different forms is an incomplete read."""
+    _serve(route, monkeypatch, _tab_of(content, named))
+    code, output, error = route.call("cat", json=True)
+    assert code == 0
+    assert ('"complete": true' in output) == faithful
+    code, output, error = route.call("cat")
+    if expected is not None:
+        assert parse_frontmatter(output)[1] == expected
+    assert ("cannot be shown faithfully" in output + error) == (not faithful)
+    assert "new" not in parse_frontmatter(output)[1]
+    # An incomplete read cannot authorize a rewrite, even with consent.
+    code, out, err = route.call("write", text="changed\n", allow_lossy=True)
+    assert (code == 0) == faithful, out + err
+    if not faithful:
+        assert route.service.batches == []
+
+
+def test_consented_rewrite_discards_suggestions_and_keeps_the_text(
+        route, monkeypatch):
+    """R5-5: --allow-lossy keeps the pre-suggestion text; nothing suggested
+    is applied as a direct edit."""
+    _serve(route, monkeypatch, _suggested_tab())
+    read = route.ok("cat")
+    code, output, error = route.call("write", text=read.replace("ran", "sat"))
+    assert code != 0 and "pending suggestions" in output + error
+    assert route.service.batches == []
+    route.ok("write", text=read.replace("ran", "sat"), allow_lossy=True)
+    sent = [r for batch in route.service.batches for r in batch]
+    inserted = "".join(r["insertText"]["text"] for r in sent if "insertText" in r)
+    assert inserted.startswith("The cat sat\nonetwo")
+    assert "dog" not in inserted and "new" not in inserted

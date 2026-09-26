@@ -383,7 +383,8 @@ def cmd_cat(args) -> int:
     displayed = _truncate_bytes(content, max_bytes)
     truncated = displayed != content
     # Plain text omits supported formatting, and no-images omits objects.
-    complete = not (truncated or no_images or not want_markdown or annotated)
+    complete = not (truncated or no_images or not want_markdown or annotated) \
+        and _preview_complete(selected)
     scope = {
         "tab_ids": [selected_tab["id"] for selected_tab in selected],
         "complete": complete, "truncated": truncated,
@@ -396,6 +397,10 @@ def cmd_cat(args) -> int:
                       for t in selected)
         if pending:
             scope["pending_suggestions"] = pending
+        from gdoc.api.docs import suggestion_preview_gaps
+        gaps = [gap for t in selected for gap in suggestion_preview_gaps(t)]
+        if gaps:
+            scope["suggestion_preview_gaps"] = gaps
     if get_output_mode(args) == "json":
         extra = {"tab": selected[0]["title"]} if len(selected) == 1 else {}
         print(format_json(content=displayed, scope=scope, **extra))
@@ -1567,7 +1572,8 @@ def _write_native_markdown(
     if unchanged:
         if result_details is not None:
             result_details.update(acknowledged_revision_id=revision, rebased=False)
-        record_content_read(doc_id, [selected["id"]], revision)
+        if _preview_complete([selected]):
+            record_content_read(doc_id, [selected["id"]], revision)
         if mode == "json":
             print(format_json(
                 in_sync=True, tab_id=selected["id"], revision_id=revision,
@@ -1600,7 +1606,7 @@ def _write_native_markdown(
                 "file was pulled. Reconcile the local and remote edits, or use "
                 "--force to intentionally overwrite.", 3,
             )
-        if tab_unchanged:
+        if tab_unchanged and _preview_complete([selected]):
             # The current snapshot shows the selected tab exactly as this file
             # recorded it, so the file is a complete read of that tab at this
             # revision; edits elsewhere (another tab) cannot be overwritten.
@@ -1671,18 +1677,35 @@ def _note_tab_scope(document: dict, selected: dict, others: str = "--tab") -> No
 
 def _note_pending_suggestions(tabs: list[dict]) -> None:
     """Say on stderr that Markdown shows the text without pending suggestions."""
-    from gdoc.api.docs import pending_suggestion_ids
+    from gdoc.api.docs import pending_suggestion_ids, suggestion_preview_gaps
 
     for tab in tabs:
         count = len(pending_suggestion_ids(tab.get("body", {})))
-        if count:
+        if not count:
+            continue
+        print(
+            f"NOTE: tab {tab['title']!r} has {count} pending "
+            f"suggestion{'s' if count != 1 else ''}; the Markdown shows its "
+            "text without them. Resolve them in Docs (accept or reject) before "
+            "rewriting the tab; a rewrite with --allow-lossy instead discards "
+            "them and keeps the text as shown.",
+            file=sys.stderr,
+        )
+        gaps = suggestion_preview_gaps(tab)
+        if gaps:
             print(
-                f"NOTE: tab {tab['title']!r} has {count} pending "
-                f"suggestion{'s' if count != 1 else ''}; the Markdown shows its "
-                "text without them. Rewriting the tab needs --allow-lossy and "
-                "discards them; accept or reject them in Docs to keep them.",
+                f"NOTE: tab {tab['title']!r} cannot be shown faithfully without "
+                f"its suggestions ({'; '.join(gaps)}). This read is incomplete "
+                "and cannot authorize a rewrite; resolve the suggestions first.",
                 file=sys.stderr,
             )
+
+
+def _preview_complete(tabs: list[dict]) -> bool:
+    """Whether a Markdown read shows every tab without its suggestions exactly."""
+    from gdoc.api.docs import suggestion_preview_gaps
+
+    return not any(suggestion_preview_gaps(tab) for tab in tabs)
 
 
 def _read_native_tab(doc_id: str, tab_name: str | None = None, *, document=None):
@@ -1805,7 +1828,7 @@ def cmd_pull(args) -> int:
         command_version=command_version if rev is None else None,
     )
 
-    if document is not None:
+    if document is not None and _preview_complete([selected]):
         from gdoc.state import record_content_read
         record_content_read(doc_id, [selected["id"]], document.get("revisionId", ""))
     return 0
@@ -2999,7 +3022,7 @@ def cmd_export(args) -> int:
     update_state_after_command(
         doc_id, change_info, command="export-content", quiet=quiet,
     )
-    if document is not None:
+    if document is not None and _preview_complete([selected]):
         from gdoc.state import record_content_read
         record_content_read(doc_id, [selected["id"]], document.get("revisionId", ""))
     return 0

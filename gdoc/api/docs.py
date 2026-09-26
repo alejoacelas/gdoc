@@ -734,17 +734,21 @@ def pending_suggestion_ids(value) -> set[str]:
     return found
 
 
-def _without_suggestions(content: list[dict]) -> list[dict]:
+def _without_suggestions(content: list[dict], gaps: list | None = None,
+                         owned=None) -> list[dict]:
     """Content as it reads before its pending suggestions.
 
     Reads use the API's inline suggestion view, so suggested insertions
     appear as text beside the wording they would delete. Markdown shows the
     current text: suggested insertions are left out and suggested deletions
     stay. A paragraph break that is itself a suggested insertion joins its
-    text to the following paragraph.
+    text to the following paragraph. When the two paragraphs differ in
+    style, list membership or gdoc container, the joined paragraph's form
+    is not known, and the join is recorded in ``gaps``.
     """
     result: list[dict] = []
     carried: list[dict] = []
+    carried_from: list[dict] = []
     for element in content:
         if element.get("suggestedInsertionIds") or element.get(
                 "table", {}).get("suggestedInsertionIds"):
@@ -755,7 +759,8 @@ def _without_suggestions(content: list[dict]) -> list[dict]:
             table = dict(element["table"])
             table["tableRows"] = [
                 {**row, "tableCells": [
-                    {**cell, "content": _without_suggestions(cell.get("content", []))}
+                    {**cell, "content": _without_suggestions(
+                        cell.get("content", []), gaps, owned)}
                     for cell in row.get("tableCells", [])
                     if not cell.get("suggestedInsertionIds")]}
                 for row in table.get("tableRows", [])
@@ -775,15 +780,58 @@ def _without_suggestions(content: list[dict]) -> list[dict]:
         if mark is not None and mark["textRun"].get("content", "").endswith("\n") \
                 and mark["textRun"].get("suggestedInsertionIds"):
             text = [e for e in kept if e is not mark]
+            if text:
+                carried_from.append(element)
             carried.extend(text)
             continue
+        if gaps is not None:
+            gaps.extend(
+                f"a suggested paragraph break at index "
+                f"{joined.get('startIndex', '?')} joins paragraphs whose "
+                "style, list or container differ"
+                for joined in carried_from
+                if _joined_form_differs(joined, element, owned))
         result.append({**element, "paragraph": {
             **paragraph, "elements": carried + kept}})
-        carried = []
+        carried, carried_from = [], []
     if carried:
         result.append({"paragraph": {"elements": carried + [
             {"textRun": {"content": "\n"}}]}})
     return result
+
+
+def _joined_form_differs(first: dict, second: dict, owned) -> bool:
+    def form(element):
+        paragraph = element["paragraph"]
+        style = {k: v for k, v in paragraph.get("paragraphStyle", {}).items()
+                 if k != "headingId"}
+        bullet = paragraph.get("bullet") or {}
+        container = owned(element.get("startIndex", -1)) if owned else None
+        return (style, bullet.get("listId"), bullet.get("nestingLevel", 0),
+                container)
+    return form(first) != form(second)
+
+
+def _owned_containers(tab: dict):
+    """Which gdoc code and container ranges hold a given index."""
+    spans = [(r.get("startIndex", 0), r.get("endIndex", 0), name)
+             for group in tab.get("namedRanges", {}).values()
+             for named in group.get("namedRanges", [])
+             for name in [named.get("name", group.get("name", ""))]
+             if name == "gdoc:code:v1" or _parse_prefix_range_name(name)
+             for r in named.get("ranges", [])]
+    return lambda index: frozenset(
+        (start, name) for start, end, name in spans if start <= index < end)
+
+
+def suggestion_preview_gaps(tab: dict) -> list[str]:
+    """Pending suggestions the Markdown read cannot show faithfully."""
+    content = tab.get("body", {}).get("content", [])
+    if not pending_suggestion_ids(content):
+        return []
+    gaps: list[str] = []
+    _without_suggestions(content, gaps, _owned_containers(tab))
+    return gaps
 
 
 def get_tab_text(tab: dict, markdown: bool = False) -> str:

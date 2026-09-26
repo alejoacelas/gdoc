@@ -133,3 +133,134 @@ def test_literal_leading_whitespace_after_a_list_is_text(route, merge, markdown)
     """Raw indentation means item content; literal whitespace is an entity."""
     _check(route, merge, markdown, [("a\n", "a5\n")] if "a\n" in markdown
            else [("top", "top6")])
+
+
+@MERGES
+def test_original_r6_2_trigger_keeps_both_tables(route, merge):
+    """The exact R6-2 input: one quoted separator line and no final blank."""
+    original = ("- x\n\n  > - y\n  >\n  >   | a |\n  >   | --- |\n  >   | va |\n"
+                "  >\n  >   | b |\n  >   | --- |\n  >   | vb |\n")
+    doc = route.load(NativeDoc(merge=merge))
+    route.ok("cat")
+    route.ok("write", text=original)
+    first = _read(route)
+    # Docs keeps a paragraph between the tables (now read inside their quote,
+    # beside the separator) and a final paragraph after the last table.
+    assert first == ADJACENT_IN_QUOTED_ITEM
+    assert len(parse_markdown(first).tables) == 2
+    for old, new in [("x", "x2"), ("va", "va3")]:
+        changed = first.replace(old, new, 1)
+        batches = len(route.service.batches)
+        route.ok("write", text=changed)
+        assert len(route.service.batches) > batches
+        first = _read(route)
+        assert first == changed
+        assert len(parse_markdown(first).tables) == 2
+    assert sum(u.kind == "tstart" for u in doc.units) == 2
+
+
+@MERGES
+@pytest.mark.parametrize("blank_lines,paragraphs", [(1, 1), (2, 1), (3, 2), (4, 3)])
+def test_original_r6_5_blank_counts_between_item_tables(
+    route, merge, blank_lines, paragraphs,
+):
+    """User blank lines between item tables: the last is the separator, and
+    Docs always keeps at least one paragraph between two tables."""
+    original = ("- a\n\n  | t |\n  | --- |\n  | vt |\n" + "\n" * blank_lines
+                + "  | u |\n  | --- |\n  | vu |\n")
+    doc = route.load(NativeDoc(merge=merge))
+    route.ok("cat")
+    route.ok("write", text=original)
+
+    def between():
+        units = doc.units
+        end = next(i for i, u in enumerate(units) if u.kind == "tend")
+        start = next(i for i, u in enumerate(units) if u.kind == "tstart" and i > end)
+        return sum(u.ch == "\n" for u in units[end + 1:start])
+
+    assert between() == paragraphs
+    first = _read(route)
+    assert first == ("- a\n\n  | t |\n  | --- |\n  | vt |\n" + "\n" * (paragraphs + 1)
+                     + "  | u |\n  | --- |\n  | vu |\n\n")
+    for old, new in [("vt", "vt2"), ("a\n", "a3\n")]:
+        changed = first.replace(old, new, 1)
+        route.ok("write", text=changed)
+        first = _read(route)
+        assert first == changed and between() == paragraphs
+
+
+@MERGES
+@pytest.mark.parametrize("markdown,path", [
+    # quote / list item / quote
+    ("> - a\n> \n>   > inner\n> - b\n", ("q", 2, "q")),
+    # list item / quote / list item content
+    ("- a\n\n  > - b\n  > \n  >   inner\n- c\n", (2, "q", 2)),
+    # list item / quote / list item / quote
+    ("- a\n\n  > - b\n  > \n  >   > inner\n- c\n", (2, "q", 2, "q")),
+])
+def test_container_order_is_preserved(route, merge, markdown, path):
+    doc = _check(route, merge, markdown, [("inner", "inner2"), ("a\n", "a4\n")])
+    [styled] = [s for s in parse_markdown(markdown).styles
+                if s.type == "markdown_prefix" and s.path == path]
+    from gdoc.api.docs import _prefix_range_name
+    assert _prefix_range_name(path) in {name for name, *_ in doc.named if name}
+    assert styled.path == path
+
+
+@MERGES
+@pytest.mark.parametrize("markdown,edits", [
+    ("- a\n\n  ```\n  \tcode\ttab\n  ```\n  | t |\n  | --- |\n  | v |\n- b\n",
+     [("code", "code7"), ("- b", "- b8")]),
+    ("1. a\n\n   | t |\n   | --- |\n   | v |\n\n   after table\n2. b\n",
+     [("after", "after9"), ("2. b", "2. b10")]),
+    ("- a\n\n  text\n  ```\n  x\n  ```\n  more\n- b\n",
+     [("more", "more11"), ("text", "text12")]),
+    ("&#32; literal\n- a\n&#9;tab literal\n",
+     [("tab literal", "tab literal13"), ("- a", "- a14")]),
+])
+def test_neighbouring_contained_blocks_and_literal_whitespace(
+    route, merge, markdown, edits,
+):
+    _check(route, merge, markdown, edits)
+
+
+def test_legacy_v2_range_reads_as_a_quote_in_an_item():
+    from gdoc.api.docs import _parse_prefix_range_name, _prefix_range_name
+
+    assert _parse_prefix_range_name("gdoc:prefix:v2:2:1:0") == (2, "q")
+    assert _parse_prefix_range_name("gdoc:prefix:v2:3:2:4") == (3, "q", "q", 4)
+    assert _parse_prefix_range_name("gdoc:prefix:v1:1:2") == ("q", 2)
+    assert _parse_prefix_range_name("gdoc:prefix:v1:0:3") == (3,)
+    assert _parse_prefix_range_name("gdoc:prefix:v3:q.2.q") == ("q", 2, "q")
+    for path in [("q",), (3,), ("q", 2), (2, "q"), (2, "q", 2), ("q", 2, "q"),
+                 (2, "q", 2, "q"), (2, 4)]:
+        assert _parse_prefix_range_name(_prefix_range_name(path)) == path
+
+
+def test_owned_ranges_and_loss_guard_cover_v3_names():
+    import re
+
+    from gdoc.api.docs import _OWNED_RANGE_NAME_RE
+    from gdoc.lossy import _PREFIX_NAME
+
+    for name in ["gdoc:prefix:v3:q.2.q", "gdoc:prefix:v3:2.q.2.q"]:
+        assert _OWNED_RANGE_NAME_RE.fullmatch(name)
+        assert re.fullmatch(_PREFIX_NAME, name)
+    assert not _OWNED_RANGE_NAME_RE.fullmatch("gdoc:prefix:v3:")
+    assert not _OWNED_RANGE_NAME_RE.fullmatch("gdoc:prefix:v3:x")
+
+
+@MERGES
+def test_removed_container_indent_reads_without_the_container(route, merge):
+    """A v3 container whose indent someone removed in Docs no longer applies."""
+    markdown = "> - a\n> \n>   > inner\n> - b\n"
+    doc = _check(route, merge, markdown, [])
+    start = "".join(u.ch for u in doc.units).index("inner") + 1  # section break
+    route.service.doc.apply({"updateParagraphStyle": {
+        "range": {"startIndex": start, "endIndex": start + 1},
+        "paragraphStyle": {"indentStart": {"magnitude": 0, "unit": "PT"},
+                           "indentFirstLine": {"magnitude": 0, "unit": "PT"}},
+        "fields": "indentStart,indentFirstLine"}})
+    route.service.revision += 1
+    # Without its indent the paragraph is no longer in the quoted item's quote.
+    assert _read(route) == "> - a\n> \ninner\n> - b\n"

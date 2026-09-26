@@ -442,7 +442,11 @@ document, so an older file is still accepted when its selected tab's native cont
 matches the `gdoc-tab-sha256` fingerprint recorded at that revision: edits to other
 tabs, including your own push of a sibling tab's file, leave it pushable. Any change
 to the selected tab itself, including text colour or a pending suggestion, makes the
-file stale; `--allow-lossy` does not override that. Files without revision provenance
+file stale; `--allow-lossy` does not override that. The fingerprint covers the
+tab's text, styles, lists, named ranges, named and document styles, segments and
+suggestions. A tab containing images has no fingerprint: Google issues a fresh
+temporary image URI on every read, and a replaced image can keep its object ID and
+size, so any later revision change makes such a file stale until a fresh pull. Files without revision provenance
 need a fresh pull or an explicit `--force`. An acknowledged push updates only its
 provenance fields, preserving other frontmatter, and reads the document once more
 to fingerprint the written tab; if another edit already landed, the fingerprint is

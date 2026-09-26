@@ -291,7 +291,9 @@ def flatten_tabs(tabs: list[dict], _level: int = 0) -> list[dict]:
             # lists when rendering a tab as markdown.
             "lists": doc_tab.get("lists", {}),
             **{key: doc_tab[key] for key in ("headers", "footers", "footnotes",
-                                                "namedRanges", "inlineObjects")
+                                                "namedRanges", "inlineObjects",
+                                                "positionedObjects", "namedStyles",
+                                                "documentStyle")
                if key in doc_tab},
         })
         for child in tab.get("childTabs", []):
@@ -300,29 +302,25 @@ def flatten_tabs(tabs: list[dict], _level: int = 0) -> list[dict]:
 
 
 def native_tab_fingerprint(tab: dict) -> str:
-    """Fingerprint a flattened tab's native content, styles and suggestions.
+    """Fingerprint a flattened tab's native content, or "" when unprovable.
 
     Two snapshots of an unchanged tab fingerprint equally even at different
     document revisions, so edits to other tabs do not change it. Any native
-    change in the tab does, including styles and pending suggestions that
-    Markdown does not show. Image ``contentUri`` values are excluded: the
-    Docs API issues a fresh temporary URI (default lifetime 30 minutes) on
-    every read, so they differ between reads of an unchanged image.
+    change in the tab does: text, paragraph and text styles, lists, named
+    ranges, named and document styles, segments, and pending suggestions that
+    Markdown does not show. A tab with images returns "": each read issues a
+    fresh temporary ``contentUri``, and a replaced image's bytes can change
+    under the same object ID and size, so no stable field proves the image is
+    unchanged. Callers treat "" as unknown and refuse to carry provenance.
     """
     import hashlib
     import json
 
-    def stable(value):
-        if isinstance(value, dict):
-            return {key: stable(child) for key, child in value.items()
-                    if key != "contentUri"}
-        if isinstance(value, list):
-            return [stable(child) for child in value]
-        return value
-
+    if tab.get("inlineObjects") or tab.get("positionedObjects"):
+        return ""
     content = {key: value for key, value in tab.items()
                if key not in ("id", "title", "index", "nesting_level")}
-    encoded = json.dumps(stable(content), sort_keys=True, ensure_ascii=False)
+    encoded = json.dumps(content, sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 

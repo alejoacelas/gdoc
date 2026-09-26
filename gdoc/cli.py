@@ -1660,7 +1660,10 @@ def _write_native_markdown(
         # acknowledged revision shows the written tab without foreign edits.
         try:
             after = get_document_with_tabs(doc_id)
-        except GdocError:
+        except Exception as error:  # noqa: BLE001 — the write is already saved
+            print("WARN: write saved; its tab could not be fingerprinted "
+                  f"({error}), so this file needs a fresh pull after another "
+                  "edit to the document", file=sys.stderr)
             after = {}
         if after.get("revisionId") == acknowledged:
             written = next((t for t in flatten_tabs(after.get("tabs", []))

@@ -16,6 +16,7 @@ import pytest
 
 from gdoc import cli
 from gdoc.frontmatter import parse_frontmatter
+from gdoc.util import GdocError
 from tests.acceptance.test_round5_workflows import NativeRoute
 from tests.native_model import NativeDoc
 
@@ -251,17 +252,108 @@ def test_file_matching_markdown_after_a_same_tab_change_stays_stale(env):
     assert coloured(env) == "beta"
 
 
-def test_fingerprint_ignores_temporary_image_uris(env):
+def test_tab_with_images_has_no_provable_fingerprint(env):
+    """contentUri changes per read, and replaced bytes can keep ID and size."""
     from gdoc.api.docs import flatten_tabs, native_tab_fingerprint
 
-    snapshot = env.service.snapshot()
-    tab = flatten_tabs(snapshot["tabs"])[0]
+    tab = flatten_tabs(env.service.snapshot()["tabs"])[0]
+    assert native_tab_fingerprint(tab)
     tab["inlineObjects"] = {"i": {"inlineObjectProperties": {"embeddedObject": {
         "imageProperties": {"contentUri": "https://lh.example/one"}}}}}
-    again = copy.deepcopy(tab)
-    again["inlineObjects"]["i"]["inlineObjectProperties"]["embeddedObject"][
-        "imageProperties"]["contentUri"] = "https://lh.example/two"
-    assert native_tab_fingerprint(tab) == native_tab_fingerprint(again)
-    again["inlineObjects"]["i"]["inlineObjectProperties"]["embeddedObject"][
-        "size"] = {"width": {"magnitude": 5, "unit": "PT"}}
-    assert native_tab_fingerprint(tab) != native_tab_fingerprint(again)
+    assert native_tab_fingerprint(tab) == ""
+
+
+def test_image_tab_file_needs_a_fresh_pull_after_any_edit(env):
+    env.service.doc.apply({"insertInlineImage": {
+        "location": {"index": 1}, "uri": "https://example.org/i.png"}})
+    env.service.revision += 1
+    pull(env)
+    assert parse_frontmatter(env.file.read_text())[0]["gdoc-tab-sha256"] == ""
+    edit_sibling(env)
+    edit_file(env, "Second.", "Second edited.")
+    before = len(env.service.batches)
+    code, output = push(env)
+    assert code == 3 and "stale" in output
+    assert len(env.service.batches) == before
+
+
+@pytest.mark.parametrize("key,value", [
+    ("namedStyles", {"styles": [{"namedStyleType": "NORMAL_TEXT",
+                                 "textStyle": {"fontSize": {"magnitude": 20}}}]}),
+    ("documentStyle", {"background": {"color": {}}}),
+    ("footnotes", {"f": {"content": []}}),
+])
+def test_tab_dependencies_outside_the_body_make_the_file_stale(env, key, value):
+    pull(env)
+    snapshot = env.service.snapshot
+
+    def changed():
+        result = snapshot()
+        result["tabs"][0]["documentTab"][key] = value
+        return result
+
+    env.service.snapshot = changed
+    env.service.revision += 1
+    edit_file(env, "Second.", "Second edited.")
+    code, output = push(env)
+    assert code == 3 and "stale" in output
+
+
+@pytest.mark.parametrize("failure", [
+    OSError("reset"), TimeoutError("slow"), GdocError("unreadable")])
+def test_failed_post_write_read_keeps_the_saved_outcome(env, monkeypatch, failure):
+    from gdoc.api import docs
+
+    pull(env)
+    edit_file(env, "Second.", "Second edited.")
+    real = docs.get_document_with_tabs
+    calls = []
+
+    def flaky(doc_id):
+        calls.append(doc_id)
+        if len(calls) > 1:
+            raise failure
+        return real(doc_id)
+
+    monkeypatch.setattr(docs, "get_document_with_tabs", flaky)
+    code, output = push(env)
+    assert code == 0 and "OK pushed" in output and "fingerprinted" in output
+    metadata, _ = parse_frontmatter(env.file.read_text())
+    assert metadata["gdoc-revision"] == f"r{env.service.revision}"
+    assert metadata["gdoc-tab-sha256"] == ""
+    monkeypatch.setattr(docs, "get_document_with_tabs", real)
+    # Without a fingerprint, a sibling edit makes the file stale...
+    edit_sibling(env)
+    edit_file(env, "Alpha", "Alpha2")
+    assert push(env)[0] == 3
+    # ...while a fresh pull restores the provenance.
+    pull(env)
+    edit_file(env, "Alpha", "Alpha2")
+    assert push(env)[0] == 0
+
+
+def test_post_write_read_after_a_race_carries_no_fingerprint(env, monkeypatch):
+    from gdoc.api import docs
+
+    pull(env)
+    edit_file(env, "Second.", "Second edited.")
+    real = docs.get_document_with_tabs
+    calls = []
+
+    def racing(doc_id):
+        calls.append(doc_id)
+        if len(calls) > 1:  # a collaborator colours the tab before our read
+            colour_beta(env)
+        return real(doc_id)
+
+    monkeypatch.setattr(docs, "get_document_with_tabs", racing)
+    assert push(env)[0] == 0
+    monkeypatch.setattr(docs, "get_document_with_tabs", real)
+    metadata, _ = parse_frontmatter(env.file.read_text())
+    # The acknowledged revision, never the newer sampled one.
+    assert metadata["gdoc-revision"] == f"r{env.service.revision - 1}"
+    assert metadata["gdoc-tab-sha256"] == ""
+    edit_file(env, "Alpha", "Alpha2")
+    code, output = push(env)
+    assert code == 3 and "stale" in output
+    assert coloured(env) == "beta"

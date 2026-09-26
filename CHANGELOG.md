@@ -73,6 +73,22 @@ All notable changes to `gdoc` are documented here. This project follows
   unreadable add-tab reply is reported as an uncertain outcome (still an
   `ERR:` with exit 1) that says to list the tabs before retrying, instead of
   a generic unexpected-response error.
+- Replacement wording inside code is literal text. Markdown reads show a tab
+  without its pending suggestions and say how many are pending, so a consented
+  rewrite discards suggestions instead of applying them.
+- A quote inside a list item stays in that item, including under nested items;
+  its container range records the item's indent (`gdoc:prefix:v2`).
+- Leading tabs of code inside list items survive bullet creation, and restored
+  content tabs keep their own style. A blank line between a container and a
+  table stays outside code. Empty scaffolding and emptied paragraphs are removed
+  one paragraph per deletion, the shape observed to keep the following
+  paragraph's style, so two different lists around a table keep their identity.
+- An empty replacement across a paragraph break joins the paragraphs in the
+  first paragraph's style. Appending a table or trailing blank line leaves a
+  plain final paragraph. Wording that loses its link loses the default link
+  colour and underline, and a link with mixed styles exports as one link.
+- A soft break before `=== Tab:` text and a rule before a final empty code block
+  can be written back. Zero-width table borders produce the style warning.
 - `edit` and `insert` record an acknowledged write before the optional version
   lookup. Markdown `export` and `pull` name the tab they read. Sync hooks
   report skips to the agent, identical local replacements leave the file in

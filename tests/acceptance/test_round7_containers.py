@@ -356,5 +356,18 @@ def test_content_under_nested_items_is_indented_at_its_item(
         edits.append((text, text + "3"))
     doc = _check(route, merge, markdown, edits,
                  tables=1 if "| t |" in markdown else None)
+    from gdoc.api.docs import _parse_prefix_range_name
     if text:
         assert _indent_of(doc, text + "3") == indent
+        # The recorded container path accounts for exactly that indent.
+        at = "".join(u.ch for u in doc.units).index(text + "3") + 1
+        paths = [_parse_prefix_range_name(name) for name, low, high in doc.named
+                 if name and low <= at < high and _parse_prefix_range_name(name)]
+        assert [36 * len(path) for path in paths] == [indent]
+    else:
+        # gdoc gives tables no native indent; a contained table's container
+        # is the named range on its first cell, which must record both items.
+        start = next(i for i, u in enumerate(doc.units) if u.kind == "tstart")
+        paths = [_parse_prefix_range_name(name) for name, low, _ in doc.named
+                 if name and low > start and _parse_prefix_range_name(name)]
+        assert paths[:1] == [(2, 2)]

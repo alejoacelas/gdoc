@@ -213,10 +213,14 @@ def test_empty_heading_does_not_mutate_neighbor(mocker, neighbor, last):
         service.assert_not_called()
         return
     requests = _requests(mocker, body, "Heading", "")
-    deletion = {"deleteContentRange": {"range": {
-        "startIndex": 9 if last else 10,
-        "endIndex": 17 if last else 18, "tabId": "synthetic-tab",
-    }}}
+
+    def deleted(start, end):
+        return {"deleteContentRange": {"range": {
+            "startIndex": start, "endIndex": end, "tabId": "synthetic-tab"}}}
+
+    # A non-final heading is emptied, then its one empty paragraph removed,
+    # the merge shape observed to keep the following paragraph's style.
+    deletion = [deleted(9, 17)] if last else [deleted(10, 17), deleted(10, 11)]
     # A final heading keeps its own mark; the neighbor's style is restored on
     # it whichever paragraph's style Docs keeps on the merge.
     restore = [{"updateParagraphStyle": {
@@ -224,7 +228,7 @@ def test_empty_heading_does_not_mutate_neighbor(mocker, neighbor, last):
         "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
         "fields": "namedStyleType",
     }}] if last else []
-    assert requests == [deletion, *restore]
+    assert requests == [*deletion, *restore]
 
 
 @pytest.mark.parametrize("position", ["start", "end"])
@@ -911,8 +915,8 @@ def test_delete_nonfinal_heading_leaves_later_inline_image_untouched(mocker):
     original = deepcopy(body)
     requests = _requests(mocker, body, "Heading", "")
     assert requests == [{"deleteContentRange": {"range": {
-        "startIndex": 9, "endIndex": 17, "tabId": "synthetic-tab",
-    }}}]
+        "startIndex": 9, "endIndex": end, "tabId": "synthetic-tab",
+    }}} for end in (16, 10)]
     assert body == original
     assert image["startIndex"] == 27
 

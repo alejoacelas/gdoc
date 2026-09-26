@@ -229,10 +229,12 @@ def test_empty_segment_paragraph_removes_its_mark_except_final_lf(
     replace_formatted("doc-one", [match], "", "revision-source", body=scope)
     requests = batch.call_args.kwargs["body"]["requests"]
     expected_start, expected_end = (5, 11) if last else (0, 6)
+    # A non-final paragraph is emptied, then its one empty paragraph removed.
+    ends = [expected_end] if last else [5, 1]
     assert requests == [{"deleteContentRange": {"range": {
-        "startIndex": expected_start, "endIndex": expected_end,
+        "startIndex": expected_start, "endIndex": end,
         "tabId": "tab", "segmentId": "segment",
-    }}}]
+    }}} for end in ends]
     text = "TOKEN\nTOKEN\n"
     assert text[:expected_start] + text[expected_end:] == "TOKEN\n"
 

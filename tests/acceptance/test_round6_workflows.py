@@ -138,3 +138,18 @@ def test_appending_leaves_no_stray_styled_paragraph(route, existing, inserted,
     route.ok("cat", tab="Main")
     route.ok("insert", text=inserted, tab="Main", position="end")
     assert _read(route) == expected
+
+
+@MERGES
+@pytest.mark.parametrize("markdown,old,expected", [
+    ("first\n## H\nx\n", "first", "## H\nx\n"),
+    ("x\n## H\n- a\n", "H", "x\n- a\n"),
+    ("x\n## H\n1. a\n2. b\n", "H", "x\n1. a\n2. b\n"),
+    ("- a\n- gone\n1. b\n", "gone", "- a\n1. b\n"),
+])
+def test_removing_a_middle_paragraph_keeps_its_successor(route, markdown, old,
+                                                         expected, merge):
+    """R5-10: a middle paragraph is emptied, then its empty paragraph removed."""
+    _written(route, markdown, merge)
+    route.ok("edit", old_text=old, new_text="")
+    assert _read(route) == expected

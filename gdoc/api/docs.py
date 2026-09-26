@@ -3065,6 +3065,9 @@ def _wording_contexts(body: dict, match: dict, markdown: str):
 
 def _empty_paragraph_range(content: list[dict], match: dict):
     """Remove complete paragraphs, retaining native anchors and the final LF."""
+    # A merged group is re-planned from its span, not from a member's plan.
+    match = {k: v for k, v in match.items()
+             if k not in ("emptiedMark", "retainedMarkRestore")}
     paragraphs = list(_replacement_paragraphs(content, match))
     if not paragraphs:
         return match
@@ -3104,6 +3107,12 @@ def _empty_paragraph_range(content: list[dict], match: dict):
                         "when no paragraph precedes it; replace its wording, or "
                         "rewrite the tab with write --tab", exit_code=3,
                     )
+            if end == last[2] + 1:
+                # Empty the paragraphs first, then remove the one empty
+                # paragraph left: the merge shape observed live to leave the
+                # following paragraph's style and list membership intact.
+                return {**match, "startIndex": start, "endIndex": end,
+                        "emptiedMark": last[2]}
             return {**match, "startIndex": start, "endIndex": end}
         for row in element.get("table", {}).get("tableRows", []):
             for cell in row.get("tableCells", []):
@@ -3466,6 +3475,12 @@ def _build_replacement_requests(
                 delete_range["tabId"] = match_tab
             if segment_id:
                 delete_range["segmentId"] = segment_id
+            emptied = match.get("emptiedMark")
+            if emptied is not None and emptied > match["startIndex"]:
+                all_requests.append({"deleteContentRange": {
+                    "range": {**delete_range, "endIndex": emptied}}})
+                delete_range = {**delete_range,
+                                "endIndex": match["startIndex"] + 1}
             all_requests.append({
                 "deleteContentRange": {"range": delete_range}
             })

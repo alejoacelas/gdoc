@@ -77,3 +77,47 @@ def test_table_cell_backtick_stays_literal(cell, text):
     parsed = parse_markdown(get_tab_text(tab, markdown=True))
     (only,) = parsed.tables[0].rows[1]
     assert parse_inline(only)[0] == text
+
+
+SECTIONED = [
+    {"startIndex": 0, "endIndex": 1, "sectionBreak": {"sectionStyle": {}}},
+    {"startIndex": 1, "endIndex": 6, "paragraph": {"elements": [
+        {"startIndex": 1, "endIndex": 6, "textRun": {"content": "Page\n"}}]}},
+    {"startIndex": 6, "endIndex": 7, "sectionBreak": {
+        "sectionStyle": {"sectionType": "NEXT_PAGE"}}},
+    {"startIndex": 7, "endIndex": 12, "paragraph": {"elements": [
+        {"startIndex": 7, "endIndex": 12, "textRun": {"content": "Land\n"}}]}},
+]
+
+
+@pytest.mark.parametrize("consent", [False, True])
+def test_section_breaks_flatten_only_with_consent(mocker, consent):
+    """F9: the advertised --allow-lossy route rewrites the tab as one section."""
+    from gdoc.api.docs import insert_markdown_into_tab
+    from gdoc.util import GdocError
+
+    doc = {"revisionId": "r1", "tabs": [{
+        "tabProperties": {"tabId": "t1", "title": "Tab 1"},
+        "documentTab": {"body": {"content": SECTIONED}}}]}
+    service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
+    batch = service.documents.return_value.batchUpdate
+    batch.return_value.execute.return_value = {
+        "writeControl": {"requiredRevisionId": "r2"}}
+    mocker.patch("gdoc.api.comment_transport.execute_mutation_request",
+                 side_effect=lambda request, **_: request.execute())
+    if not consent:
+        with pytest.raises(GdocError, match="--allow-lossy") as error:
+            insert_markdown_into_tab("d", "t1", "Page\n\nLand\n", replace=True,
+                                     document=doc)
+        assert error.value.exit_code == 3
+        batch.assert_not_called()
+        return
+    insert_markdown_into_tab("d", "t1", "Page\n\nLand\n", replace=True,
+                             allow_lossy=True, document=doc)
+    requests = batch.call_args.kwargs["body"]["requests"]
+    # One deletion spans the break and the newline before it (Docs deletes a
+    # section break only together with that newline).
+    assert requests[0] == {"deleteContentRange": {"range": {
+        "startIndex": 1, "endIndex": 11, "tabId": "t1"}}}
+    assert batch.call_args.kwargs["body"]["writeControl"] == {
+        "requiredRevisionId": "r1"}

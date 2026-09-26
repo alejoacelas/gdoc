@@ -553,7 +553,9 @@ Ordinary supported Markdown needs no `--allow-lossy`. Chips, footnotes, equation
 generated contents, pending suggestions, internal native links, complex tables,
 table cells aligned unlike their column's header cell, and section/layout boundaries may require explicit loss consent. Rich content in
 unmodified sibling tabs or separate document segments does not block a body write.
-Use targeted edits when richer native content should survive.
+Use targeted edits when richer native content should survive. With consent, a
+body with section breaks is rewritten as one section: the breaks and their
+per-section layout are removed.
 
 ```bash
 gdoc write DOC draft.md --tab Notes --allow-lossy

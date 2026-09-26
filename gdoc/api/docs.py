@@ -2666,12 +2666,9 @@ def insert_markdown_into_tab(
     tab_id = tab_match["id"]
     body = tab_match["body"]
 
-    if replace and any("sectionBreak" in e and e.get("startIndex", 0) > 0
-                       for e in body.get("content", [])):
-        raise GdocError(
-            "native replacement cannot preserve multiple sections; "
-            "replace specific text instead", exit_code=3,
-        )
+    # Section breaks inside the body need loss consent (checked below). The
+    # body deletion then covers each break with the newline before it, which
+    # Docs deletes together, so the tab becomes one section.
     body_start, body_end = _tab_body_range(body)
 
     if replace:

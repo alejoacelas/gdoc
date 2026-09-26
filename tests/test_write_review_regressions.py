@@ -264,7 +264,8 @@ def test_extra_section_refuses_without_deleting_section_settings(mocker):
     mocker.patch.object(docs, "get_docs_service", return_value=service)
     mocker.patch.object(docs, "get_document_with_tabs", return_value=doc)
     mocker.patch.object(drive, "get_file_version", return_value={"version": 10})
-    with pytest.raises(GdocError, match="multiple sections"):
+    # Without loss consent nothing is sent; consent flattens (test_review_round5).
+    with pytest.raises(GdocError, match="section boundaries.*--allow-lossy"):
         drive.update_doc_content("synthetic", "New body", expected_version=10)
     service.documents.return_value.batchUpdate.assert_not_called()
 

@@ -77,6 +77,8 @@ def _code_document(scenario, *, tail=True):
 def _ranges(batch_requests, text):
     deleted = [r["deleteNamedRange"]["namedRangeId"] for r in batch_requests
                if "deleteNamedRange" in r]
+    assert all(r["deleteNamedRange"]["tabsCriteria"] == {"tabIds": ["draft"]}
+               for r in batch_requests if "deleteNamedRange" in r)
     created = [(r["createNamedRange"]["name"],
                 text[r["createNamedRange"]["range"]["startIndex"] - 1:
                      r["createNamedRange"]["range"]["endIndex"] - 1])
@@ -194,3 +196,25 @@ def test_markdown_export_names_its_single_tab_scope(scenario):
     code, _, error = scenario.call("pull", file=str(scenario.tmp_path / "d.md"),
                                    json=True)
     assert code == 0 and "2 tabs exist" in error
+
+
+@pytest.mark.parametrize("command", ["edit", "insert", "write"])
+def test_owned_range_deletion_is_limited_to_a_nonfirst_tab(scenario, command):
+    # Appending touches the code range only when code ends the tab.
+    _code_document(scenario, tail=command != "insert")
+    scenario.document["tabs"].reverse()  # The edited tab is now the second tab.
+    read(scenario)
+    if command == "edit":
+        scenario.ok("edit", old_text="b = 2", new_text="b = 22", tab="draft")
+    elif command == "insert":
+        scenario.ok("insert", tab="draft", text="More\n", position="end")
+    else:
+        scenario.ok("write", tab="draft", text="New body\n", allow_lossy=True)
+    deletions = [r["deleteNamedRange"] for r in requests(scenario)
+                 if "deleteNamedRange" in r]
+    # Only the edited tab's own gdoc range, by ID, never the sibling's copy.
+    assert deletions == [{"namedRangeId": "code-1",
+                          "tabsCriteria": {"tabIds": ["draft"]}}]
+    assert all(r[next(iter(r))].get("range", r[next(iter(r))].get(
+        "location", {})).get("tabId") in (None, "draft")
+        for r in requests(scenario) if "deleteNamedRange" not in r)

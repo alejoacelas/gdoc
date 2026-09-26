@@ -2287,6 +2287,17 @@ def _owned_named_ranges(tab: dict | None, tab_id: str | None):
             ]
 
 
+def _delete_owned_range(named_id: str, tab_id: str | None) -> dict:
+    """Delete one gdoc range by ID, limited to its tab.
+
+    Without tabsCriteria, DeleteNamedRangeRequest applies to every tab.
+    """
+    request = {"namedRangeId": named_id}
+    if tab_id:
+        request["tabsCriteria"] = {"tabIds": [tab_id]}
+    return {"deleteNamedRange": request}
+
+
 def _owned_range_requests(tab, tab_id, parts, *, keep_after=True):
     """Rebuild gdoc-owned ranges that replaced body parts intersect.
 
@@ -2307,7 +2318,7 @@ def _owned_range_requests(tab, tab_id, parts, *, keep_after=True):
 
         if not any(overlaps(p, a, b) for p in parts for a, b in spans):
             continue
-        deletions.append({"deleteNamedRange": {"namedRangeId": named_id}})
+        deletions.append(_delete_owned_range(named_id, tab_id))
         for a, b in spans:
             shift = sum(length - (e - s) for s, e, length, _ in parts
                         if not overlaps((s, e), a, b) and e <= a)
@@ -2441,7 +2452,7 @@ def insert_markdown_into_tab(
     if replace:
         # The replaced body's code and container markers would otherwise
         # survive, shrunk onto the retained final mark.
-        owned_deletions = [{"deleteNamedRange": {"namedRangeId": named_id}}
+        owned_deletions = [_delete_owned_range(named_id, tab_id)
                            for named_id, _, _ in _owned_named_ranges(tab_match, tab_id)]
     if replace and body_end > body_start:
         delete_range = {

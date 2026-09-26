@@ -92,6 +92,13 @@ _PARAGRAPH_STYLE_LOSSES = {
 }
 
 
+def _indented(paragraph: dict) -> bool:
+    """Whether a paragraph has a start or first-line indent."""
+    style = paragraph.get("paragraphStyle", {})
+    return any((style.get(key) or {}).get("magnitude", 0) > 0
+               for key in ("indentStart", "indentFirstLine"))
+
+
 def _table_style_losses(table: dict) -> set[str]:
     """Visual table styling a pipe table cannot carry: warned, not refused.
 
@@ -332,7 +339,15 @@ def markdown_hazards(
                         embedded = images.get(child.get("inlineObjectId"), {}).get(
                             "inlineObjectProperties", {},
                         ).get("embeddedObject", {})
-                        supported_image = "imageProperties" in embedded
+                        # A linked Sheets chart also carries imageProperties;
+                        # rewriting it would insert only its rendered image.
+                        linked = "linkedContentReference" in embedded
+                        if linked:
+                            hazards.add("linked charts (a rewrite keeps "
+                                        "only a static image)")
+                        supported_image = linked or (
+                            "imageProperties" in embedded
+                            and "embeddedDrawingProperties" not in embedded)
                     if not supported_image:
                         hazards.add(_ELEMENTS[key])
                 if key.startswith("suggested") and child:
@@ -383,6 +398,27 @@ def markdown_hazards(
                         hazards.add(
                             f"table at index {index} "
                             "(named paragraph styles become plain text)"
+                        )
+                    cell_paragraphs = [
+                        block["paragraph"]
+                        for row in child.get("tableRows", [])
+                        for cell in row.get("tableCells", [])
+                        for block in cell.get("content", [])
+                        if "paragraph" in block
+                    ]
+                    # A pipe-table cell holds inline Markdown only: a native
+                    # rule or an indented (quote-like) paragraph in a cell
+                    # has no spelling there.
+                    if any("horizontalRule" in element
+                           for paragraph in cell_paragraphs
+                           for element in paragraph.get("elements", [])):
+                        hazards.add(
+                            f"table at index {index} (rules inside cells are dropped)"
+                        )
+                    if any(_indented(paragraph) for paragraph in cell_paragraphs):
+                        hazards.add(
+                            f"table at index {index} "
+                            "(indented cell paragraphs become plain text)"
                         )
                     styles.update(_table_style_losses(child))
                     # Markdown aligns a whole column like its header cell.

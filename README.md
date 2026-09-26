@@ -419,8 +419,9 @@ Metadata, truncated output, plain text, annotated comments and structure selecto
 do not establish a full-content baseline. Truncation is reported on stderr and in
 JSON scope metadata; `--max-bytes 0` retrieves complete content. `cat --json`
 also reports `tab_count`. When a tab holds content Markdown cannot show (footnotes,
-chips, equations, page breaks, positioned objects, generated contents, tables that
-cannot be pipe tables, or lists and headings inside table cells), `cat`, `pull` and
+chips, equations, page breaks, positioned objects, drawings, linked charts,
+generated contents, tables that cannot be pipe tables, or lists, headings, rules
+and indented paragraphs inside table cells), `cat`, `pull` and
 Markdown `export` name it on stderr, and JSON reports `complete: false` with an
 `omitted` list. Such a read records only limited coverage of its revision:
 targeted edits and `insert` keep the omitted content and proceed, and a rewrite of
@@ -599,7 +600,8 @@ These are documented shortfalls, not claims of full support.
 
 `write` and `push` inspect the selected body, including table cells, before mutation.
 Ordinary supported Markdown needs no `--allow-lossy`. Chips, footnotes, equations,
-generated contents, pending suggestions, internal native links, complex tables,
+generated contents, pending suggestions, internal native links, linked Sheets
+charts (a rewrite keeps only their rendered image), drawings, complex tables,
 table cells aligned unlike their column's header cell, and section/layout boundaries may require explicit loss consent. Rich content in
 unmodified sibling tabs or separate document segments does not block a body write.
 Use targeted edits when richer native content should survive. With consent, a
@@ -608,8 +610,10 @@ per-section layout are removed.
 
 A pipe-table cell holds inline Markdown and `<br>` line breaks, so block content
 inside a cell is a richer feature: a native bulleted or numbered paragraph, or a
-heading, inside a cell has no Markdown spelling. A rewrite of such a table is
-refused, and with `--allow-lossy` those cell paragraphs become plain text; edit the
+heading, inside a cell has no Markdown spelling, nor does a native rule or an indented
+paragraph in a cell. Reads name such a table as omitted content, a rewrite of it
+is refused, and with `--allow-lossy` those cell paragraphs become plain text and
+rules in cells are dropped; edit the
 cell's wording with `edit --cell` to keep them. Lists around and beside tables,
 and tables inside list items and quotes, are supported Markdown and never need
 consent.

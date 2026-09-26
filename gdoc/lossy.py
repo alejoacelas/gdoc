@@ -88,6 +88,34 @@ _PARAGRAPH_STYLE_LOSSES = {
 }
 
 
+def _table_style_losses(table: dict) -> set[str]:
+    """Visual table styling a pipe table cannot carry: warned, not refused.
+
+    Docs' defaults (no shading, 1pt solid black borders, evenly distributed
+    columns) are not reported.
+    """
+    losses = set()
+    for row in table.get("tableRows", []):
+        for cell in row.get("tableCells", []):
+            style = cell.get("tableCellStyle", {})
+            if style.get("backgroundColor", {}).get("color", {}).get(
+                    "rgbColor"):
+                losses.add("table cell shading")
+            for side in ("borderLeft", "borderRight", "borderTop", "borderBottom"):
+                border = style.get(side)
+                if border and (
+                    border.get("width", {}).get("magnitude", 1) != 1
+                    or border.get("dashStyle", "SOLID") != "SOLID"
+                    or any(border.get("color", {}).get("color", {})
+                           .get("rgbColor", {}).values())
+                ):
+                    losses.add("table borders")
+    if any(column.get("widthType") == "FIXED_WIDTH"
+           for column in table.get("tableStyle", {}).get("tableColumnProperties", [])):
+        losses.add("table column widths")
+    return losses
+
+
 def _numbered_list_hazards(content: list, lists: dict) -> set[str]:
     """Find numbering boundaries and starts reconstruction cannot preserve."""
     from gdoc.api.docs import _indent_nesting_level, _list_is_ordered
@@ -318,6 +346,7 @@ def check_markdown_replacement(
                             f"table at index {index} "
                             "(named paragraph styles become plain text)"
                         )
+                    styles.update(_table_style_losses(child))
                     # Markdown aligns a whole column like its header cell.
                     rows = [row.get("tableCells", [])
                             for row in child.get("tableRows", [])]

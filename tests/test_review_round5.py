@@ -213,3 +213,34 @@ def test_table_cell_edge_whitespace_other_than_spaces_is_text(text):
                 _paragraph(("\n", {}))])
     parsed = parse_markdown(get_tab_text(tab, markdown=True))
     assert parse_inline(parsed.tables[0].rows[1][0])[0] == text
+
+
+DEFAULT_BORDER = {"color": {"color": {"rgbColor": {}}},
+                  "width": {"magnitude": 1, "unit": "PT"}, "dashStyle": "SOLID"}
+
+
+@pytest.mark.parametrize("cell_style,table_style,warning", [
+    ({"backgroundColor": {"color": {"rgbColor": {"red": 0.9}}}}, {},
+     "table cell shading"),
+    ({"borderTop": {**DEFAULT_BORDER, "width": {"magnitude": 3, "unit": "PT"}}}, {},
+     "table borders"),
+    ({}, {"tableColumnProperties": [{"widthType": "FIXED_WIDTH",
+                                     "width": {"magnitude": 90, "unit": "PT"}}]},
+     "table column widths"),
+    ({"backgroundColor": {}, "borderTop": DEFAULT_BORDER},
+     {"tableColumnProperties": [{"widthType": "EVENLY_DISTRIBUTED"}]}, None),
+])
+def test_rich_table_styling_warns_before_a_rewrite(capsys, cell_style,
+                                                   table_style, warning):
+    """F15: styling a pipe table cannot keep is named; defaults stay quiet."""
+    from gdoc.lossy import check_markdown_replacement
+
+    table = _table([(("H", {}), ("\n", {}))])
+    table["table"]["tableRows"][0]["tableCells"][0]["tableCellStyle"] = cell_style
+    table["table"]["tableStyle"] = table_style
+    check_markdown_replacement({"body": {"content": [table]}}, tab_body=True)
+    err = capsys.readouterr().err
+    if warning:
+        assert f"may reset styles: {warning}" in err
+    else:
+        assert "table" not in err

@@ -153,3 +153,30 @@ def test_documented_leading_rules_spelling_survives_metadata_parsing():
 def test_bracketed_link_destination_is_unwrapped_like_images():
     _, styles = parse_inline("[x](<https://example.invalid/a_(b)>)")
     assert styles[0].style == {"link": {"url": "https://example.invalid/a_(b)"}}
+
+
+@pytest.mark.parametrize("style, label", [
+    ({"shading": {"backgroundColor": {"color": {"rgbColor": {"red": 1}}}}},
+     "paragraph shading"),
+    ({"borderLeft": {"width": {"magnitude": 1, "unit": "PT"}}}, "paragraph borders"),
+    ({"direction": "RIGHT_TO_LEFT"}, "right-to-left paragraph direction"),
+])
+def test_rich_paragraph_styles_warn_before_replacement(capsys, style, label):
+    from gdoc.lossy import check_markdown_replacement
+
+    paragraph = _paragraph([("Text", {})])
+    paragraph["paragraph"]["paragraphStyle"].update(style)
+    check_markdown_replacement({"content": [paragraph]}, tab_body=True)
+    assert label in capsys.readouterr().err
+
+
+def test_default_paragraph_direction_and_empty_shading_do_not_warn(capsys):
+    from gdoc.lossy import check_markdown_replacement
+
+    paragraph = _paragraph([("Text", {})])
+    paragraph["paragraph"]["paragraphStyle"].update(
+        direction="LEFT_TO_RIGHT", shading={"backgroundColor": {}},
+        borderTop={"width": {"unit": "PT"}},
+    )
+    check_markdown_replacement({"content": [paragraph]}, tab_body=True)
+    assert capsys.readouterr().err == ""

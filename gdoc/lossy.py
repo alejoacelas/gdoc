@@ -221,6 +221,16 @@ def check_markdown_replacement(
                 ):
                     continue
                 styles.add(label)
+            if paragraph_style.get("shading", {}).get("backgroundColor", {}).get(
+                "color",
+            ):
+                styles.add("paragraph shading")
+            if any(paragraph_style.get(side, {}).get("width", {}).get("magnitude", 0)
+                   > 0 for side in ("borderTop", "borderLeft", "borderRight",
+                                    "borderBetween")):
+                styles.add("paragraph borders")
+            if paragraph_style.get("direction") == "RIGHT_TO_LEFT":
+                styles.add("right-to-left paragraph direction")
             border = paragraph_style.get("borderBottom", {})
             if border.get("width", {}).get("magnitude", 0) > 0:
                 text = "".join(e.get("textRun", {}).get("content", "")

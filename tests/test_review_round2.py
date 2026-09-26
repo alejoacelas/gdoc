@@ -186,3 +186,18 @@ def test_cell_alignment_unlike_its_header_needs_loss_consent(data_alignment, los
         check_markdown_replacement(scope, tab_body=True, allow_lossy=True)
     else:
         check_markdown_replacement(scope, tab_body=True)
+
+
+@pytest.mark.parametrize("markdown, found", [
+    ("Prose a\\*bc here\n", True),
+    ("Code `a\\*bc` here\n", False),
+    ("```\na\\*bc\n```\n", False),
+    ("> ```\n> a\\*bc\n> ```\n", False),
+    ("Code `` a\\*bc ` `` then a\\*bc\n", True),
+])
+def test_comment_anchors_decode_prose_escapes_but_not_code(markdown, found):
+    from gdoc.annotate import annotate_markdown
+
+    comment = {"id": "c1", "content": "check", "quotedFileContent": {"value": "a*bc"}}
+    result = annotate_markdown(markdown, [comment])
+    assert ("anchor deleted" not in result) is found

@@ -1,5 +1,7 @@
 """Line-numbered comment annotation engine for cat --comments."""
 
+import re
+
 from gdoc.util import fold_unicode_spaces
 
 
@@ -66,6 +68,49 @@ def _format_annotation_block(
     return lines
 
 
+_FENCE_LINE_RE = re.compile(r"^(?:[ \t]*>)*[ \t]*(`{3,}|~{3,})")
+
+
+def _decode_prose_escapes(markdown: str) -> str:
+    """Drop Markdown escapes outside code, keeping lines and code literal.
+
+    Fenced code lines and code spans display their backslashes, so only prose
+    escapes are decoded for anchor matching.
+    """
+    from gdoc.mdparse import _ESCAPABLE
+
+    lines = []
+    fence = None
+    for line in markdown.split("\n"):
+        opener = _FENCE_LINE_RE.match(line)
+        if fence is not None:
+            if opener and opener[1][0] == fence[0] and len(opener[1]) >= len(fence):
+                fence = None
+            lines.append(line)
+            continue
+        if opener:
+            fence = opener[1]
+            lines.append(line)
+            continue
+        out, i = [], 0
+        while i < len(line):
+            if line[i] == "\\" and i + 1 < len(line) and line[i + 1] in _ESCAPABLE:
+                out.append(line[i + 1])
+                i += 2
+            elif line[i] == "`":
+                run = len(line[i:]) - len(line[i:].lstrip("`"))
+                close = re.compile(r"(?<!`)" + "`" * run + r"(?!`)")
+                end = close.search(line, i + run)
+                stop = end.end() if end else i + run
+                out.append(line[i:stop])
+                i = stop
+            else:
+                out.append(line[i])
+                i += 1
+        lines.append("".join(out))
+    return "\n".join(lines)
+
+
 def annotate_markdown(
     markdown: str,
     comments: list[dict],
@@ -121,9 +166,7 @@ def annotate_markdown(
         if pos == -1:
             # Exported Markdown escapes literal punctuation. Keep line breaks
             # while decoding so the matched line still refers to the display.
-            from gdoc.mdparse import _strip_escapes
-
-            search_text = fold_unicode_spaces(_strip_escapes(markdown))
+            search_text = fold_unicode_spaces(_decode_prose_escapes(markdown))
             search_anchor = fold_unicode_spaces(anchor_text)
             pos = search_text.find(search_anchor)
         if pos == -1:

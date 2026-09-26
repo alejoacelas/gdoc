@@ -16,6 +16,13 @@ All notable changes to `gdoc` are documented here. This project follows
 
 ### Changed
 
+- Link titles no longer enter link URLs; exported destinations with whitespace
+  are bracketed. Table rows may end in whitespace or be indented up to three
+  spaces. `***bold** then italic*` reads as CommonMark does. Whitespace-only
+  links are written once. Rule-like list items no longer gain backslashes.
+  `cat --comments` finds anchors that span emphasis or links. Inline parsing of
+  long paragraphs is linear.
+
 - Container context is a path of quote markers and list item indents, so
   paragraphs, headings, rules, code, tables and quotes nest inside list items
   and quotes to any depth, and blank paragraphs between contained tables keep

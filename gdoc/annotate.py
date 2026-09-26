@@ -111,6 +111,27 @@ def _decode_prose_escapes(markdown: str) -> str:
     return "\n".join(lines)
 
 
+def _displayed_lines(markdown: str) -> str:
+    """Each prose line as displayed (no emphasis or link syntax); code lines,
+    whose characters are literal, stay as written."""
+    from gdoc.mdparse import _FENCE_CLOSE_RE, _fence_open, _unquote, parse_inline
+
+    out, fence = [], None
+    for line in markdown.split("\n"):
+        body = _unquote(line)[0].lstrip(" ")
+        if fence is not None:
+            close = _FENCE_CLOSE_RE.match(body)
+            if close and close[1][0] == fence[0] and len(close[1]) >= len(fence):
+                fence = None
+            out.append(line)
+        elif opener := _fence_open(body):
+            fence = opener[1]
+            out.append(line)
+        else:
+            out.append(parse_inline(line)[0])
+    return "\n".join(out)
+
+
 def _find_anchor(markdown: str, anchor_text: str) -> tuple[str, str, int]:
     """Locate an anchor exactly, then space-folded, then without prose escapes."""
     search_text, search_anchor = markdown, anchor_text
@@ -124,6 +145,11 @@ def _find_anchor(markdown: str, anchor_text: str) -> tuple[str, str, int]:
         # while decoding so the matched line still refers to the display.
         search_text = fold_unicode_spaces(_decode_prose_escapes(markdown))
         search_anchor = fold_unicode_spaces(anchor_text)
+        pos = search_text.find(search_anchor)
+    if pos == -1:
+        # An anchor can span emphasis or a link label: compare each line's
+        # displayed text, one output line per Markdown line.
+        search_text = fold_unicode_spaces(_displayed_lines(markdown))
         pos = search_text.find(search_anchor)
     return search_text, search_anchor, pos
 

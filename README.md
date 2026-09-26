@@ -522,9 +522,13 @@ image, link or emphasis, is read as ordinary Markdown, and a paragraph whose quo
 list indent was removed is read without that container. Plain text typed or merged
 into a code block stays code.
 Reference links accept full, collapsed and shortcut forms with URI definitions.
+A CommonMark link title (`[a](url "title")`, also on a definition) is dropped:
+Docs links have no title, and the URL stays exact. Exported destinations
+containing whitespace are bracketed (`<...>`).
 Native horizontal rules sharing a paragraph with text export as separate rule and
 text paragraphs, preserving text order and heading styles. Tables accept short
 alignment delimiters such as `:--`, `--:` and `:-:` and do not gain incidental header bold.
+As in GFM, table rows may end in whitespace and be indented up to three spaces.
 Only the line after a table's header is its delimiter row, so data rows of dashes stay
 rows. One blank line separates adjacent tables; further blank lines between them are
 blank paragraphs. Syntax highlighting, native object IDs, pagination, custom fonts,
@@ -536,7 +540,10 @@ structure may read differently:
 - Nest a list item two spaces per level under any marker (`- a` then `  - b`;
   `10. a` then `  - b`). Each further two spaces adds a level.
 - When emphasis spans close together, mark the inner one with underscores:
-  `**bold _italic_**`, not `**bold *italic***`.
+  `**bold _italic_**`, not `**bold *italic***`. Spans that open together read
+  as CommonMark does (`***bold** then italic*`).
+- Bold, italic or strikethrough on whitespace alone has no Markdown spelling and
+  is not kept; a link on whitespace alone is (`[ ](url)`).
 - An explicit line break inside a paragraph is Docs' soft break, the vertical-tab
   character U+000B, which gdoc reads and writes as that character; in table cells
   it is `<br>`. A trailing backslash or two trailing spaces is not a line break.

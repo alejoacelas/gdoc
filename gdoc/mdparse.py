@@ -96,11 +96,19 @@ _STRIKE_RE = re.compile(r"(?<!~)~~(?!~)(.+?)(?<!~)~~(?!~)")
 # run is literal text.
 _CODE_RE = re.compile(r"(?<!`)(`+)(?!`)([\s\S]*?)(?<!`)\1(?!`)")
 _LINK_RE = re.compile(r"\[([^\]]+)\]\((.*)\)")
+# A destination followed by a CommonMark title: "t", 't' or (t).
+_LINK_TITLE_RE = re.compile(
+    r"(<[^<>\n]*>|[^\s<][^\s]*)[ \t\n]+"
+    r"(?:\"[^\"]*\"|'[^']*'|\([^()]*\))[ \t]*")
 
 # Inline patterns in precedence order. Each entry: (regex, kind). On a tie at
 # the same position, the earlier entry wins, so ***x*** beats **x**/*x*.
 _INLINE_PATTERNS = [
     (_BOLD_ITALIC_RE, "bolditalic"),
+    # ***bold** then italic*: italic whose text opens with bold, as CommonMark
+    # reads it; without this the bold match would swallow the italic opener.
+    (re.compile(r"(?<!\*)\*(\*\*(?![\s*])[\s\S]+?(?<![\s*])\*\*"
+                r"(?:[\s\S]*?(?<![\s*]))?)\*(?!\*)"), "italic"),
     (_BOLD_RE, "bold"),
     (_ITALIC_RE, "italic"),
     (_STRIKE_RE, "strike"),
@@ -284,14 +292,12 @@ def _parse_inline(
     return _scan(text, _mask_escapes(text), references)
 
 
-def _find_link(masked: str) -> re.Match | None:
-    """Find a link ending at its matching destination parenthesis.
+def _link_pairs(masked: str) -> tuple[dict, dict]:
+    """Matching bracket and parenthesis positions, paired within each line.
 
-    Escaped parentheses are already masked, so only unescaped delimiters
-    contribute to depth. An unfinished destination is left as literal text.
+    Pairs inside any suffix are the same as in the whole text: an unmatched
+    opener before the suffix never changes how later delimiters nest.
     """
-    # Match parentheses once, rather than rescanning the entire remaining input
-    # for every malformed link opener (quadratic on repeated "[x](").
     closes = {}
     brackets = {}
     stack = []
@@ -308,17 +314,29 @@ def _find_link(masked: str) -> re.Match | None:
             stack.append(index)
         elif char == ")" and stack:
             closes[stack.pop()] = index
-    for opener in re.finditer(r"\[", masked):
-        label_end = brackets.get(opener.start())
-        if label_end is None or masked[label_end + 1:label_end + 2] != "(":
-            continue
-        end = closes.get(label_end + 1)
-        if end is not None and end > label_end + 2:
-            width = label_end - opener.start() - 1
-            return re.compile(r"\[([\s\S]{" + str(width)
-                              + r"})\]\(([\s\S]*)\)").match(
-                masked, opener.start(), end + 1,
-            )
+    return brackets, closes
+
+
+def _find_link(masked: str, start: int = 0, pairs=None) -> re.Match | None:
+    """Find a link ending at its matching destination parenthesis.
+
+    Escaped parentheses are already masked, so only unescaped delimiters
+    contribute to depth. An unfinished destination is left as literal text.
+    ``pairs`` from ``_link_pairs`` lets repeated searches share one scan.
+    """
+    brackets, closes = pairs or _link_pairs(masked)
+    opener = masked.find("[", start)
+    while opener != -1:
+        label_end = brackets.get(opener)
+        if label_end is not None and masked[label_end + 1:label_end + 2] == "(":
+            end = closes.get(label_end + 1)
+            if end is not None and end > label_end + 2:
+                width = label_end - opener - 1
+                return re.compile(r"\[([\s\S]{" + str(width)
+                                  + r"})\]\(([\s\S]*)\)").match(
+                    masked, opener, end + 1,
+                )
+        opener = masked.find("[", opener + 1)
     return None
 
 
@@ -397,8 +415,9 @@ def _expand_link_references(text: str, references: dict) -> str:
         protected[start:end] = _MASK * (end - start)
         cursor = end
     cursor = 0
-    while match := _find_link(masked[cursor:]):
-        start, end = cursor + match.start(), cursor + match.end()
+    pairs = _link_pairs(masked)
+    while match := _find_link(masked, cursor, pairs):
+        start, end = match.start(), match.end()
         protected[start:end] = _MASK * (end - start)
         cursor = end
     masked = "".join(protected)
@@ -427,10 +446,11 @@ def _expand_image_references(text: str, references: dict) -> str:
     # A URL may itself contain image-looking text. Only labels are Markdown.
     protected = list(masked)
     cursor = 0
-    while link := _find_link(masked[cursor:]):
-        start, end = cursor + link.start(2), cursor + link.end(2)
+    pairs = _link_pairs(masked)
+    while link := _find_link(masked, cursor, pairs):
+        start, end = link.start(2), link.end(2)
         protected[start:end] = _MASK * (end - start)
-        cursor += link.end()
+        cursor = link.end()
     masked = "".join(protected)
     parts = []
     cursor = 0
@@ -464,10 +484,11 @@ def rename_image_references(text: str, renames: dict[str, str]) -> str:
         masked = _protect_code(chunk, _mask_escapes(chunk))
         protected = list(masked)
         cursor = 0
-        while link := _find_link(masked[cursor:]):
-            start, end = cursor + link.start(2), cursor + link.end(2)
+        pairs = _link_pairs(masked)
+        while link := _find_link(masked, cursor, pairs):
+            start, end = link.start(2), link.end(2)
             protected[start:end] = _MASK * (end - start)
-            cursor += link.end()
+            cursor = link.end()
         masked = "".join(protected)
         parts = []
         cursor = 0
@@ -508,6 +529,20 @@ def rename_image_references(text: str, renames: dict[str, str]) -> str:
     return "".join(out)
 
 
+class _ImageMatch:
+    """An image finder result that caches like a match (see ``_scan``)."""
+
+    def __init__(self, found):
+        self.match, self.kind = found
+
+    @classmethod
+    def wrap(cls, found):
+        return cls(found) if found is not None else None
+
+    def start(self, group=0):
+        return self.match.start(group)
+
+
 def _scan(
     text: str, masked: str, references: dict | None = None,
 ) -> tuple[str, list[StyleRange]]:
@@ -528,41 +563,79 @@ def _scan(
     pos = 0
     n = len(masked)
 
+    # Each pattern's last result, with the offset its slice started at. A
+    # later slice only differs at its first character (lookbehinds there see
+    # nothing), so a result stays valid unless consumed; only a match at the
+    # new start needs checking. This keeps long paragraphs linear.
+    cache: dict = {}
+    link_pairs = None
+
+    def found(key, search, anchored=None):
+        entry = cache.get(key)
+        if entry is not None:
+            m, base = entry
+            if m is None or base + m.start() >= pos:
+                first = anchored() if anchored is not None else None
+                if first is not None and first.start() == 0:
+                    cache[key] = (first, pos)
+                    return first, pos
+                return entry
+        cache[key] = (search(), pos)
+        return cache[key]
+
     while pos < n:
         # Search the unconsumed tail (a fresh slice), not masked[pos:] via the
         # pos argument: a lookbehind (`(?<!\*)`) would otherwise read the
         # just-consumed marker before `pos` and wrongly block a span that abuts
         # it (e.g. the `*b*` in `**a***b*`). Match offsets are relative to the
-        # slice, so shift them by `pos`.
+        # slice they came from, so shift them by that slice's start.
         tail = protected[pos:]
-        best: tuple[re.Match, str] | None = _find_image(tail, references)
-        for pat, kind in _INLINE_PATTERNS:
+        image, image_base = found("image", lambda: _ImageMatch.wrap(
+            _find_image(tail, references)))
+        best = (image.match, image.kind, image_base) if image is not None else None
+        for index, (pat, kind) in enumerate(_INLINE_PATTERNS):
             if kind == "code":
-                m = None
-                raw_tail = text[pos:]
-                for opener in re.finditer(r"(?<!`)(`+)(?!`)", masked[pos:]):
-                    m = pat.match(raw_tail, opener.start())
-                    if m is not None:
-                        break
+                def search_code(first_only=False):
+                    raw_tail = text[pos:]
+                    for opener in re.finditer(r"(?<!`)(`+)(?!`)", masked[pos:]):
+                        if first_only and opener.start():
+                            return None
+                        m = pat.match(raw_tail, opener.start())
+                        if m is not None or first_only:
+                            return m
+                    return None
+                m, base = found(index, search_code, lambda: search_code(True))
             elif kind == "link":
-                m = _find_link(tail)
+                # Searched in the whole text with shared pairs; offsets are
+                # absolute. A link never depends on a lookbehind.
+                cached = cache.get("link")
+                if "[" not in protected:
+                    cache["link"] = (None, 0)
+                elif cached is None or (cached[0] is not None
+                                        and cached[0].start() < pos):
+                    if link_pairs is None:
+                        link_pairs = _link_pairs(protected)
+                    cache["link"] = (_find_link(protected, pos, link_pairs), 0)
+                m, base = cache["link"]
             else:
-                m = pat.search(tail)
-            if m is not None and (best is None or m.start() < best[0].start()):
-                best = (m, kind)
+                m, base = found(index, lambda pat=pat: pat.search(tail),
+                                lambda pat=pat: pat.match(tail))
+            if m is not None and (best is None or base + m.start()
+                                  < best[2] + best[0].start()):
+                best = (m, kind, base)
         if best is None:
             plain_parts.append(_strip_escapes(text[pos:]))
             break
 
-        m, kind = best
-        m_start = pos + m.start()
+        m, kind, base = best
+        m_start = base + m.start()
         if m_start > pos:
             lit = _strip_escapes(text[pos:m_start])
             plain_parts.append(lit)
             offset += len(lit)
 
-        def _grp(group: int) -> tuple[int, int]:
-            return pos + m.start(group), pos + m.end(group)
+        def _grp(group: int, m=m, base=base) -> tuple[int, int]:
+            return base + m.start(group), base + m.end(group)
 
         seg_start = offset
         if kind == "html_image":
@@ -615,7 +688,13 @@ def _scan(
                     s.start + seg_start, s.end + seg_start, s.style, s.type,
                 ))
             ua, ub = _grp(2)
-            url = _strip_escapes(text[ua:ub])
+            destination = text[ua:ub]
+            # A CommonMark link title after the destination is not part of the
+            # URL; Docs links have no title, so it is dropped.
+            titled = _LINK_TITLE_RE.fullmatch(masked[ua:ub])
+            if titled:
+                destination = destination[:titled.end(1)]
+            url = _strip_escapes(destination)
             if url.startswith("<") and url.endswith(">"):
                 url = url[1:-1]  # CommonMark's bracketed destination, as for images
             styles.append(StyleRange(
@@ -635,7 +714,7 @@ def _scan(
             for sd in _STYLES_FOR_KIND[kind]:
                 styles.append(StyleRange(seg_start, offset, sd, "text_style"))
 
-        pos = pos + m.end()
+        pos = base + m.end()
 
     return "".join(plain_parts), styles
 
@@ -753,7 +832,9 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             fence = opener[1]
             continue
         # Escaped brackets cannot delimit a definition's label.
-        masked = re.fullmatch(r" {0,3}\[([^\]]+)\]:[ \t]*(\S+)[ \t]*",
+        # A trailing CommonMark title ("t", 't' or (t)) is allowed and dropped.
+        masked = re.fullmatch(r" {0,3}\[([^\]]+)\]:[ \t]*(\S+)"
+                              r"(?:[ \t]+(?:\"[^\"]*\"|'[^']*'|\([^()]*\)))?[ \t]*",
                               _mask_escapes(line))
         definition = masked and (line[masked.start(1):masked.end(1)],
                                  line[masked.start(2):masked.end(2)])
@@ -989,7 +1070,11 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             text = _strip_path(lines[j], path)
             if text is None or not text.strip():
                 return ""
-            return text
+            # As in GFM, a row may be indented up to three spaces and end in
+            # whitespace.
+            text = text.rstrip(" \t")
+            indent = len(text) - len(text.lstrip(" "))
+            return text[indent:] if indent <= 3 else text
 
         header_line = table_line(i)
         if (

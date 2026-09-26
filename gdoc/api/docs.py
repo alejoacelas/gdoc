@@ -383,6 +383,10 @@ def _style_run_markdown(content: str, style: dict) -> str:
     text = content
     if text.endswith("\n"):
         text, newline = text[:-1], "\n"
+    if text and not text.strip() and (style.get("link") or {}).get("url"):
+        # A link label may be only whitespace; emphasis on whitespace alone
+        # has no Markdown spelling.
+        return f"[{text}]({_markdown_destination(style['link']['url'])}){newline}"
     if not text or (not text.strip() and not style.get("weightedFontFamily")):
         return content
     lead = text[: len(text) - len(text.lstrip())]
@@ -413,10 +417,7 @@ def _style_run_markdown(content: str, style: dict) -> str:
     if style.get("strikethrough"):
         core = f"~~{core}~~"
     if link:
-        destination = "".join(
-            "\\" + char if char in "\\()`" else char for char in link
-        )
-        core = f"[{core}]({destination})"
+        core = f"[{core}]({_markdown_destination(link)})"
     return f"{lead}{core}{trail}{newline}"
 
 
@@ -444,6 +445,18 @@ def _still_code(paragraph: dict) -> bool:
                                                    "link")):
             return False
     return True
+
+
+def _markdown_destination(url: str) -> str:
+    """A link destination that reads back as exactly *url*.
+
+    A destination with whitespace is bracketed, so text after a space can never
+    read as a CommonMark link title.
+    """
+    if re.search(r"\s", url):
+        return "<" + "".join("\\" + char if char in "\\<>()`" else char
+                             for char in url) + ">"
+    return "".join("\\" + char if char in "\\()`" else char for char in url)
 
 
 _PREFIX_RANGE_RE = re.compile(
@@ -522,10 +535,7 @@ def _runs_markdown(elements: list[dict]) -> str:
             link = (pe["inlineObjectElement"].get("textStyle", {})
                     .get("link") or {}).get("url")
             if link:
-                destination = "".join(
-                    "\\" + char if char in "\\()`" else char for char in link
-                )
-                image = f"[{image}]({destination})"
+                image = f"[{image}]({_markdown_destination(link)})"
             parts.append(image)
             continue
         if text_run is None:
@@ -576,10 +586,12 @@ class _LinkGroup:
         text = "".join(inner)
         newline = "\n" if text.endswith("\n") else ""
         text = text.removesuffix("\n")
+        destination = _markdown_destination(self.url)
+        if not text.strip():
+            # Whitespace-only runs: the whole text is the label, written once.
+            return f"[{text}]({destination}){newline}"
         lead = text[: len(text) - len(text.lstrip())]
         trail = text[len(text.rstrip()):]
-        destination = "".join(
-            "\\" + char if char in "\\()`" else char for char in self.url)
         return f"{lead}[{text.strip()}]({destination}){trail}{newline}"
 
 
@@ -683,8 +695,10 @@ def _paragraph_markdown(
             item = re.sub(r"^([#>])", r"\\\1", item)
             from gdoc.mdparse import _HR_RE
             if _HR_RE.match(f"{marker} {item}"):
-                # An item of dashes would read back as a thematic break.
-                item = "\\" + item
+                # An item of dashes would read back as a thematic break. The
+                # escape goes before the first dash: an escaped space is text.
+                lead = item[:len(item) - len(item.lstrip())]
+                item = lead + "\\" + item[len(lead):]
         return f"{indent}{marker} {item}{newline}"
 
     # Preserve counters: a later paragraph can resume the same native list.

@@ -171,11 +171,14 @@ def fill_fixed_table(blank, batch):
     assert blank["table"]["tableRows"]
     rows = blank["table"]["tableRows"]
     assert len(rows) == 2 and all(len(r["tableCells"]) == 1 for r in rows)
-    # Scaffolding removal lies after the table and does not move its cells.
-    cleanup = [r for r in batch if "deleteContentRange" in r]
-    assert all(r["deleteContentRange"]["range"]["startIndex"] >= blank["endIndex"]
-               for r in cleanup)
-    batch = [r for r in batch if "deleteContentRange" not in r]
+    # Scaffolding cleanup comes first and lies after the table (its removal,
+    # then restoring the paragraph after it), so it does not move the cells.
+    cleanup = 0
+    while cleanup < len(batch) and "insertText" not in batch[cleanup]:
+        assert next(iter(batch[cleanup].values()))["range"]["startIndex"] >= (
+            blank["endIndex"])
+        cleanup += 1
+    batch = batch[cleanup:]
     assert {next(iter(r)) for r in batch} <= {
         "insertText",
         "updateTextStyle",

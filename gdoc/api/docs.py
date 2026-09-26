@@ -1593,22 +1593,35 @@ def _table_scaffolding(parsed, table):
     return int(before), int(placeholder)
 
 
-def _table_cleanup_requests(tab, table_element, scaffolding, tab_id):
+def _table_cleanup_requests(tab, table_element, scaffolding, tab_id, expected=None):
     """Remove the table's scaffolding paragraphs and clip grown gdoc ranges.
 
     Inserting at the preceding paragraph's mark grows a gdoc range that ended
     after that mark over the new table. Such a range is recreated to end at
     the paragraph's new mark. Only whole empty paragraphs directly after the
     table are deleted, and never the tab's final paragraph, so no paragraph
-    that keeps text loses its own mark.
+    that keeps text loses its own mark. The paragraph after them keeps its
+    own style whichever paragraph's style Docs keeps on a merge: it is
+    restored explicitly, and inherited bullets are removed.
+
+    Returns ``(requests, neighbors)``. ``neighbors`` fingerprints the
+    paragraphs after the table; with ``expected`` (the fingerprint from the
+    pinned read), a relocated fill refuses if a collaborator changed them.
     """
     before, placeholder = scaffolding
     count = before + placeholder
     content = tab.get("body", {}).get("content", [])
     start = table_element["startIndex"]
+    end = table_element["endIndex"]
     position = next(i for i, e in enumerate(content)
                     if "table" in e and e.get("startIndex") == start)
-    end = table_element["endIndex"]
+    following = content[position + 1:position + 2 + count]
+    neighbors = _without_indices(following)
+    if expected is not None and neighbors != expected:
+        raise GdocError(
+            "conflict: the paragraphs after the inserted table changed; "
+            "scaffolding was not removed", exit_code=3,
+        )
     requests = []
     if before:
         for named_id, name, spans in _owned_named_ranges(tab, tab_id):
@@ -1620,19 +1633,48 @@ def _table_cleanup_requests(tab, table_element, scaffolding, tab_id):
                     "createNamedRange": {"name": name, "range": span},
                 }])
     if not count:
-        return requests
-    following = content[position + 1:position + 2 + count]
-    empty = [e for e in following[:count] if _is_empty_paragraph(e)]
-    if (len(empty) != count or len(following) != count + 1
+        return requests, neighbors
+    removed = [e for e in following[:count] if _is_empty_paragraph(e)]
+    if (len(removed) != count or len(following) != count + 1
             or "paragraph" not in following[-1]):
         raise GdocError(
             "conflict: the paragraphs around the inserted table changed; "
             "scaffolding was not removed", exit_code=3,
         )
-    span = {"startIndex": end, "endIndex": end + count}
-    if tab_id:
-        span["tabId"] = tab_id
-    return [{"deleteContentRange": {"range": span}}] + requests
+
+    def ranged(body):
+        span = {"startIndex": end, "endIndex": end + 1}
+        if tab_id:
+            span["tabId"] = tab_id
+        return {**body, "range": span}
+
+    cleanup = [{"deleteContentRange": ranged({})}]
+    cleanup[0]["deleteContentRange"]["range"]["endIndex"] = end + count
+    survivor = following[-1]["paragraph"]
+    first = removed[0]["paragraph"]
+    kept = survivor.get("paragraphStyle", {})
+    merged = first.get("paragraphStyle", {})
+    fields = [f for f in _RESTORED_PARAGRAPH_FIELDS
+              if (f in kept or f in merged) and kept.get(f) != merged.get(f)]
+    if fields:
+        cleanup.append({"updateParagraphStyle": ranged({
+            "paragraphStyle": {f: kept[f] for f in fields if f in kept},
+            "fields": ",".join(fields),
+        })})
+    if first.get("bullet") and not survivor.get("bullet"):
+        cleanup.append({"deleteParagraphBullets": ranged({})})
+    return cleanup + requests, neighbors
+
+
+# Writable paragraph style fields restored on a paragraph that a merge could
+# restyle. Output-only fields such as headingId are never sent.
+_RESTORED_PARAGRAPH_FIELDS = (
+    "namedStyleType", "alignment", "lineSpacing", "direction", "spacingMode",
+    "spaceAbove", "spaceBelow", "borderBetween", "borderTop", "borderBottom",
+    "borderLeft", "borderRight", "indentFirstLine", "indentStart", "indentEnd",
+    "keepLinesTogether", "keepWithNext", "avoidWidowAndOrphan", "shading",
+    "pageBreakBefore",
+)
 
 
 def _is_empty_paragraph(element):
@@ -1705,6 +1747,8 @@ def _insert_table(
     body = _stage_body(doc, tab_id)
     element = _table_at(body, index - scaffolding[0])
     fingerprint = _without_indices(element["table"])
+    _, neighbors = _table_cleanup_requests(_stage_tab(doc, tab_id), element,
+                                           scaffolding, tab_id)
     unique_before = sum(
         "table" in e and _without_indices(e["table"]) == fingerprint
         for e in body.get("content", [])
@@ -1718,9 +1762,11 @@ def _insert_table(
         ):
             raise GdocError("conflict: table dimensions changed", exit_code=3)
         # Cleanup lies after the table, so the cell indices stay valid.
-        return (_table_cleanup_requests(_stage_tab(snapshot, tab_id), target,
-                                        scaffolding, tab_id)
-                + _table_cell_requests(indices, table, tab_id)
+        cleanup, _ = _table_cleanup_requests(
+            _stage_tab(snapshot, tab_id), target, scaffolding, tab_id,
+            expected=neighbors,
+        )
+        return (cleanup + _table_cell_requests(indices, table, tab_id)
                 + _table_prefix_requests(indices, table, tab_id))
 
     def relocate_cells():

@@ -5,9 +5,12 @@ list entry, and fails loudly on requests Docs rejects:
 
 - A paragraph's style and list membership belong to its paragraph mark (the
   newline). Inserting a newline splits a paragraph and gives both halves its
-  style. Deleting a mark merges the text before it into the following
-  paragraph, which keeps its own mark. The tab replacement path depends on
-  this model; it has not been probed live for every merge.
+  style.
+- Which paragraph's style survives when a deletion removes a mark has not
+  been probed live. ``merge="mark"`` (the default) keeps the surviving
+  mark's style; ``merge="first"`` gives the merged paragraph the style of
+  the paragraph where the deletion starts. Tests that depend on a merge run
+  under both.
 - insertTable inserts a newline, which splits the paragraph at the location,
   then the table. The newline directly before a table and the segment's
   final newline cannot be deleted.
@@ -38,12 +41,14 @@ STRUCTURE = ("tstart", "row", "cell", "tend")
 
 
 class NativeDoc:
-    def __init__(self, *blocks):
+    def __init__(self, *blocks, merge="mark"):
         """Build a body from ``("p", text, style, bullet)`` / ``("t", rows)``.
 
         A body starting or ending with a table gets the empty paragraph Docs
         keeps there.
         """
+        assert merge in ("mark", "first")
+        self.merge = merge
         self.named = []  # [name, start, end]; name None once deleted
         self.lists = 0
         self.images = 0
@@ -146,7 +151,12 @@ class NativeDoc:
         if end < len(self.units) and self.units[end].kind == "tstart":
             assert self.units[end - 1].ch != "\n", (
                 "delete includes the newline before a table")
+        first = self._paragraph_end(start)
+        inherited = (self.units[first].ps, self.units[first].bullet)
         del self.units[start:end]
+        if self.merge == "first" and first < end:
+            mark = self.units[self._paragraph_end(start)]
+            mark.ps, mark.bullet = dict(inherited[0]), copy.deepcopy(inherited[1])
         for named in self.named:
             for k in (1, 2):
                 if named[k] >= end:

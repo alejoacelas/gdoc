@@ -322,6 +322,25 @@ def test_interleaved_editor_before_fill_relocates_unchanged_table(api):
     assert api.get.call_count == 2
 
 
+def test_relocated_fill_never_removes_a_collaborators_paragraph(api):
+    """Text a collaborator types after the table is never scaffolding."""
+    api.batchUpdate.return_value.execute.side_effect = [
+        response("r2"),
+        response("r3"),
+        http_error(),
+    ]
+    edited = snapshot("editor", "Intro\n", table=True)
+    content = body(edited)["content"]
+    content[2] = paragraph("Note\n", content[2]["startIndex"])
+    content[3] = paragraph("\n", content[2]["endIndex"])
+    api.get.return_value.execute.side_effect = [
+        snapshot("r3", "Intro\n", table=True), edited,
+    ]
+    with pytest.raises(GdocError, match="after the inserted table changed"):
+        write()
+    assert len(batches(api)) == 3  # The relocated fill was never sent.
+
+
 @pytest.mark.parametrize(
     "change", ["cell_edited", "duplicate_table", "deleted_table", "tab_deleted"]
 )

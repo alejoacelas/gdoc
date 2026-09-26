@@ -80,6 +80,11 @@ def route(request, monkeypatch, tmp_path):
     return NativeRoute(request.param, monkeypatch, tmp_path)
 
 
+# Which paragraph's style Docs keeps when a deletion removes a mark is not
+# probed live, so every route here must hold under both plausible outcomes.
+MERGES = pytest.mark.parametrize("merge", ["mark", "first"])
+
+
 def _bullet(list_id=1, preset="BULLET_DISC_CIRCLE_SQUARE", nest=0):
     return {"preset": preset, "list": list_id, "nest": nest}
 
@@ -87,12 +92,20 @@ def _bullet(list_id=1, preset="BULLET_DISC_CIRCLE_SQUARE", nest=0):
 NUMBERED = "NUMBERED_DECIMAL_ALPHA_ROMAN"
 
 
+@MERGES
 @pytest.mark.parametrize("layout", [
     "heading-table", "item-table", "table-heading", "table-item",
     "heading-table-end", "empty-heading-table",
 ])
-def test_rewrite_keeps_styles_at_table_boundaries(route, layout):
+def test_rewrite_keeps_styles_at_table_boundaries(route, layout, merge, request):
     """F1: exporter-shaped tables directly beside styled paragraphs survive."""
+    if layout == "table-item" and merge == "first":
+        # The paragraph after the table keeps its restored style either way,
+        # but a bullet cannot be re-added to its original list through the
+        # API. Only first-paragraph inheritance would drop it; unprobed live.
+        request.applymarker(pytest.mark.xfail(
+            strict=True,
+            reason="list identity after a table under first-paragraph merge"))
     bullet = _bullet()
     blocks = {
         "heading-table": [("p", "Heading", "HEADING_2"), ("t", TABLE),
@@ -108,7 +121,7 @@ def test_rewrite_keeps_styles_at_table_boundaries(route, layout):
         "empty-heading-table": [("p", "after"), ("p", "", "HEADING_2"),
                                 ("t", TABLE), ("p", "tail")],
     }[layout]
-    doc = route.load(NativeDoc(*blocks))
+    doc = route.load(NativeDoc(*blocks, merge=merge))
     before = styles(doc)
     markdown = route.ok("cat")
     edited = markdown.replace("after", "after edited")
@@ -120,8 +133,9 @@ def test_rewrite_keeps_styles_at_table_boundaries(route, layout):
     assert route.ok("cat") == edited
 
 
+@MERGES
 @pytest.mark.parametrize("last", ["heading", "item", "numbered"])
-def test_appending_a_leading_table_keeps_the_last_paragraph(route, last):
+def test_appending_a_leading_table_keeps_the_last_paragraph(route, last, merge):
     """F2: the tab's last paragraph keeps its style when a table is appended."""
     final = {
         "heading": [("p", "Heading", "HEADING_2")],
@@ -129,7 +143,7 @@ def test_appending_a_leading_table_keeps_the_last_paragraph(route, last):
         "numbered": [("p", "one", "NORMAL_TEXT", _bullet(1, NUMBERED)),
                      ("p", "two", "NORMAL_TEXT", _bullet(1, NUMBERED))],
     }[last]
-    doc = route.load(NativeDoc(("p", "intro"), *final))
+    doc = route.load(NativeDoc(("p", "intro"), *final, merge=merge))
     before = styles(doc)
     route.ok("cat", tab="Main")
     route.ok("insert", text="| a |\n|---|\n| c |\n\nafter", tab="Main",
@@ -139,6 +153,7 @@ def test_appending_a_leading_table_keeps_the_last_paragraph(route, last):
     assert after[-1] == ("after", "NORMAL_TEXT", None)
 
 
+@MERGES
 @pytest.mark.parametrize("markdown", [
     "## Heading\n| h |\n| --- |\n| v |\nafter\n",
     "```\ncode\n```\n| h |\n| --- |\n| v |\nafter\n",
@@ -146,10 +161,14 @@ def test_appending_a_leading_table_keeps_the_last_paragraph(route, last):
     "- item\n| h |\n| --- |\n| v |\n- next\n",
     "before\n| h |\n| --- |\n| v |\n## Heading\n",
     "## Heading\n| h |\n| --- |\n| v |\n",
+    "- item\n| h |\n| --- |\n| v |\n## Heading\n",
+    # Adjacent tables read back with the blank paragraph Docs keeps between them.
+    "**bold end**\n| h |\n| --- |\n| v |\n\n\n| k |\n| --- |\n| w |\n## After\n",
+    "## Heading\n\n| h |\n| --- |\n| v |\n\nafter\n",
 ])
-def test_written_table_layouts_read_back_unchanged(route, markdown):
+def test_written_table_layouts_read_back_unchanged(route, markdown, merge):
     """F1: a table directly beside a heading, code, quote or list reads back."""
-    doc = route.load(NativeDoc())
+    doc = route.load(NativeDoc(merge=merge))
     route.ok("cat")
     route.ok("write", text=markdown)
     # A tab ending in a table keeps Docs' final paragraph, read as a blank line.

@@ -369,3 +369,43 @@ def test_a_link_with_mixed_styles_stays_one_link(route, markdown):
     route.ok("write", text=markdown.replace("see", "saw"))
     assert _read(route) == markdown.replace("see", "saw")
     assert [u.ch for u in doc.units if "link" in u.ts] == linked
+
+
+def _cell(text, start, **extra):
+    return {"startIndex": start, "endIndex": start + len(text) + 1,
+            "content": [{"startIndex": start, "endIndex": start + len(text) + 1,
+                         "paragraph": {"elements": [_run(text + "\n", start)]}}],
+            **extra}
+
+
+def _suggested_tables():
+    """A kept table with a suggested row and column, then a suggested table."""
+    kept = {"startIndex": 1, "endIndex": 40, "table": {
+        "rows": 3, "columns": 2, "tableRows": [
+            {"tableCells": [_cell("H", 3),
+                            _cell("New", 5, suggestedInsertionIds=["col"])]},
+            {"tableCells": [_cell("V", 10),
+                            _cell("n", 12, suggestedInsertionIds=["col"])]},
+            {"suggestedInsertionIds": ["row"],
+             "tableCells": [_cell("R", 16),
+                            _cell("r", 18, suggestedInsertionIds=["row"])]}]}}
+    added = {"startIndex": 41, "endIndex": 50, "table": {
+        "suggestedInsertionIds": ["tbl"], "tableRows": [
+            {"tableCells": [_cell("S", 43)]}, {"tableCells": [_cell("T", 46)]}]}}
+    tab = _suggested_tab()
+    body = tab["tabs"][0]["documentTab"]["body"]["content"]
+    body[1:1] = [kept, added]
+    return tab
+
+
+def test_suggested_tables_rows_and_columns_are_not_read(route, monkeypatch):
+    """R5-5: structural suggestions stay out of the Markdown, like text ones."""
+    from gdoc.api import docs
+
+    route.load(NativeDoc())
+    monkeypatch.setattr(docs, "get_document_with_tabs",
+                        lambda *a, **k: _suggested_tables())
+    read = parse_frontmatter(route.ok("cat"))[1]
+    assert read.startswith("| H |\n| --- |\n| V |\n")
+    for suggested in ("New", "| R", "| S", "| T", "dog"):
+        assert suggested not in read

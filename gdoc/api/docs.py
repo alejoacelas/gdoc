@@ -746,14 +746,18 @@ def _without_suggestions(content: list[dict]) -> list[dict]:
     result: list[dict] = []
     carried: list[dict] = []
     for element in content:
-        if element.get("suggestedInsertionIds"):
+        if element.get("suggestedInsertionIds") or element.get(
+                "table", {}).get("suggestedInsertionIds"):
             continue
         if "table" in element:
+            # Suggested rows, and suggested cells such as an inserted column,
+            # are left out like any other suggested insertion.
             table = dict(element["table"])
             table["tableRows"] = [
                 {**row, "tableCells": [
                     {**cell, "content": _without_suggestions(cell.get("content", []))}
-                    for cell in row.get("tableCells", [])]}
+                    for cell in row.get("tableCells", [])
+                    if not cell.get("suggestedInsertionIds")]}
                 for row in table.get("tableRows", [])
                 if not row.get("suggestedInsertionIds")
             ]

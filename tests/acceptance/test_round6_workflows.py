@@ -347,12 +347,16 @@ def test_a_rule_before_a_final_empty_code_block_is_written(route, markdown,
 ])
 def test_restored_content_tabs_keep_their_own_style(route, markdown, old, new):
     """R5-13: a literal leading tab never joins the link or code after it."""
-    doc = _written(route, markdown)
-    assert _read(route) == markdown
-    for text in (markdown, _rewrite(route, doc, markdown, old, new)):
+    def assert_tabs_plain():
         tabs = [u for u in doc.units if u.ch == "\t"]
         assert tabs and all("link" not in u.ts and "bold" not in u.ts
-                            and "strikethrough" not in u.ts for u in tabs), text
+                            and "strikethrough" not in u.ts for u in tabs)
+
+    doc = _written(route, markdown)
+    assert _read(route) == markdown
+    assert_tabs_plain()
+    _rewrite(route, doc, markdown, old, new)
+    assert_tabs_plain()
 
 
 @pytest.mark.parametrize("markdown,expected,old,new", [
@@ -525,7 +529,7 @@ def test_suggestion_preview_is_complete_only_when_faithful(
     code, output, error = route.call("cat")
     if expected is not None:
         assert parse_frontmatter(output)[1] == expected
-    assert ("cannot be shown faithfully" in output + error) == (not faithful)
+    assert ("cannot reliably render" in output + error) == (not faithful)
     assert "new" not in parse_frontmatter(output)[1]
     # An incomplete read cannot authorize a rewrite, even with consent.
     code, out, err = route.call("write", text="changed\n", allow_lossy=True)

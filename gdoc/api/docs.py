@@ -743,8 +743,9 @@ def _without_suggestions(content: list[dict], gaps: list | None = None,
     current text: suggested insertions are left out and suggested deletions
     stay. A paragraph break that is itself a suggested insertion joins its
     text to the following paragraph. When the two paragraphs differ in
-    style, list membership or gdoc container, the joined paragraph's form
-    is not known, and the join is recorded in ``gaps``.
+    style, list membership or gdoc container, the inline view does not say
+    reliably what the joined paragraph looks like, so the join is recorded
+    in ``gaps`` and the read is not complete.
     """
     result: list[dict] = []
     carried: list[dict] = []

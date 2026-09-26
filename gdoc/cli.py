@@ -1694,7 +1694,7 @@ def _note_pending_suggestions(tabs: list[dict]) -> None:
         gaps = suggestion_preview_gaps(tab)
         if gaps:
             print(
-                f"NOTE: tab {tab['title']!r} cannot be shown faithfully without "
+                f"NOTE: gdoc cannot reliably render tab {tab['title']!r} without "
                 f"its suggestions ({'; '.join(gaps)}). This read is incomplete "
                 "and cannot authorize a rewrite; resolve the suggestions first.",
                 file=sys.stderr,

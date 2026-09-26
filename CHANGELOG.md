@@ -75,8 +75,8 @@ All notable changes to `gdoc` are documented here. This project follows
   a generic unexpected-response error.
 - Replacement wording inside code is literal text. Markdown reads show a tab
   without its pending suggestions and say how many are pending, so a consented
-  rewrite discards suggestions instead of applying them. A read that cannot
-  show the text without them exactly is reported as incomplete.
+  rewrite discards suggestions instead of applying them. A read whose preview
+  gdoc cannot render reliably is reported as incomplete.
 - A quote inside a list item stays in that item, including under nested items;
   its container range records the item's indent (`gdoc:prefix:v2`).
 - Leading tabs of code inside list items survive bullet creation, and restored

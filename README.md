@@ -585,10 +585,10 @@ Writing that text back unchanged sends nothing. Resolve the suggestions in Docs
 (accept or reject them) before a changed rewrite; otherwise it is refused unless
 `--allow-lossy` is given, which discards the suggestions and keeps the text as read,
 never applying them as direct edits. When a suggested paragraph break joins
-paragraphs of a different style, list or code/quote container, the text without
-suggestions has no exact Markdown form: the read is marked incomplete
-(`scope.complete` is false, with `scope.suggestion_preview_gaps`) and cannot
-authorize a rewrite until the suggestions are resolved.
+paragraphs of a different style, list or code/quote container, gdoc cannot
+reliably render that paragraph from the inline suggestion view, so it marks the
+read incomplete (`scope.complete` is false, with `scope.suggestion_preview_gaps`);
+such a read cannot authorize a rewrite until the suggestions are resolved.
 
 ```bash
 gdoc write DOC draft.md --tab Notes --allow-lossy

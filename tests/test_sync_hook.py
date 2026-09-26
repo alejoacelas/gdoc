@@ -294,3 +294,18 @@ def test_sync_does_not_replace_a_concurrent_local_edit(mocker, tmp_path):
     with patch("sys.stdin", _stdin_json(str(f))):
         assert cmd_sync_hook(_make_args()) == 0
     assert f.read_text() == concurrent
+
+
+@patch("gdoc.api.drive.update_doc_content")
+def test_refused_sync_reaches_the_agent_as_hook_context(mock_update, tmp_path, capsys):
+    f = tmp_path / "old.md"
+    f.write_text("---\ngdoc: abc123\ntitle: Old\n---\nAgent edit\n")
+    data = {"hook_event_name": "PostToolUse", "tool_input": {"file_path": str(f)}}
+    with patch("sys.stdin", io.StringIO(json.dumps(data))):
+        assert cmd_sync_hook(_make_args()) == 0
+    mock_update.assert_not_called()
+    out, err = capsys.readouterr()
+    context = json.loads(out)["hookSpecificOutput"]
+    assert context["hookEventName"] == "PostToolUse"
+    assert "SYNC: skipped" in context["additionalContext"] and str(f) in err
+    assert f.read_text().endswith("Agent edit\n")

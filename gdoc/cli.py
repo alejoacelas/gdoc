@@ -2025,11 +2025,28 @@ def _refresh_file_revision(file_path, content, details):
               file=sys.stderr)
 
 
+def _hook_notice(data: dict, message: str) -> None:
+    """Report a skipped or failed sync to stderr and to the agent's context.
+
+    Claude Code does not show a hook's stderr to the model on exit 0, so a
+    hook event also gets the message as ``additionalContext`` on stdout.
+    """
+    import json
+
+    print(message, file=sys.stderr)
+    event = data.get("hook_event_name") if isinstance(data, dict) else None
+    if event:
+        print(json.dumps({"hookSpecificOutput": {
+            "hookEventName": event, "additionalContext": "gdoc " + message,
+        }}))
+
+
 def cmd_sync_hook(args) -> int:
     """Handler for `gdoc _sync-hook` (called by PostToolUse hook)."""
     import json
     import os
 
+    data = {}
     try:
         raw = sys.stdin.read()
         if not raw:
@@ -2073,14 +2090,15 @@ def cmd_sync_hook(args) -> int:
         except GdocError as error:
             if error.exit_code != 3:
                 raise
-            print(f"SYNC: skipped (replacement safety check: {error})", file=sys.stderr)
+            _hook_notice(data, f"SYNC: skipped {file_path} (replacement safety "
+                               f"check: {error})")
             return 0
         _refresh_file_revision(file_path, content, write_result)
         print(f"SYNC: pushed to {metadata.get('title', doc_id)!r}", file=sys.stderr)
 
     except Exception as e:
         # Keep the hook non-blocking, but never hide a failed read or upload.
-        print(f"ERR: SYNC: failed: {e}", file=sys.stderr)
+        _hook_notice(data, f"ERR: SYNC: failed: {e}")
 
     return 0
 
@@ -2090,6 +2108,7 @@ def cmd_pull_hook(args) -> int:
     import json
     import os
 
+    data = {}
     try:
         raw = sys.stdin.read()
         if not raw:
@@ -2116,8 +2135,9 @@ def cmd_pull_hook(args) -> int:
         from gdoc.frontmatter import body_fingerprint
 
         if metadata.get("gdoc-body-sha256") != body_fingerprint(body):
-            print("SYNC: pull skipped (local edits or no verified local baseline; "
-                  "reconcile with a separate pull)", file=sys.stderr)
+            _hook_notice(data, f"SYNC: pull skipped for {file_path} (local edits "
+                         "not pushed, or no verified local baseline; reconcile "
+                         "with a separate pull)")
             return 0
         doc_id = _resolve_doc_id(metadata["gdoc"])
 
@@ -2140,7 +2160,7 @@ def cmd_pull_hook(args) -> int:
         print(f"SYNC: pulled {metadata.get('title', doc_id)!r}", file=sys.stderr)
 
     except Exception as error:
-        print(f"ERR: SYNC: pull failed: {error}", file=sys.stderr)
+        _hook_notice(data, f"ERR: SYNC: pull failed: {error}")
 
     return 0
 

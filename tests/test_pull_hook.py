@@ -208,3 +208,14 @@ def _native_snapshot(mocker):
             "documentTab": {"body": {"content": []}},
         }],
     })
+
+
+def test_skipped_pull_of_local_edits_reaches_the_agent(tmp_path, capsys):
+    f = tmp_path / "edited.md"
+    f.write_text("---\ngdoc: abc123\ngdoc-body-sha256: stale\n---\nLocal edit\n")
+    data = {"hook_event_name": "PreToolUse", "tool_input": {"file_path": str(f)}}
+    with patch("sys.stdin", io.StringIO(json.dumps(data))):
+        assert cmd_pull_hook(_make_args()) == 0
+    context = json.loads(capsys.readouterr().out)["hookSpecificOutput"]
+    assert context["hookEventName"] == "PreToolUse"
+    assert "pull skipped" in context["additionalContext"]

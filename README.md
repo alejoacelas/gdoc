@@ -437,7 +437,9 @@ copy elsewhere cannot authorize an older file. Files without revision provenance
 need a fresh pull or an explicit `--force`. An acknowledged push updates only its
 provenance fields, preserving other frontmatter. `gdoc-body-sha256` records the
 last pulled or acknowledged body. The pull hook leaves locally edited files in
-place; pull a separate copy to reconcile them.
+place; pull a separate copy to reconcile them. When a hook skips or fails, it
+prints the reason on stderr and, for Claude Code hook events, also returns it as
+`additionalContext` so the agent sees it.
 
 Local replacements retain the previous file at `FILE.gdoc-backup-UNIQUE-ID` and
 print its path. This protects edits racing a pull or provenance update, including

@@ -34,6 +34,8 @@ class TableData:
     # removes those tabs, shifting the table's real position left by this many.
     removed_tabs_before: int = 0
     alignments: list[str | None] = field(default_factory=list)
+    # Container prefix (quote depth, list indent) recorded by a named range.
+    prefix: tuple[int, int] = (0, 0)
 
 
 @dataclass
@@ -778,19 +780,38 @@ def parse_markdown(text: str) -> ParsedMarkdown:
             code_indent = 0
             continue
 
-        # Table: header row + separator row + data rows
+        # Table: header row + separator row + data rows. Tables may sit inside
+        # quotes and, indented, inside list items; the container is recorded.
+        table_quote = quote_depth
+        table_indent = len(line) - len(line.lstrip(" "))
+        in_list_table = bool(list_levels) and table_indent > 0
+
+        def table_line(j, quote=table_quote, indent=table_indent,
+                       in_list=in_list_table):
+            if j >= len(lines):
+                return ""
+            text, depth = _unquote(lines[j], quote)
+            if depth != quote:
+                return ""
+            if in_list:
+                if len(text) - len(text.lstrip(" ")) < indent:
+                    return ""
+                text = text[indent:]
+            return text
+
+        header_line = table_line(i)
         if (
-            _TABLE_ROW_RE.match(line)
-            and i + 1 < len(lines)
-            and _TABLE_SEP_RE.match(lines[i + 1])
+            _TABLE_ROW_RE.match(header_line)
+            and _TABLE_SEP_RE.match(table_line(i + 1))
         ):
             table_rows: list[list[str]] = []
+            saved_levels = dict(list_levels) if in_list_table else {}
             list_levels.clear()
-            header_cells = _table_cells(line)
+            header_cells = _table_cells(header_line)
             table_rows.append(header_cells)
             num_cols = len(header_cells)
             alignments = []
-            for separator in _table_cells(lines[i + 1]):
+            for separator in _table_cells(table_line(i + 1)):
                 if separator.startswith(":") and separator.endswith(":"):
                     alignments.append("CENTER")
                 elif separator.startswith(":"):
@@ -801,10 +822,10 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                     alignments.append(None)
             alignments = (alignments + [None] * num_cols)[:num_cols]
             i += 2  # skip header + separator
-            while i < len(lines) and _TABLE_ROW_RE.match(lines[i]):
-                if i + 1 < len(lines) and _TABLE_SEP_RE.match(lines[i + 1]):
+            while i < len(lines) and _TABLE_ROW_RE.match(table_line(i)):
+                if _TABLE_SEP_RE.match(table_line(i + 1)):
                     break  # Adjacent exported tables remain separate tables.
-                cells = _table_cells(lines[i])
+                cells = _table_cells(table_line(i))
                 if len(cells) < num_cols:
                     cells.extend([""] * (num_cols - len(cells)))
                 elif len(cells) > num_cols:
@@ -823,7 +844,9 @@ def parse_markdown(text: str) -> ParsedMarkdown:
                 plain_text_offset=offset,
                 removed_tabs_before=removed_tabs,
                 alignments=alignments,
+                prefix=(table_quote, table_indent if in_list_table else 0),
             ))
+            list_levels.update(saved_levels)
             plain_parts.append("\n")
             offset += 1
             all_styles.append(StyleRange(

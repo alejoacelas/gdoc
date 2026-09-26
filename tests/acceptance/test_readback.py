@@ -6,6 +6,7 @@ image layout or general table emulation. Unexpected request types fail loudly.
 
 from copy import deepcopy
 
+import pytest
 from conftest import paragraph, tab
 from test_workflows import existing_helper, read, requests
 
@@ -342,4 +343,105 @@ def test_review_quoted_list_and_nested_code_changed_roundtrip(scenario):
     assert '>    literal *code*' in second
     scenario.record['evidence'] = (
         'request-applied quote/list/code public changed readback'
+    )
+
+
+def _write_table_and_project(scenario, target, before, cells, revision):
+    """Apply one staged table write: text batch, fixed 2x1 scaffold, fill.
+
+    The table scaffold is fixed API-shape evidence, as in T03. Text, prefix
+    ranges and cell text come from the mutation requests themselves.
+    """
+    make_table = existing_helper("test_native_targets", "table")
+    start = 1 + utf16_len(before)
+    blank = make_table([["\n"], ["\n"]], start)
+    scaffold = deepcopy(scenario.document)
+    scaffold["revisionId"] = revision
+    scaffold["tabs"][0]["documentTab"] = {"body": {"content": [
+        paragraph(before, 1), blank, paragraph("\n", blank["endIndex"]),
+    ]}}
+    service = scenario.service.documents.return_value
+    service.batchUpdate.reset_mock()
+    service.batchUpdate.return_value.execute.return_value = {
+        "writeControl": {"requiredRevisionId": revision}
+    }
+    service.get.return_value.execute.side_effect = lambda **kw: deepcopy(
+        scaffold if len(scenario.batches) >= 2 else scenario.document
+    )
+    scenario.ok("write", tab="draft", text=target)
+    assert len(scenario.batches) == 3
+    first_batch = scenario.batches[0]["requests"]
+    assert "deleteContentRange" in first_batch[0]
+    projected = paragraph_rewrite_readback(
+        {"content": [paragraph("\n")]}, first_batch[1:]
+    )
+    fill = scenario.batches[2]["requests"]
+    ranges = [r["createNamedRange"] for r in fill if "createNamedRange" in r]
+    filled = fill_fixed_table(blank, [r for r in fill if "createNamedRange" not in r])
+    assert [
+        "".join(
+            e["textRun"]["content"]
+            for e in row["tableCells"][0]["content"][0]["paragraph"]["elements"]
+        ).removesuffix("\n")
+        for row in filled["table"]["tableRows"]
+    ] == cells
+    elements = projected["body"]["content"]
+    marker = next(i for i, p in enumerate(elements) if p["startIndex"] == start)
+    delta = filled["endIndex"] - elements[marker]["endIndex"]
+    for p in elements[marker + 1 :]:
+        for node in [p, *p["paragraph"]["elements"]]:
+            node["startIndex"] += delta
+            node["endIndex"] += delta
+    for group in projected["namedRanges"].values():
+        for named in group["namedRanges"]:
+            for r in named["ranges"]:
+                assert not r["startIndex"] < start < r["endIndex"]
+                if r["startIndex"] >= start:
+                    r["startIndex"] += delta
+                    r["endIndex"] += delta
+    elements[marker : marker + 1] = [filled]
+    for data in ranges:
+        projected["namedRanges"].setdefault(data["name"], {"namedRanges": []})[
+            "namedRanges"
+        ].append({"name": data["name"], "ranges": [data["range"]]})
+    scenario.document["tabs"][0]["documentTab"] = projected
+    scenario.document["revisionId"] = revision
+    service.get.return_value.execute.side_effect = lambda **kw: deepcopy(
+        scenario.document
+    )
+    return ranges
+
+
+@pytest.mark.parametrize(
+    ("source", "before", "lead"),
+    [
+        ("> Intro\n> | Port |\n> |:--|\n> | East |\n> Outro\nAfter\n",
+         "Intro\n", "> "),
+        ("> > Intro\n> > | Port |\n> > |:--|\n> > | East |\nAfter\n",
+         "Intro\n", "> > "),
+        ("- Intro\n  | Port |\n  |:--|\n  | East |\n- Outro\n", "Intro\n", "  "),
+    ],
+)
+def test_contained_table_changed_roundtrip_through_native_write(
+    scenario, source, before, lead
+):
+    read(scenario)
+    ranges = _write_table_and_project(
+        scenario, source, before, ["Port", "East"], "r2"
+    )
+    assert len(ranges) == 1 and ranges[0]["name"].startswith("gdoc:prefix:v1:")
+    first = read(scenario)
+    assert f"{lead}| Port |\n{lead}| :--- |\n{lead}| East |\n" in first
+    assert "After" not in source or "\nAfter\n" in first
+    changed = first.replace("East", "West")
+    parsed = parse_markdown(changed)
+    assert len(parsed.tables) == 1
+    assert parsed.tables[0].alignments == ["START"]
+    _write_table_and_project(scenario, changed, before, ["Port", "West"], "r3")
+    assert scenario.batches[0]["writeControl"] == {"requiredRevisionId": "r2"}
+    second = read(scenario)
+    assert f"{lead}| Port |\n{lead}| :--- |\n{lead}| West |\n" in second
+    assert second.replace("West", "East") == first
+    scenario.record["evidence"] = (
+        "request-applied contained table with fixed API scaffold, changed readback"
     )

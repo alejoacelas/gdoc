@@ -34,8 +34,9 @@ All notable changes to `gdoc` are documented here. This project follows
 ### Fixed
 
 - Loose nested numbered lists retain parent numbering. Reference links retain
-  destinations; quoted lists, quoted code and indented list fences preserve their
-  structure through changed Markdown round trips.
+  destinations; quoted lists, quoted code, quoted tables, and fences or tables
+  indented inside list items preserve their structure through changed Markdown
+  round trips.
 - Native rules sharing a paragraph preserve surrounding text, escaped comment
   anchors match correctly, and backticks in link destinations round-trip.
 - A failed display-version lookup no longer hides an acknowledged write. Image

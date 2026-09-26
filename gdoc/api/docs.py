@@ -648,10 +648,19 @@ def get_tab_text(tab: dict, markdown: bool = False) -> str:
         parts.append(with_prefix(fence + "\n" + literal + fence + "\n", active_prefix))
         code_parts.clear()
 
+    def prefix_at(index):
+        return next(((quote, indent) for r, quote, indent in prefix_ranges
+                     if r.get("startIndex", 0) <= index < r.get("endIndex", 0)),
+                    (0, 0))
+
     for element in content:
-        prefix = next(((quote, indent) for r, quote, indent in prefix_ranges
-                       if r.get("startIndex", 0) <= element.get("startIndex", -1)
-                       < r.get("endIndex", 0)), (0, 0)) if markdown else (0, 0)
+        prefix = prefix_at(element.get("startIndex", -1)) if markdown else (0, 0)
+        if markdown and prefix == (0, 0) and "table" in element:
+            # A table's container lives on its first cell's first paragraph.
+            first_cell = next(iter(next(iter(
+                element["table"].get("tableRows", [])), {}).get("tableCells", [])), {})
+            first = next(iter(first_cell.get("content", [])), {})
+            prefix = prefix_at(first.get("startIndex", -1))
         marker = next((index for index, r in enumerate(code_ranges)
                        if r.get("startIndex", 0) <= element.get("startIndex", -1)
                        < r.get("endIndex", 0)), None) if markdown else None
@@ -1326,6 +1335,24 @@ def _table_at(body, index):
     return matches[0]
 
 
+def _table_prefix_requests(cell_indices, table, tab_id):
+    """Record a quote or list container on the first cell's paragraph.
+
+    Cell text is inserted at or after this index, so the paragraph start is
+    stable within the fill batch. The exporter reads the container from here.
+    """
+    quote, indent = getattr(table, "prefix", (0, 0))
+    if not (quote or indent) or not cell_indices or not cell_indices[0]:
+        return []
+    start = cell_indices[0][0]
+    span = {"startIndex": start, "endIndex": start + 1}
+    if tab_id:
+        span["tabId"] = tab_id
+    return [{"createNamedRange": {
+        "name": f"gdoc:prefix:v1:{quote}:{indent}", "range": span,
+    }}]
+
+
 def _table_cell_requests(cell_indices, table, tab_id):
     # Parse each cell's markdown to plain text + inline styles, once.
     from gdoc.mdparse import (
@@ -1509,7 +1536,8 @@ def _insert_table(
             len(row) != table.num_cols for row in indices
         ):
             raise GdocError("conflict: table dimensions changed", exit_code=3)
-        return _table_cell_requests(indices, table, tab_id)
+        return (_table_cell_requests(indices, table, tab_id)
+                + _table_prefix_requests(indices, table, tab_id))
 
     def relocate_cells():
         snapshot = progress.read("re-reading table cells", tab_id)

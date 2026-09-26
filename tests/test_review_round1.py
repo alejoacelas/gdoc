@@ -418,3 +418,56 @@ def test_open_descriptor_write_after_return_is_recoverable(tmp_path):
     assert path.read_text() == "published"
     recovered = [p.read_text() for p in tmp_path.glob("*.gdoc-backup-*")]
     assert recovered == ["late concurrent edit"]
+
+
+@pytest.mark.parametrize(
+    ("source", "prefix"),
+    [
+        ("> | A | B |\n> | :-- | --: |\n> | x | y |", (1, 0)),
+        ("> > | A | B |\n> > | - | - |\n> > | x | y |", (2, 0)),
+        ("1. item\n   | A | B |\n   | - | - |\n   | x | y |\n2. next", (0, 3)),
+    ],
+)
+def test_contained_tables_parse_with_their_container(source, prefix):
+    parsed = parse_markdown(source)
+    [table] = parsed.tables
+    assert table.prefix == prefix
+    assert table.rows == [["A", "B"], ["x", "y"]]
+    assert "|" not in parsed.plain_text
+
+
+def test_list_numbering_continues_after_indented_table():
+    parsed = parse_markdown("1. item\n   | A |\n   | - |\n   | x |\n2. next")
+    paragraphs = apply_list_requests(_native_docs_requests(parsed, 1, "t"))
+    assert labels(paragraphs) == [1, 2]
+
+
+def test_table_container_range_is_on_first_cell_and_owned():
+    from gdoc.api.docs import _table_prefix_requests
+    from gdoc.lossy import check_markdown_replacement
+
+    [table] = parse_markdown("> | A |\n> | - |\n> | x |").tables
+    [request] = _table_prefix_requests([[5], [9]], table, "t")
+    assert request == {"createNamedRange": {
+        "name": "gdoc:prefix:v1:1:0",
+        "range": {"startIndex": 5, "endIndex": 6, "tabId": "t"},
+    }}
+    assert _table_prefix_requests([[5]], parse_markdown("| A |\n| - |").tables[0],
+                                  "t") == []
+    native = {
+        "body": {"content": [{"startIndex": 1, "endIndex": 12, "table": {
+            "tableRows": [{"tableCells": [{"content": [{
+                "startIndex": 5, "endIndex": 7,
+                "paragraph": {"elements": [{"textRun": {"content": "A\n"}}]},
+            }]}]}, {"tableCells": [{"content": [{
+                "startIndex": 9, "endIndex": 11,
+                "paragraph": {"elements": [{"textRun": {"content": "x\n"}}]},
+            }]}]}],
+        }}]},
+        "namedRanges": {"gdoc:prefix:v1:1:0": {"namedRanges": [
+            {"name": "gdoc:prefix:v1:1:0",
+             "ranges": [request["createNamedRange"]["range"]]},
+        ]}},
+    }
+    assert get_tab_text(native, markdown=True).startswith("> | A |\n> | --- |\n> | x |")
+    check_markdown_replacement(native, tab_body=True)

@@ -613,9 +613,14 @@ def markdown_hazards(
                         "fontFamily",
                     ) == "Courier New":
                         continue
-                    # Restating the named style is inherited back unchanged.
-                    if text_style[field] == named_default("textStyle", field,
-                                                          paragraph):
+                    # Restating the named style is inherited back unchanged,
+                    # except a code font, which reconstruction overwrites.
+                    from gdoc.api.docs import _MONOSPACE_FONTS
+
+                    code_font = field == "weightedFontFamily" and (
+                        text_style[field].get("fontFamily") in _MONOSPACE_FONTS)
+                    if not code_font and text_style[field] == named_default(
+                            "textStyle", field, paragraph):
                         continue
                     note(label, paragraph)
             paragraph_style = value.get("paragraphStyle", {})
@@ -639,7 +644,9 @@ def markdown_hazards(
                 ):
                     continue
                 if setting == named_default("paragraphStyle", field, paragraph) or (
-                        field == "alignment" and setting == "START"):
+                        field == "alignment" and setting == "START"
+                        and named_default("paragraphStyle", field, paragraph)
+                        in (None, "START")):
                     continue
                 if field == "alignment" and table_depth and paragraph_style[field] in (
                     "START", "CENTER", "END",

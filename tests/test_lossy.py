@@ -1031,3 +1031,23 @@ def test_restating_the_named_style_is_not_a_loss(text_style, paragraph_style):
                           "fontSize": {"magnitude": 11, "unit": "PT"}},
             "paragraphStyle": {"lineSpacing": 115}}]}}
     assert not check_tab_body_replacement(tab, policy="strict")
+
+
+@pytest.mark.parametrize("text_style,paragraph_style,named", [
+    ({}, {"alignment": "START"}, {"paragraphStyle": {"alignment": "CENTER"}}),
+    ({"weightedFontFamily": {"fontFamily": "Consolas", "weight": 400}}, {},
+     {"textStyle": {"weightedFontFamily": {"fontFamily": "Consolas",
+                                           "weight": 400}}}),
+])
+def test_named_defaults_do_not_hide_real_losses(text_style, paragraph_style, named):
+    """START overriding a centred named style, and a code font the rewrite
+    replaces with Courier New, are losses even when they look like defaults."""
+    from gdoc.api.docs import check_tab_body_replacement
+
+    tab = {"body": {"content": [{"paragraph": {
+        "paragraphStyle": {"namedStyleType": "NORMAL_TEXT", **paragraph_style},
+        "elements": [{"textRun": {"content": "Alpha\n",
+                                  "textStyle": text_style}}]}}]},
+        "namedStyles": {"styles": [{"namedStyleType": "NORMAL_TEXT", **named}]}}
+    with pytest.raises(GdocError, match="on 1 of 1 paragraph"):
+        check_tab_body_replacement(tab, policy="strict")

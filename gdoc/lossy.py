@@ -588,8 +588,10 @@ def markdown_hazards(
             for field in ("bold", "italic", "strikethrough"):
                 # Markdown spells emphasis, not its removal from text whose
                 # named style is emphasised.
-                if value.get("textStyle", {}).get(field) is False and (
-                        overrides_default("textStyle", field, False, paragraph)):
+                # Text runs only: a list level's text style is its glyph's.
+                if "content" in value and value.get("textStyle", {}).get(
+                        field) is False and overrides_default(
+                        "textStyle", field, False, paragraph):
                     note("emphasis removed from a named style", paragraph)
             for field, label in _TEXT_STYLE_LOSSES.items():
                 if field in value.get("textStyle", {}):

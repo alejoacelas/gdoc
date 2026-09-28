@@ -1143,3 +1143,24 @@ def test_a_list_marker_reconstruction_changes_is_a_loss(level, nesting, lost):
             check_markdown_replacement(scope, tab_body=True, policy="strict")
     else:
         check_markdown_replacement(scope, tab_body=True, policy="strict")
+
+
+@pytest.mark.parametrize("paragraph_style,level,lost", [
+    ({"indentStart": {"magnitude": 0, "unit": "PT"},
+      "indentFirstLine": {"magnitude": 0, "unit": "PT"}},
+     {"glyphType": "DECIMAL"}, "list indentation"),
+    ({}, {"glyphType": "DECIMAL", "glyphFormat": "(%0)"},
+     "list glyphs and list styling"),
+    ({}, {"glyphType": "DECIMAL", "glyphFormat": "%0."}, None),
+])
+def test_zero_list_indents_and_numbering_formats(paragraph_style, level, lost):
+    scope = {"body": {"content": [{"paragraph": {
+        "bullet": {"listId": "L", "nestingLevel": 0},
+        "paragraphStyle": {"namedStyleType": "NORMAL_TEXT", **paragraph_style},
+        "elements": [{"textRun": {"content": "item\n"}}]}}]},
+        "lists": {"L": {"listProperties": {"nestingLevels": [level]}}}}
+    if lost:
+        with pytest.raises(GdocError, match=lost):
+            check_markdown_replacement(scope, tab_body=True, policy="strict")
+    else:
+        check_markdown_replacement(scope, tab_body=True, policy="strict")

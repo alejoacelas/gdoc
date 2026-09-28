@@ -144,7 +144,10 @@ def _list_marker_changes(paragraph: dict, lists: dict) -> bool:
     expected = _PRESET_MARKERS[ordered][native % 3]
     if ordered:
         actual = level.get("glyphType", "GLYPH_TYPE_UNSPECIFIED")
-        return actual not in (expected, "GLYPH_TYPE_UNSPECIFIED")
+        # The preset writes "1." style markers; "(1)" or "1.1" do not survive.
+        glyph_format = level.get("glyphFormat", "")
+        return actual not in (expected, "GLYPH_TYPE_UNSPECIFIED") or (
+            glyph_format not in ("", f"%{native}."))
     actual = level.get("glyphSymbol", "")
     return actual not in (expected, "")
 
@@ -680,6 +683,13 @@ def markdown_hazards(
             for field, label in _PARAGRAPH_STYLE_LOSSES.items():
                 if field not in paragraph_style:
                     continue
+                # gdoc's own container ranges explain a quoted or nested
+                # list item's extra indent; reconstruction restores it.
+                if field in ("indentStart", "indentFirstLine") and (
+                        "bullet" in value) and not supported_prefix and (
+                        _custom_list_indent(value, field, lists)):
+                    note("list indentation", paragraph)
+                    continue
                 setting = paragraph_style[field]
                 if (setting in (None, False, {}, [])
                         or (field == "lineSpacing" and setting == 100)
@@ -689,13 +699,6 @@ def markdown_hazards(
                     if overrides_default("paragraphStyle", field, setting,
                                          paragraph):
                         note(label, paragraph)
-                    continue
-                # gdoc's own container ranges explain a quoted or nested
-                # list item's extra indent; reconstruction restores it.
-                if field in ("indentStart", "indentFirstLine") and (
-                        "bullet" in value) and not supported_prefix and (
-                        _custom_list_indent(value, field, lists)):
-                    note("list indentation", paragraph)
                     continue
                 if field in ("indentStart", "indentFirstLine") and (
                     quote or "bullet" in value or supported_prefix

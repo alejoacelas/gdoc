@@ -510,6 +510,12 @@ def markdown_hazards(
         "styles": (scope.get("namedStyles") or {}).get("styles", [])}
     kinds = {}
 
+    def named_default(kind, field, where):
+        style_type = kinds.get(where, "NORMAL_TEXT")
+        return next((style.get(kind, {}).get(field)
+                     for style in named_defaults["styles"]
+                     if style.get("namedStyleType") == style_type), None)
+
     def overrides_default(kind, field, value, where):
         style_type = kinds.get(where, "NORMAL_TEXT")
         default = next((style.get(kind, {}).get(field)
@@ -607,6 +613,10 @@ def markdown_hazards(
                         "fontFamily",
                     ) == "Courier New":
                         continue
+                    # Restating the named style is inherited back unchanged.
+                    if text_style[field] == named_default("textStyle", field,
+                                                          paragraph):
+                        continue
                     note(label, paragraph)
             paragraph_style = value.get("paragraphStyle", {})
             quote = all(paragraph_style.get(key) == {"magnitude": 36, "unit": "PT"}
@@ -627,6 +637,9 @@ def markdown_hazards(
                 if field in ("indentStart", "indentFirstLine") and (
                     quote or "bullet" in value or supported_prefix
                 ):
+                    continue
+                if setting == named_default("paragraphStyle", field, paragraph) or (
+                        field == "alignment" and setting == "START"):
                     continue
                 if field == "alignment" and table_depth and paragraph_style[field] in (
                     "START", "CENTER", "END",

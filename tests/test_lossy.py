@@ -1010,3 +1010,24 @@ def test_deleting_a_tab_with_a_header_is_a_loss(policy):
                                         where="tab 'Notes'", policy="markdown")
     assert losses.to_json() == {"content": ["headers"]}
     check_tab_body_replacement(tab, policy=policy)  # a body rewrite keeps it
+
+
+@pytest.mark.parametrize("text_style,paragraph_style", [
+    ({"weightedFontFamily": {"fontFamily": "Arial", "weight": 400}}, {}),
+    ({"fontSize": {"magnitude": 11, "unit": "PT"}}, {}),
+    ({}, {"lineSpacing": 115}),
+    ({}, {"alignment": "START"}),
+])
+def test_restating_the_named_style_is_not_a_loss(text_style, paragraph_style):
+    from gdoc.api.docs import check_tab_body_replacement
+
+    tab = {"body": {"content": [{"paragraph": {
+        "paragraphStyle": {"namedStyleType": "NORMAL_TEXT", **paragraph_style},
+        "elements": [{"textRun": {"content": "Alpha\n",
+                                  "textStyle": text_style}}]}}]},
+        "namedStyles": {"styles": [{"namedStyleType": "NORMAL_TEXT",
+            "textStyle": {"weightedFontFamily": {"fontFamily": "Arial",
+                                                 "weight": 400},
+                          "fontSize": {"magnitude": 11, "unit": "PT"}},
+            "paragraphStyle": {"lineSpacing": 115}}]}}
+    assert not check_tab_body_replacement(tab, policy="strict")

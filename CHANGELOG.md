@@ -13,14 +13,15 @@ All notable changes to `gdoc` are documented here. This project follows
 - `write` and `push` refuse identified rich-content loss before mutation.
   `--allow-lossy` permits that loss independently of revision conflicts and
   explicit sibling-tab collapse. Supported Markdown needs no loss override.
-
 - Changed `write`, `push`, sync-hook pushes and MCP `write` report what
   rewriting the tab loses before sending anything: direct styles with how many
   paragraphs each affects (`font family on 38 of 40 paragraphs`), comments
   anchored in the tab (counted before the write, since Drive reports them
   unchanged afterwards), image crop and other image adjustments, alt text,
   numbering starts, pending suggestions and rich content. `--json` output
-  carries the same inventory as `losses`.
+  carries the same inventory as `losses`, and a collapse lists each deleted
+  tab's losses as `deleted_tab_losses`. `comments --json` includes each
+  comment's `anchor`.
 - A rewrite policy caps what a changed rewrite may lose: `strict`,
   `formatting` (recommended) or `markdown` (default, earlier behavior). Set it
   with `gdoc config --rewrite-policy` (config key `rewrite_policy`) or
@@ -35,7 +36,8 @@ All notable changes to `gdoc` are documented here. This project follows
 ### Changed
 
 - **Discarding collaborators' pending suggestions needs `--discard-suggestions`
-  (MCP `discard_suggestions`).** `--allow-lossy` alone no longer discards them;
+  (MCP `discard_suggestions`).** `--allow-lossy` alone no longer discards them,
+  and `--force-collapse-tabs` no longer deletes a tab holding them without it;
   pass both flags when a tab has suggestions and rich content.
 
 - Default `write` and `push` read Markdown in gdoc's format instead of Google's

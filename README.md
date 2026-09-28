@@ -752,10 +752,13 @@ variable overrides it. MCP cannot change it, and per-call flags never exceed it.
 | `formatting` (recommended) | Direct styles, image adjustments and alt text, and numbering starts, with a warning. Comments, image crop, suggestions and rich content refuse. |
 | `markdown` (default) | Anything, with a warning. Rich content still needs `--allow-lossy` and suggestions still need `--discard-suggestions` on each call. |
 
-The default `markdown` keeps earlier behavior. Use `formatting` to protect
+The default `markdown` keeps earlier behavior, except that discarding pending
+suggestions now needs `--discard-suggestions`. Use `formatting` to protect
 comments, suggestions, crops and rich content now; it is planned to become the
 default once `edit` can split paragraphs and gdoc can insert after a text anchor
-and move sections, so fewer tasks need a rewrite.
+and move sections, so fewer tasks need a rewrite. Because Drive cannot place a
+comment in a tab, `formatting` refuses a rewrite of any tab in a multi-tab
+document that has an anchored comment anywhere, resolved or open.
 
 ```bash
 gdoc config --rewrite-policy formatting

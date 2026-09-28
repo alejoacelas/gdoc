@@ -959,3 +959,22 @@ def test_a_deleted_tab_counts_its_style_suggestions():
     with pytest.raises(GdocError, match=r"pending suggestions \(1\)"):
         check_tab_body_replacement(tab, allow_lossy=True, deleting=True,
                                    where="tab 'Notes'")
+
+
+@pytest.mark.parametrize("row_style,cell_style,label", [
+    ({"minRowHeight": {"magnitude": 30, "unit": "PT"}}, {}, "table row heights"),
+    ({"tableHeader": True}, {}, "table row settings"),
+    ({"preventOverflow": True}, {}, "table row settings"),
+    ({}, {"contentAlignment": "MIDDLE"}, "table cell vertical alignment"),
+    ({"minRowHeight": {"unit": "PT"}}, {"contentAlignment": "TOP"}, None),
+])
+def test_table_row_and_cell_settings_are_style_losses(row_style, cell_style, label):
+    table = {"table": {"tableRows": [{"tableRowStyle": row_style, "tableCells": [
+        {"tableCellStyle": cell_style, "content": [{"paragraph": {"elements": [
+            {"textRun": {"content": "v\n"}}]}}]}]}]}}
+    scope = {"body": {"content": [table]}}
+    if label:
+        with pytest.raises(GdocError, match=label):
+            check_markdown_replacement(scope, tab_body=True, policy="strict")
+    else:
+        check_markdown_replacement(scope, tab_body=True, policy="strict")

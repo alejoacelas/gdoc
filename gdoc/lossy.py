@@ -137,6 +137,16 @@ def _table_style_losses(table: dict) -> set[str]:
                            .get("rgbColor", {}).values())
                 ):
                     losses.add("table borders")
+    for row in table.get("tableRows", []):
+        row_style = row.get("tableRowStyle", {})
+        if (row_style.get("minRowHeight") or {}).get("magnitude", 0) > 0:
+            losses.add("table row heights")
+        if row_style.get("preventOverflow") or row_style.get("tableHeader"):
+            losses.add("table row settings (header rows, rows kept on one page)")
+        for cell in row.get("tableCells", []):
+            if cell.get("tableCellStyle", {}).get("contentAlignment") in (
+                    "MIDDLE", "BOTTOM"):
+                losses.add("table cell vertical alignment")
     if any(column.get("widthType") == "FIXED_WIDTH"
            for column in table.get("tableStyle", {}).get("tableColumnProperties", [])):
         losses.add("table column widths")

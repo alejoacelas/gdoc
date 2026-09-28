@@ -532,16 +532,17 @@ def markdown_hazards(
     kinds = {}
 
     def named_default(kind, field, where):
-        style_type = kinds.get(where, "NORMAL_TEXT")
-        return next((style.get(kind, {}).get(field)
-                     for style in named_defaults["styles"]
-                     if style.get("namedStyleType") == style_type), None)
+        # A named style inherits what it leaves unset from NORMAL_TEXT.
+        for style_type in (kinds.get(where, "NORMAL_TEXT"), "NORMAL_TEXT"):
+            value = next((style.get(kind, {}).get(field)
+                          for style in named_defaults["styles"]
+                          if style.get("namedStyleType") == style_type), None)
+            if value is not None:
+                return value
+        return None
 
     def overrides_default(kind, field, value, where):
-        style_type = kinds.get(where, "NORMAL_TEXT")
-        default = next((style.get(kind, {}).get(field)
-                        for style in named_defaults["styles"]
-                        if style.get("namedStyleType") == style_type), None)
+        default = named_default(kind, field, where)
         if default in (None, False, {}, []) or default == value:
             return False
         if field == "lineSpacing" and default == 100 and value in (None, 100):

@@ -1098,3 +1098,24 @@ def test_suggestions_in_referenced_list_definitions_are_counted():
         "lists": {"L": {"listProperties": {"nestingLevels": []},
                         "suggestedListPropertiesChanges": {"list": {}}}}}
     assert rewrite_losses(scope, tab_body=True).suggestions == 2
+
+
+def test_a_heading_inherits_unset_defaults_from_normal_text():
+    from gdoc.api.docs import check_tab_body_replacement
+
+    def tab(paragraph_style, text_style):
+        return {"body": {"content": [{"paragraph": {
+            "paragraphStyle": {"namedStyleType": "HEADING_1", **paragraph_style},
+            "elements": [{"textRun": {"content": "Title\n",
+                                      "textStyle": text_style}}]}}]},
+            "namedStyles": {"styles": [
+                {"namedStyleType": "NORMAL_TEXT",
+                 "paragraphStyle": {"lineSpacing": 115},
+                 "textStyle": {"weightedFontFamily": {"fontFamily": "Arial"}}},
+                {"namedStyleType": "HEADING_1",
+                 "textStyle": {"fontSize": {"magnitude": 20, "unit": "PT"}}}]}}
+
+    with pytest.raises(GdocError, match="line spacing"):
+        check_tab_body_replacement(tab({"lineSpacing": 100}, {}), policy="strict")
+    check_tab_body_replacement(
+        tab({}, {"weightedFontFamily": {"fontFamily": "Arial"}}), policy="strict")

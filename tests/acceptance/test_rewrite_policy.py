@@ -296,3 +296,31 @@ def test_gdocs_own_lists_rewrite_under_strict(monkeypatch, tmp_path, interface,
     code, output, error = route.call("write", text=text + "tail\n")
     assert code == 0, output + error
     assert "WARN" not in error
+
+
+@pytest.mark.parametrize("interface", ["cli", "mcp"])
+def test_collapse_warns_about_deleted_tabs_only_after_writing(
+        monkeypatch, tmp_path, interface):
+    """A refusal of the first tab leaves no claim that a sibling was deleted."""
+    base = tmp_path / interface
+    base.mkdir()
+    monkeypatch.setattr(state, "STATE_DIR", base / "state")
+    route = NativeRoute(interface, monkeypatch, base)
+    doc, _ = _suggested()  # the first tab refuses without the flag
+    styled = json.loads(json.dumps(SUGGESTED_SIBLING))
+    run = styled["documentTab"]["body"]["content"][1]["paragraph"]["elements"][0]
+    run["textRun"] = {"content": "Notes\n", "textStyle": STYLE}  # only warns
+    service = route.service = NativeService(doc, extra_tabs=[styled])
+    code, output, error = route.call(
+        "write", text="Alpha.\nBeta, revised.\n", force=True,
+        force_collapse_tabs=True)
+    assert code != 0 and service.batches == []
+    assert "collaborators' pending suggestions" in output + error
+    assert "--force-collapse-tabs deletes tab" not in output + error
+    # With the flag, the write succeeds and the deletion warning appears.
+    code, output, error = route.call(
+        "write", text="Alpha.\nBeta, revised.\n", force=True,
+        force_collapse_tabs=True, discard_suggestions=True)
+    assert code == 0, output + error
+    assert "--force-collapse-tabs deletes tab 'Notes', discarding direct styles" in (
+        error)

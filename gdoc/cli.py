@@ -1738,6 +1738,7 @@ def _write_native_markdown(
     )
     details = {}
     deleted_losses = {}
+    held_warnings = None
     comments, comments_exact = _tab_comment_count(
         doc_id, tabs, collapse, selected)
     consent = {
@@ -1750,13 +1751,20 @@ def _write_native_markdown(
         # Collapse deletes every other tab. Its consent covers their content,
         # not the rewrite policy or collaborators' pending suggestions, so
         # each is checked before the first tab is replaced.
+        import contextlib
+        import io
+
         from gdoc.api.docs import check_tab_body_replacement
 
+        held_warnings = io.StringIO()
+
         for sibling in tabs[1:]:
-            lost = check_tab_body_replacement(
-                sibling, allow_lossy=True, deleting=True,
-                discard_suggestions=consent["discard_suggestions"],
-                where=f"tab {sibling['title']!r}")
+            # Warnings wait until the write succeeds; refusals still raise.
+            with contextlib.redirect_stderr(held_warnings):
+                lost = check_tab_body_replacement(
+                    sibling, allow_lossy=True, deleting=True,
+                    discard_suggestions=consent["discard_suggestions"],
+                    where=f"tab {sibling['title']!r}")
             if lost:
                 deleted_losses[sibling["id"]] = {
                     "title": sibling["title"], **lost.to_json()}
@@ -1773,6 +1781,8 @@ def _write_native_markdown(
             collapse_tabs=collapse, result_details=details, image_aliases=aliases,
             **consent,
         )
+    if held_warnings is not None:
+        print(held_warnings.getvalue(), end="", file=sys.stderr)
     acknowledged = details.get("acknowledged_revision_id", "")
     if result_details is not None:
         result_details.update(details)
@@ -4469,7 +4479,7 @@ def build_parser() -> GdocArgumentParser:
     config_p.add_argument(
         "--rewrite-policy", choices=["strict", "formatting", "markdown"],
         help="The most a changed write/push may lose when it rewrites a tab. "
-        "strict: nothing Markdown cannot show. formatting (recommended): "
+        "strict: nothing the loss inventory detects. formatting (recommended): "
         "direct styles may reset; comments, image crop, suggestions and rich "
         "content refuse. markdown (default): anything, with --allow-lossy for rich "
         "content and --discard-suggestions for suggestions. GDOC_REWRITE_POLICY "

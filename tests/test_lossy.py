@@ -851,3 +851,23 @@ def test_native_zero_width_table_paragraph_border_is_not_a_loss():
             "padding": {"unit": "PT"}, "dashStyle": "SOLID",
         }},
     }}]}, tab_body=True)
+
+
+@pytest.mark.parametrize("style,lost", [
+    ({"foregroundColor": {"color": {"rgbColor": {
+        "red": 0.06666667, "green": 0.33333334, "blue": 0.8}}}, "underline": True},
+     None),
+    ({"foregroundColor": {"color": {"rgbColor": {"red": 0.8}}}}, "colour"),
+    ({"underline": False}, "underline"),
+])
+def test_custom_link_appearance_is_a_style_loss(style, lost):
+    """Docs' default link blue and underline are not losses; an author's own
+    link colour or removed underline is, so strict refuses it."""
+    scope = {"content": [{"paragraph": {"elements": [{"textRun": {
+        "content": "site\n", "textStyle": {
+            "link": {"url": "https://example.org"}, **style}}}]}}]}
+    if lost is None:
+        check_markdown_replacement(scope, tab_body=True, policy="strict")
+    else:
+        with pytest.raises(GdocError, match=f"{lost} on 1 of 1 paragraph"):
+            check_markdown_replacement(scope, tab_body=True, policy="strict")

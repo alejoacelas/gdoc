@@ -59,7 +59,7 @@ CATEGORIES = {
     "pending suggestions": (_suggested, True, "discard_suggestions",
                             "collaborators' pending suggestions (1)"),
     "anchored comments": (lambda: (_plain(), "comment"), True, None,
-                          "1 comment anchored in the tab"),
+                          "up to 1 comment anchored in the tab"),
     "image crop": (_with_image({"cropProperties": {"offsetLeft": 0.2}}), True,
                    None, "image crop on 1 image"),
     "direct styles": (_styled, False, None, "font family on 2 of 2 paragraphs"),

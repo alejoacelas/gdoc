@@ -4455,8 +4455,8 @@ def build_parser() -> GdocArgumentParser:
         "--rewrite-policy", choices=["strict", "formatting", "markdown"],
         help="The most a changed write/push may lose when it rewrites a tab. "
         "strict: nothing Markdown cannot show. formatting (recommended): "
-        "direct styles may reset; comments, suggestions and rich content "
-        "refuse. markdown (default): anything, with --allow-lossy for rich "
+        "direct styles may reset; comments, image crop, suggestions and rich "
+        "content refuse. markdown (default): anything, with --allow-lossy for rich "
         "content and --discard-suggestions for suggestions. GDOC_REWRITE_POLICY "
         "overrides it; MCP reads the same setting and cannot change it",
     )

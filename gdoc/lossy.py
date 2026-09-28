@@ -93,6 +93,17 @@ _PARAGRAPH_STYLE_LOSSES = {
 }
 
 
+def _link_blue(colour: dict) -> bool:
+    """Whether a foreground colour is Docs' default link colour."""
+    from gdoc.api.docs import _LINK_BLUE
+
+    if not isinstance(colour, dict):
+        return False
+    rgb = colour.get("color", {}).get("rgbColor", {})
+    return all(abs(rgb.get(key, 0) - value) < 0.002
+               for key, value in zip(("red", "green", "blue"), _LINK_BLUE))
+
+
 def _indented(paragraph: dict) -> bool:
     """Whether a paragraph has a start or first-line indent."""
     style = paragraph.get("paragraphStyle", {})
@@ -241,12 +252,13 @@ class RewriteLosses:
         return "collaborators' pending suggestions" + count
 
     def comment_text(self) -> str:
-        if self.comments_exact:
-            return (_plural(self.comments, "comment")
-                    + " anchored in the tab (open or resolved)")
-        return (_plural(self.comments, "anchored comment") + " in the "
-                "document (open or resolved; Drive does not say which tab a "
-                "comment is in)")
+        # Drive lists a comment whose text is gone as still anchored and does
+        # not name a comment's tab, so the count is an upper bound.
+        where = ("" if self.comments_exact else
+                 "; Drive does not say which tab a comment is in, so this "
+                 "counts every anchored comment in the document")
+        return (f"up to {_plural(self.comments, 'comment')} anchored in the "
+                f"tab (open or resolved{where})")
 
     def style_text(self, rows=None) -> str:
         return ", ".join(
@@ -261,9 +273,7 @@ class RewriteLosses:
         if self.suggestions:
             items.append(self.suggestion_text())
         if self.comments:
-            items.append(self.comment_text() + (
-                ", which will detach" if self.comments_exact
-                else "; those in this tab will detach"))
+            items.append(self.comment_text() + ", which will detach")
         if self.protected_styles:
             items.append(self.style_text(self.protected_styles)
                          + " (the image shows its uncropped original)")
@@ -284,7 +294,7 @@ class RewriteLosses:
             result["pending_suggestions"] = max(self.suggestions, 1)
         if self.comments:
             result["comments"] = self.comments
-            result["comments_exact"] = self.comments_exact
+            result["comments_scope"] = "tab" if self.comments_exact else "document"
         if self.styles or self.protected_styles:
             result["styles"] = [
                 {"style": label, unit: count,
@@ -406,8 +416,6 @@ def _warnings(losses: RewriteLosses) -> list[str]:
                      + losses.suggestion_text() + " and keep the text as shown")
     if losses.comments:
         lines.append("Markdown replacement will detach "
-                     + ("" if losses.comments_exact
-                        else "the comments anchored in this tab among ")
                      + losses.comment_text()
                      + "; Docs shows them as \"Original content deleted\"")
     if losses.protected_styles:
@@ -504,11 +512,15 @@ def markdown_hazards(
             for field, label in _TEXT_STYLE_LOSSES.items():
                 if field in value.get("textStyle", {}):
                     text_style = value["textStyle"]
+                    if text_style.get("link") and field in (
+                            "foregroundColor", "underline"):
+                        # Docs draws a link blue and underlined; only an
+                        # author's other colour or removed underline is lost.
+                        if field == "underline" and text_style[field] is False:
+                            note(label, paragraph)
+                        if field == "underline" or _link_blue(text_style[field]):
+                            continue
                     if text_style[field] in (None, False, {}):
-                        continue
-                    if field in ("foregroundColor", "underline") and text_style.get(
-                        "link",
-                    ):
                         continue
                     if field == "weightedFontFamily" and value["textStyle"][field].get(
                         "fontFamily",

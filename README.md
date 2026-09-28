@@ -400,13 +400,13 @@ CLI and MCP share the same handlers and content contract. Prefer targeted
 commands: they change only their target and keep direct fonts, colours,
 comments, suggestions and rich content everywhere else.
 
-- `edit DOC OLD NEW` changes wording, including merging paragraphs.
+- `edit DOC OLD NEW` changes wording.
 - `edit DOC --cell ADDR NEW` replaces one table cell.
 - `suggest DOC OLD NEW` proposes a change for reviewers.
 - `insert DOC FILE --tab NAME` adds Markdown at the start or end of a tab.
 - `insert-image` and `replace-image` add or swap images.
 
-Splitting paragraphs, moving sections, changing a paragraph's block type and
+Splitting or merging paragraphs, moving sections, changing a paragraph's block type and
 reshaping tables still need a full-tab rewrite, which deletes and reinserts the
 whole tab ([what a rewrite resets](#what-a-rewrite-resets)). Read a complete
 tab, modify its Markdown, then replace that tab:
@@ -727,10 +727,11 @@ that loses, prints it on stderr (MCP notes) and returns it as `losses` in
   document's heading and body styles, for example `font family on 38 of 40
   paragraphs`. Image rotation, brightness, contrast, transparency, borders and
   alt text reset too, and numbered lists restart at 1.
-- **Comments** anchored in the tab detach. Drive does not say which tab a
-  comment is in, and a comment's quoted text can be out of date, so in a
-  multi-tab document gdoc counts every anchored comment in the document and
-  says so.
+- **Comments** anchored in the tab detach. The count is an upper bound: Drive
+  still lists a comment as anchored after its text is gone, and does not say
+  which tab a comment is in, so in a multi-tab document gdoc counts every
+  anchored comment in the document (`comments_scope` in JSON). Deleting
+  comments that are already detached lowers the count.
 - **Image crop** is lost; the image shows its uncropped original.
 - **Collaborators' pending suggestions** are discarded.
 - **Rich content** Markdown cannot show (chips, footnotes and the rest listed

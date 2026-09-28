@@ -45,7 +45,7 @@ def test_a_stale_quote_in_a_sibling_still_counts(mocker):
                  return_value=[_comment("budget plan", anchor="kix.main")])
     count, exact = _tab_comment_count("doc", [main, other])
     assert (count, exact) == (1, False)
-    with pytest.raises(GdocError, match="1 anchored comment in the document"):
+    with pytest.raises(GdocError, match="up to 1 comment anchored in the tab"):
         check_markdown_replacement(main, tab_body=True, comments=count,
                                    comments_exact=exact, policy="formatting")
 

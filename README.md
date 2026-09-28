@@ -737,8 +737,9 @@ that loses, prints it on stderr (MCP notes) and returns it as `losses` in
 - **Rich content** Markdown cannot show (chips, footnotes and the rest listed
   above) is discarded.
 
-`--force-collapse-tabs` deletes the other tabs; the same policy and
-`--discard-suggestions` apply to what they hold.
+`--force-collapse-tabs` deletes the other tabs. The same policy and
+`--discard-suggestions` apply to everything they hold, including headers,
+footers and footnotes, and `--json` lists it as `deleted_tab_losses`.
 
 The rewrite policy sets the most a changed rewrite may lose. It is one global
 setting that CLI and MCP both read: `gdoc config --rewrite-policy LEVEL` saves it

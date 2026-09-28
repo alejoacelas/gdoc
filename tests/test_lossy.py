@@ -871,3 +871,55 @@ def test_custom_link_appearance_is_a_style_loss(style, lost):
     else:
         with pytest.raises(GdocError, match=f"{lost} on 1 of 1 paragraph"):
             check_markdown_replacement(scope, tab_body=True, policy="strict")
+
+
+@pytest.mark.parametrize("family,lost", [("Courier New", False),
+                                         ("Consolas", True), ("monospace", True)])
+def test_only_the_code_font_a_rewrite_writes_is_kept(family, lost):
+    """Reconstruction writes code in Courier New; another code font changes."""
+    scope = {"content": [{"paragraph": {"elements": [{"textRun": {
+        "content": "x = 1\n", "textStyle": {
+            "weightedFontFamily": {"fontFamily": family}}}}]}}]}
+    if lost:
+        with pytest.raises(GdocError, match="font family on 1 of 1 paragraph"):
+            check_markdown_replacement(scope, tab_body=True, policy="strict")
+    else:
+        check_markdown_replacement(scope, tab_body=True, policy="strict")
+
+
+def test_suggestions_in_a_removed_footnote_need_their_own_consent():
+    """Deleting a footnote reference deletes the footnote and its suggestions."""
+    from gdoc.api.docs import check_tab_body_replacement
+
+    tab = {"body": {"content": [{"paragraph": {"elements": [
+        {"footnoteReference": {"footnoteId": "fn1"}},
+        {"textRun": {"content": "x\n"}}]}}]},
+        "footnotes": {"fn1": {"content": [{"paragraph": {"elements": [
+            {"textRun": {"content": "note\n",
+                         "suggestedInsertionIds": ["s1"]}}]}}]}}}
+    with pytest.raises(GdocError, match=r"pending suggestions \(1\)"):
+        check_tab_body_replacement(tab, allow_lossy=True)
+    check_tab_body_replacement(tab, allow_lossy=True, discard_suggestions=True)
+
+
+def test_a_deleted_tab_refusal_does_not_ask_for_allow_lossy(monkeypatch):
+    from gdoc.api.docs import check_tab_body_replacement
+
+    monkeypatch.setenv("GDOC_REWRITE_POLICY", "formatting")
+
+    tab = {"title": "Notes", "body": {"content": [{"paragraph": {"elements": [
+        {"person": {}}, {"textRun": {"content": "x\n"}}]}}]}}
+    with pytest.raises(GdocError) as exc:
+        check_tab_body_replacement(tab, allow_lossy=True, deleting=True,
+                                   where="tab 'Notes'")
+    message = str(exc.value)
+    assert "--force-collapse-tabs deleting tab 'Notes' would lose people chips" in (
+        message)
+    assert "--allow-lossy" not in message and "`edit`" not in message
+
+
+def test_an_uncounted_suggestion_is_not_reported_as_one():
+    from gdoc.lossy import RewriteLosses
+
+    assert RewriteLosses(suggestions=-1).to_json() == {
+        "pending_suggestions": "uncounted"}

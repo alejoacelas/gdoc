@@ -61,3 +61,13 @@ def test_no_anchored_comments(mocker):
     listing = mocker.patch("gdoc.api.comments.list_comments", return_value=[])
     assert _tab_comment_count("doc", [_tab("a", "x\n")]) == (0, True)
     listing.assert_called_once_with("doc", include_anchor=True)
+
+
+def test_an_empty_tab_holds_no_comment(mocker):
+    """Filling a new tab is never refused over comments elsewhere."""
+    listing = mocker.patch("gdoc.api.comments.list_comments",
+                           return_value=[_comment("alpha")])
+    tabs = [_tab("a", "alpha\n"), _tab("new", "\n")]
+    assert _tab_comment_count("doc", tabs, selected=tabs[1]) == (0, True)
+    listing.assert_not_called()
+    assert _tab_comment_count("doc", tabs, selected=tabs[0]) == (1, False)

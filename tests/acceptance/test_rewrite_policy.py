@@ -205,19 +205,21 @@ SUGGESTED_SIBLING = {
 }
 
 
-def collapse(interface, monkeypatch, tmp_path, level, flags):
+def collapse(interface, monkeypatch, tmp_path, level, flags,
+             sibling=SUGGESTED_SIBLING):
     base = tmp_path / f"{interface}-{len(list(tmp_path.iterdir()))}"
     base.mkdir()
     monkeypatch.setattr(state, "STATE_DIR", base / "state")
     monkeypatch.setenv("GDOC_REWRITE_POLICY", level)
     route = NativeRoute(interface, monkeypatch, base)
     service = route.service = NativeService(
-        _plain(), extra_tabs=[json.loads(json.dumps(SUGGESTED_SIBLING))])
+        _plain(), extra_tabs=[json.loads(json.dumps(sibling))])
     code, output, error = route.call(
         "write", text="Alpha.\nBeta, revised.\n", force=True,
         force_collapse_tabs=True, **flags)
     lines = [line for line in (output + "\n" + error).splitlines()
              if line.startswith(("ERR:", "WARN:"))]
+    service.output = output
     return code, lines, service
 
 
@@ -236,8 +238,39 @@ def test_collapse_checks_the_tabs_it_deletes(monkeypatch, tmp_path, level,
     for code, lines, service in (cli, via_mcp):
         text = "\n".join(lines)
         assert "collaborators' pending suggestions (1)" in text
-        assert "tab 'Notes', which --force-collapse-tabs deletes" in text or allowed
+        assert "tab 'Notes'" in text and "--force-collapse-tabs" in text
         if allowed:
             assert code == 0 and service.extra_tabs == []
         else:
             assert code != 0 and service.batches == []
+
+
+def _header_suggested_sibling():
+    sibling = json.loads(json.dumps(SUGGESTED_SIBLING))
+    run = sibling["documentTab"]["body"]["content"][1]["paragraph"]["elements"][0]
+    run["textRun"].pop("suggestedInsertionIds")
+    sibling["documentTab"]["headers"] = {"h1": {"content": [
+        {"startIndex": 0, "endIndex": 7, "paragraph": {"elements": [
+            {"startIndex": 0, "endIndex": 7, "textRun": {
+                "content": "Header\n",
+                "suggestedInsertionIds": ["suggest.header"]}}]}}]}}
+    return sibling
+
+
+@pytest.mark.parametrize("interface", ["cli", "mcp"])
+def test_collapse_checks_a_deleted_tabs_headers(monkeypatch, tmp_path, interface):
+    code, lines, service = collapse(interface, monkeypatch, tmp_path, "markdown",
+                                    {}, sibling=_header_suggested_sibling())
+    assert code != 0 and service.batches == []
+    assert "collaborators' pending suggestions (1)" in "\n".join(lines)
+
+
+@pytest.mark.parametrize("interface", ["cli", "mcp"])
+def test_collapse_json_names_deleted_tab_losses(monkeypatch, tmp_path, interface):
+    code, lines, service = collapse(interface, monkeypatch, tmp_path, "markdown",
+                                    {"discard_suggestions": True, "json": True})
+    assert code == 0 and service.extra_tabs == []
+    assert ("WARN: --force-collapse-tabs deletes tab 'Notes', discarding "
+            "collaborators' pending suggestions (1)") in lines
+    assert json.loads(service.output)["deleted_tab_losses"] == {
+        "Notes": {"pending_suggestions": 1}}

@@ -245,7 +245,8 @@ class TestCmdConfig:
             args = SimpleNamespace(page_mode=None)
             rc = cmd_config(args)
             assert rc == 0
-            assert capsys.readouterr().out.strip() == "page_mode\tunset\nrewrite_policy\tmarkdown"
+            assert capsys.readouterr().out.strip() == (
+                "page_mode\tunset\nrewrite_policy\tmarkdown")
 
     def test_show_json(self, tmp_path, capsys):
         # config opts into --json/--verbose/--plain via output_parent, so it
@@ -288,7 +289,8 @@ class TestCmdConfig:
             rc = cmd_config(args)
             assert rc == 0
             captured = capsys.readouterr()
-            assert captured.out.strip() == "page_mode\tpageless\nrewrite_policy\tmarkdown"
+            assert captured.out.strip() == (
+                "page_mode\tpageless\nrewrite_policy\tmarkdown")
             assert "OK page_mode set to: pageless" in captured.err
 
 

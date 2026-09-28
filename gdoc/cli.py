@@ -1737,7 +1737,9 @@ def _write_native_markdown(
         omitted=", ".join(_read_omissions([selected])),
     )
     details = {}
-    comments, comments_exact = _tab_comment_count(doc_id, tabs, collapse)
+    deleted_losses = {}
+    comments, comments_exact = _tab_comment_count(
+        doc_id, tabs, collapse, selected)
     consent = {
         "allow_lossy": getattr(args, "allow_lossy", False),
         "discard_suggestions": getattr(args, "discard_suggestions", False),
@@ -1751,11 +1753,12 @@ def _write_native_markdown(
         from gdoc.api.docs import check_tab_body_replacement
 
         for sibling in tabs[1:]:
-            check_tab_body_replacement(
-                sibling, allow_lossy=True,
+            lost = check_tab_body_replacement(
+                sibling, allow_lossy=True, deleting=True,
                 discard_suggestions=consent["discard_suggestions"],
-                where=f"tab {sibling['title']!r}, which --force-collapse-tabs "
-                      "deletes,")
+                where=f"tab {sibling['title']!r}")
+            if lost:
+                deleted_losses[sibling["title"]] = lost.to_json()
     if tab_name:
         details = insert_markdown_into_tab(
             doc_id, selected["id"], content, replace=True, document=document,
@@ -1810,6 +1813,8 @@ def _write_native_markdown(
             result["file"] = args.file
         if details.get("losses"):
             result["losses"] = details["losses"]
+        if deleted_losses:
+            result["deleted_tab_losses"] = deleted_losses
         print(format_json(**result))
     elif mode == "plain":
         print(f"id\t{doc_id}\ntab_id\t{selected['id']}\nstatus\tupdated")
@@ -1819,7 +1824,8 @@ def _write_native_markdown(
     return 0
 
 
-def _tab_comment_count(doc_id: str, tabs: list[dict], collapse: bool = False):
+def _tab_comment_count(doc_id: str, tabs: list[dict], collapse: bool = False,
+                       selected: dict | None = None):
     """Anchored comments, open or resolved, a rewrite may detach, counted
     before the write (Drive reports detached comments unchanged afterwards).
 
@@ -1829,7 +1835,12 @@ def _tab_comment_count(doc_id: str, tabs: list[dict], collapse: bool = False):
     otherwise every anchored comment in the document counts, marked inexact.
     """
     from gdoc.api.comments import list_comments
+    from gdoc.api.docs import get_tab_text
 
+    # A tab with no text holds no anchor, so filling a new tab never counts.
+    if (not collapse and selected is not None
+            and not get_tab_text(selected).strip()):
+        return 0, True
     anchored = [c for c in list_comments(doc_id, include_anchor=True)
                 if c.get("anchor")]
     return len(anchored), len(tabs) <= 1 or collapse

@@ -3305,19 +3305,33 @@ _INSERT_INHERITED_FIELDS = ("indentStart", "indentFirstLine", "borderBottom")
 def check_tab_body_replacement(
     tab: dict, *, allow_lossy: bool = False, discard_suggestions: bool = False,
     comments: int = 0, comments_exact: bool = True, where: str | None = None,
+    deleting: bool = False,
 ):
     """Refuse native losses within one tab body before it is replaced.
 
     ``tab`` is a flattened tab (``body`` and ``lists`` keys). Lists live
     beside the body; only definitions used by its paragraphs (including
-    cells) are inspected, not header/footer-only lists.
+    cells) are inspected, not header/footer-only lists. A tab being
+    ``deleting`` is inspected whole: headers, footers and footnotes too.
     """
     from gdoc.lossy import check_markdown_replacement
 
+    if deleting:
+        scope = tab
+        removed = {key: tab[key] for key in ("headers", "footers", "footnotes")
+                   if key in tab}
+    else:
+        scope = _tab_replacement_scope(tab)
+        # Deleting a footnote reference deletes the footnote with it.
+        referenced = set(re.findall(r'"footnoteId": "([^"]+)"',
+                                    json.dumps(tab.get("body", {}))))
+        removed = {key: value for key, value in tab.get("footnotes", {}).items()
+                   if key in referenced}
     return check_markdown_replacement(
-        _tab_replacement_scope(tab), tab_body=True, allow_lossy=allow_lossy,
+        scope, tab_body=True, allow_lossy=allow_lossy,
         discard_suggestions=discard_suggestions, comments=comments,
-        comments_exact=comments_exact, where=where)
+        comments_exact=comments_exact, where=where, removed=removed,
+        deleting=deleting)
 
 
 # Not content a Markdown read omits: suggestions have their own read notes.

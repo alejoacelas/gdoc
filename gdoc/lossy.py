@@ -291,7 +291,9 @@ class RewriteLosses:
         if self.content:
             result["content"] = self.content
         if self.suggestions:
-            result["pending_suggestions"] = max(self.suggestions, 1)
+            # -1: the scan found suggestions it could not count.
+            result["pending_suggestions"] = (
+                self.suggestions if self.suggestions > 0 else "uncounted")
         if self.comments:
             result["comments"] = self.comments
             result["comments_scope"] = "tab" if self.comments_exact else "document"
@@ -306,8 +308,13 @@ class RewriteLosses:
         return result
 
 
-def rewrite_losses(scope: dict, *, tab_body: bool = False) -> RewriteLosses:
-    """The loss inventory of rewriting *scope* from its Markdown."""
+def rewrite_losses(scope: dict, *, tab_body: bool = False,
+                   removed: dict | None = None) -> RewriteLosses:
+    """The loss inventory of rewriting *scope* from its Markdown.
+
+    *removed* holds further segments the rewrite deletes (the footnotes its
+    body references); their pending suggestions count too.
+    """
     from gdoc.api.docs import pending_suggestion_ids
 
     extent: dict = {}
@@ -322,10 +329,13 @@ def rewrite_losses(scope: dict, *, tab_body: bool = False) -> RewriteLosses:
         else:
             rows.append((label, sum(key[0] == "paragraph" for key in keys),
                          "paragraphs"))
-    suggestions = 0
-    if SUGGESTIONS in hazards:
-        # A suggestion the ID scan cannot count still refuses: -1 is "some".
-        suggestions = len(pending_suggestion_ids(scope.get("body", scope))) or -1
+    # Style-metadata suggestions are not content the scan reports.
+    ids = (pending_suggestion_ids(scope.get("body", scope))
+           if SUGGESTIONS in hazards else set()) | (
+        pending_suggestion_ids(removed) if removed else set())
+    suggestions = len(ids)
+    if SUGGESTIONS in hazards and not suggestions:
+        suggestions = -1  # found by the scan but not countable: "some"
     return RewriteLosses(
         content=sorted(hazards - {SUGGESTIONS}), suggestions=suggestions,
         protected_styles=[r for r in rows if r[0] in PROTECTED_STYLES],
@@ -339,7 +349,8 @@ def check_markdown_replacement(
     scope: dict, *, tab_body: bool = False, allow_lossy: bool = False,
     discard_suggestions: bool = False, comments: int = 0,
     comments_exact: bool = True, policy: str | None = None,
-    where: str | None = None,
+    where: str | None = None, removed: dict | None = None,
+    deleting: bool = False,
 ) -> RewriteLosses:
     """Refuse or report what rewriting *scope* from Markdown would lose.
 
@@ -357,7 +368,7 @@ def check_markdown_replacement(
     from gdoc.util import get_rewrite_policy
 
     level = policy or get_rewrite_policy()
-    losses = rewrite_losses(scope, tab_body=tab_body)
+    losses = rewrite_losses(scope, tab_body=tab_body, removed=removed)
     losses.comments, losses.comments_exact = comments, comments_exact
     where = where or (
         "the selected tab body" if tab_body else "the whole document")
@@ -367,15 +378,19 @@ def check_markdown_replacement(
     if blocked:
         needed = "markdown" if protected else "formatting"
         flags = []
-        if needed == "markdown" and losses.content:
+        if needed == "markdown" and losses.content and not deleting:
             flags.append("--allow-lossy")
         if needed == "markdown" and losses.suggestions:
             flags.append("--discard-suggestions")
         raise GdocError(
             f"Markdown replacement refused by rewrite policy '{level}': "
-            f"rewriting {where} would lose " + "; ".join(blocked)
-            + ". No content was written. " + _targeted_advice(losses) + " "
-            + REWRITE_COST + f". Rewrite policy '{needed}' would allow it"
+            + (f"--force-collapse-tabs deleting {where}" if deleting
+               else f"rewriting {where}")
+            + " would lose " + "; ".join(blocked)
+            + ". No content was written. "
+            + ("" if deleting else _targeted_advice(losses) + " " + REWRITE_COST
+               + ". ")
+            + f"Rewrite policy '{needed}' would allow it"
             + (" with " + " and ".join(flags) if flags else "") + ". "
             + POLICY_HELP,
             exit_code=3,
@@ -390,6 +405,14 @@ def check_markdown_replacement(
         missing.append("pass --discard-suggestions to discard collaborators' "
                        "pending suggestions (--allow-lossy does not cover them)")
     if missing:
+        if deleting:
+            raise GdocError(
+                f"Markdown replacement refused: {where}, which "
+                "--force-collapse-tabs deletes, contains " + ", ".join(found)
+                + ". No content was written. Accept or reject the suggestions "
+                "in Docs first, or " + " and ".join(missing) + ".",
+                exit_code=3,
+            )
         raise GdocError(
             f"Markdown replacement refused: {where} contains "
             + ", ".join(found) + ". No content was written. "
@@ -398,6 +421,11 @@ def check_markdown_replacement(
             "conflicts; --force-collapse-tabs only allows tab collapse.",
             exit_code=3,
         )
+    if deleting and losses:
+        print(f"WARN: --force-collapse-tabs deletes {where}, discarding "
+              + "; ".join(losses.protected() + losses.formatting()),
+              file=sys.stderr)
+        return losses
     for line in _warnings(losses):
         print("WARN: " + line, file=sys.stderr)
     return losses
@@ -522,9 +550,11 @@ def markdown_hazards(
                             continue
                     if text_style[field] in (None, False, {}):
                         continue
+                    # Reconstruction writes code in Courier New, so only
+                    # that family survives; Consolas and others change.
                     if field == "weightedFontFamily" and value["textStyle"][field].get(
                         "fontFamily",
-                    ) in ("Courier New", "Consolas", "monospace"):
+                    ) == "Courier New":
                         continue
                     note(label, paragraph)
             paragraph_style = value.get("paragraphStyle", {})

@@ -728,12 +728,16 @@ that loses, prints it on stderr (MCP notes) and returns it as `losses` in
   paragraphs`. Image rotation, brightness, contrast, transparency, borders and
   alt text reset too, and numbered lists restart at 1.
 - **Comments** anchored in the tab detach. Drive does not say which tab a
-  comment is in, so in a multi-tab document gdoc counts comments whose quoted
-  text is in the tab or in no tab, and says the count is by quoted text.
+  comment is in, and a comment's quoted text can be out of date, so in a
+  multi-tab document gdoc counts every anchored comment in the document and
+  says so.
 - **Image crop** is lost; the image shows its uncropped original.
 - **Collaborators' pending suggestions** are discarded.
 - **Rich content** Markdown cannot show (chips, footnotes and the rest listed
   above) is discarded.
+
+`--force-collapse-tabs` deletes the other tabs; the same policy and
+`--discard-suggestions` apply to what they hold.
 
 The rewrite policy sets the most a changed rewrite may lose. It is one global
 setting that CLI and MCP both read: `gdoc config --rewrite-policy LEVEL` saves it

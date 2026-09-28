@@ -3304,7 +3304,7 @@ _INSERT_INHERITED_FIELDS = ("indentStart", "indentFirstLine", "borderBottom")
 
 def check_tab_body_replacement(
     tab: dict, *, allow_lossy: bool = False, discard_suggestions: bool = False,
-    comments: int = 0, comments_exact: bool = True,
+    comments: int = 0, comments_exact: bool = True, where: str | None = None,
 ):
     """Refuse native losses within one tab body before it is replaced.
 
@@ -3317,7 +3317,7 @@ def check_tab_body_replacement(
     return check_markdown_replacement(
         _tab_replacement_scope(tab), tab_body=True, allow_lossy=allow_lossy,
         discard_suggestions=discard_suggestions, comments=comments,
-        comments_exact=comments_exact)
+        comments_exact=comments_exact, where=where)
 
 
 # Not content a Markdown read omits: suggestions have their own read notes.

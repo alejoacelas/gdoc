@@ -190,3 +190,54 @@ def test_mcp_cannot_change_the_policy():
     assert "gdoc_config" not in tools
     assert not any("rewrite_policy" in json.dumps(tool["inputSchema"])
                    for tool in tools.values())
+
+
+SUGGESTED_SIBLING = {
+    "tabProperties": {"tabId": "t.notes", "title": "Notes", "index": 1},
+    "documentTab": {"body": {"content": [
+        {"startIndex": 0, "endIndex": 1, "sectionBreak": {}},
+        {"startIndex": 1, "endIndex": 7, "paragraph": {
+            "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
+            "elements": [{"startIndex": 1, "endIndex": 7, "textRun": {
+                "content": "Notes\n",
+                "suggestedInsertionIds": ["suggest.collaborator"]}}]}},
+    ]}},
+}
+
+
+def collapse(interface, monkeypatch, tmp_path, level, flags):
+    base = tmp_path / f"{interface}-{len(list(tmp_path.iterdir()))}"
+    base.mkdir()
+    monkeypatch.setattr(state, "STATE_DIR", base / "state")
+    monkeypatch.setenv("GDOC_REWRITE_POLICY", level)
+    route = NativeRoute(interface, monkeypatch, base)
+    service = route.service = NativeService(
+        _plain(), extra_tabs=[json.loads(json.dumps(SUGGESTED_SIBLING))])
+    code, output, error = route.call(
+        "write", text="Alpha.\nBeta, revised.\n", force=True,
+        force_collapse_tabs=True, **flags)
+    lines = [line for line in (output + "\n" + error).splitlines()
+             if line.startswith(("ERR:", "WARN:"))]
+    return code, lines, service
+
+
+@pytest.mark.parametrize("level", LEVELS)
+@pytest.mark.parametrize("discard", [False, True])
+def test_collapse_checks_the_tabs_it_deletes(monkeypatch, tmp_path, level,
+                                             discard):
+    """--force-collapse-tabs covers deleting content, not the policy ceiling
+    or collaborators' pending suggestions in the deleted tabs."""
+    flags = {"discard_suggestions": True} if discard else {}
+    cli = collapse("cli", monkeypatch, tmp_path, level, flags)
+    via_mcp = collapse("mcp", monkeypatch, tmp_path, level, flags)
+    shown = [line for line in cli[1] if not cli[0] or line.startswith("ERR:")]
+    assert shown == via_mcp[1]
+    allowed = level == "markdown" and discard
+    for code, lines, service in (cli, via_mcp):
+        text = "\n".join(lines)
+        assert "collaborators' pending suggestions (1)" in text
+        assert "tab 'Notes', which --force-collapse-tabs deletes" in text or allowed
+        if allowed:
+            assert code == 0 and service.extra_tabs == []
+        else:
+            assert code != 0 and service.batches == []

@@ -1737,13 +1737,25 @@ def _write_native_markdown(
         omitted=", ".join(_read_omissions([selected])),
     )
     details = {}
-    comments, comments_exact = _tab_comment_count(doc_id, tabs, selected)
+    comments, comments_exact = _tab_comment_count(doc_id, tabs, collapse)
     consent = {
         "allow_lossy": getattr(args, "allow_lossy", False),
         "discard_suggestions": getattr(args, "discard_suggestions", False),
     }
     if comments:
         consent.update(comments=comments, comments_exact=comments_exact)
+    if collapse and len(tabs) > 1:
+        # Collapse deletes every other tab. Its consent covers their content,
+        # not the rewrite policy or collaborators' pending suggestions, so
+        # each is checked before the first tab is replaced.
+        from gdoc.api.docs import check_tab_body_replacement
+
+        for sibling in tabs[1:]:
+            check_tab_body_replacement(
+                sibling, allow_lossy=True,
+                discard_suggestions=consent["discard_suggestions"],
+                where=f"tab {sibling['title']!r}, which --force-collapse-tabs "
+                      "deletes,")
     if tab_name:
         details = insert_markdown_into_tab(
             doc_id, selected["id"], content, replace=True, document=document,
@@ -1807,36 +1819,20 @@ def _write_native_markdown(
     return 0
 
 
-def _tab_comment_count(doc_id: str, tabs: list[dict], selected: dict):
-    """Comments, open or resolved, anchored in *selected*, counted before a
-    rewrite detaches them (Drive reports them unchanged afterwards).
+def _tab_comment_count(doc_id: str, tabs: list[dict], collapse: bool = False):
+    """Anchored comments, open or resolved, a rewrite may detach, counted
+    before the write (Drive reports detached comments unchanged afterwards).
 
-    Drive names a comment's anchor but not its tab. In a one-tab document
-    every anchored comment is in that tab; otherwise a comment counts when
-    its quoted text is in the selected tab or in no tab (its text may have
-    changed since), and the count is marked inexact.
+    Drive names a comment's anchor but not its tab, and a comment's quoted
+    text can be stale, so neither places a comment in a tab. In a one-tab
+    document, or when a collapse rewrites every tab, the count is exact;
+    otherwise every anchored comment in the document counts, marked inexact.
     """
     from gdoc.api.comments import list_comments
-    from gdoc.api.docs import get_tab_text
-    from gdoc.util import fold_unicode_spaces
 
     anchored = [c for c in list_comments(doc_id, include_anchor=True)
                 if c.get("anchor")]
-    if len(tabs) <= 1 or not anchored:
-        return len(anchored), True
-
-    def text(tab):
-        return " ".join(fold_unicode_spaces(get_tab_text(tab)).split())
-
-    mine = text(selected)
-    others = [text(tab) for tab in tabs if tab["id"] != selected["id"]]
-    count = 0
-    for comment in anchored:
-        quote = " ".join(fold_unicode_spaces(
-            comment.get("quotedFileContent", {}).get("value", "")).split())
-        if not quote or quote in mine or not any(quote in o for o in others):
-            count += 1
-    return count, False
+    return len(anchored), len(tabs) <= 1 or collapse
 
 
 def _without_inline_objects(tab: dict) -> dict:

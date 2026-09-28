@@ -438,6 +438,13 @@ class NativeService:
                                 "requiredRevisionId": f"r{service.revision}"}}
                 replies = []
                 for request in body["requests"]:
+                    if "deleteTab" in request:
+                        doomed = request["deleteTab"]["tabId"]
+                        service.extra_tabs = [
+                            t for t in service.extra_tabs
+                            if t["tabProperties"]["tabId"] != doomed]
+                        replies.append({})
+                        continue
                     service.doc.apply(request)
                     if "insertInlineImage" in request:
                         replies.append({"insertInlineImage": {

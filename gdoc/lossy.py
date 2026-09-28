@@ -244,9 +244,9 @@ class RewriteLosses:
         if self.comments_exact:
             return (_plural(self.comments, "comment")
                     + " anchored in the tab (open or resolved)")
-        return (_plural(self.comments, "comment") + " whose quoted text is in "
-                "the tab (open or resolved; Drive does not say which tab a "
-                "comment is anchored in)")
+        return (_plural(self.comments, "anchored comment") + " in the "
+                "document (open or resolved; Drive does not say which tab a "
+                "comment is in)")
 
     def style_text(self, rows=None) -> str:
         return ", ".join(
@@ -261,7 +261,9 @@ class RewriteLosses:
         if self.suggestions:
             items.append(self.suggestion_text())
         if self.comments:
-            items.append(self.comment_text() + ", which will detach")
+            items.append(self.comment_text() + (
+                ", which will detach" if self.comments_exact
+                else "; those in this tab will detach"))
         if self.protected_styles:
             items.append(self.style_text(self.protected_styles)
                          + " (the image shows its uncropped original)")
@@ -327,6 +329,7 @@ def check_markdown_replacement(
     scope: dict, *, tab_body: bool = False, allow_lossy: bool = False,
     discard_suggestions: bool = False, comments: int = 0,
     comments_exact: bool = True, policy: str | None = None,
+    where: str | None = None,
 ) -> RewriteLosses:
     """Refuse or report what rewriting *scope* from Markdown would lose.
 
@@ -346,7 +349,8 @@ def check_markdown_replacement(
     level = policy or get_rewrite_policy()
     losses = rewrite_losses(scope, tab_body=tab_body)
     losses.comments, losses.comments_exact = comments, comments_exact
-    where = "the selected tab body" if tab_body else "the whole document"
+    where = where or (
+        "the selected tab body" if tab_body else "the whole document")
     protected, formatting = losses.protected(), losses.formatting()
     blocked = (protected + formatting if level == "strict"
                else protected if level == "formatting" else [])
@@ -401,8 +405,11 @@ def _warnings(losses: RewriteLosses) -> list[str]:
         lines.append("Markdown replacement will discard "
                      + losses.suggestion_text() + " and keep the text as shown")
     if losses.comments:
-        lines.append("Markdown replacement will detach " + losses.comment_text()
-                     + "; Docs will show them as \"Original content deleted\"")
+        lines.append("Markdown replacement will detach "
+                     + ("" if losses.comments_exact
+                        else "the comments anchored in this tab among ")
+                     + losses.comment_text()
+                     + "; Docs shows them as \"Original content deleted\"")
     if losses.protected_styles:
         lines.append("Markdown replacement drops "
                      + losses.style_text(losses.protected_styles)

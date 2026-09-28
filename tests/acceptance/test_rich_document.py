@@ -263,5 +263,5 @@ def test_default_rewrite_reports_extent_comments_and_numbering(rich):
     assert losses["pending_suggestions"] == 1
     assert "starts at 5" in losses["numbering"][0]
     assert "font family on 10 of 10 paragraphs" in error
-    assert "will detach 2 comments" in error
+    assert "among 2 anchored comments in the document" in error
     sibling_untouched(rich)

@@ -380,6 +380,11 @@ def check_markdown_replacement(
 
     level = policy or get_rewrite_policy()
     losses = rewrite_losses(scope, tab_body=tab_body, removed=removed)
+    if deleting:
+        # Deleting a tab removes its headers, footers and footnotes too.
+        losses.content = sorted(set(losses.content) | {
+            key for key in ("headers", "footers", "footnotes")
+            if (removed or {}).get(key)})
     losses.comments, losses.comments_exact = comments, comments_exact
     where = where or (
         "the selected tab body" if tab_body else "the whole document")
@@ -574,6 +579,12 @@ def markdown_hazards(
                        for key, default in _IMPORT_PAGE_SETUP.items()):
                     hazards.add("page setup "
                                 "(import resets page size, margins or page mode)")
+            for field in ("bold", "italic", "strikethrough"):
+                # Markdown spells emphasis, not its removal from text whose
+                # named style is emphasised.
+                if value.get("textStyle", {}).get(field) is False and (
+                        overrides_default("textStyle", field, False, paragraph)):
+                    note("emphasis removed from a named style", paragraph)
             for field, label in _TEXT_STYLE_LOSSES.items():
                 if field in value.get("textStyle", {}):
                     text_style = value["textStyle"]

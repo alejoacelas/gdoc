@@ -978,3 +978,35 @@ def test_table_row_and_cell_settings_are_style_losses(row_style, cell_style, lab
             check_markdown_replacement(scope, tab_body=True, policy="strict")
     else:
         check_markdown_replacement(scope, tab_body=True, policy="strict")
+
+
+def test_removing_a_named_styles_bold_is_a_loss():
+    from gdoc.api.docs import check_tab_body_replacement
+
+    tab = {"body": {"content": [{"paragraph": {
+        "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
+        "elements": [{"textRun": {"content": "Alpha\n",
+                                  "textStyle": {"bold": False}}}]}}]},
+        "namedStyles": {"styles": [{"namedStyleType": "NORMAL_TEXT",
+                                    "textStyle": {"bold": True}}]}}
+    with pytest.raises(GdocError, match="emphasis removed from a named style"):
+        check_tab_body_replacement(tab, policy="strict")
+    tab["namedStyles"]["styles"][0]["textStyle"] = {}
+    check_tab_body_replacement(tab, policy="strict")
+
+
+@pytest.mark.parametrize("policy", ["strict", "formatting"])
+def test_deleting_a_tab_with_a_header_is_a_loss(policy):
+    from gdoc.api.docs import check_tab_body_replacement
+
+    tab = {"title": "Notes", "body": {"content": [{"paragraph": {"elements": [
+        {"textRun": {"content": "Notes\n"}}]}}]},
+        "headers": {"h": {"content": [{"paragraph": {"elements": [
+            {"textRun": {"content": "Legal notice\n"}}]}}]}}}
+    with pytest.raises(GdocError, match="would lose headers"):
+        check_tab_body_replacement(tab, allow_lossy=True, deleting=True,
+                                   where="tab 'Notes'", policy=policy)
+    losses = check_tab_body_replacement(tab, allow_lossy=True, deleting=True,
+                                        where="tab 'Notes'", policy="markdown")
+    assert losses.to_json() == {"content": ["headers"]}
+    check_tab_body_replacement(tab, policy=policy)  # a body rewrite keeps it

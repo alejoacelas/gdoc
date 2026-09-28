@@ -2006,8 +2006,10 @@ def _final_paragraph_reset(content, position, placeholder, tab_id):
 
 # What an `edit` refusal says a suggested rewrite costs (see gdoc.lossy).
 _REWRITE_ROUTE_COST = (
-    "which deletes and reinserts the whole tab: direct styles reset, comments "
-    "anchored in the tab detach, and the rewrite policy may refuse it"
+    "which deletes and reinserts the whole tab: direct styles and heading IDs "
+    "reset, comments anchored in the tab detach, image crops, pending "
+    "suggestions and rich content need consent, and the rewrite policy may "
+    "refuse it"
 )
 
 
@@ -3336,6 +3338,11 @@ def check_tab_body_replacement(
                                     json.dumps(tab.get("body", {}))))
         removed = {key: value for key, value in tab.get("footnotes", {}).items()
                    if key in referenced}
+        # Positioned objects anchored in the body go with it.
+        body_json = json.dumps(tab.get("body", {}))
+        removed.update({key: value for key, value in
+                        tab.get("positionedObjects", {}).items()
+                        if json.dumps(key) in body_json})
     return check_markdown_replacement(
         scope, tab_body=True, allow_lossy=allow_lossy,
         discard_suggestions=discard_suggestions, comments=comments,

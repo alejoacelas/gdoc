@@ -2232,7 +2232,8 @@ def cmd_sync_hook(args) -> int:
             _hook_notice(data, f"SYNC: skipped {file_path} (replacement safety "
                                f"check: {error})")
             return 0
-        _refresh_file_revision(file_path, content, write_result)
+        with redirect_stderr(warnings):
+            _refresh_file_revision(file_path, content, write_result)
         pushed = f"SYNC: pushed to {metadata.get('title', doc_id)!r}"
         if warnings.lines:
             # Claude Code shows the agent only additionalContext on exit 0.
@@ -3952,14 +3953,18 @@ def cmd_config(args) -> int:
 
     from gdoc.format import format_json, get_output_mode
     from gdoc.util import (
-        _load_config,
+        _require_readable_config,
         get_default_page_mode,
+        get_rewrite_policy,
         set_default_page_mode,
         set_rewrite_policy,
     )
 
     mode = get_output_mode(args)
     page_mode = getattr(args, "page_mode", None)
+    if page_mode or getattr(args, "rewrite_policy", None):
+        # Saving rewrites the whole file; never drop keys a bad file hides.
+        _require_readable_config()
     if page_mode:
         set_default_page_mode(page_mode)
         # Human confirmation to stderr; the value itself is echoed to stdout
@@ -3972,9 +3977,8 @@ def cmd_config(args) -> int:
     if rewrite_policy:
         set_rewrite_policy(rewrite_policy)
         print(f"OK rewrite_policy set to: {rewrite_policy}", file=sys.stderr)
-    # Shown as configured, unvalidated, so a bad value can be seen and fixed.
-    policy = (os.environ.get("GDOC_REWRITE_POLICY")
-              or _load_config().get("rewrite_policy") or "markdown")
+    # The level writes will use; a bad value or file refuses here as there.
+    policy = get_rewrite_policy()
     if os.environ.get("GDOC_REWRITE_POLICY") and rewrite_policy:
         print("NOTE: GDOC_REWRITE_POLICY overrides the saved rewrite_policy",
               file=sys.stderr)

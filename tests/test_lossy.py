@@ -1196,3 +1196,18 @@ def test_heading_ids_are_reported_and_counted():
     with pytest.raises(GdocError, match="the IDs of 1 heading"):
         check_markdown_replacement(scope, tab_body=True, policy="strict")
     check_markdown_replacement(scope, tab_body=True, policy="formatting")
+
+
+def test_suggestions_on_a_removed_positioned_object_need_their_own_consent():
+    from gdoc.api.docs import check_tab_body_replacement
+
+    tab = {"body": {"content": [{"paragraph": {
+        "positionedObjectIds": ["obj1"],
+        "elements": [{"textRun": {"content": "Alpha\n"}}]}}]},
+        "positionedObjects": {"obj1": {
+            "positionedObjectProperties": {"embeddedObject": {}},
+            "suggestedPositionedObjectPropertiesChanges": {"suggest.crop": {}}}}}
+    with pytest.raises(GdocError, match=r"pending suggestions \(1\)"):
+        check_tab_body_replacement(tab, allow_lossy=True, policy="markdown")
+    check_tab_body_replacement(tab, allow_lossy=True, discard_suggestions=True,
+                               policy="markdown")

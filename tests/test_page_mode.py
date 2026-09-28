@@ -485,3 +485,74 @@ def test_saving_config_replaces_the_file_atomically(monkeypatch, tmp_path):
     monkeypatch.setattr(util, "CONFIG_PATH", tmp_path / "config.json")
     util.set_rewrite_policy("strict")
     assert [p.name for p in tmp_path.iterdir()] == ["config.json"]
+
+
+@pytest.mark.parametrize("value", [False, 0, [], {}, "", None, "typo"])
+def test_a_set_but_invalid_policy_refuses(monkeypatch, tmp_path, value):
+    """Only an absent key selects the default."""
+    import json
+
+    from gdoc import util
+    from gdoc.util import GdocError
+
+    config = tmp_path / "config.json"
+    config.write_text(json.dumps({"rewrite_policy": value}))
+    monkeypatch.setattr(util, "CONFIG_PATH", config)
+    monkeypatch.setattr(util, "_load_config", lambda: json.loads(config.read_text()))
+    monkeypatch.delenv("GDOC_REWRITE_POLICY", raising=False)
+    with pytest.raises(GdocError, match="Invalid rewrite policy"):
+        util.get_rewrite_policy()
+
+
+BROKEN = '{"default_account": "work", "rewrite_policy": "strict",}'
+
+
+def _config_cli(monkeypatch, tmp_path, argv, content=BROKEN):
+    import contextlib
+    import io
+
+    from gdoc import cli, util
+
+    config = tmp_path / "config.json"
+    config.write_text(content)
+    monkeypatch.setattr(util, "CONFIG_PATH", config)
+    monkeypatch.delenv("GDOC_REWRITE_POLICY", raising=False)
+    out, err = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        try:
+            code = cli.run_argv(argv, check_updates=False)
+        except SystemExit as exc:
+            code = exc.code
+    return code, out.getvalue() + err.getvalue(), config.read_text()
+
+
+@pytest.mark.parametrize("argv", [["config"], ["config", "--rewrite-policy",
+                                               "markdown"],
+                                  ["config", "--page-mode", "paged"]])
+def test_config_refuses_a_broken_file_and_keeps_it(monkeypatch, tmp_path, argv):
+    """Neither showing nor saving hides or wipes a file that does not parse."""
+    code, output, saved = _config_cli(monkeypatch, tmp_path, argv)
+    assert code == 3 and "cannot read the rewrite policy" in output
+    assert saved == BROKEN
+
+
+def test_saving_config_writes_through_a_symlink(monkeypatch, tmp_path):
+    import json
+    import os
+
+    from gdoc import util
+
+    target = tmp_path / "dotfiles" / "config.json"
+    target.parent.mkdir()
+    target.write_text('{"default_account": "work"}')
+    os.chmod(target, 0o644)
+    link = tmp_path / "config.json"
+    link.symlink_to(target)
+    monkeypatch.setattr(util, "CONFIG_PATH", link)
+    monkeypatch.setattr(util, "_load_config",
+                        lambda: json.loads(link.read_text()))
+    util.set_rewrite_policy("strict")
+    assert link.is_symlink()
+    assert json.loads(target.read_text()) == {
+        "default_account": "work", "rewrite_policy": "strict"}
+    assert target.stat().st_mode & 0o777 == 0o644

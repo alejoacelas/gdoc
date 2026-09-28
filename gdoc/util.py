@@ -130,12 +130,16 @@ def _save_config(config: dict) -> None:
     import os
     import tempfile
 
-    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    handle, temporary = tempfile.mkstemp(dir=CONFIG_PATH.parent, suffix=".tmp")
+    # Write through a symlink (a dotfiles-managed config) and keep the mode.
+    target = CONFIG_PATH.resolve()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    mode = target.stat().st_mode & 0o777 if target.exists() else 0o644
+    handle, temporary = tempfile.mkstemp(dir=target.parent, suffix=".tmp")
     try:
         with os.fdopen(handle, "w") as file:
             file.write(json.dumps(config, indent=2, sort_keys=True) + "\n")
-        os.replace(temporary, CONFIG_PATH)
+        os.chmod(temporary, mode)
+        os.replace(temporary, target)
     except BaseException:
         try:
             os.unlink(temporary)
@@ -195,6 +199,29 @@ def set_default_page_mode(mode: str) -> None:
 REWRITE_POLICIES = ("strict", "formatting", "markdown")
 
 
+def _require_readable_config() -> None:
+    """Refuse when the config file exists but does not parse.
+
+    Other settings fall back to defaults on a bad file; the rewrite policy is
+    a safety ceiling, so reading or saving it refuses instead of loosening it
+    or overwriting the file's other keys.
+    """
+    if not CONFIG_PATH.exists():
+        return
+    try:
+        data = json.loads(CONFIG_PATH.read_text())
+    except (json.JSONDecodeError, OSError, UnicodeDecodeError) as error:
+        problem = str(error)
+    else:
+        if isinstance(data, dict):
+            return
+        problem = "not a JSON object"
+    raise GdocError(
+        f"cannot read the rewrite policy from {CONFIG_PATH} ({problem}); fix "
+        "the file by hand (other settings such as default_account live there "
+        "too), or set GDOC_REWRITE_POLICY.", exit_code=3)
+
+
 def get_rewrite_policy() -> str:
     """The most a changed full-tab rewrite may lose (see gdoc.lossy).
 
@@ -206,22 +233,11 @@ def get_rewrite_policy() -> str:
     import os
 
     value = os.environ.get("GDOC_REWRITE_POLICY")
-    if not value and CONFIG_PATH.exists():
-        # Other settings fall back to defaults on a bad file; the policy is a
-        # safety ceiling, so an unreadable file refuses instead of loosening.
-        try:
-            data = json.loads(CONFIG_PATH.read_text())
-        except (json.JSONDecodeError, OSError, UnicodeDecodeError) as error:
-            raise GdocError(
-                f"cannot read the rewrite policy from {CONFIG_PATH} ({error}); "
-                "fix or remove the file, or set GDOC_REWRITE_POLICY.",
-                exit_code=3) from error
-        if not isinstance(data, dict):
-            raise GdocError(
-                f"cannot read the rewrite policy from {CONFIG_PATH} (not a JSON "
-                "object); fix or remove the file, or set GDOC_REWRITE_POLICY.",
-                exit_code=3)
-    value = value or _load_config().get("rewrite_policy") or "markdown"
+    if not value:
+        _require_readable_config()
+        # Only an absent key selects the default; any set value is validated.
+        config = _load_config()
+        value = config["rewrite_policy"] if "rewrite_policy" in config else "markdown"
     if value not in REWRITE_POLICIES:
         raise GdocError(
             f"Invalid rewrite policy: {value!r}. Use strict, formatting or "
@@ -238,6 +254,7 @@ def set_rewrite_policy(policy: str) -> None:
             f"Invalid rewrite policy: {policy!r}. Use strict, formatting or "
             "markdown.", exit_code=3,
         )
+    _require_readable_config()
     config = _load_config()
     config["rewrite_policy"] = policy
     _save_config(config)

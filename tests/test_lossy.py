@@ -1164,3 +1164,19 @@ def test_zero_list_indents_and_numbering_formats(paragraph_style, level, lost):
             check_markdown_replacement(scope, tab_body=True, policy="strict")
     else:
         check_markdown_replacement(scope, tab_body=True, policy="strict")
+
+
+def test_a_link_coloured_like_its_named_style_is_a_loss():
+    """Reconstruction sets only the URL, so Docs draws the link blue."""
+    from gdoc.api.docs import check_tab_body_replacement
+
+    colour = {"color": {"rgbColor": {"red": 0.8}}}
+    tab = {"body": {"content": [{"paragraph": {
+        "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
+        "elements": [{"textRun": {"content": "site\n", "textStyle": {
+            "link": {"url": "https://example.org"},
+            "foregroundColor": colour}}}]}}]},
+        "namedStyles": {"styles": [{"namedStyleType": "NORMAL_TEXT",
+                                    "textStyle": {"foregroundColor": colour}}]}}
+    with pytest.raises(GdocError, match="colour on 1 of 1 paragraph"):
+        check_tab_body_replacement(tab, policy="strict")

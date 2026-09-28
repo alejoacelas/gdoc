@@ -674,8 +674,12 @@ def markdown_hazards(
 
                     code_font = field == "weightedFontFamily" and (
                         text_style[field].get("fontFamily") in _MONOSPACE_FONTS)
-                    if not code_font and text_style[field] == named_default(
-                            "textStyle", field, paragraph):
+                    # A link is drawn in link blue whatever its named style.
+                    link_style = text_style.get("link") and field in (
+                        "foregroundColor", "underline")
+                    if not code_font and not link_style and (
+                            text_style[field] == named_default(
+                                "textStyle", field, paragraph)):
                         continue
                     note(label, paragraph)
             paragraph_style = value.get("paragraphStyle", {})

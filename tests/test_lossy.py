@@ -1068,3 +1068,33 @@ def test_hand_set_list_indentation_is_a_loss(indent, lost):
             check_markdown_replacement(scope, tab_body=True, policy="strict")
     else:
         check_markdown_replacement(scope, tab_body=True, policy="strict")
+
+
+@pytest.mark.parametrize("first_line,lost", [(18, False), (5, True)])
+def test_hand_set_list_first_line_indent_is_a_loss(first_line, lost):
+    scope = {"body": {"content": [{"paragraph": {
+        "bullet": {"listId": "L", "nestingLevel": 0},
+        "paragraphStyle": {"namedStyleType": "NORMAL_TEXT",
+                           "indentStart": {"magnitude": 36, "unit": "PT"},
+                           "indentFirstLine": {"magnitude": first_line,
+                                               "unit": "PT"}},
+        "elements": [{"textRun": {"content": "item\n"}}]}}]},
+        "lists": {"L": {"listProperties": {"nestingLevels": [
+            {"glyphSymbol": "●"}] * 9}}}}
+    if lost:
+        with pytest.raises(GdocError, match="list indentation on 1 of 1"):
+            check_markdown_replacement(scope, tab_body=True, policy="strict")
+    else:
+        check_markdown_replacement(scope, tab_body=True, policy="strict")
+
+
+def test_suggestions_in_referenced_list_definitions_are_counted():
+    from gdoc.lossy import rewrite_losses
+
+    scope = {"body": {"content": [{"paragraph": {
+        "bullet": {"listId": "L"},
+        "elements": [{"textRun": {"content": "item\n",
+                                  "suggestedInsertionIds": ["body"]}}]}}]},
+        "lists": {"L": {"listProperties": {"nestingLevels": []},
+                        "suggestedListPropertiesChanges": {"list": {}}}}}
+    assert rewrite_losses(scope, tab_body=True).suggestions == 2

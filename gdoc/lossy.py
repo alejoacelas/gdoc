@@ -104,19 +104,22 @@ def _link_blue(colour: dict) -> bool:
                for key, value in zip(("red", "green", "blue"), _LINK_BLUE))
 
 
-def _custom_list_indent(paragraph: dict, indent: dict, lists: dict) -> bool:
-    """Whether a list item's start indent is not the 36pt per level that
-    reconstruction gives the nesting Markdown reads from it."""
+def _custom_list_indent(paragraph: dict, field: str, lists: dict) -> bool:
+    """Whether a list item's indent differs from what reconstruction gives
+    the nesting Markdown reads from it: 36pt per level, hanging 18pt."""
     from gdoc.api.docs import _indent_nesting_level
 
+    style = paragraph.get("paragraphStyle", {})
+    indent = style.get(field)
     if not isinstance(indent, dict) or indent.get("unit", "PT") != "PT":
         return False
     bullet = paragraph["bullet"]
     definitions = lists.get(bullet.get("listId"), {}).get(
         "listProperties", {}).get("nestingLevels", [])
-    level = _indent_nesting_level(bullet.get("nestingLevel", 0), indent,
-                                  definitions)
-    return abs(indent.get("magnitude", 0) - 36 * (level + 1)) > 0.5
+    level = _indent_nesting_level(
+        bullet.get("nestingLevel", 0), style.get("indentStart", {}), definitions)
+    expected = 36 * (level + 1) - (18 if field == "indentFirstLine" else 0)
+    return abs(indent.get("magnitude", 0) - expected) > 0.5
 
 
 def _indented(paragraph: dict) -> bool:
@@ -356,7 +359,10 @@ def rewrite_losses(scope: dict, *, tab_body: bool = False,
             rows.append((label, sum(key[0] == "paragraph" for key in keys),
                          "paragraphs"))
     # Style-metadata suggestions are not content the scan reports.
-    ids = (pending_suggestion_ids(scope.get("body", scope))
+    affected = {key: value for key, value in scope.items() if key not in (
+        "namedStyles", "documentStyle", "suggestedNamedStylesChanges",
+        "suggestedDocumentStyleChanges")}
+    ids = (pending_suggestion_ids(affected)
            if SUGGESTIONS in hazards else set()) | (
         pending_suggestion_ids(removed) if removed else set())
     suggestions = len(ids)
@@ -658,9 +664,9 @@ def markdown_hazards(
                     continue
                 # gdoc's own container ranges explain a quoted or nested
                 # list item's extra indent; reconstruction restores it.
-                if field == "indentStart" and "bullet" in value and not (
-                        supported_prefix) and _custom_list_indent(
-                        value, setting, lists):
+                if field in ("indentStart", "indentFirstLine") and (
+                        "bullet" in value) and not supported_prefix and (
+                        _custom_list_indent(value, field, lists)):
                     note("list indentation", paragraph)
                     continue
                 if field in ("indentStart", "indentFirstLine") and (

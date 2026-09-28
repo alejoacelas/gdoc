@@ -29,7 +29,7 @@ def test_push_transports_only_body_with_native_snapshot(native_write, doc, body)
         body,
         expected_version=10,
         document=env.document,
-        allow_lossy=False,
+        allow_lossy=False, discard_suggestions=False,
         collapse_tabs=False,
         result_details=env.details,
         image_aliases={},
@@ -139,7 +139,7 @@ def test_push_default_preserves_sibling_and_tab_frontmatter_selects_it(native_wr
         "second",
         "Scoped change",
         replace=True,
-        allow_lossy=False,
+        allow_lossy=False, discard_suggestions=False,
         document=env.document,
         image_aliases={},
     )

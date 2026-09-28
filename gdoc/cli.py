@@ -468,8 +468,8 @@ def _note_omissions(omitted: list[str]) -> None:
         print(
             "NOTE: this Markdown leaves out native content: "
             + ", ".join(omitted) + ". `gdoc structure` shows it; targeted "
-            "edits keep it, and a rewrite of the tab needs --allow-lossy and "
-            "discards it.", file=sys.stderr,
+            "edits keep it. A rewrite of the tab discards it and needs rewrite "
+            "policy 'markdown' plus --allow-lossy.", file=sys.stderr,
         )
 
 
@@ -1737,19 +1737,25 @@ def _write_native_markdown(
         omitted=", ".join(_read_omissions([selected])),
     )
     details = {}
+    comments, comments_exact = _tab_comment_count(doc_id, tabs, selected)
+    consent = {
+        "allow_lossy": getattr(args, "allow_lossy", False),
+        "discard_suggestions": getattr(args, "discard_suggestions", False),
+    }
+    if comments:
+        consent.update(comments=comments, comments_exact=comments_exact)
     if tab_name:
         details = insert_markdown_into_tab(
-            doc_id, selected["id"], content, replace=True,
-            allow_lossy=getattr(args, "allow_lossy", False), document=document,
-            image_aliases=aliases,
+            doc_id, selected["id"], content, replace=True, document=document,
+            image_aliases=aliases, **consent,
         )
         from gdoc.api.drive import version_after_write
         version = version_after_write(doc_id)
     else:
         version = update_doc_content(
             doc_id, content, expected_version=expected_version, document=document,
-            allow_lossy=getattr(args, "allow_lossy", False),
             collapse_tabs=collapse, result_details=details, image_aliases=aliases,
+            **consent,
         )
     acknowledged = details.get("acknowledged_revision_id", "")
     if result_details is not None:
@@ -1790,6 +1796,8 @@ def _write_native_markdown(
             result["version"] = version
         if command == "push":
             result["file"] = args.file
+        if details.get("losses"):
+            result["losses"] = details["losses"]
         print(format_json(**result))
     elif mode == "plain":
         print(f"id\t{doc_id}\ntab_id\t{selected['id']}\nstatus\tupdated")
@@ -1797,6 +1805,38 @@ def _write_native_markdown(
         verb = "pushed" if command == "push" else "written"
         print(f"OK {verb} tab {selected['title']!r} ({selected['id']})")
     return 0
+
+
+def _tab_comment_count(doc_id: str, tabs: list[dict], selected: dict):
+    """Comments, open or resolved, anchored in *selected*, counted before a
+    rewrite detaches them (Drive reports them unchanged afterwards).
+
+    Drive names a comment's anchor but not its tab. In a one-tab document
+    every anchored comment is in that tab; otherwise a comment counts when
+    its quoted text is in the selected tab or in no tab (its text may have
+    changed since), and the count is marked inexact.
+    """
+    from gdoc.api.comments import list_comments
+    from gdoc.api.docs import get_tab_text
+    from gdoc.util import fold_unicode_spaces
+
+    anchored = [c for c in list_comments(doc_id, include_anchor=True)
+                if c.get("anchor")]
+    if len(tabs) <= 1 or not anchored:
+        return len(anchored), True
+
+    def text(tab):
+        return " ".join(fold_unicode_spaces(get_tab_text(tab)).split())
+
+    mine = text(selected)
+    others = [text(tab) for tab in tabs if tab["id"] != selected["id"]]
+    count = 0
+    for comment in anchored:
+        quote = " ".join(fold_unicode_spaces(
+            comment.get("quotedFileContent", {}).get("value", "")).split())
+        if not quote or quote in mine or not any(quote in o for o in others):
+            count += 1
+    return count, False
 
 
 def _without_inline_objects(tab: dict) -> dict:
@@ -1845,9 +1885,10 @@ def _note_pending_suggestions(tabs: list[dict]) -> None:
         print(
             f"NOTE: tab {tab['title']!r} has {count} pending "
             f"suggestion{'s' if count != 1 else ''}; the Markdown shows its "
-            "text without them. Resolve them in Docs (accept or reject) before "
-            "rewriting the tab; a rewrite with --allow-lossy instead discards "
-            "them and keeps the text as shown.",
+            "text without them. Targeted edits outside them keep them; resolve "
+            "them in Docs (accept or reject) before rewriting the tab. A "
+            "rewrite discards collaborators' pending suggestions only under "
+            "rewrite policy 'markdown' with --discard-suggestions.",
             file=sys.stderr,
         )
         gaps = suggestion_preview_gaps(tab)
@@ -2134,7 +2175,8 @@ def cmd_sync_hook(args) -> int:
 
         hook_args = SimpleNamespace(
             file=file_path, quiet=True, force=False, force_collapse_tabs=False,
-            allow_lossy=False, json=False, verbose=False, plain=False,
+            allow_lossy=False, discard_suggestions=False, json=False,
+            verbose=False, plain=False,
         )
         write_result = {}
         try:
@@ -3862,8 +3904,15 @@ def _insert_images(doc_id: str, images) -> None:
 
 def cmd_config(args) -> int:
     """Handler for `gdoc config`."""
+    import os
+
     from gdoc.format import format_json, get_output_mode
-    from gdoc.util import get_default_page_mode, set_default_page_mode
+    from gdoc.util import (
+        _load_config,
+        get_default_page_mode,
+        set_default_page_mode,
+        set_rewrite_policy,
+    )
 
     mode = get_output_mode(args)
     page_mode = getattr(args, "page_mode", None)
@@ -3875,12 +3924,23 @@ def cmd_config(args) -> int:
         current = page_mode
     else:
         current = get_default_page_mode()
+    rewrite_policy = getattr(args, "rewrite_policy", None)
+    if rewrite_policy:
+        set_rewrite_policy(rewrite_policy)
+        print(f"OK rewrite_policy set to: {rewrite_policy}", file=sys.stderr)
+    # Shown as configured, unvalidated, so a bad value can be seen and fixed.
+    policy = (os.environ.get("GDOC_REWRITE_POLICY")
+              or _load_config().get("rewrite_policy") or "markdown")
+    if os.environ.get("GDOC_REWRITE_POLICY") and rewrite_policy:
+        print("NOTE: GDOC_REWRITE_POLICY overrides the saved rewrite_policy",
+              file=sys.stderr)
 
     if mode == "json":
-        print(format_json(page_mode=current))
+        print(format_json(page_mode=current, rewrite_policy=policy))
     else:
         # None = unset; the doc's mode is left to the create path.
         print(f"page_mode\t{current or 'unset'}")
+        print(f"rewrite_policy\t{policy}")
     return 0
 
 
@@ -4246,6 +4306,21 @@ def cmd_mcp(args) -> int:
     return server.serve()
 
 
+# One line each for help and MCP tool descriptions: what a rewrite resets.
+_REWRITE_RESETS = (
+    "A changed write or push deletes and reinserts the whole tab: direct "
+    "fonts, colours, sizes, spacing and other styles Markdown cannot show "
+    "reset to the document's heading and body styles, comments anchored in "
+    "the tab can detach, and rich content and pending suggestions need "
+    "consent. The rewrite policy (`gdoc config --rewrite-policy`) caps what "
+    "it may lose."
+)
+_TARGETED_KEEPS = (
+    "Unlike write/push, which deletes and reinserts the whole tab and resets "
+    "direct styles, this changes only its target and keeps everything else."
+)
+
+
 def build_parser() -> GdocArgumentParser:
     """Build the CLI argument parser with all subcommands."""
     parser = GdocArgumentParser(
@@ -4379,6 +4454,15 @@ def build_parser() -> GdocArgumentParser:
         help="Default page mode for docs created by `gdoc new` "
         "(unset = inherit the account default; markdown imports stay paged; "
         "applies to all accounts)",
+    )
+    config_p.add_argument(
+        "--rewrite-policy", choices=["strict", "formatting", "markdown"],
+        help="The most a changed write/push may lose when it rewrites a tab. "
+        "strict: nothing Markdown cannot show. formatting (recommended): "
+        "direct styles may reset; comments, suggestions and rich content "
+        "refuse. markdown (default): anything, with --allow-lossy for rich "
+        "content and --discard-suggestions for suggestions. GDOC_REWRITE_POLICY "
+        "overrides it; MCP reads the same setting and cannot change it",
     )
     config_p.set_defaults(func=cmd_config)
 
@@ -4564,7 +4648,8 @@ def build_parser() -> GdocArgumentParser:
                "removes their bullets and sets NORMAL_TEXT; an empty replacement "
                "leaves one NORMAL_TEXT paragraph. Markdown list markers request "
                "a list. "
-               "Plain prose in non-list cells preserves paragraph styles.",
+               "Plain prose in non-list cells preserves paragraph styles. "
+               + _TARGETED_KEEPS,
     )
     edit_p.add_argument("doc", help="Document ID or URL")
     edit_p.add_argument("old_text", nargs="?", default=None, help="Text to find")
@@ -4621,7 +4706,7 @@ def build_parser() -> GdocArgumentParser:
                "covers complete paragraphs rejects headings, lists, and "
                "tables. Needs comment or edit access on the "
                "doc and an OAuth client from a preview-enrolled Cloud "
-               "project; never falls back to a direct edit.",
+               "project; never falls back to a direct edit. " + _TARGETED_KEEPS,
     )
     suggest_p.add_argument("doc", help="Document ID or URL")
     suggest_p.add_argument(
@@ -4731,6 +4816,9 @@ def build_parser() -> GdocArgumentParser:
             "prints: each line is one paragraph and each blank line is an "
             "empty paragraph, so write paragraphs as single lines."
         ),
+        epilog="Prefer targeted commands: `edit` for wording, `insert` to "
+               "add at the start or end, `edit --cell`, `insert-image`, "
+               "`replace-image` and `suggest`. " + _REWRITE_RESETS,
     )
     write_p.add_argument("doc", help="Document ID or URL")
     write_p.add_argument("file", help="Local markdown file")
@@ -4744,8 +4832,14 @@ def build_parser() -> GdocArgumentParser:
     )
     write_p.add_argument(
         "--allow-lossy", action="store_true",
-        help="Knowingly discard native/rich content Markdown cannot preserve; "
-             "does not bypass conflicts or permit tab collapse",
+        help="Knowingly discard native/rich content Markdown cannot preserve "
+             "(only under rewrite policy 'markdown'); does not cover pending "
+             "suggestions, bypass conflicts or permit tab collapse",
+    )
+    write_p.add_argument(
+        "--discard-suggestions", action="store_true",
+        help="Knowingly discard collaborators' pending suggestions in the "
+             "rewritten tab (only under rewrite policy 'markdown')",
     )
     write_p.add_argument(
         "--force", action="store_true", help="Bypass write conflicts only"
@@ -4765,6 +4859,7 @@ def build_parser() -> GdocArgumentParser:
             "before upload. As with `write`, each line is one paragraph "
             "and each blank line is an empty paragraph."
         ),
+        epilog=_TARGETED_KEEPS,
     )
     insert_p.add_argument("doc", help="Document ID or URL")
     insert_p.add_argument("file", help="Local markdown file")
@@ -4802,12 +4897,21 @@ def build_parser() -> GdocArgumentParser:
     pull_p.set_defaults(func=cmd_pull)
 
     # push
-    push_p = sub.add_parser("push", parents=[output_parent], help="Upload local markdown to doc")
+    push_p = sub.add_parser(
+        "push", parents=[output_parent], help="Upload local markdown to doc",
+        epilog=_REWRITE_RESETS,
+    )
     push_p.add_argument("file", help="Local file with gdoc frontmatter")
     push_p.add_argument(
         "--allow-lossy", action="store_true",
-        help="Knowingly discard native/rich content Markdown cannot preserve; "
-             "does not bypass conflicts or permit tab collapse",
+        help="Knowingly discard native/rich content Markdown cannot preserve "
+             "(only under rewrite policy 'markdown'); does not cover pending "
+             "suggestions, bypass conflicts or permit tab collapse",
+    )
+    push_p.add_argument(
+        "--discard-suggestions", action="store_true",
+        help="Knowingly discard collaborators' pending suggestions in the "
+             "rewritten tab (only under rewrite policy 'markdown')",
     )
     push_p.add_argument(
         "--force", action="store_true", help="Bypass write conflicts only"

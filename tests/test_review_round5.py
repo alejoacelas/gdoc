@@ -249,7 +249,7 @@ def test_rich_table_styling_warns_before_a_rewrite(capsys, cell_style,
     check_markdown_replacement({"body": {"content": [table]}}, tab_body=True)
     err = capsys.readouterr().err
     if warning:
-        assert f"may reset styles: {warning}" in err
+        assert f"resets direct styles: {warning} on 1 table" in err
     else:
         assert "table" not in err
 

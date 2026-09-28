@@ -163,7 +163,8 @@ def update_doc_content(
     doc_id: str, content: str, *, expected_version: int | None = None,
     document: dict | None = None, allow_lossy: bool = False,
     collapse_tabs: bool = False, result_details: dict | None = None,
-    image_aliases: dict | None = None,
+    image_aliases: dict | None = None, discard_suggestions: bool = False,
+    comments: int = 0, comments_exact: bool = True,
 ) -> int | None:
     """Replace the first tab using the exact guard snapshot's Docs revision.
 
@@ -196,6 +197,8 @@ def update_doc_content(
     result = insert_markdown_into_tab(
         doc_id, tabs[0]["id"], content, replace=True,
         allow_lossy=allow_lossy, document=document, image_aliases=image_aliases,
+        discard_suggestions=discard_suggestions, comments=comments,
+        comments_exact=comments_exact,
     )
     with _StagedWrite(doc_id, applied=["first tab content replaced"]) as progress:
         if collapse_tabs and len(tabs) > 1:

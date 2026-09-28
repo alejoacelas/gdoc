@@ -254,8 +254,8 @@ def require_content_baseline(
             raise GdocError(
                 "the last read of the selected tab left out native content"
                 + (f" ({omitted})" if omitted else "")
-                + ". Pass --allow-lossy to discard it, or use targeted edits "
-                "to keep it.", exit_code=3,
+                + ". Targeted edits keep it; a rewrite discards it and needs "
+                "rewrite policy 'markdown' plus --allow-lossy.", exit_code=3,
             )
         if not (complete or limited):
             raise GdocError(

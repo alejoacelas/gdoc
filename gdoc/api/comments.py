@@ -57,7 +57,7 @@ def list_comments(
                 comment_fields = (
                     "id, content, author(displayName, emailAddress), "
                     "resolved, createdTime, modifiedTime, "
-                    "quotedFileContent(value), "
+                    "anchor, quotedFileContent(value), "
                     "replies(author(displayName, emailAddress), createdTime, "
                     "modifiedTime, content, action)"
                 )

@@ -50,7 +50,8 @@ class TestSyncHookBasic:
         assert rc == 0
         mock_update_doc.assert_called_once_with(
             "abc123", "# Hello\n", expected_version=1, document=ANY,
-            allow_lossy=False, collapse_tabs=False, result_details=ANY,
+            allow_lossy=False, discard_suggestions=False, collapse_tabs=False,
+            result_details=ANY,
             image_aliases={},
         )
         err = capsys.readouterr().err
@@ -70,7 +71,8 @@ class TestSyncHookBasic:
             cmd_sync_hook(args)
         mock_update_doc.assert_called_once_with(
             "abc123", "Body text", expected_version=1, document=ANY,
-            allow_lossy=False, collapse_tabs=False, result_details=ANY,
+            allow_lossy=False, discard_suggestions=False, collapse_tabs=False,
+            result_details=ANY,
             image_aliases={},
         )
 
@@ -176,7 +178,8 @@ class TestSyncHookMultiTabSafety:
             assert cmd_sync_hook(_make_args()) == 0
         write.assert_called_once_with(
             "abc123", "# Hello\n", expected_version=1, document=document,
-            allow_lossy=False, collapse_tabs=False, result_details=ANY,
+            allow_lossy=False, discard_suggestions=False, collapse_tabs=False,
+            result_details=ANY,
             image_aliases={},
         )
 

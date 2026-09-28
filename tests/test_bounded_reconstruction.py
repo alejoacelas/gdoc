@@ -207,7 +207,10 @@ def test_styles_warn_once_with_specific_losses(capsys):
         }}}] * 2,
     }}]}, tab_body=True)
     assert capsys.readouterr().err == (
-        "WARN: Markdown replacement may reset styles: alignment, colour, line spacing\n"
+        "WARN: Markdown replacement resets direct styles: alignment on 1 of 1 "
+        "paragraph, colour on 1 of 1 paragraph, line spacing on 1 of 1 paragraph\n"
+        "WARN: Targeted commands (`edit`, `insert`, `edit --cell`, "
+        "`insert-image`, `replace-image`, `suggest`) keep these.\n"
     )
 
 

@@ -29,6 +29,7 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=short"
+markers = ["comment_count: use the real pre-rewrite comment count"]
 
 [tool.ruff]
 target-version = "py310"

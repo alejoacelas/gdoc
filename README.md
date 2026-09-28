@@ -748,7 +748,7 @@ variable overrides it. MCP cannot change it, and per-call flags never exceed it.
 
 | Level | A changed rewrite may lose |
 | --- | --- |
-| `strict` | Nothing on the list above. |
+| `strict` | Nothing the inventory above detects. It is not a guarantee for native properties the inventory does not read. |
 | `formatting` (recommended) | Direct styles, image adjustments and alt text, and numbering starts, with a warning. Comments, image crop, suggestions and rich content refuse. |
 | `markdown` (default) | Anything, with a warning. Rich content still needs `--allow-lossy` and suggestions still need `--discard-suggestions` on each call. |
 

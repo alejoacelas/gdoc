@@ -142,6 +142,13 @@ All notable changes to `gdoc` are documented here. This project follows
   lookup. Markdown `export` and `pull` name the tab they read. Sync hooks
   report skips to the agent, identical local replacements leave the file in
   place, and comment anchors no longer match through escapes in code.
+### Changed
+- **`gdoc mcp` warms up at startup.** While the client initializes, a
+  background thread imports the Google client, refreshes the access token,
+  builds the Drive and Docs services and opens the Drive connection. The
+  first tool call of a session waits for it instead of repeating that work;
+  on a hosted server this saves about 0.5 s on that call. The warm-up is
+  skipped when the account has no token and never reports errors itself.
 
 ## [0.21.0] — 2026-08-26
 

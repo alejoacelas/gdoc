@@ -18,7 +18,8 @@ All notable changes to `gdoc` are documented here. This project follows
   paragraphs each affects (`font family on 38 of 40 paragraphs`), comments
   anchored in the tab (counted before the write, since Drive reports them
   unchanged afterwards), image crop and other image adjustments, alt text,
-  numbering starts, pending suggestions and rich content. `--json` output
+  numbering starts, pending suggestions and rich content (a collapse's
+  warnings about the tabs it deletes print once the write succeeds). `--json` output
   carries the same inventory as `losses`, and a collapse lists each deleted
   tab's losses as `deleted_tab_losses`. `comments --json` includes each
   comment's `anchor`.

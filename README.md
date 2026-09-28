@@ -758,7 +758,8 @@ comments, suggestions, crops and rich content now; it is planned to become the
 default once `edit` can split paragraphs and gdoc can insert after a text anchor
 and move sections, so fewer tasks need a rewrite. Because Drive cannot place a
 comment in a tab, `formatting` refuses a rewrite of any tab in a multi-tab
-document that has an anchored comment anywhere, resolved or open.
+document that has an anchored comment anywhere, resolved or open. Filling a new,
+empty tab is not refused.
 
 ```bash
 gdoc config --rewrite-policy formatting

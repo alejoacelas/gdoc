@@ -202,11 +202,12 @@ gdoc cat 1aBcDeFg...
 | `edit DOC OLD NEW` | Find and replace text with Markdown formatting, including text inside tables (`--all` for all; `--normalize` to match through smart quotes/dashes; `-` reads an argument from stdin) |
 | `edit DOC --cell ADDR NEW` | Replace a table cell by label or `ROW,COL` coordinates (`--col`, `--table`) |
 | `suggest DOC OLD NEW` | Same find-and-replace as `edit`, made as a **suggested edit** the doc's reviewers accept or reject (same `--all`/`--normalize`/`--case-sensitive`/`--tab`/`--old-file`/`--new-file`/`-` flags; inline Markdown only — see below) |
-| `write DOC FILE` | Replace the first tab from Markdown; `--tab NAME` selects another tab and siblings survive |
-| `cells SHEET RANGE` | Write values into a spreadsheet range (`-v VALUE` per cell, `--file rows.csv`, `--stdin` for TSV; `--append` adds rows, `--user-entered` parses formulas/dates) |
-| `new TITLE` | Create a blank document (`--folder` to specify location, `--file` to import markdown with images) |
+| `insert DOC FILE --tab NAME` | Add Markdown at the start (default) or end (`--position end`) of a tab without touching its existing content |
 | `insert-image DOC IMG` | Insert a local image or public URL (`--after TEXT`, `--index N`, or `--end`; `--tab` for multi-tab docs; `--width`/`--height` in points) |
 | `replace-image DOC ID IMG` | Swap an image's content in place, keeping its size (IDs from `gdoc images`) |
+| `write DOC FILE` | Replace the first tab from Markdown; `--tab NAME` selects another tab and siblings survive. Deletes and reinserts the whole tab: see [what a rewrite resets](#what-a-rewrite-resets) |
+| `cells SHEET RANGE` | Write values into a spreadsheet range (`-v VALUE` per cell, `--file rows.csv`, `--stdin` for TSV; `--append` adds rows, `--user-entered` parses formulas/dates) |
+| `new TITLE` | Create a blank document (`--folder` to specify location, `--file` to import markdown with images) |
 | `cp DOC TITLE` | Duplicate a document |
 
 ### Revisions & diffs
@@ -395,8 +396,20 @@ most three previews, with an omitted count and a command for full details.
 
 ### Editable Markdown and revision safety
 
-CLI and MCP share the same handlers and content contract. Read a complete tab,
-modify its Markdown, then replace that tab:
+CLI and MCP share the same handlers and content contract. Prefer targeted
+commands: they change only their target and keep direct fonts, colours,
+comments, suggestions and rich content everywhere else.
+
+- `edit DOC OLD NEW` changes wording, including merging paragraphs.
+- `edit DOC --cell ADDR NEW` replaces one table cell.
+- `suggest DOC OLD NEW` proposes a change for reviewers.
+- `insert DOC FILE --tab NAME` adds Markdown at the start or end of a tab.
+- `insert-image` and `replace-image` add or swap images.
+
+Splitting paragraphs, moving sections, changing a paragraph's block type and
+reshaping tables still need a full-tab rewrite, which deletes and reinserts the
+whole tab ([what a rewrite resets](#what-a-rewrite-resets)). Read a complete
+tab, modify its Markdown, then replace that tab:
 
 ```bash
 gdoc cat DOC --max-bytes 0 > draft.md
@@ -425,7 +438,8 @@ lists, headings, rules and indented paragraphs inside table cells), `cat`, `pull
 Markdown `export` name it on stderr, and JSON reports `complete: false` with an
 `omitted` list. Such a read records only limited coverage of its revision:
 targeted edits and `insert` keep the omitted content and proceed, and a rewrite of
-the tab needs `--allow-lossy` to discard it while staying revision-protected. `pull` and Markdown
+the tab needs the `markdown` rewrite policy and `--allow-lossy` to discard it while
+staying revision-protected. `pull` and Markdown
 `export` use the same native serializer as `cat`.
 
 `write` and `insert` accept at most one leading metadata block: `pull` frontmatter
@@ -669,17 +683,20 @@ cell's wording with `edit --cell` to keep them. Lists around and beside tables,
 and tables inside list items and quotes, are supported Markdown and never need
 consent.
 
-A changed tab rewrite deletes and reinserts the tab's body, so comments anchored in
-it can lose their anchors even where the text is unchanged; targeted edits touch
-only the replaced wording.
+A changed tab rewrite detaches every comment anchored in the tab, open or
+resolved, even on unchanged text: Docs lists them as "Original content deleted".
+The Drive API reports them unchanged afterwards, so gdoc counts them before the
+write. Targeted edits keep a comment unless they replace or delete all of its
+anchored text.
 
 Markdown reads show a tab's text without its pending suggestions: suggested
 insertions are left out and wording suggested for deletion stays. `cat` notes on
 stderr how many suggestions are pending (`scope.pending_suggestions` with `--json`).
 Writing that text back unchanged sends nothing. Resolve the suggestions in Docs
 (accept or reject them) before a changed rewrite; otherwise it is refused unless
-`--allow-lossy` is given, which discards the suggestions and keeps the text as read,
-never applying them as direct edits. When a suggested paragraph break joins
+`--discard-suggestions` is given (under the `markdown` rewrite policy), which
+discards collaborators' pending suggestions and keeps the text as read, never
+applying them as direct edits. `--allow-lossy` does not cover suggestions. When a suggested paragraph break joins
 paragraphs of a different style, list or code/quote container, gdoc cannot
 reliably render that paragraph from the inline suggestion view, so it marks the
 read incomplete (`scope.complete` is false, with `scope.suggestion_preview_gaps`);
@@ -693,11 +710,53 @@ names each changed tab (`tab ID: N`, or `tabs` in JSON).
 gdoc write DOC draft.md --tab Notes --allow-lossy
 ```
 
-Known style resets produce a concise warning. `--allow-lossy` accepts identified
-rich-feature losses; it does not bypass revision conflicts. Automatic sync uses the
-same native tab and revision checks and reports a skip when it cannot safely write.
-The inventory is not a promise of pixel-perfect formatting or detection of properties
-Google does not expose.
+`--allow-lossy` accepts identified rich-feature losses; it does not bypass
+revision conflicts. Automatic sync uses the same native tab and revision checks
+and reports a skip when it cannot safely write. The inventory is not a promise of
+pixel-perfect formatting or detection of properties Google does not expose.
+
+### What a rewrite resets
+
+A changed `write`, `push`, sync-hook push or MCP `write` deletes and reinserts the
+whole selected tab. Before it sends anything, gdoc takes one inventory of what
+that loses, prints it on stderr (MCP notes) and returns it as `losses` in
+`--json` output:
+
+- **Direct styles**: fonts, colours, sizes, highlights, spacing, alignment,
+  indentation, table styling and list glyphs set on the text reset to the
+  document's heading and body styles, for example `font family on 38 of 40
+  paragraphs`. Image rotation, brightness, contrast, transparency, borders and
+  alt text reset too, and numbered lists restart at 1.
+- **Comments** anchored in the tab detach. Drive does not say which tab a
+  comment is in, so in a multi-tab document gdoc counts comments whose quoted
+  text is in the tab or in no tab, and says the count is by quoted text.
+- **Image crop** is lost; the image shows its uncropped original.
+- **Collaborators' pending suggestions** are discarded.
+- **Rich content** Markdown cannot show (chips, footnotes and the rest listed
+  above) is discarded.
+
+The rewrite policy sets the most a changed rewrite may lose. It is one global
+setting that CLI and MCP both read: `gdoc config --rewrite-policy LEVEL` saves it
+as the `rewrite_policy` config key, and the `GDOC_REWRITE_POLICY` environment
+variable overrides it. MCP cannot change it, and per-call flags never exceed it.
+
+| Level | A changed rewrite may lose |
+| --- | --- |
+| `strict` | Nothing on the list above. |
+| `formatting` (recommended) | Direct styles, image adjustments and alt text, and numbering starts, with a warning. Comments, image crop, suggestions and rich content refuse. |
+| `markdown` (default) | Anything, with a warning. Rich content still needs `--allow-lossy` and suggestions still need `--discard-suggestions` on each call. |
+
+The default `markdown` keeps earlier behavior. Use `formatting` to protect
+comments, suggestions, crops and rich content now; it is planned to become the
+default once `edit` can split paragraphs and gdoc can insert after a text anchor
+and move sections, so fewer tasks need a rewrite.
+
+```bash
+gdoc config --rewrite-policy formatting
+```
+
+A refusal lists what would be lost, names the targeted command that avoids the
+loss, and says which level would allow the rewrite.
 
 ## Spreadsheets
 

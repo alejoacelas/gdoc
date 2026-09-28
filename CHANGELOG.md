@@ -14,7 +14,29 @@ All notable changes to `gdoc` are documented here. This project follows
   `--allow-lossy` permits that loss independently of revision conflicts and
   explicit sibling-tab collapse. Supported Markdown needs no loss override.
 
+- Changed `write`, `push`, sync-hook pushes and MCP `write` report what
+  rewriting the tab loses before sending anything: direct styles with how many
+  paragraphs each affects (`font family on 38 of 40 paragraphs`), comments
+  anchored in the tab (counted before the write, since Drive reports them
+  unchanged afterwards), image crop and other image adjustments, alt text,
+  numbering starts, pending suggestions and rich content. `--json` output
+  carries the same inventory as `losses`.
+- A rewrite policy caps what a changed rewrite may lose: `strict`,
+  `formatting` (recommended) or `markdown` (default, earlier behavior). Set it
+  with `gdoc config --rewrite-policy` (config key `rewrite_policy`) or
+  `GDOC_REWRITE_POLICY`; CLI and MCP share it, MCP cannot change it and
+  per-call flags never exceed it. `formatting` protects comments, image crop,
+  pending suggestions and rich content now and is planned to become the
+  default once `edit` splits paragraphs and gdoc can insert after a text anchor
+  and move sections.
+- Refusals and help name the targeted command first and a rewrite last, with
+  what it resets.
+
 ### Changed
+
+- **Discarding collaborators' pending suggestions needs `--discard-suggestions`
+  (MCP `discard_suggestions`).** `--allow-lossy` alone no longer discards them;
+  pass both flags when a tab has suggestions and rich content.
 
 - Default `write` and `push` read Markdown in gdoc's format instead of Google's
   Markdown import, as `write --tab` and `insert` already did: each line is one

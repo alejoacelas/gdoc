@@ -139,8 +139,9 @@ def _list_marker_changes(paragraph: dict, lists: dict) -> bool:
         return False
     level = definitions[native]
     ordered = _list_is_ordered(lists, list_id, native)
-    # Reconstruction keeps the native level (a deeper Markdown level that gdoc
-    # wrote as its own indented list is native level 0 again).
+    # Compare at the native level: Docs resets a separately created nested
+    # list to level 0 and keeps its indent (see _indent_nesting_level), so a
+    # rewrite recreates an indented level-0 item with its level-0 marker.
     expected = _PRESET_MARKERS[ordered][native % 3]
     if ordered:
         actual = level.get("glyphType", "GLYPH_TYPE_UNSPECIFIED")

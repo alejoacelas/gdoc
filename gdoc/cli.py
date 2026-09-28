@@ -4332,7 +4332,7 @@ _REWRITE_RESETS = (
     "A changed write or push deletes and reinserts the whole tab: direct "
     "fonts, colours, sizes, spacing and other styles Markdown cannot show "
     "reset to the document's heading and body styles, comments anchored in "
-    "the tab can detach, and rich content and pending suggestions need "
+    "the tab detach, and rich content and pending suggestions need "
     "consent. The rewrite policy (`gdoc config --rewrite-policy`) caps what "
     "it may lose."
 )

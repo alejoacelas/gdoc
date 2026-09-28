@@ -578,8 +578,8 @@ splits the block around it. A replacement inside code is literal text (`*`, link
 and `#` stay characters); inside inline code in prose, a replacement written as one
 code span such as `` `name` `` uses that span's content. Tab replacements remove gdoc's old ranges. Other named
 ranges (for example from add-ons) are named as omitted by reads; targeted edits
-leave them alone, and a rewrite of their tab needs `--allow-lossy` because it
-deletes the text they mark. Edits made in Docs take precedence over these ranges: a
+leave them alone, and a rewrite of their tab needs the `markdown` rewrite policy and
+`--allow-lossy` because it deletes the text they mark. Edits made in Docs take precedence over these ranges: a
 paragraph inside a code range that has become a heading or list item, or carries an
 image, link or emphasis, is read as ordinary Markdown, and a paragraph whose quote or
 list indent was removed is read without that container. Plain text typed or merged
@@ -664,7 +664,7 @@ These are documented shortfalls, not claims of full support.
 
 `write` and `push` inspect the selected body, including table cells, before mutation.
 Ordinary supported Markdown needs no `--allow-lossy`. Chips, footnotes, equations,
-generated contents, pending suggestions, internal native links, linked Sheets
+generated contents, internal native links, linked Sheets
 charts (a rewrite keeps only their rendered image), drawings, custom named
 ranges, complex tables,
 table cells aligned unlike their column's header cell, and section/layout boundaries may require explicit loss consent. Rich content in

@@ -324,3 +324,17 @@ def test_collapse_warns_about_deleted_tabs_only_after_writing(
     assert code == 0, output + error
     assert "--force-collapse-tabs deletes tab 'Notes', discarding direct styles" in (
         error)
+
+
+def test_config_saves_the_policy_it_later_reads(monkeypatch, tmp_path):
+    from gdoc import util
+
+    monkeypatch.setattr(util, "CONFIG_PATH", tmp_path / "config.json")
+    monkeypatch.delenv("GDOC_REWRITE_POLICY", raising=False)
+    util.set_rewrite_policy("formatting")
+    assert json.loads((tmp_path / "config.json").read_text()) == {
+        "rewrite_policy": "formatting"}
+    # The suite hides a developer's saved policy; read the file directly.
+    monkeypatch.setattr(util, "_load_config", lambda: json.loads(
+        (tmp_path / "config.json").read_text()))
+    assert util.get_rewrite_policy() == "formatting"

@@ -35,12 +35,15 @@ from unittest.mock import Mock
 
 
 class Unit:
-    __slots__ = ("ch", "ts", "ps", "bullet", "kind", "cont")
+    __slots__ = ("ch", "ts", "ps", "bullet", "kind", "cont", "sg")
 
     def __init__(self, ch, ts=None, ps=None, bullet=None, kind="text", cont=False):
         self.ch, self.kind, self.cont = ch, kind, cont
         self.ts, self.ps = dict(ts or {}), dict(ps or {})
         self.bullet = bullet
+        # A pending suggestion on this unit: (field, suggestion ID), where
+        # field is suggestedInsertionIds or suggestedDeletionIds.
+        self.sg = None
 
 
 STRUCTURE = ("tstart", "row", "cell", "tend")
@@ -58,6 +61,8 @@ class NativeDoc:
         self.named = []  # [name, start, end]; name None once deleted
         self.lists = 0
         self.images = 0
+        self.list_starts = {}  # list number -> startNumber of its first level
+        self.suggestions = 0
         blocks = list(blocks) or [("p", "")]
         if blocks[0][0] == "t":
             blocks.insert(0, ("p", ""))
@@ -233,6 +238,34 @@ class NativeDoc:
         self.units[index:index] = [Unit(f"[IMG:{v['uri']}]", self.units[index - 1].ts)]
         self._shift_named(index, 1)
 
+    def op_replace_image(self, v):
+        index = int(v["imageObjectId"][3:])
+        assert self.units[index].ch.startswith("[IMG:"), "replaceImage target"
+        self.units[index].ch = f"[IMG:{v['uri']}]"
+
+    def suggest(self, request, suggestion_id):
+        """Apply one request in suggest mode: text is marked, never removed."""
+        (kind, v), = request.items()
+        if kind == "insertText":
+            index = v["location"]["index"]
+            before = len(self.units)
+            self.op_insert_text(v)
+            for unit in self.units[index:index + len(self.units) - before]:
+                unit.sg = ("suggestedInsertionIds", suggestion_id)
+        elif kind == "deleteContentRange":
+            for unit in self.units[v["range"]["startIndex"]:v["range"]["endIndex"]]:
+                assert unit.kind == "text", "suggested deletion of structure"
+                if unit.sg is None:
+                    unit.sg = ("suggestedDeletionIds", suggestion_id)
+        elif kind == "updateTextStyle":
+            span = v["range"]
+            assert all(unit.sg and unit.sg[0] == "suggestedInsertionIds"
+                       for unit in self.units[span["startIndex"]:span["endIndex"]]), (
+                "suggested style change outside suggested text")
+            self.op_update_text_style(v)
+        else:
+            raise AssertionError(f"{kind} is not modeled in suggest mode")
+
     def op_create_named_range(self, v):
         span = v["range"]
         self._check(span["startIndex"], "named range")
@@ -271,12 +304,13 @@ class NativeDoc:
                 runs.append(["IMG", index, index + 1, unit])
                 index += 1
                 continue
-            key = json.dumps(unit.ts, sort_keys=True)
+            key = json.dumps([unit.ts, unit.sg], sort_keys=True)
             if runs and runs[-1][0] == "T" and runs[-1][4] == key:
                 runs[-1][3].append(unit.ch)
                 runs[-1][2] = index + 1
             else:
-                runs.append(["T", index, index + 1, [unit.ch], key, unit.ts])
+                runs.append(["T", index, index + 1, [unit.ch], key, unit.ts,
+                             unit.sg])
             index += 1
             if unit.ch == "\n":
                 break
@@ -289,9 +323,11 @@ class NativeDoc:
                                  "inlineObjectElement": {"inlineObjectId": object_id,
                                                          "textStyle": run[3].ts}})
             else:
+                text_run = {"content": "".join(run[3]), "textStyle": run[5]}
+                if run[6]:
+                    text_run[run[6][0]] = [run[6][1]]
                 elements.append({"startIndex": run[1], "endIndex": run[2],
-                                 "textRun": {"content": "".join(run[3]),
-                                             "textStyle": run[5]}})
+                                 "textRun": text_run})
         mark = self.units[index - 1]
         paragraph = {"elements": elements, "paragraphStyle": dict(mark.ps)}
         if mark.bullet:
@@ -331,7 +367,11 @@ class NativeDoc:
         for list_id, preset in list_presets.items():
             level = ({"glyphType": "DECIMAL"} if preset.startswith("NUMBERED")
                      else {"glyphSymbol": "●"})
-            lists[list_id] = {"listProperties": {"nestingLevels": [dict(level)] * 9}}
+            levels = [dict(level) for _ in range(9)]
+            start = self.list_starts.get(int(list_id[1:]))
+            if start is not None:
+                levels[0]["startNumber"] = start
+            lists[list_id] = {"listProperties": {"nestingLevels": levels}}
         named = {}
         for k, (name, start, end) in enumerate(self.named):
             if name is not None:
@@ -380,11 +420,31 @@ class NativeService:
 
         class Request:
             def execute(self, **_):
-                required = body.get("writeControl", {}).get("requiredRevisionId")
+                control = body.get("writeControl", {})
+                required = control.get("requiredRevisionId")
                 assert required == f"r{service.revision}", "stale or missing revision"
                 service.batches.append(body["requests"])
+                if control.get("writeMode") == "SUGGEST":
+                    service.doc.suggestions += 1
+                    suggestion = f"suggest.{service.doc.suggestions}"
+                    for request in body["requests"]:
+                        service.doc.suggest(request, suggestion)
+                    service.revision += 1
+                    return {"replies": [{} for _ in body["requests"]],
+                            "commentUpdateState": "ALL_SAVED",
+                            "suggestionResponses": [
+                                {"createdSuggestionIds": [suggestion]}],
+                            "writeControl": {
+                                "requiredRevisionId": f"r{service.revision}"}}
                 replies = []
                 for request in body["requests"]:
+                    if "deleteTab" in request:
+                        doomed = request["deleteTab"]["tabId"]
+                        service.extra_tabs = [
+                            t for t in service.extra_tabs
+                            if t["tabProperties"]["tabId"] != doomed]
+                        replies.append({})
+                        continue
                     service.doc.apply(request)
                     if "insertInlineImage" in request:
                         replies.append({"insertInlineImage": {

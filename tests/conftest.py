@@ -17,6 +17,7 @@ _AUTH_ENV_VARS = [
     "GDOC_CLIENT_CREDENTIALS",
     "GDOC_SETUP_URL",
     "GDOC_AUTH_DOMAIN",
+    "GDOC_REWRITE_POLICY",
 ]
 
 
@@ -25,6 +26,12 @@ def _isolate_auth_env(monkeypatch):
     """Keep developer-machine GDOC_* auth env vars out of the test suite."""
     for var in _AUTH_ENV_VARS:
         monkeypatch.delenv(var, raising=False)
+    # A developer's saved rewrite policy must not change what tests expect.
+    from gdoc import util
+
+    load = util._load_config
+    monkeypatch.setattr(util, "_load_config", lambda: {
+        k: v for k, v in load().items() if k != "rewrite_policy"})
 
 
 @pytest.fixture
@@ -71,3 +78,15 @@ def _block_network(monkeypatch, tmp_path):
 
     monkeypatch.setattr(socket.socket, "connect", denied)
     monkeypatch.setattr(socket, "create_connection", denied)
+
+
+@pytest.fixture(autouse=True)
+def _no_comment_listing(request, monkeypatch):
+    """Unit tests of write paths mock Docs, not Drive comments: a rewrite's
+    comment count is zero unless the test is an acceptance test (which mocks
+    the comments boundary) or asks for the real count."""
+    if ("acceptance" in request.node.nodeid
+            or request.node.get_closest_marker("comment_count")):
+        return
+    monkeypatch.setattr("gdoc.cli._tab_comment_count",
+                        lambda *a, **k: (0, True))

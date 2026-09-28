@@ -50,7 +50,8 @@ class TestSyncHookBasic:
         assert rc == 0
         mock_update_doc.assert_called_once_with(
             "abc123", "# Hello\n", expected_version=1, document=ANY,
-            allow_lossy=False, collapse_tabs=False, result_details=ANY,
+            allow_lossy=False, discard_suggestions=False, collapse_tabs=False,
+            result_details=ANY,
             image_aliases={},
         )
         err = capsys.readouterr().err
@@ -70,7 +71,8 @@ class TestSyncHookBasic:
             cmd_sync_hook(args)
         mock_update_doc.assert_called_once_with(
             "abc123", "Body text", expected_version=1, document=ANY,
-            allow_lossy=False, collapse_tabs=False, result_details=ANY,
+            allow_lossy=False, discard_suggestions=False, collapse_tabs=False,
+            result_details=ANY,
             image_aliases={},
         )
 
@@ -176,7 +178,8 @@ class TestSyncHookMultiTabSafety:
             assert cmd_sync_hook(_make_args()) == 0
         write.assert_called_once_with(
             "abc123", "# Hello\n", expected_version=1, document=document,
-            allow_lossy=False, collapse_tabs=False, result_details=ANY,
+            allow_lossy=False, discard_suggestions=False, collapse_tabs=False,
+            result_details=ANY,
             image_aliases={},
         )
 
@@ -312,3 +315,40 @@ def test_refused_sync_reaches_the_agent_as_hook_context(mock_update, tmp_path, c
     assert context["hookEventName"] == "PostToolUse"
     assert "SYNC: skipped" in context["additionalContext"] and str(f) in err
     assert f.read_text().endswith("Agent edit\n")
+
+
+@pytest.mark.parametrize("level,refused", [
+    ("strict", True), ("formatting", False), ("markdown", False)])
+def test_sync_obeys_the_rewrite_policy(mocker, tmp_path, capsys, monkeypatch,
+                                       level, refused):
+    """The hook shares write's policy: direct styles refuse only at strict."""
+    monkeypatch.setenv("GDOC_REWRITE_POLICY", level)
+    f = tmp_path / "spec.md"
+    f.write_text("---\ngdoc: abc123\ngdoc-revision: r1\n---\nBody", encoding="utf-8")
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "revisionId": "r1", "tabs": [{
+            "tabProperties": {"tabId": "main", "title": "Main"},
+            "documentTab": {"body": {"content": [
+                {"startIndex": 1, "endIndex": 5, "paragraph": {"elements": [
+                    {"startIndex": 1, "endIndex": 5, "textRun": {
+                        "content": "Old\n", "textStyle": {"weightedFontFamily": {
+                            "fontFamily": "Georgia"}}}},
+                ]}},
+            ]}},
+        }],
+    })
+    service = mocker.patch("gdoc.api.docs.get_docs_service")
+    batch = service.return_value.documents.return_value.batchUpdate
+    batch.return_value.execute.return_value = {
+        "writeControl": {"requiredRevisionId": "r2"}}
+    mocker.patch("gdoc.state.update_state_after_command")
+    with patch("sys.stdin", _stdin_json(str(f))):
+        assert cmd_sync_hook(_make_args()) == 0
+    err = capsys.readouterr().err
+    if refused:
+        batch.assert_not_called()
+        assert "refused by rewrite policy 'strict'" in err
+        assert "font family on 1 of 1 paragraph" in err
+    else:
+        batch.assert_called()
+        assert "resets direct styles: font family on 1 of 1 paragraph" in err

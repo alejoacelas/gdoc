@@ -179,6 +179,42 @@ def set_default_page_mode(mode: str) -> None:
     _save_config(config)
 
 
+REWRITE_POLICIES = ("strict", "formatting", "markdown")
+
+
+def get_rewrite_policy() -> str:
+    """The most a changed full-tab rewrite may lose (see gdoc.lossy).
+
+    ``GDOC_REWRITE_POLICY`` overrides the ``rewrite_policy`` config key. The
+    default is ``markdown``; ``formatting`` is recommended and is planned to
+    become the default. An unknown value refuses rather than silently
+    allowing a rewrite.
+    """
+    import os
+
+    value = os.environ.get("GDOC_REWRITE_POLICY") or _load_config().get(
+        "rewrite_policy") or "markdown"
+    if value not in REWRITE_POLICIES:
+        raise GdocError(
+            f"Invalid rewrite policy: {value!r}. Use strict, formatting or "
+            "markdown (GDOC_REWRITE_POLICY or `gdoc config --rewrite-policy`).",
+            exit_code=3,
+        )
+    return value
+
+
+def set_rewrite_policy(policy: str) -> None:
+    """Save the rewrite policy used when GDOC_REWRITE_POLICY is unset."""
+    if policy not in REWRITE_POLICIES:
+        raise GdocError(
+            f"Invalid rewrite policy: {policy!r}. Use strict, formatting or "
+            "markdown.", exit_code=3,
+        )
+    config = _load_config()
+    config["rewrite_policy"] = policy
+    _save_config(config)
+
+
 def token_path_for(account: str | None) -> Path:
     """Token path for a resolved account name (None = legacy token)."""
     if account:

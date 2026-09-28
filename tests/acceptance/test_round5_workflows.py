@@ -42,7 +42,8 @@ class NativeRoute:
         if self.interface == "mcp":
             response = mcp.MCPServer().dispatch({
                 "jsonrpc": "2.0", "id": 1, "method": "tools/call",
-                "params": {"name": "gdoc_" + command, "arguments": arguments},
+                "params": {"name": "gdoc_" + command.replace("-", "_"),
+                           "arguments": arguments},
             })
             result = response.get("result", {})
             blocks = result.get("content", [])
@@ -56,7 +57,7 @@ class NativeRoute:
             path = self.tmp_path / "input.md"
             path.write_text(prepared.pop("text"))
             argv.append(str(path))
-        for key in ("old_text", "new_text"):
+        for key in ("object_id", "image", "old_text", "new_text"):
             if key in prepared:
                 argv.append(prepared.pop(key))
         for key, value in prepared.items():

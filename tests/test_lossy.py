@@ -202,6 +202,7 @@ def test_tab_refusal_precedes_every_mutation(mocker, allow_lossy, target_body):
     if allow_lossy:
         insert_markdown_into_tab(
             "doc", "target", "new", replace=True, allow_lossy=True,
+            discard_suggestions=True,
         )
         service.documents.return_value.batchUpdate.assert_called_once()
     else:
@@ -230,7 +231,8 @@ def test_full_write_scope(mocker, tmp_path, command, scope, mode):
     path = tmp_path / "draft.md"
     path.write_text("---\ngdoc: doc\n---\n" + content, encoding="utf-8")
     args = SimpleNamespace(doc="doc", file=str(path), force=True, quiet=True,
-                           allow_lossy=mode == "opt-in")
+                           allow_lossy=mode == "opt-in",
+                           discard_suggestions=mode == "opt-in")
     handler = cmd_write if command == "write" else cmd_push
     rich_target = selected.get("body") == RICH
     if mode == "refuse" and rich_target:
@@ -261,7 +263,8 @@ def test_single_tab_write_uses_body_scope(mocker, tmp_path, command, mode):
     only["documentTab"]["headers"] = {"h": RICH}
     _, _, batch = _cli_setup(mocker, {"tabs": [only]})
     args = SimpleNamespace(doc="doc", file=str(path), force=True, quiet=True,
-                           allow_lossy=mode == "opt-in")
+                           allow_lossy=mode == "opt-in",
+                           discard_suggestions=mode == "opt-in")
     handler = cmd_write if command == "write" else cmd_push
     if mode == "refuse":
         with pytest.raises(GdocError, match="selected tab body.*people chips"):
@@ -364,6 +367,7 @@ def test_markdown_horizontal_rule_border_requires_opt_in(mocker, capsys, text):
         check_markdown_replacement(scope)
     insert_markdown_into_tab(
         "doc", "target", "new", replace=True, allow_lossy=True,
+            discard_suggestions=True,
     )
     service.documents.return_value.batchUpdate.assert_called_once()
     assert "will discard: border-bottom paragraphs" in capsys.readouterr().err
@@ -526,12 +530,14 @@ def test_referenced_list_inventory(mocker, capsys, in_cell, mode):
     else:
         insert_markdown_into_tab(
             "doc", "target", markdown, replace=True, allow_lossy=mode == "override",
+            discard_suggestions=mode == "override",
         )
         service.documents.return_value.batchUpdate.assert_called_once()
         table_insert.assert_called_once()
         warning = capsys.readouterr().err
         assert "list glyphs and list styling" in warning
-        assert ("will discard: pending suggestions" in warning) == (mode == "override")
+        assert ("will discard collaborators' pending suggestions" in warning) == (
+            mode == "override")
 
 
 @pytest.mark.parametrize("header_only", [False, True])
@@ -558,7 +564,8 @@ def test_keep_lines_together_warns_about_paragraph_layout(capsys):
     check_markdown_replacement({"content": [{"paragraph": {
         "paragraphStyle": {"keepLinesTogether": True},
     }}]}, tab_body=True)
-    assert "may reset styles: paragraph layout" in capsys.readouterr().err
+    assert ("resets direct styles: paragraph layout on 1 of 1 paragraph"
+            in capsys.readouterr().err)
 
 
 def numbered_tab(list_ids, start=1, glyph_type="DECIMAL"):
@@ -647,7 +654,8 @@ def test_numbered_restart_override_permits_tab_mutation(mocker, capsys):
         "revisionId": "r", "tabs": [numbered_tab(["first", "second"])],
     })
     service = mocker.patch("gdoc.api.docs.get_docs_service").return_value
-    insert_markdown_into_tab("doc", "target", "new", replace=True, allow_lossy=True)
+    insert_markdown_into_tab("doc", "target", "new", replace=True, allow_lossy=True,
+                             discard_suggestions=True)
     service.documents.return_value.batchUpdate.assert_called_once()
     warning = capsys.readouterr().err
     assert warning == ""
@@ -843,3 +851,23 @@ def test_native_zero_width_table_paragraph_border_is_not_a_loss():
             "padding": {"unit": "PT"}, "dashStyle": "SOLID",
         }},
     }}]}, tab_body=True)
+
+
+@pytest.mark.parametrize("style,lost", [
+    ({"foregroundColor": {"color": {"rgbColor": {
+        "red": 0.06666667, "green": 0.33333334, "blue": 0.8}}}, "underline": True},
+     None),
+    ({"foregroundColor": {"color": {"rgbColor": {"red": 0.8}}}}, "colour"),
+    ({"underline": False}, "underline"),
+])
+def test_custom_link_appearance_is_a_style_loss(style, lost):
+    """Docs' default link blue and underline are not losses; an author's own
+    link colour or removed underline is, so strict refuses it."""
+    scope = {"content": [{"paragraph": {"elements": [{"textRun": {
+        "content": "site\n", "textStyle": {
+            "link": {"url": "https://example.org"}, **style}}}]}}]}
+    if lost is None:
+        check_markdown_replacement(scope, tab_body=True, policy="strict")
+    else:
+        with pytest.raises(GdocError, match=f"{lost} on 1 of 1 paragraph"):
+            check_markdown_replacement(scope, tab_body=True, policy="strict")

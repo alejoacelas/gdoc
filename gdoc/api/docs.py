@@ -2928,6 +2928,8 @@ def insert_markdown_into_tab(
     replace: bool = False,
     allow_lossy: bool = False,
     *, document: dict | None = None, image_aliases: dict | None = None,
+    discard_suggestions: bool = False, comments: int = 0,
+    comments_exact: bool = True,
 ) -> dict:
     """Insert (or replace) markdown content in a tab via Docs API.
 
@@ -2943,6 +2945,10 @@ def insert_markdown_into_tab(
         replace: If True, delete the tab body first then insert at the
             body start.
         allow_lossy: Explicitly permit named native-content losses.
+        discard_suggestions: Explicitly permit discarding collaborators'
+            pending suggestions, which ``allow_lossy`` does not cover.
+        comments: Comments anchored in the tab, which a replacement detaches;
+            ``comments_exact`` is False when they were placed by quoted text.
         document: Optional guard-read snapshot; its revision pins the first
             batch so a later read cannot silently adopt a collaborator edit.
 
@@ -3086,8 +3092,12 @@ def insert_markdown_into_tab(
         }
         requests.append({"deleteContentRange": {"range": delete_range}})
 
+    losses = None
     if replace:
-        check_tab_body_replacement(tab_match, allow_lossy=allow_lossy)
+        losses = check_tab_body_replacement(
+            tab_match, allow_lossy=allow_lossy,
+            discard_suggestions=discard_suggestions, comments=comments,
+            comments_exact=comments_exact)
         # Deletion retains the native final paragraph. Reset that paragraph
         # before insertion so its bullets, heading, alignment and spacing do
         # not become the initial state of every new paragraph.
@@ -3276,6 +3286,7 @@ def insert_markdown_into_tab(
         "input_revision_id": input_revision_id,
         "acknowledged_revision_id": revision_id,
         "rebased": progress.rebased,
+        "losses": losses.to_json() if losses else {},
         "image_reference_ids": {
             # Copies of one image share its content and size; any copy
             # stands in for the original reference in later writes.
@@ -3291,7 +3302,10 @@ def insert_markdown_into_tab(
 _INSERT_INHERITED_FIELDS = ("indentStart", "indentFirstLine", "borderBottom")
 
 
-def check_tab_body_replacement(tab: dict, *, allow_lossy: bool = False) -> None:
+def check_tab_body_replacement(
+    tab: dict, *, allow_lossy: bool = False, discard_suggestions: bool = False,
+    comments: int = 0, comments_exact: bool = True, where: str | None = None,
+):
     """Refuse native losses within one tab body before it is replaced.
 
     ``tab`` is a flattened tab (``body`` and ``lists`` keys). Lists live
@@ -3300,8 +3314,10 @@ def check_tab_body_replacement(tab: dict, *, allow_lossy: bool = False) -> None:
     """
     from gdoc.lossy import check_markdown_replacement
 
-    check_markdown_replacement(_tab_replacement_scope(tab), tab_body=True,
-                               allow_lossy=allow_lossy)
+    return check_markdown_replacement(
+        _tab_replacement_scope(tab), tab_body=True, allow_lossy=allow_lossy,
+        discard_suggestions=discard_suggestions, comments=comments,
+        comments_exact=comments_exact, where=where)
 
 
 # Not content a Markdown read omits: suggestions have their own read notes.
@@ -3392,8 +3408,9 @@ def _paragraph_wording_matches(body: dict, match: dict, markdown: str):
         raise GdocError(
             f"paragraph count mismatch: matched {len(paragraphs)}, "
             f"replacement has {len(lines)}; edit each paragraph separately "
-            "or use write --tab for structural body changes "
-            "(--cell replaces an entire table cell)", exit_code=3,
+            "(--cell replaces an entire table cell), or rewrite the tab with "
+            "write --tab for structural body changes, which resets direct "
+            "styles across the whole tab", exit_code=3,
         )
     result = []
     for (_, start, end), line in zip(paragraphs, lines):
@@ -3513,7 +3530,8 @@ def _empty_paragraph_range(content: list[dict], match: dict):
                     raise GdocError(
                         "cannot remove the paragraph directly before a table "
                         "when no paragraph precedes it; replace its wording, or "
-                        "rewrite the tab with write --tab", exit_code=3,
+                        "rewrite the tab with write --tab, which resets direct "
+                        "styles across the whole tab", exit_code=3,
                     )
             if end == last[2] + 1:
                 # Empty the paragraphs first, then remove the one empty
@@ -3578,7 +3596,8 @@ def _retained_mark_restore(kept: dict, removed: dict) -> dict | None:
         raise GdocError(
             "cannot remove this paragraph without moving the list item before "
             "it off its list; replace its wording, or rewrite the tab with "
-            "write --tab", exit_code=3,
+            "write --tab, which resets direct styles across the whole tab",
+            exit_code=3,
         )
     style = kept.get("paragraphStyle", {})
     merged = removed.get("paragraphStyle", {})
@@ -4156,7 +4175,8 @@ def replace_formatted(
             "a Markdown table cannot replace text inside a table cell: nested "
             "tables are not supported. Replace the cell with text, or change "
             "the table's rows and columns by rewriting the tab (cat, edit the "
-            "Markdown table, write --tab).", exit_code=3,
+            "Markdown table, write --tab), which resets direct styles across "
+            "the whole tab.", exit_code=3,
         )
 
     # Same guard as suggest_replacement: overlapping matches ("aa" in

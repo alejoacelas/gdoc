@@ -541,7 +541,8 @@ def test_suggestion_preview_is_complete_only_when_faithful(
     assert ("cannot reliably render" in output + error) == (not faithful)
     assert "new" not in parse_frontmatter(output)[1]
     # An incomplete read cannot authorize a rewrite, even with consent.
-    code, out, err = route.call("write", text="changed\n", allow_lossy=True)
+    code, out, err = route.call("write", text="changed\n", allow_lossy=True,
+                                 discard_suggestions=True)
     assert (code == 0) == faithful, out + err
     if not faithful:
         assert route.service.batches == []
@@ -556,7 +557,11 @@ def test_consented_rewrite_discards_suggestions_and_keeps_the_text(
     code, output, error = route.call("write", text=read.replace("ran", "sat"))
     assert code != 0 and "pending suggestions" in output + error
     assert route.service.batches == []
-    route.ok("write", text=read.replace("ran", "sat"), allow_lossy=True)
+    code, output, error = route.call("write", text=read.replace("ran", "sat"),
+                                     allow_lossy=True)
+    assert code != 0 and "--discard-suggestions" in output + error
+    assert route.service.batches == []
+    route.ok("write", text=read.replace("ran", "sat"), discard_suggestions=True)
     sent = [r for batch in route.service.batches for r in batch]
     inserted = "".join(r["insertText"]["text"] for r in sent if "insertText" in r)
     assert inserted.startswith("The cat sat\nonetwo")

@@ -1,0 +1,192 @@
+"""The rewrite policy is a ceiling on what a changed full-tab rewrite loses.
+
+Every level (strict, formatting, markdown) times every loss category, through
+CLI and MCP. Both interfaces must print identical warnings and refusals.
+"""
+
+import json
+
+import pytest
+
+from gdoc import mcp, state
+from gdoc.frontmatter import parse_frontmatter
+from tests.acceptance.test_round5_workflows import NativeRoute
+from tests.native_model import NativeDoc, NativeService, Unit
+
+STYLE = {"weightedFontFamily": {"fontFamily": "Georgia", "weight": 400}}
+NUMBERED = "NUMBERED_DECIMAL_ALPHA_ROMAN"
+
+
+def _plain():
+    return NativeDoc(("p", "Alpha."), ("p", "Beta."))
+
+
+def _with_image(properties):
+    def build():
+        doc = _plain()
+        doc.units.insert(1, Unit("[IMG:https://example.org/i.png]"))
+        doc.images = 1
+        return doc, properties
+    return build
+
+
+def _styled():
+    doc = _plain()
+    for unit in doc.units:
+        if unit.kind == "text":
+            unit.ts = dict(STYLE)
+    return doc, None
+
+
+def _suggested():
+    doc = _plain()
+    doc.units[1].sg = ("suggestedInsertionIds", "suggest.collaborator")
+    return doc, None
+
+
+def _numbered():
+    doc = NativeDoc(("p", "Alpha.", "NORMAL_TEXT",
+                     {"preset": NUMBERED, "list": 1, "nest": 0}), ("p", "Beta."))
+    doc.list_starts[1] = 5
+    return doc, None
+
+
+# Category -> (builder, protected, the per-call flag the markdown level needs,
+# a phrase its warning or refusal names).
+CATEGORIES = {
+    "rich content": (lambda: (_plain(), "chip"), True, "allow_lossy",
+                     "people chips"),
+    "pending suggestions": (_suggested, True, "discard_suggestions",
+                            "collaborators' pending suggestions (1)"),
+    "anchored comments": (lambda: (_plain(), "comment"), True, None,
+                          "1 comment anchored in the tab"),
+    "image crop": (_with_image({"cropProperties": {"offsetLeft": 0.2}}), True,
+                   None, "image crop on 1 image"),
+    "direct styles": (_styled, False, None, "font family on 2 of 2 paragraphs"),
+    "image adjustments": (_with_image({"angle": 1.5}), False, None,
+                          "image rotation, brightness, contrast, transparency "
+                          "or border on 1 image"),
+    "image alt text": (_with_image({"description": "A map"}), False, None,
+                       "image alt text on 1 image"),
+    "numbering": (_numbered, False, None, "starts at 5"),
+}
+
+
+def run(interface, monkeypatch, tmp_path, category, level, flags):
+    """cat then a changed write; returns (code, ERR/WARN lines, batches)."""
+    build, *_ = CATEGORIES[category]
+    doc, extra = build()
+    base = tmp_path / f"{interface}-{len(list(tmp_path.iterdir()))}"
+    base.mkdir()
+    monkeypatch.setattr(state, "STATE_DIR", base / "state")
+    monkeypatch.setenv("GDOC_REWRITE_POLICY", level)
+    route = NativeRoute(interface, monkeypatch, base)
+    service = route.service = NativeService(doc)
+    comments = [{"id": "c1", "anchor": "kix.1", "resolved": False,
+                 "quotedFileContent": {"value": "Alpha"}}]
+    monkeypatch.setattr("gdoc.api.comments.list_comments",
+                        lambda *a, **k: comments if extra == "comment" else [])
+    snapshot = service.snapshot
+
+    def enriched():
+        value = snapshot()
+        if service.batches:
+            return value  # the rewrite replaced the rich content
+        tab = value["tabs"][0]["documentTab"]
+        if extra == "chip":
+            paragraph = next(e for e in tab["body"]["content"] if "paragraph" in e)
+            paragraph["paragraph"]["elements"].insert(0, {"person": {
+                "personProperties": {"name": "Ana", "email": "ana@example.org"}}})
+        elif isinstance(extra, dict):
+            for inline in tab["inlineObjects"].values():
+                embedded = inline["inlineObjectProperties"]["embeddedObject"]
+                image = embedded["imageProperties"]
+                for key, value_ in extra.items():
+                    (embedded if key == "description" else image)[key] = value_
+        return value
+
+    service.snapshot = enriched
+    markdown = parse_frontmatter(route.ok("cat"))[1]
+    changed = markdown.replace("Beta.", "Beta, revised.")
+    assert changed != markdown
+    code, output, error = route.call("write", text=changed, **flags)
+    lines = [line for line in (output + "\n" + error).splitlines()
+             if line.startswith(("ERR:", "WARN:"))]
+    return code, lines, len(service.batches)
+
+
+def both(monkeypatch, tmp_path, category, level, flags=None):
+    cli = run("cli", monkeypatch, tmp_path, category, level, flags or {})
+    via_mcp = run("mcp", monkeypatch, tmp_path, category, level, flags or {})
+    # An MCP error result carries only the ERR lines, as for every command.
+    shown = [line for line in cli[1] if not cli[0] or line.startswith("ERR:")]
+    assert shown == via_mcp[1], "CLI and MCP must report identically"
+    assert bool(cli[0]) == bool(via_mcp[0]) and cli[2] == via_mcp[2]
+    return cli
+
+
+LEVELS = ["strict", "formatting", "markdown"]
+
+
+@pytest.mark.parametrize("category", list(CATEGORIES))
+@pytest.mark.parametrize("level", LEVELS)
+def test_each_level_limits_each_category(monkeypatch, tmp_path, level, category):
+    _, protected, flag, phrase = CATEGORIES[category]
+    all_flags = {"allow_lossy": True, "discard_suggestions": True}
+    refused = level == "strict" or (level == "formatting" and protected)
+    # Per-call flags never exceed the policy ceiling.
+    code, lines, batches = both(monkeypatch, tmp_path, category, level, all_flags)
+    text = "\n".join(lines)
+    assert phrase in text
+    if refused:
+        assert code != 0 and batches == 0
+        assert f"refused by rewrite policy '{level}'" in text
+        allowed = "markdown" if protected else "formatting"
+        assert f"Rewrite policy '{allowed}' would allow it" in text
+        assert "GDOC_REWRITE_POLICY" in text and "rewrite_policy" in text
+        assert "human configuration choice" in text
+        # The targeted route is named before the rewrite and its cost.
+        assert text.index("`edit` changes wording") < text.index(
+            "A rewrite (`write`, `push`) deletes and reinserts the whole tab")
+        return
+    assert code == 0 and batches, text
+    if flag and level == "markdown":
+        # The markdown level still needs the category's own per-call consent.
+        others = {k: v for k, v in all_flags.items() if k != flag}
+        code, lines, batches = both(monkeypatch, tmp_path, category, level, others)
+        text = "\n".join(lines)
+        assert code != 0 and batches == 0
+        assert "--" + flag.replace("_", "-") in text and phrase in text
+
+
+@pytest.mark.parametrize("level", LEVELS)
+def test_a_tab_without_losses_rewrites_at_every_level(monkeypatch, tmp_path, level):
+    CATEGORIES["none"] = (lambda: (_plain(), None), False, None, "")
+    try:
+        code, lines, batches = both(monkeypatch, tmp_path, "none", level)
+    finally:
+        del CATEGORIES["none"]
+    assert code == 0 and batches and lines == []
+
+
+def test_config_key_sets_the_level(monkeypatch, tmp_path):
+    from gdoc import util
+
+    monkeypatch.setattr(util, "_load_config", lambda: {"rewrite_policy": "strict"})
+    monkeypatch.delenv("GDOC_REWRITE_POLICY", raising=False)
+    assert util.get_rewrite_policy() == "strict"
+    monkeypatch.setenv("GDOC_REWRITE_POLICY", "markdown")
+    assert util.get_rewrite_policy() == "markdown"
+
+
+def test_an_unknown_level_refuses_the_rewrite(monkeypatch, tmp_path):
+    code, lines, batches = both(monkeypatch, tmp_path, "direct styles", "loose")
+    assert code != 0 and batches == 0
+    assert "Invalid rewrite policy: 'loose'" in "\n".join(lines)
+
+
+def test_mcp_cannot_change_the_policy():
+    tools = mcp.build_tools()
+    assert "gdoc_config" not in tools
+    assert not any("rewrite_policy" in json.dumps(tool["inputSchema"])
+                   for tool in tools.values())

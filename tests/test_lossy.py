@@ -1119,3 +1119,27 @@ def test_a_heading_inherits_unset_defaults_from_normal_text():
         check_tab_body_replacement(tab({"lineSpacing": 100}, {}), policy="strict")
     check_tab_body_replacement(
         tab({}, {"weightedFontFamily": {"fontFamily": "Arial"}}), policy="strict")
+
+
+@pytest.mark.parametrize("level,nesting,lost", [
+    ({"glyphType": "DECIMAL"}, 0, False),
+    ({"glyphType": "ALPHA"}, 0, True),
+    ({"glyphType": "ROMAN"}, 0, True),
+    ({"glyphType": "ALPHA"}, 1, False),
+    ({"glyphSymbol": "●"}, 0, False),
+    ({"glyphSymbol": "○"}, 0, True),
+    ({"glyphSymbol": "○"}, 1, False),
+])
+def test_a_list_marker_reconstruction_changes_is_a_loss(level, nesting, lost):
+    """Reconstruction draws 1/a/i and ●/○/■ by level; other markers change."""
+    levels = [dict(level) for _ in range(9)]
+    scope = {"body": {"content": [{"paragraph": {
+        "bullet": {"listId": "L", "nestingLevel": nesting},
+        "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
+        "elements": [{"textRun": {"content": "item\n"}}]}}]},
+        "lists": {"L": {"listProperties": {"nestingLevels": levels}}}}
+    if lost:
+        with pytest.raises(GdocError, match="list glyphs and list styling"):
+            check_markdown_replacement(scope, tab_body=True, policy="strict")
+    else:
+        check_markdown_replacement(scope, tab_body=True, policy="strict")

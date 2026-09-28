@@ -365,9 +365,10 @@ class NativeDoc:
                 content.append(paragraph)
         lists = {}
         for list_id, preset in list_presets.items():
-            level = ({"glyphType": "DECIMAL"} if preset.startswith("NUMBERED")
-                     else {"glyphSymbol": "●"})
-            levels = [dict(level) for _ in range(9)]
+            # Docs' presets cycle markers by level: 1/a/i and ●/○/■.
+            levels = [{"glyphType": ("DECIMAL", "ALPHA", "ROMAN")[n % 3]}
+                      if preset.startswith("NUMBERED")
+                      else {"glyphSymbol": "●○■"[n % 3]} for n in range(9)]
             start = self.list_starts.get(int(list_id[1:]))
             if start is not None:
                 levels[0]["startNumber"] = start

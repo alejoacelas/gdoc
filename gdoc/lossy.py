@@ -122,6 +122,33 @@ def _custom_list_indent(paragraph: dict, field: str, lists: dict) -> bool:
     return abs(indent.get("magnitude", 0) - expected) > 0.5
 
 
+# The markers gdoc's reconstruction presets draw, cycling by nesting level.
+_PRESET_MARKERS = {True: ("DECIMAL", "ALPHA", "ROMAN"), False: ("●", "○", "■")}
+
+
+def _list_marker_changes(paragraph: dict, lists: dict) -> bool:
+    """Whether reconstruction draws this item's marker differently, such as
+    a top-level lettered list becoming numbered."""
+    from gdoc.api.docs import _list_is_ordered
+
+    bullet = paragraph["bullet"]
+    list_id, native = bullet.get("listId", ""), bullet.get("nestingLevel", 0)
+    definitions = lists.get(list_id, {}).get("listProperties", {}).get(
+        "nestingLevels", [])
+    if native >= len(definitions):
+        return False
+    level = definitions[native]
+    ordered = _list_is_ordered(lists, list_id, native)
+    # Reconstruction keeps the native level (a deeper Markdown level that gdoc
+    # wrote as its own indented list is native level 0 again).
+    expected = _PRESET_MARKERS[ordered][native % 3]
+    if ordered:
+        actual = level.get("glyphType", "GLYPH_TYPE_UNSPECIFIED")
+        return actual not in (expected, "GLYPH_TYPE_UNSPECIFIED")
+    actual = level.get("glyphSymbol", "")
+    return actual not in (expected, "")
+
+
 def _indented(paragraph: dict) -> bool:
     """Whether a paragraph has a start or first-line indent."""
     style = paragraph.get("paragraphStyle", {})
@@ -708,6 +735,8 @@ def markdown_hazards(
                        ) for level in levels):
                     note("list glyphs and list styling", paragraph)
             if "bullet" in value:
+                if _list_marker_changes(value, lists):
+                    note("list glyphs and list styling", paragraph)
                 # Inspect definitions only when content references the list.
                 visit(lists.get(value["bullet"].get("listId"), {}),
                       table_depth, document_style, lists, images,

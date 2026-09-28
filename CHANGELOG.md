@@ -18,7 +18,8 @@ All notable changes to `gdoc` are documented here. This project follows
   paragraphs each affects (`font family on 38 of 40 paragraphs`), comments
   anchored in the tab (counted before the write, since Drive reports them
   unchanged afterwards), image crop and other image adjustments, alt text,
-  numbering starts, pending suggestions and rich content (a collapse's
+  numbering starts, heading IDs (links to the tab's headings break),
+  pending suggestions and rich content (a collapse's
   warnings about the tabs it deletes print once the write succeeds). `--json` output
   carries the same inventory as `losses`, and a collapse lists each deleted
   tab's losses as `deleted_tab_losses`. `comments --json` includes each
@@ -30,7 +31,9 @@ All notable changes to `gdoc` are documented here. This project follows
   per-call flags never exceed it. `formatting` protects comments, image crop,
   pending suggestions and rich content now and is planned to become the
   default once `edit` splits paragraphs and gdoc can insert after a text anchor
-  and move sections.
+  and move sections. An unreadable config file refuses changed rewrites
+  rather than falling back to the default, and `gdoc config` saves the file
+  atomically. A sync-hook push reports its losses to the agent.
 - Refusals and help name the targeted command first and a rewrite last, with
   what it resets.
 

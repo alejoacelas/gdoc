@@ -458,3 +458,30 @@ class TestParserWiring:
         args = build_parser().parse_args(["config"])
         assert args.func is cmd_config
         assert args.page_mode is None
+
+
+@pytest.mark.parametrize("content", ['{"rewrite_policy": "strict",}', "", "[1]"])
+def test_an_unreadable_config_refuses_rather_than_loosening(
+        monkeypatch, tmp_path, content):
+    """A strict policy in a file that no longer parses must not become the
+    loosest level; the rewrite is refused with a config error."""
+    from gdoc import util
+    from gdoc.util import GdocError
+
+    config = tmp_path / "config.json"
+    config.write_text(content)
+    monkeypatch.setattr(util, "CONFIG_PATH", config)
+    monkeypatch.delenv("GDOC_REWRITE_POLICY", raising=False)
+    with pytest.raises(GdocError, match="cannot read the rewrite policy") as exc:
+        util.get_rewrite_policy()
+    assert exc.value.exit_code == 3
+    monkeypatch.setenv("GDOC_REWRITE_POLICY", "strict")
+    assert util.get_rewrite_policy() == "strict"
+
+
+def test_saving_config_replaces_the_file_atomically(monkeypatch, tmp_path):
+    from gdoc import util
+
+    monkeypatch.setattr(util, "CONFIG_PATH", tmp_path / "config.json")
+    util.set_rewrite_policy("strict")
+    assert [p.name for p in tmp_path.iterdir()] == ["config.json"]

@@ -126,9 +126,22 @@ def _load_config() -> dict:
 
 
 def _save_config(config: dict) -> None:
-    """Save gdoc config."""
+    """Save gdoc config, replacing the file atomically."""
+    import os
+    import tempfile
+
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    CONFIG_PATH.write_text(json.dumps(config, indent=2, sort_keys=True) + "\n")
+    handle, temporary = tempfile.mkstemp(dir=CONFIG_PATH.parent, suffix=".tmp")
+    try:
+        with os.fdopen(handle, "w") as file:
+            file.write(json.dumps(config, indent=2, sort_keys=True) + "\n")
+        os.replace(temporary, CONFIG_PATH)
+    except BaseException:
+        try:
+            os.unlink(temporary)
+        except OSError:
+            pass
+        raise
 
 
 def get_default_account() -> str | None:
@@ -192,8 +205,23 @@ def get_rewrite_policy() -> str:
     """
     import os
 
-    value = os.environ.get("GDOC_REWRITE_POLICY") or _load_config().get(
-        "rewrite_policy") or "markdown"
+    value = os.environ.get("GDOC_REWRITE_POLICY")
+    if not value and CONFIG_PATH.exists():
+        # Other settings fall back to defaults on a bad file; the policy is a
+        # safety ceiling, so an unreadable file refuses instead of loosening.
+        try:
+            data = json.loads(CONFIG_PATH.read_text())
+        except (json.JSONDecodeError, OSError, UnicodeDecodeError) as error:
+            raise GdocError(
+                f"cannot read the rewrite policy from {CONFIG_PATH} ({error}); "
+                "fix or remove the file, or set GDOC_REWRITE_POLICY.",
+                exit_code=3) from error
+        if not isinstance(data, dict):
+            raise GdocError(
+                f"cannot read the rewrite policy from {CONFIG_PATH} (not a JSON "
+                "object); fix or remove the file, or set GDOC_REWRITE_POLICY.",
+                exit_code=3)
+    value = value or _load_config().get("rewrite_policy") or "markdown"
     if value not in REWRITE_POLICIES:
         raise GdocError(
             f"Invalid rewrite policy: {value!r}. Use strict, formatting or "

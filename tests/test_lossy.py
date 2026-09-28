@@ -1180,3 +1180,19 @@ def test_a_link_coloured_like_its_named_style_is_a_loss():
                                     "textStyle": {"foregroundColor": colour}}]}}
     with pytest.raises(GdocError, match="colour on 1 of 1 paragraph"):
         check_tab_body_replacement(tab, policy="strict")
+
+
+def test_heading_ids_are_reported_and_counted():
+    """A rewrite recreates headings, so their IDs (link targets) change."""
+    from gdoc.lossy import rewrite_losses
+
+    scope = {"body": {"content": [{"paragraph": {
+        "paragraphStyle": {"namedStyleType": "HEADING_1", "headingId": "h.1"},
+        "elements": [{"textRun": {"content": "Title\n"}}]}}, {"paragraph": {
+        "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
+        "elements": [{"textRun": {"content": "Body\n"}}]}}]}}
+    losses = rewrite_losses(scope, tab_body=True)
+    assert losses.to_json() == {"heading_ids": 1}
+    with pytest.raises(GdocError, match="the IDs of 1 heading"):
+        check_markdown_replacement(scope, tab_body=True, policy="strict")
+    check_markdown_replacement(scope, tab_body=True, policy="formatting")

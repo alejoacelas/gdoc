@@ -2160,6 +2160,23 @@ def _hook_notice(data: dict, message: str) -> None:
         }}))
 
 
+class _WarningTee:
+    """Pass writes through to *stream* and keep the WARN: lines."""
+
+    def __init__(self, stream):
+        self.stream, self.lines, self._partial = stream, [], ""
+
+    def write(self, text):
+        self.stream.write(text)
+        self._partial += text
+        *complete, self._partial = self._partial.split("\n")
+        self.lines.extend(line for line in complete if line.startswith("WARN:"))
+        return len(text)
+
+    def flush(self):
+        self.stream.flush()
+
+
 def cmd_sync_hook(args) -> int:
     """Handler for `gdoc _sync-hook` (called by PostToolUse hook)."""
     import json
@@ -2191,7 +2208,7 @@ def cmd_sync_hook(args) -> int:
 
         doc_id = _resolve_doc_id(metadata["gdoc"])
 
-        from contextlib import redirect_stdout
+        from contextlib import redirect_stderr, redirect_stdout
         from types import SimpleNamespace
 
         hook_args = SimpleNamespace(
@@ -2200,8 +2217,9 @@ def cmd_sync_hook(args) -> int:
             verbose=False, plain=False,
         )
         write_result = {}
+        warnings = _WarningTee(sys.stderr)
         try:
-            with redirect_stdout(sys.stderr):
+            with redirect_stdout(sys.stderr), redirect_stderr(warnings):
                 _write_native_markdown(
                     hook_args, doc_id, body, command="push",
                     tab_name=metadata.get("tab"), result_details=write_result,
@@ -2215,7 +2233,12 @@ def cmd_sync_hook(args) -> int:
                                f"check: {error})")
             return 0
         _refresh_file_revision(file_path, content, write_result)
-        print(f"SYNC: pushed to {metadata.get('title', doc_id)!r}", file=sys.stderr)
+        pushed = f"SYNC: pushed to {metadata.get('title', doc_id)!r}"
+        if warnings.lines:
+            # Claude Code shows the agent only additionalContext on exit 0.
+            _hook_notice(data, pushed + "; " + " ".join(warnings.lines))
+        else:
+            print(pushed, file=sys.stderr)
 
     except Exception as e:
         # Keep the hook non-blocking, but never hide a failed read or upload.

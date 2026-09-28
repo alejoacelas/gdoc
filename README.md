@@ -732,6 +732,9 @@ that loses, prints it on stderr (MCP notes) and returns it as `losses` in
   which tab a comment is in, so in a multi-tab document gdoc counts every
   anchored comment in the document (`comments_scope` in JSON). Deleting
   comments that are already detached lowers the count.
+- **Heading IDs** change, so links to the tab's headings from other tabs,
+  documents or saved URLs break. The API cannot set a heading's ID and a rewrite
+  recreates every heading; that Docs then assigns new IDs is not verified live.
 - **Image crop** is lost; the image shows its uncropped original.
 - **Collaborators' pending suggestions** are discarded.
 - **Rich content** Markdown cannot show (chips, footnotes and the rest listed
@@ -745,11 +748,13 @@ The rewrite policy sets the most a changed rewrite may lose. It is one global
 setting that CLI and MCP both read: `gdoc config --rewrite-policy LEVEL` saves it
 as the `rewrite_policy` config key, and the `GDOC_REWRITE_POLICY` environment
 variable overrides it. MCP cannot change it, and per-call flags never exceed it.
+If the config file cannot be read, changed rewrites are refused until it is fixed
+or the variable is set. A sync-hook push tells the agent what it lost.
 
 | Level | A changed rewrite may lose |
 | --- | --- |
 | `strict` | Nothing the inventory above detects. It is not a guarantee for native properties the inventory does not read. |
-| `formatting` (recommended) | Direct styles, image adjustments and alt text, and numbering starts, with a warning. Comments, image crop, suggestions and rich content refuse. |
+| `formatting` (recommended) | Direct styles, image adjustments and alt text, heading IDs, and numbering starts, with a warning. Comments, image crop, suggestions and rich content refuse. |
 | `markdown` (default) | Anything, with a warning. Rich content still needs `--allow-lossy` and suggestions still need `--discard-suggestions` on each call. |
 
 The default `markdown` keeps earlier behavior, except that discarding pending

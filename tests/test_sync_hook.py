@@ -352,3 +352,36 @@ def test_sync_obeys_the_rewrite_policy(mocker, tmp_path, capsys, monkeypatch,
     else:
         batch.assert_called()
         assert "resets direct styles: font family on 1 of 1 paragraph" in err
+
+
+def test_sync_tells_the_agent_what_a_push_lost(mocker, tmp_path, capsys):
+    """Claude Code shows hook stderr to the model only on failure, so losses
+    of a successful push go to additionalContext."""
+    import json as json_module
+
+    f = tmp_path / "spec.md"
+    f.write_text("---\ngdoc: abc123\ngdoc-revision: r1\n---\nBody", encoding="utf-8")
+    mocker.patch("gdoc.api.docs.get_document_with_tabs", return_value={
+        "revisionId": "r1", "tabs": [{
+            "tabProperties": {"tabId": "main", "title": "Main"},
+            "documentTab": {"body": {"content": [
+                {"startIndex": 1, "endIndex": 5, "paragraph": {"elements": [
+                    {"startIndex": 1, "endIndex": 5, "textRun": {
+                        "content": "Old\n", "textStyle": {"weightedFontFamily": {
+                            "fontFamily": "Georgia"}}}},
+                ]}},
+            ]}},
+        }],
+    })
+    service = mocker.patch("gdoc.api.docs.get_docs_service")
+    service.return_value.documents.return_value.batchUpdate.return_value.execute \
+        .return_value = {"writeControl": {"requiredRevisionId": "r2"}}
+    mocker.patch("gdoc.state.update_state_after_command")
+    payload = json_module.dumps({"hook_event_name": "PostToolUse",
+                                 "tool_input": {"file_path": str(f)}})
+    with patch("sys.stdin", io.StringIO(payload)):
+        assert cmd_sync_hook(_make_args()) == 0
+    out = json_module.loads(capsys.readouterr().out)
+    context = out["hookSpecificOutput"]["additionalContext"]
+    assert "SYNC: pushed" in context
+    assert "font family on 1 of 1 paragraph" in context

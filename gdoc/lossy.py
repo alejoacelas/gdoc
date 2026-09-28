@@ -248,6 +248,9 @@ IMAGE_ADJUSTMENTS = "image rotation, brightness, contrast, transparency or borde
 # Style labels a rewrite loses that refuse below the markdown policy, like
 # rich content. Moving a label out of here makes it an ordinary style loss.
 PROTECTED_STYLES = {IMAGE_CROP}
+# Docs assigns a heading's ID and the API cannot set it, so a rewrite that
+# recreates the heading gives it a new one (not verified live).
+HEADING_IDS = "heading IDs"
 
 
 def _image_cropped(embedded: dict) -> bool:
@@ -299,6 +302,7 @@ class RewriteLosses:
     comments: int = 0
     comments_exact: bool = True
     protected_styles: list[tuple[str, int, str]] = field(default_factory=list)
+    headings: int = 0
     styles: list[tuple[str, int, str]] = field(default_factory=list)
     paragraphs: int = 0
     numbering: list[str] = field(default_factory=list)
@@ -338,10 +342,16 @@ class RewriteLosses:
                          + " (the image shows its uncropped original)")
         return items
 
+    def heading_text(self) -> str:
+        return (f"the IDs of {_plural(self.headings, 'heading')}, so links "
+                "to them from other tabs, documents or saved URLs break")
+
     def formatting(self) -> list[str]:
         items = []
         if self.styles:
             items.append("direct styles (" + self.style_text() + ")")
+        if self.headings:
+            items.append(self.heading_text())
         items.extend(f"native numbering ({item})" for item in self.numbering)
         return items
 
@@ -363,6 +373,8 @@ class RewriteLosses:
                  "protected": label in PROTECTED_STYLES}
                 for label, count, unit in self.protected_styles + self.styles]
             result["paragraphs"] = self.paragraphs
+        if self.headings:
+            result["heading_ids"] = self.headings
         if self.numbering:
             result["numbering"] = self.numbering
         return result
@@ -402,7 +414,9 @@ def rewrite_losses(scope: dict, *, tab_body: bool = False,
     return RewriteLosses(
         content=sorted(hazards - {SUGGESTIONS}), suggestions=suggestions,
         protected_styles=[r for r in rows if r[0] in PROTECTED_STYLES],
-        styles=[r for r in rows if r[0] not in PROTECTED_STYLES],
+        styles=[r for r in rows
+                if r[0] not in PROTECTED_STYLES and r[0] != HEADING_IDS],
+        headings=len(extent.get(HEADING_IDS, ())),
         paragraphs=len(extent.get("", ())),
         numbering=sorted(numbering),
     )
@@ -521,6 +535,8 @@ def _warnings(losses: RewriteLosses) -> list[str]:
     if losses.styles:
         lines.append("Markdown replacement resets direct styles: "
                      + losses.style_text())
+    if losses.headings:
+        lines.append("Markdown replacement regenerates " + losses.heading_text())
     if len(lines) > (1 if losses.numbering else 0):
         lines.append("Targeted commands (`edit`, `insert`, `edit --cell`, "
                      "`insert-image`, `replace-image`, `suggest`) keep these.")
@@ -683,6 +699,8 @@ def markdown_hazards(
                         continue
                     note(label, paragraph)
             paragraph_style = value.get("paragraphStyle", {})
+            if paragraph_style.get("headingId"):
+                note(HEADING_IDS, paragraph)
             quote = all(paragraph_style.get(key) == {"magnitude": 36, "unit": "PT"}
                         for key in ("indentStart", "indentFirstLine"))
             for field, label in _PARAGRAPH_STYLE_LOSSES.items():

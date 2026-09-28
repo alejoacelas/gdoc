@@ -2004,6 +2004,13 @@ def _final_paragraph_reset(content, position, placeholder, tab_id):
     ]
 
 
+# What an `edit` refusal says a suggested rewrite costs (see gdoc.lossy).
+_REWRITE_ROUTE_COST = (
+    "which deletes and reinserts the whole tab: direct styles reset, comments "
+    "anchored in the tab detach, and the rewrite policy may refuse it"
+)
+
+
 # Writable paragraph style fields restored on a paragraph that a merge could
 # restyle. Output-only fields such as headingId are never sent.
 _RESTORED_PARAGRAPH_FIELDS = (
@@ -3426,8 +3433,8 @@ def _paragraph_wording_matches(body: dict, match: dict, markdown: str):
             f"paragraph count mismatch: matched {len(paragraphs)}, "
             f"replacement has {len(lines)}; edit each paragraph separately "
             "(--cell replaces an entire table cell), or rewrite the tab with "
-            "write --tab for structural body changes, which resets direct "
-            "styles across the whole tab", exit_code=3,
+            "write --tab for structural body changes, " + _REWRITE_ROUTE_COST,
+            exit_code=3,
         )
     result = []
     for (_, start, end), line in zip(paragraphs, lines):
@@ -3547,8 +3554,8 @@ def _empty_paragraph_range(content: list[dict], match: dict):
                     raise GdocError(
                         "cannot remove the paragraph directly before a table "
                         "when no paragraph precedes it; replace its wording, or "
-                        "rewrite the tab with write --tab, which resets direct "
-                        "styles across the whole tab", exit_code=3,
+                        "rewrite the tab with write --tab, "
+                        + _REWRITE_ROUTE_COST, exit_code=3,
                     )
             if end == last[2] + 1:
                 # Empty the paragraphs first, then remove the one empty
@@ -3613,8 +3620,7 @@ def _retained_mark_restore(kept: dict, removed: dict) -> dict | None:
         raise GdocError(
             "cannot remove this paragraph without moving the list item before "
             "it off its list; replace its wording, or rewrite the tab with "
-            "write --tab, which resets direct styles across the whole tab",
-            exit_code=3,
+            "write --tab, " + _REWRITE_ROUTE_COST, exit_code=3,
         )
     style = kept.get("paragraphStyle", {})
     merged = removed.get("paragraphStyle", {})
@@ -4192,8 +4198,8 @@ def replace_formatted(
             "a Markdown table cannot replace text inside a table cell: nested "
             "tables are not supported. Replace the cell with text, or change "
             "the table's rows and columns by rewriting the tab (cat, edit the "
-            "Markdown table, write --tab), which resets direct styles across "
-            "the whole tab.", exit_code=3,
+            "Markdown table, write --tab), " + _REWRITE_ROUTE_COST + ".",
+            exit_code=3,
         )
 
     # Same guard as suggest_replacement: overlapping matches ("aa" in

@@ -69,6 +69,8 @@ CATEGORIES = {
     "image alt text": (_with_image({"description": "A map"}), False, None,
                        "image alt text on 1 image"),
     "numbering": (_numbered, False, None, "starts at 5"),
+    "heading links": (lambda: (_plain(), "heading"), False, None,
+                      "the IDs of 1 heading, so links to them"),
 }
 
 
@@ -93,7 +95,11 @@ def run(interface, monkeypatch, tmp_path, category, level, flags):
         if service.batches:
             return value  # the rewrite replaced the rich content
         tab = value["tabs"][0]["documentTab"]
-        if extra == "chip":
+        if extra == "heading":
+            paragraph = next(e for e in tab["body"]["content"] if "paragraph" in e)
+            paragraph["paragraph"]["paragraphStyle"].update(
+                namedStyleType="HEADING_1", headingId="h.abc123")
+        elif extra == "chip":
             paragraph = next(e for e in tab["body"]["content"] if "paragraph" in e)
             paragraph["paragraph"]["elements"].insert(0, {"person": {
                 "personProperties": {"name": "Ana", "email": "ana@example.org"}}})

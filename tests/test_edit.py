@@ -1296,3 +1296,10 @@ def test_edit_partial_segment_markers_use_inline_context(segment_edit, markdown)
         "header-one",
         "note-one",
     }
+
+
+def test_edit_refusal_states_the_full_cost_of_a_rewrite():
+    from gdoc.api.docs import _REWRITE_ROUTE_COST
+
+    assert "comments anchored in the tab detach" in _REWRITE_ROUTE_COST
+    assert "rewrite policy may refuse it" in _REWRITE_ROUTE_COST

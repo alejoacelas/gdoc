@@ -3305,7 +3305,7 @@ _INSERT_INHERITED_FIELDS = ("indentStart", "indentFirstLine", "borderBottom")
 def check_tab_body_replacement(
     tab: dict, *, allow_lossy: bool = False, discard_suggestions: bool = False,
     comments: int = 0, comments_exact: bool = True, where: str | None = None,
-    deleting: bool = False,
+    deleting: bool = False, policy: str | None = None,
 ):
     """Refuse native losses within one tab body before it is replaced.
 
@@ -3318,8 +3318,10 @@ def check_tab_body_replacement(
 
     if deleting:
         scope = tab
-        removed = {key: tab[key] for key in ("headers", "footers", "footnotes")
-                   if key in tab}
+        # Deleting the tab also deletes suggestions a body rewrite keeps.
+        removed = {key: tab[key] for key in (
+            "headers", "footers", "footnotes", "suggestedNamedStylesChanges",
+            "suggestedDocumentStyleChanges") if key in tab}
     else:
         scope = _tab_replacement_scope(tab)
         # Deleting a footnote reference deletes the footnote with it.
@@ -3331,7 +3333,7 @@ def check_tab_body_replacement(
         scope, tab_body=True, allow_lossy=allow_lossy,
         discard_suggestions=discard_suggestions, comments=comments,
         comments_exact=comments_exact, where=where, removed=removed,
-        deleting=deleting)
+        deleting=deleting, policy=policy)
 
 
 # Not content a Markdown read omits: suggestions have their own read notes.
@@ -3362,7 +3364,8 @@ def _tab_replacement_scope(tab: dict) -> dict:
             {"startIndex": body_start, "endIndex": body_end + 1},
         )
     }
-    return {**{key: tab[key] for key in ("inlineObjects", "namedRanges")
+    return {**{key: tab[key] for key in ("inlineObjects", "namedRanges",
+                                         "namedStyles")
                if key in tab},
             "body": body, "lists": {
         key: value for key, value in tab.get("lists", {}).items()

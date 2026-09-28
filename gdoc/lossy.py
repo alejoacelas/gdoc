@@ -293,7 +293,8 @@ class RewriteLosses:
         if self.suggestions:
             # -1: the scan found suggestions it could not count.
             result["pending_suggestions"] = (
-                self.suggestions if self.suggestions > 0 else "uncounted")
+                self.suggestions if self.suggestions > 0 else None)
+            result["pending_suggestions_counted"] = self.suggestions > 0
         if self.comments:
             result["comments"] = self.comments
             result["comments_scope"] = "tab" if self.comments_exact else "document"
@@ -487,6 +488,27 @@ def markdown_hazards(
         if extent is not None and where is not None:
             extent.setdefault(label, set()).add(where)
 
+    # A value that reads as "no style" (false, zero, single spacing) is still
+    # an override when the paragraph's named style sets something else, and
+    # reconstruction drops it.
+    named_defaults = {
+        "styles": (scope.get("namedStyles") or {}).get("styles", [])}
+    kinds = {}
+
+    def overrides_default(kind, field, value, where):
+        style_type = kinds.get(where, "NORMAL_TEXT")
+        default = next((style.get(kind, {}).get(field)
+                        for style in named_defaults["styles"]
+                        if style.get("namedStyleType") == style_type), None)
+        if default in (None, False, {}, []) or default == value:
+            return False
+        if field == "lineSpacing" and default == 100 and value in (None, 100):
+            return False
+        if isinstance(default, dict) and "magnitude" in default and (
+                default.get("magnitude", 0) == (value or {}).get("magnitude", 0)):
+            return False
+        return True
+
     def visit(value, table_depth=0, document_style=None, lists=None, images=None,
               prefixes=None, supported_prefix=False, paragraph=None):
         """Collect known hazards recursively, tracking nested table depth."""
@@ -495,8 +517,13 @@ def markdown_hazards(
                 visit(item, table_depth, document_style, lists, images,
                       prefixes, supported_prefix, paragraph)
         elif isinstance(value, dict):
+            if "namedStyles" in value:
+                named_defaults["styles"] = (
+                    value["namedStyles"] or {}).get("styles", [])
             if "paragraph" in value:
                 paragraph = ("paragraph", id(value))
+                kinds[paragraph] = (value["paragraph"] or {}).get(
+                    "paragraphStyle", {}).get("namedStyleType", "NORMAL_TEXT")
                 if extent is not None:
                     extent.setdefault("", set()).add(paragraph)
             # Each documentTab owns its defaults; recursive calls keep them
@@ -549,6 +576,9 @@ def markdown_hazards(
                         if field == "underline" or _link_blue(text_style[field]):
                             continue
                     if text_style[field] in (None, False, {}):
+                        if overrides_default("textStyle", field,
+                                             text_style[field], paragraph):
+                            note(label, paragraph)
                         continue
                     # Reconstruction writes code in Courier New, so only
                     # that family survives; Consolas and others change.
@@ -564,12 +594,14 @@ def markdown_hazards(
                 if field not in paragraph_style:
                     continue
                 setting = paragraph_style[field]
-                if setting in (None, False, {}, []):
-                    continue
-                if field == "lineSpacing" and setting == 100:
-                    continue
-                if field in ("spaceAbove", "spaceBelow", "indentStart", "indentEnd",
-                             "indentFirstLine") and setting.get("magnitude", 0) == 0:
+                if (setting in (None, False, {}, [])
+                        or (field == "lineSpacing" and setting == 100)
+                        or (field in ("spaceAbove", "spaceBelow", "indentStart",
+                                      "indentEnd", "indentFirstLine")
+                            and setting.get("magnitude", 0) == 0)):
+                    if overrides_default("paragraphStyle", field, setting,
+                                         paragraph):
+                        note(label, paragraph)
                     continue
                 if field in ("indentStart", "indentFirstLine") and (
                     quote or "bullet" in value or supported_prefix

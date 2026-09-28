@@ -272,5 +272,6 @@ def test_collapse_json_names_deleted_tab_losses(monkeypatch, tmp_path, interface
     assert code == 0 and service.extra_tabs == []
     assert ("WARN: --force-collapse-tabs deletes tab 'Notes', discarding "
             "collaborators' pending suggestions (1)") in lines
-    assert json.loads(service.output)["deleted_tab_losses"] == {
-        "Notes": {"pending_suggestions": 1}}
+    assert json.loads(service.output)["deleted_tab_losses"] == {"t.notes": {
+        "title": "Notes", "pending_suggestions": 1,
+        "pending_suggestions_counted": True}}

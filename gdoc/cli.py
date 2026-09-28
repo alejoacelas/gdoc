@@ -1758,7 +1758,8 @@ def _write_native_markdown(
                 discard_suggestions=consent["discard_suggestions"],
                 where=f"tab {sibling['title']!r}")
             if lost:
-                deleted_losses[sibling["title"]] = lost.to_json()
+                deleted_losses[sibling["id"]] = {
+                    "title": sibling["title"], **lost.to_json()}
     if tab_name:
         details = insert_markdown_into_tab(
             doc_id, selected["id"], content, replace=True, document=document,
@@ -1831,19 +1832,22 @@ def _tab_comment_count(doc_id: str, tabs: list[dict], collapse: bool = False,
 
     Drive names a comment's anchor but not its tab, and a comment's quoted
     text can be stale, so neither places a comment in a tab. In a one-tab
-    document, or when a collapse rewrites every tab, the count is exact;
-    otherwise every anchored comment in the document counts, marked inexact.
+    document the count is the tab's; otherwise every anchored comment in the
+    document counts, marked as such (a collapse detaches all of them).
     """
     from gdoc.api.comments import list_comments
-    from gdoc.api.docs import get_tab_text
 
-    # A tab with no text holds no anchor, so filling a new tab never counts.
-    if (not collapse and selected is not None
-            and not get_tab_text(selected).strip()):
+    # A new tab's single empty paragraph holds no anchor, so filling it
+    # never counts; anything else (even an image or a space) might.
+    content = [e for e in (selected or {}).get("body", {}).get("content", [])
+               if "sectionBreak" not in e]
+    if (not collapse and selected is not None and len(content) == 1
+            and [el.get("textRun", {}).get("content") for el in
+                 content[0].get("paragraph", {}).get("elements", [])] == ["\n"]):
         return 0, True
     anchored = [c for c in list_comments(doc_id, include_anchor=True)
                 if c.get("anchor")]
-    return len(anchored), len(tabs) <= 1 or collapse
+    return len(anchored), len(tabs) <= 1
 
 
 def _without_inline_objects(tab: dict) -> dict:

@@ -50,11 +50,23 @@ def test_a_stale_quote_in_a_sibling_still_counts(mocker):
                                    comments_exact=exact, policy="formatting")
 
 
-def test_a_collapse_counts_exactly(mocker):
+def test_a_collapse_counts_every_comment_in_the_document(mocker):
     mocker.patch("gdoc.api.comments.list_comments", return_value=[
         _comment("alpha"), _comment("beta")])
-    tabs = [_tab("a", "alpha\n"), _tab("b", "beta\n")]
-    assert _tab_comment_count("doc", tabs, collapse=True) == (2, True)
+    tabs = [_tab("a", "\n"), _tab("b", "beta\n")]
+    assert _tab_comment_count("doc", tabs, collapse=True,
+                              selected=tabs[0]) == (2, False)
+
+
+def test_an_image_only_tab_still_counts(mocker):
+    """Docs lets a comment anchor on an image."""
+    listing = mocker.patch("gdoc.api.comments.list_comments",
+                           return_value=[_comment("", anchor="kix.image")])
+    image = {"id": "a", "title": "a", "body": {"content": [{"paragraph": {
+        "elements": [{"inlineObjectElement": {"inlineObjectId": "i"}},
+                     {"textRun": {"content": "\n"}}]}}]}}
+    assert _tab_comment_count("doc", [image], selected=image) == (1, True)
+    listing.assert_called_once()
 
 
 def test_no_anchored_comments(mocker):

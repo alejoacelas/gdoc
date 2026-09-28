@@ -922,4 +922,40 @@ def test_an_uncounted_suggestion_is_not_reported_as_one():
     from gdoc.lossy import RewriteLosses
 
     assert RewriteLosses(suggestions=-1).to_json() == {
-        "pending_suggestions": "uncounted"}
+        "pending_suggestions": None, "pending_suggestions_counted": False}
+
+
+@pytest.mark.parametrize("override,default,lost", [
+    ({"lineSpacing": 100}, {"lineSpacing": 150}, True),
+    ({"lineSpacing": 100}, {"lineSpacing": 100}, False),
+    ({"spaceAbove": {"magnitude": 0, "unit": "PT"}},
+     {"spaceAbove": {"magnitude": 12, "unit": "PT"}}, True),
+    ({"lineSpacing": 100}, {}, False),
+])
+def test_an_override_of_a_named_default_is_a_loss(override, default, lost):
+    """Single spacing set on text whose named style is 1.5 is an override
+    a rewrite drops; strict refuses it."""
+    from gdoc.api.docs import check_tab_body_replacement
+
+    tab = {"body": {"content": [{"paragraph": {
+        "paragraphStyle": {"namedStyleType": "NORMAL_TEXT", **override},
+        "elements": [{"textRun": {"content": "Alpha\n"}}]}}]},
+        "namedStyles": {"styles": [{"namedStyleType": "NORMAL_TEXT",
+                                    "paragraphStyle": default}]}}
+    if lost:
+        with pytest.raises(GdocError, match="on 1 of 1 paragraph"):
+            check_tab_body_replacement(tab, policy="strict")
+    else:
+        check_tab_body_replacement(tab, policy="strict")
+
+
+def test_a_deleted_tab_counts_its_style_suggestions():
+    from gdoc.api.docs import check_tab_body_replacement
+
+    tab = {"title": "Notes", "body": {"content": [{"paragraph": {"elements": [
+        {"textRun": {"content": "x\n"}}]}}]},
+        "suggestedNamedStylesChanges": {"s.heading": {"namedStyles": {}}}}
+    check_tab_body_replacement(tab)  # a body rewrite keeps them
+    with pytest.raises(GdocError, match=r"pending suggestions \(1\)"):
+        check_tab_body_replacement(tab, allow_lossy=True, deleting=True,
+                                   where="tab 'Notes'")

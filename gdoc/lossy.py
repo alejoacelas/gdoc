@@ -104,6 +104,21 @@ def _link_blue(colour: dict) -> bool:
                for key, value in zip(("red", "green", "blue"), _LINK_BLUE))
 
 
+def _custom_list_indent(paragraph: dict, indent: dict, lists: dict) -> bool:
+    """Whether a list item's start indent is not the 36pt per level that
+    reconstruction gives the nesting Markdown reads from it."""
+    from gdoc.api.docs import _indent_nesting_level
+
+    if not isinstance(indent, dict) or indent.get("unit", "PT") != "PT":
+        return False
+    bullet = paragraph["bullet"]
+    definitions = lists.get(bullet.get("listId"), {}).get(
+        "listProperties", {}).get("nestingLevels", [])
+    level = _indent_nesting_level(bullet.get("nestingLevel", 0), indent,
+                                  definitions)
+    return abs(indent.get("magnitude", 0) - 36 * (level + 1)) > 0.5
+
+
 def _indented(paragraph: dict) -> bool:
     """Whether a paragraph has a start or first-line indent."""
     style = paragraph.get("paragraphStyle", {})
@@ -640,6 +655,13 @@ def markdown_hazards(
                     if overrides_default("paragraphStyle", field, setting,
                                          paragraph):
                         note(label, paragraph)
+                    continue
+                # gdoc's own container ranges explain a quoted or nested
+                # list item's extra indent; reconstruction restores it.
+                if field == "indentStart" and "bullet" in value and not (
+                        supported_prefix) and _custom_list_indent(
+                        value, setting, lists):
+                    note("list indentation", paragraph)
                     continue
                 if field in ("indentStart", "indentFirstLine") and (
                     quote or "bullet" in value or supported_prefix

@@ -1051,3 +1051,20 @@ def test_named_defaults_do_not_hide_real_losses(text_style, paragraph_style, nam
         "namedStyles": {"styles": [{"namedStyleType": "NORMAL_TEXT", **named}]}}
     with pytest.raises(GdocError, match="on 1 of 1 paragraph"):
         check_tab_body_replacement(tab, policy="strict")
+
+
+@pytest.mark.parametrize("indent,lost", [(36, False), (72, False), (54, True)])
+def test_hand_set_list_indentation_is_a_loss(indent, lost):
+    """Reconstruction indents list items 36pt per level; other indents reset."""
+    scope = {"body": {"content": [{"paragraph": {
+        "bullet": {"listId": "L", "nestingLevel": 0},
+        "paragraphStyle": {"namedStyleType": "NORMAL_TEXT",
+                           "indentStart": {"magnitude": indent, "unit": "PT"}},
+        "elements": [{"textRun": {"content": "item\n"}}]}}]},
+        "lists": {"L": {"listProperties": {"nestingLevels": [
+            {"glyphSymbol": "●"}] * 9}}}}
+    if lost:
+        with pytest.raises(GdocError, match="list indentation on 1 of 1"):
+            check_markdown_replacement(scope, tab_body=True, policy="strict")
+    else:
+        check_markdown_replacement(scope, tab_body=True, policy="strict")

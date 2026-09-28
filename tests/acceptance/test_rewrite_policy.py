@@ -275,3 +275,24 @@ def test_collapse_json_names_deleted_tab_losses(monkeypatch, tmp_path, interface
     assert json.loads(service.output)["deleted_tab_losses"] == {"t.notes": {
         "title": "Notes", "pending_suggestions": 1,
         "pending_suggestions_counted": True}}
+
+
+@pytest.mark.parametrize("markdown", [
+    "- one\n  - two\n    - three\n\n1. a\n2. b\n",
+    "> - quoted item\n> - another\n\nafter\n",
+    "1. step\n\n   > - contained\n2. next\n",
+])
+@pytest.mark.parametrize("interface", ["cli", "mcp"])
+def test_gdocs_own_lists_rewrite_under_strict(monkeypatch, tmp_path, interface,
+                                              markdown):
+    """Lists gdoc wrote, including quoted and contained ones, report no loss."""
+    monkeypatch.setattr(state, "STATE_DIR", tmp_path / "state")
+    route = NativeRoute(interface, monkeypatch, tmp_path)
+    route.load(NativeDoc())
+    route.ok("cat")
+    route.ok("write", text=markdown)
+    monkeypatch.setenv("GDOC_REWRITE_POLICY", "strict")
+    text = parse_frontmatter(route.ok("cat"))[1]
+    code, output, error = route.call("write", text=text + "tail\n")
+    assert code == 0, output + error
+    assert "WARN" not in error

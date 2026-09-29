@@ -233,7 +233,8 @@ def _require_readable_config() -> None:
     raise GdocError(
         f"cannot read the config file {CONFIG_PATH} ({problem}), so gdoc will "
         "neither guess its rewrite policy nor overwrite its other settings. "
-        "Fix the file by hand, or set GDOC_REWRITE_POLICY.", exit_code=3)
+        "Fix the file by hand; until then, setting GDOC_REWRITE_POLICY lets "
+        "rewrites run, but no setting can be saved.", exit_code=3)
 
 
 def get_rewrite_policy() -> str:

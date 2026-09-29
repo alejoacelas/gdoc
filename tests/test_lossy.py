@@ -1211,3 +1211,25 @@ def test_suggestions_on_a_removed_positioned_object_need_their_own_consent():
         check_tab_body_replacement(tab, allow_lossy=True, policy="markdown")
     check_tab_body_replacement(tab, allow_lossy=True, discard_suggestions=True,
                                policy="markdown")
+
+
+@pytest.mark.parametrize("level,lost", [
+    ({"glyphSymbol": "●", "indentStart": {"magnitude": 36, "unit": "PT"},
+      "indentFirstLine": {"magnitude": 18, "unit": "PT"}}, None),
+    ({"glyphSymbol": "●", "glyphFormat": "%0",
+      "indentStart": {"magnitude": 54, "unit": "PT"},
+      "indentFirstLine": {"magnitude": 40, "unit": "PT"}}, "list indentation"),
+    ({"glyphSymbol": "●", "glyphFormat": "[%0]"}, "list glyphs and list styling"),
+])
+def test_list_level_indents_and_bullet_formats(level, lost):
+    """Indents set on the list level, and bracketed bullets, reset too."""
+    scope = {"body": {"content": [{"paragraph": {
+        "bullet": {"listId": "L", "nestingLevel": 0},
+        "paragraphStyle": {"namedStyleType": "NORMAL_TEXT"},
+        "elements": [{"textRun": {"content": "item\n"}}]}}]},
+        "lists": {"L": {"listProperties": {"nestingLevels": [level]}}}}
+    if lost:
+        with pytest.raises(GdocError, match=lost):
+            check_markdown_replacement(scope, tab_body=True, policy="strict")
+    else:
+        check_markdown_replacement(scope, tab_body=True, policy="strict")

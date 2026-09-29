@@ -110,14 +110,18 @@ def _custom_list_indent(paragraph: dict, field: str, lists: dict) -> bool:
     from gdoc.api.docs import _indent_nesting_level
 
     style = paragraph.get("paragraphStyle", {})
-    indent = style.get(field)
-    if not isinstance(indent, dict) or indent.get("unit", "PT") != "PT":
-        return False
     bullet = paragraph["bullet"]
     definitions = lists.get(bullet.get("listId"), {}).get(
         "listProperties", {}).get("nestingLevels", [])
+    native = bullet.get("nestingLevel", 0)
+    # A paragraph without its own indent takes its list level's.
+    defined = definitions[native] if native < len(definitions) else {}
+    indent = style.get(field, defined.get(field))
+    if not isinstance(indent, dict) or indent.get("unit", "PT") != "PT":
+        return False
     level = _indent_nesting_level(
-        bullet.get("nestingLevel", 0), style.get("indentStart", {}), definitions)
+        native, style.get("indentStart", defined.get("indentStart", {})),
+        definitions)
     expected = 36 * (level + 1) - (18 if field == "indentFirstLine" else 0)
     return abs(indent.get("magnitude", 0) - expected) > 0.5
 
@@ -150,7 +154,8 @@ def _list_marker_changes(paragraph: dict, lists: dict) -> bool:
         return actual not in (expected, "GLYPH_TYPE_UNSPECIFIED") or (
             glyph_format not in ("", f"%{native}."))
     actual = level.get("glyphSymbol", "")
-    return actual not in (expected, "")
+    return actual not in (expected, "") or level.get("glyphFormat", "") not in (
+        "", f"%{native}")
 
 
 def _indented(paragraph: dict) -> bool:
@@ -763,6 +768,13 @@ def markdown_hazards(
             if "bullet" in value:
                 if _list_marker_changes(value, lists):
                     note("list glyphs and list styling", paragraph)
+                # Indents set only on the list level (the loop below checks
+                # the paragraph's own).
+                if not supported_prefix and any(
+                        field not in value.get("paragraphStyle", {})
+                        and _custom_list_indent(value, field, lists)
+                        for field in ("indentStart", "indentFirstLine")):
+                    note("list indentation", paragraph)
                 # Inspect definitions only when content references the list.
                 visit(lists.get(value["bullet"].get("listId"), {}),
                       table_depth, document_style, lists, images,

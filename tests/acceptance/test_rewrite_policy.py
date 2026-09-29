@@ -287,6 +287,7 @@ def test_collapse_json_names_deleted_tab_losses(monkeypatch, tmp_path, interface
     "- one\n  - two\n    - three\n\n1. a\n2. b\n",
     "> - quoted item\n> - another\n\nafter\n",
     "1. step\n\n   > - contained\n2. next\n",
+    "before\n---\nafter\n",
 ])
 @pytest.mark.parametrize("interface", ["cli", "mcp"])
 def test_gdocs_own_lists_rewrite_under_strict(monkeypatch, tmp_path, interface,

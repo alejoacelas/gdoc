@@ -344,8 +344,12 @@ def test_markdown_horizontal_rule_border_requires_opt_in(mocker, capsys, text):
     from gdoc.api.docs import get_tab_text
 
     scope = body({"textRun": {"content": text}})
+    # The rule gdoc itself writes: 1pt solid grey with 1pt padding.
     scope["content"][0]["paragraph"]["paragraphStyle"] = {
-        "borderBottom": {"dashStyle": "SOLID", "width": {"magnitude": 1, "unit": "PT"}},
+        "borderBottom": {"dashStyle": "SOLID", "width": {"magnitude": 1, "unit": "PT"},
+                         "padding": {"magnitude": 1, "unit": "PT"},
+                         "color": {"color": {"rgbColor": {
+                             "red": 0.5, "green": 0.5, "blue": 0.5}}}},
     }
     target = tab("target", scope)
     if text == "\n":
@@ -1264,4 +1268,23 @@ def test_a_code_font_weight_the_rewrite_drops_is_a_loss():
         "content": "x\n", "textStyle": {"weightedFontFamily": {
             "fontFamily": "Courier New", "weight": 300}}}}]}}]}
     with pytest.raises(GdocError, match="font family on 1 of 1 paragraph"):
+        check_markdown_replacement(scope, tab_body=True, policy="strict")
+
+
+@pytest.mark.parametrize("border,lost", [
+    ({"color": {"color": {"rgbColor": {"red": 0.5, "green": 0.5, "blue": 0.5}}},
+      "width": {"magnitude": 1, "unit": "PT"},
+      "padding": {"magnitude": 1, "unit": "PT"}, "dashStyle": "SOLID"}, False),
+    ({"color": {"color": {"rgbColor": {"red": 1}}},
+      "width": {"magnitude": 4, "unit": "PT"},
+      "padding": {"magnitude": 1, "unit": "PT"}, "dashStyle": "DASH"}, True),
+])
+def test_a_custom_horizontal_rule_is_a_loss(border, lost):
+    scope = {"content": [{"paragraph": {
+        "paragraphStyle": {"borderBottom": border},
+        "elements": [{"textRun": {"content": "\n"}}]}}]}
+    if lost:
+        with pytest.raises(GdocError, match="horizontal rule styling on 1 of 1"):
+            check_markdown_replacement(scope, tab_body=True, policy="strict")
+    else:
         check_markdown_replacement(scope, tab_body=True, policy="strict")

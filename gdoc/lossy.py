@@ -158,6 +158,20 @@ def _list_marker_changes(paragraph: dict, lists: dict) -> bool:
         "", f"%{native}")
 
 
+def _custom_rule(border: dict) -> bool:
+    """Whether a rule differs from the 1pt solid grey one reconstruction draws
+    (see gdoc.mdparse's horizontal rule)."""
+    def magnitude(key):
+        return (border.get(key) or {}).get("magnitude", 0)
+
+    rgb = (border.get("color") or {}).get("color", {}).get("rgbColor", {})
+    grey = all(abs(rgb.get(key, 0) - 0.5) < 0.01
+               for key in ("red", "green", "blue"))
+    return (abs(magnitude("width") - 1) > 0.01
+            or abs(magnitude("padding") - 1) > 0.01
+            or border.get("dashStyle", "SOLID") != "SOLID" or not grey)
+
+
 def _indented(paragraph: dict) -> bool:
     """Whether a paragraph has a start or first-line indent."""
     style = paragraph.get("paragraphStyle", {})
@@ -771,6 +785,8 @@ def markdown_hazards(
                                for e in value.get("elements", []))
                 if text.removesuffix("\n"):
                     hazards.add("border-bottom paragraphs (custom borders are lost)")
+                elif _custom_rule(border):
+                    note("horizontal rule styling", paragraph)
             if value.get("listProperties"):
                 levels = value["listProperties"].get("nestingLevels", [])
                 if any(level.get("glyphSymbol", "") not in ("", "●", "○", "■", "•")

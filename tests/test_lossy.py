@@ -1288,3 +1288,15 @@ def test_a_custom_horizontal_rule_is_a_loss(border, lost):
             check_markdown_replacement(scope, tab_body=True, policy="strict")
     else:
         check_markdown_replacement(scope, tab_body=True, policy="strict")
+
+
+@pytest.mark.parametrize("bold,lost", [(True, False), (False, True)])
+def test_a_bold_code_weight_survives_only_with_the_bold_mark(bold, lost):
+    scope = {"content": [{"paragraph": {"elements": [{"textRun": {
+        "content": "x\n", "textStyle": {"bold": bold, "weightedFontFamily": {
+            "fontFamily": "Courier New", "weight": 700}}}}]}}]}
+    if lost:
+        with pytest.raises(GdocError, match="font family on 1 of 1 paragraph"):
+            check_markdown_replacement(scope, tab_body=True, policy="strict")
+    else:
+        check_markdown_replacement(scope, tab_body=True, policy="strict")

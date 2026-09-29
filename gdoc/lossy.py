@@ -713,8 +713,10 @@ def markdown_hazards(
                     if field == "weightedFontFamily" and value["textStyle"][field].get(
                         "fontFamily",
                     ) == "Courier New" and value["textStyle"][field].get(
-                        "weight", 400) in (400, 700):
-                        # Normal and bold weights round-trip with the bold mark.
+                        "weight", 400) in (
+                            (400, 700) if value["textStyle"].get("bold")
+                            else (400,)):
+                        # Weight 700 round-trips only through the bold mark.
                         continue
                     # Restating the named style is inherited back unchanged,
                     # except a code font, which reconstruction overwrites.

@@ -452,10 +452,21 @@ def check_markdown_replacement(
     level = policy or get_rewrite_policy()
     losses = rewrite_losses(scope, tab_body=tab_body, removed=removed)
     if deleting:
-        # Deleting a tab removes its headers, footers and footnotes too.
+        # Deleting a tab removes its headers, footers, footnotes, page setup
+        # and first section's layout too, which a body rewrite keeps.
+        page = scope.get("documentStyle", {})
+        first = next((e for e in scope.get("body", {}).get("content", [])
+                      if "sectionBreak" in e), {})
         losses.content = sorted(set(losses.content) | {
             key for key in ("headers", "footers", "footnotes")
             if (removed or {}).get(key)})
+        # Layout is formatting, like direct styles.
+        if any(page.get(key, default) != default for
+               key, default in _IMPORT_PAGE_SETUP.items() if key in page):
+            losses.styles.append(("page setup", 1, "tabs"))
+        if _custom_section_layout(
+                first.get("sectionBreak", {}).get("sectionStyle", {}), page):
+            losses.styles.append(("section layout", 1, "tabs"))
     losses.comments, losses.comments_exact = comments, comments_exact
     where = where or (
         "the selected tab body" if tab_body else "the whole document")

@@ -247,8 +247,9 @@ def get_rewrite_policy() -> str:
     """
     import os
 
+    # A set but empty variable is an invalid value, not an absent one.
     value = os.environ.get("GDOC_REWRITE_POLICY")
-    if not value:
+    if value is None:
         _require_readable_config()
         # Only an absent key selects the default; any set value is validated.
         config = _load_config()

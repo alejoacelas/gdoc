@@ -1233,3 +1233,27 @@ def test_list_level_indents_and_bullet_formats(level, lost):
             check_markdown_replacement(scope, tab_body=True, policy="strict")
     else:
         check_markdown_replacement(scope, tab_body=True, policy="strict")
+
+
+@pytest.mark.parametrize("document_style,section_style,label", [
+    ({"documentFormat": {"documentMode": "PAGELESS"}}, {}, "page setup"),
+    ({}, {"columnProperties": [{}, {}]}, "section layout"),
+])
+def test_a_deleted_tabs_layout_is_a_formatting_loss(document_style,
+                                                    section_style, label):
+    from gdoc.api.docs import check_tab_body_replacement
+
+    tab = {"title": "Notes", "documentStyle": document_style, "body": {"content": [
+        {"startIndex": 0, "endIndex": 1,
+         "sectionBreak": {"sectionStyle": section_style}},
+        {"paragraph": {"elements": [{"textRun": {"content": "x\n"}}]}}]}}
+    for policy in ("formatting", "markdown"):
+        losses = check_tab_body_replacement(
+            tab, allow_lossy=True, deleting=True, where="tab 'Notes'",
+            policy=policy)
+        assert {"style": label, "tabs": 1, "protected": False} in (
+            losses.to_json()["styles"])
+    with pytest.raises(GdocError, match=f"{label} on 1 tab"):
+        check_tab_body_replacement(tab, allow_lossy=True, deleting=True,
+                                   where="tab 'Notes'", policy="strict")
+    check_tab_body_replacement(tab, policy="strict")  # a body rewrite keeps it

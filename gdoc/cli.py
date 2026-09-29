@@ -3965,8 +3965,8 @@ def cmd_config(args) -> int:
     if page_mode or getattr(args, "rewrite_policy", None):
         # Saving rewrites the whole file; never drop keys a bad file hides.
         _require_readable_config()
-    if not getattr(args, "rewrite_policy", None) or os.environ.get(
-            "GDOC_REWRITE_POLICY"):
+    if not getattr(args, "rewrite_policy", None) or (
+            "GDOC_REWRITE_POLICY" in os.environ):
         get_rewrite_policy()  # an invalid saved or env value refuses first
     if page_mode:
         set_default_page_mode(page_mode)
@@ -3982,7 +3982,7 @@ def cmd_config(args) -> int:
         print(f"OK rewrite_policy set to: {rewrite_policy}", file=sys.stderr)
     # The level writes will use; a bad value or file refuses here as there.
     policy = get_rewrite_policy()
-    if os.environ.get("GDOC_REWRITE_POLICY") and rewrite_policy:
+    if "GDOC_REWRITE_POLICY" in os.environ and rewrite_policy:
         print("NOTE: GDOC_REWRITE_POLICY overrides the saved rewrite_policy",
               file=sys.stderr)
 

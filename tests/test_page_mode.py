@@ -635,3 +635,12 @@ def test_a_non_utf8_config_lets_the_env_policy_recover(monkeypatch, tmp_path):
         util.get_rewrite_policy()
     monkeypatch.setenv("GDOC_REWRITE_POLICY", "strict")
     assert util.get_rewrite_policy() == "strict"
+
+
+def test_an_empty_env_policy_is_invalid(monkeypatch):
+    from gdoc import util
+    from gdoc.util import GdocError
+
+    monkeypatch.setenv("GDOC_REWRITE_POLICY", "")
+    with pytest.raises(GdocError, match="Invalid rewrite policy: ''"):
+        util.get_rewrite_policy()

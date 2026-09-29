@@ -742,7 +742,9 @@ that loses, prints it on stderr (MCP notes) and returns it as `losses` in
 
 `--force-collapse-tabs` deletes the other tabs. The same policy and
 `--discard-suggestions` apply to everything they hold, including headers,
-footers and footnotes, and `--json` lists it as `deleted_tab_losses`.
+footers, footnotes, page setup and section layout, and `--json` lists it as
+`deleted_tab_losses`. An empty `GDOC_REWRITE_POLICY` is an invalid value, not
+an unset one.
 
 The rewrite policy sets the most a changed rewrite may lose. It is one global
 setting that CLI and MCP both read: `gdoc config --rewrite-policy LEVEL` saves it

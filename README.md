@@ -719,8 +719,9 @@ pixel-perfect formatting or detection of properties Google does not expose.
 
 A changed `write`, `push`, sync-hook push or MCP `write` deletes and reinserts the
 whole selected tab. Before it sends anything, gdoc takes one inventory of what
-that loses, prints it on stderr (MCP notes) and returns it as `losses` in
-`--json` output:
+that loses and prints it on stderr (MCP notes); `--json` output returns it as
+`losses`. Warnings about tabs a collapse deletes print once the write
+succeeds. The inventory covers:
 
 - **Direct styles**: fonts, colours, sizes, highlights, spacing, alignment,
   indentation, table styling and list glyphs set on the text reset to the

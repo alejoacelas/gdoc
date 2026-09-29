@@ -1257,3 +1257,11 @@ def test_a_deleted_tabs_layout_is_a_formatting_loss(document_style,
         check_tab_body_replacement(tab, allow_lossy=True, deleting=True,
                                    where="tab 'Notes'", policy="strict")
     check_tab_body_replacement(tab, policy="strict")  # a body rewrite keeps it
+
+
+def test_a_code_font_weight_the_rewrite_drops_is_a_loss():
+    scope = {"content": [{"paragraph": {"elements": [{"textRun": {
+        "content": "x\n", "textStyle": {"weightedFontFamily": {
+            "fontFamily": "Courier New", "weight": 300}}}}]}}]}
+    with pytest.raises(GdocError, match="font family on 1 of 1 paragraph"):
+        check_markdown_replacement(scope, tab_body=True, policy="strict")

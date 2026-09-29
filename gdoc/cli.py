@@ -2235,11 +2235,16 @@ def cmd_sync_hook(args) -> int:
         with redirect_stderr(warnings):
             _refresh_file_revision(file_path, content, write_result)
         pushed = f"SYNC: pushed to {metadata.get('title', doc_id)!r}"
-        if warnings.lines:
-            # Claude Code shows the agent only additionalContext on exit 0.
-            _hook_notice(data, pushed + "; " + " ".join(warnings.lines))
-        else:
-            print(pushed, file=sys.stderr)
+        print(pushed, file=sys.stderr)
+        event = data.get("hook_event_name") if isinstance(data, dict) else None
+        if warnings.lines and event:
+            # Claude Code shows the agent only additionalContext on exit 0;
+            # stderr already carried each warning once.
+            import json as json_module
+
+            print(json_module.dumps({"hookSpecificOutput": {
+                "hookEventName": event, "additionalContext": "gdoc " + pushed
+                + "; " + " ".join(warnings.lines)}}))
 
     except Exception as e:
         # Keep the hook non-blocking, but never hide a failed read or upload.

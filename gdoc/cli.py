@@ -2229,8 +2229,7 @@ def cmd_sync_hook(args) -> int:
         except GdocError as error:
             if error.exit_code != 3:
                 raise
-            _hook_notice(data, f"SYNC: skipped {file_path} (replacement safety "
-                               f"check: {error})")
+            _hook_notice(data, f"SYNC: skipped {file_path} (refused: {error})")
             return 0
         with redirect_stderr(warnings):
             _refresh_file_revision(file_path, content, write_result)

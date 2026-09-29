@@ -757,7 +757,7 @@ or the variable is set. A sync-hook push tells the agent what it lost.
 | Level | A changed rewrite may lose |
 | --- | --- |
 | `strict` | Nothing the inventory above detects. It is not a guarantee for native properties the inventory does not read. |
-| `formatting` (recommended) | Direct styles, image adjustments and alt text, heading IDs, and numbering starts, with a warning. Comments, image crop, suggestions and rich content refuse. |
+| `formatting` (recommended) | Direct styles, image adjustments and alt text, heading IDs, and native numbering (starts other than 1 and lists that resume after a break), with a warning. Comments, image crop, suggestions and rich content refuse. |
 | `markdown` (default) | Anything, with a warning. Rich content still needs `--allow-lossy` and suggestions still need `--discard-suggestions` on each call. |
 
 The default `markdown` keeps earlier behavior, except that discarding pending

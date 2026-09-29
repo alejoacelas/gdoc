@@ -604,3 +604,19 @@ def test_config_refuses_an_invalid_policy_before_saving(monkeypatch, tmp_path):
         content='{"rewrite_policy": "Strict"}')
     assert code == 3 and "Invalid rewrite policy" in output
     assert saved == '{"rewrite_policy": "Strict"}'
+
+
+def test_an_invalid_env_policy_refuses_before_saving(monkeypatch, tmp_path):
+    monkeypatch.setenv("GDOC_REWRITE_POLICY", "bogus")
+    import contextlib
+    import io
+
+    from gdoc import cli, util
+
+    config = tmp_path / "config.json"
+    monkeypatch.setattr(util, "CONFIG_PATH", config)
+    with contextlib.redirect_stdout(io.StringIO()), \
+            contextlib.redirect_stderr(io.StringIO()):
+        code = cli.run_argv(["config", "--rewrite-policy", "formatting"],
+                            check_updates=False)
+    assert code == 3 and not config.exists()

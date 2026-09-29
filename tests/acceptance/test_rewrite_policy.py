@@ -344,3 +344,26 @@ def test_config_saves_the_policy_it_later_reads(monkeypatch, tmp_path):
     monkeypatch.setattr(util, "_load_config", lambda: json.loads(
         (tmp_path / "config.json").read_text()))
     assert util.get_rewrite_policy() == "formatting"
+
+
+@pytest.mark.parametrize("interface", ["cli", "mcp"])
+def test_a_saved_strict_policy_refuses_a_write(monkeypatch, tmp_path, interface):
+    """End to end through the real config file: config saves, write reads."""
+    import contextlib
+    import io
+
+    from gdoc import cli
+
+    monkeypatch.delenv("GDOC_REWRITE_POLICY", raising=False)
+    with contextlib.redirect_stdout(io.StringIO()), \
+            contextlib.redirect_stderr(io.StringIO()):
+        assert cli.run_argv(["config", "--rewrite-policy", "strict"],
+                            check_updates=False) == 0
+    monkeypatch.setattr(state, "STATE_DIR", tmp_path / "state")
+    route = NativeRoute(interface, monkeypatch, tmp_path)
+    doc, _ = _styled()
+    route.service = NativeService(doc)
+    text = parse_frontmatter(route.ok("cat"))[1]
+    code, output, error = route.call("write", text=text.replace("Beta.", "Beta!"))
+    assert code != 0 and "refused by rewrite policy 'strict'" in output + error
+    assert route.service.batches == []

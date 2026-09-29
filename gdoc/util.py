@@ -139,7 +139,12 @@ def _save_config(config: dict) -> None:
     # Write through a symlink (a dotfiles-managed config) and keep the mode.
     target = CONFIG_PATH.resolve()
     target.parent.mkdir(parents=True, exist_ok=True)
-    mode = target.stat().st_mode & 0o777 if target.exists() else 0o644
+    if target.exists():
+        mode = target.stat().st_mode & 0o777
+    else:
+        umask = os.umask(0)
+        os.umask(umask)
+        mode = 0o666 & ~umask
     handle, temporary = tempfile.mkstemp(dir=target.parent, suffix=".tmp")
     try:
         with os.fdopen(handle, "w") as file:

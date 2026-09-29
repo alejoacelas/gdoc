@@ -32,10 +32,6 @@ def _isolate_auth_env(monkeypatch, tmp_path_factory):
     monkeypatch.setattr(util, "CONFIG_PATH",
                         tmp_path_factory.mktemp("config") / "config.json")
 
-    load = util._load_config
-    monkeypatch.setattr(util, "_load_config", lambda: {
-        k: v for k, v in load().items() if k != "rewrite_policy"})
-
 
 @pytest.fixture
 def doc_mime(monkeypatch):

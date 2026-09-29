@@ -206,7 +206,10 @@ def _require_readable_config() -> None:
     a safety ceiling, so reading or saving it refuses instead of loosening it
     or overwriting the file's other keys.
     """
-    if not CONFIG_PATH.exists():
+    import os
+
+    # A dangling symlink or a stat error is not an absent file.
+    if not os.path.lexists(CONFIG_PATH):
         return
     try:
         data = json.loads(CONFIG_PATH.read_text())

@@ -556,3 +556,15 @@ def test_saving_config_writes_through_a_symlink(monkeypatch, tmp_path):
     assert json.loads(target.read_text()) == {
         "default_account": "work", "rewrite_policy": "strict"}
     assert target.stat().st_mode & 0o777 == 0o644
+
+
+def test_a_dangling_config_symlink_refuses(monkeypatch, tmp_path):
+    from gdoc import util
+    from gdoc.util import GdocError
+
+    link = tmp_path / "config.json"
+    link.symlink_to(tmp_path / "missing" / "config.json")
+    monkeypatch.setattr(util, "CONFIG_PATH", link)
+    monkeypatch.delenv("GDOC_REWRITE_POLICY", raising=False)
+    with pytest.raises(GdocError, match="cannot read the rewrite policy"):
+        util.get_rewrite_policy()

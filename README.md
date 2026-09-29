@@ -735,7 +735,8 @@ succeeds. The inventory covers:
   comments that are already detached lowers the count.
 - **Heading IDs** change, so links to the tab's headings from other tabs,
   documents or saved URLs break. The API cannot set a heading's ID and a rewrite
-  recreates every heading; that Docs then assigns new IDs is not verified live.
+  recreates every heading. In a live check, a changed rewrite gave every heading
+  in the tab a new ID, including headings whose text did not change.
 - **Image crop** is lost; the image shows its uncropped original.
 - **Collaborators' pending suggestions** are discarded.
 - **Rich content** Markdown cannot show (chips, footnotes and the rest listed

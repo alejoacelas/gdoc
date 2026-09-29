@@ -268,7 +268,8 @@ IMAGE_ADJUSTMENTS = "image rotation, brightness, contrast, transparency or borde
 # rich content. Moving a label out of here makes it an ordinary style loss.
 PROTECTED_STYLES = {IMAGE_CROP}
 # Docs assigns a heading's ID and the API cannot set it, so a rewrite that
-# recreates the heading gives it a new one (not verified live).
+# recreates the heading gives it a new one (observed live, even for headings
+# whose text did not change).
 HEADING_IDS = "heading IDs"
 
 

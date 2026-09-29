@@ -620,3 +620,18 @@ def test_an_invalid_env_policy_refuses_before_saving(monkeypatch, tmp_path):
         code = cli.run_argv(["config", "--rewrite-policy", "formatting"],
                             check_updates=False)
     assert code == 3 and not config.exists()
+
+
+def test_a_non_utf8_config_lets_the_env_policy_recover(monkeypatch, tmp_path):
+    from gdoc import util
+    from gdoc.util import GdocError
+
+    config = tmp_path / "config.json"
+    config.write_bytes(b'{"rewrite_policy": "\xff"}')
+    monkeypatch.setattr(util, "CONFIG_PATH", config)
+    assert util._load_config() == {}
+    monkeypatch.delenv("GDOC_REWRITE_POLICY", raising=False)
+    with pytest.raises(GdocError, match="cannot read the config file"):
+        util.get_rewrite_policy()
+    monkeypatch.setenv("GDOC_REWRITE_POLICY", "strict")
+    assert util.get_rewrite_policy() == "strict"

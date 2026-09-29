@@ -118,7 +118,7 @@ def _load_config() -> dict:
     try:
         with CONFIG_PATH.open() as f:
             data = json.load(f)
-    except (json.JSONDecodeError, OSError):
+    except (json.JSONDecodeError, OSError, UnicodeDecodeError):
         return {}
     if isinstance(data, dict):
         return data

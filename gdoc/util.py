@@ -126,9 +126,15 @@ def _load_config() -> dict:
 
 
 def _save_config(config: dict) -> None:
-    """Save gdoc config, replacing the file atomically."""
+    """Save gdoc config, replacing the file atomically.
+
+    Every setting goes through here, so a file that does not parse is
+    refused rather than replaced by the settings a caller read as defaults.
+    """
     import os
     import tempfile
+
+    _require_readable_config()
 
     # Write through a symlink (a dotfiles-managed config) and keep the mode.
     target = CONFIG_PATH.resolve()
@@ -220,9 +226,9 @@ def _require_readable_config() -> None:
             return
         problem = "not a JSON object"
     raise GdocError(
-        f"cannot read the rewrite policy from {CONFIG_PATH} ({problem}); fix "
-        "the file by hand (other settings such as default_account live there "
-        "too), or set GDOC_REWRITE_POLICY.", exit_code=3)
+        f"cannot read the config file {CONFIG_PATH} ({problem}), so gdoc will "
+        "neither guess its rewrite policy nor overwrite its other settings. "
+        "Fix the file by hand, or set GDOC_REWRITE_POLICY.", exit_code=3)
 
 
 def get_rewrite_policy() -> str:

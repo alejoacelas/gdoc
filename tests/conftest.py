@@ -22,12 +22,15 @@ _AUTH_ENV_VARS = [
 
 
 @pytest.fixture(autouse=True)
-def _isolate_auth_env(monkeypatch):
+def _isolate_auth_env(monkeypatch, tmp_path_factory):
     """Keep developer-machine GDOC_* auth env vars out of the test suite."""
     for var in _AUTH_ENV_VARS:
         monkeypatch.delenv(var, raising=False)
-    # A developer's saved rewrite policy must not change what tests expect.
+    # A developer's saved config must not change what tests expect.
     from gdoc import util
+
+    monkeypatch.setattr(util, "CONFIG_PATH",
+                        tmp_path_factory.mktemp("config") / "config.json")
 
     load = util._load_config
     monkeypatch.setattr(util, "_load_config", lambda: {

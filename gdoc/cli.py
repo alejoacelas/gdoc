@@ -3965,6 +3965,8 @@ def cmd_config(args) -> int:
     if page_mode or getattr(args, "rewrite_policy", None):
         # Saving rewrites the whole file; never drop keys a bad file hides.
         _require_readable_config()
+    if not getattr(args, "rewrite_policy", None):
+        get_rewrite_policy()  # an invalid saved or env value refuses first
     if page_mode:
         set_default_page_mode(page_mode)
         # Human confirmation to stderr; the value itself is echoed to stdout

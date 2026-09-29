@@ -472,7 +472,7 @@ def test_an_unreadable_config_refuses_rather_than_loosening(
     config.write_text(content)
     monkeypatch.setattr(util, "CONFIG_PATH", config)
     monkeypatch.delenv("GDOC_REWRITE_POLICY", raising=False)
-    with pytest.raises(GdocError, match="cannot read the rewrite policy") as exc:
+    with pytest.raises(GdocError, match="cannot read the config file") as exc:
         util.get_rewrite_policy()
     assert exc.value.exit_code == 3
     monkeypatch.setenv("GDOC_REWRITE_POLICY", "strict")
@@ -507,6 +507,18 @@ def test_a_set_but_invalid_policy_refuses(monkeypatch, tmp_path, value):
 BROKEN = '{"default_account": "work", "rewrite_policy": "strict",}'
 
 
+def _reader(config):
+    import json
+
+    def load():
+        try:
+            data = json.loads(config.read_text())
+        except ValueError:
+            return {}
+        return data if isinstance(data, dict) else {}
+    return load
+
+
 def _config_cli(monkeypatch, tmp_path, argv, content=BROKEN):
     import contextlib
     import io
@@ -516,6 +528,8 @@ def _config_cli(monkeypatch, tmp_path, argv, content=BROKEN):
     config = tmp_path / "config.json"
     config.write_text(content)
     monkeypatch.setattr(util, "CONFIG_PATH", config)
+    # Read the file itself; the suite otherwise hides saved policies.
+    monkeypatch.setattr(util, "_load_config", _reader(config))
     monkeypatch.delenv("GDOC_REWRITE_POLICY", raising=False)
     out, err = io.StringIO(), io.StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
@@ -532,7 +546,7 @@ def _config_cli(monkeypatch, tmp_path, argv, content=BROKEN):
 def test_config_refuses_a_broken_file_and_keeps_it(monkeypatch, tmp_path, argv):
     """Neither showing nor saving hides or wipes a file that does not parse."""
     code, output, saved = _config_cli(monkeypatch, tmp_path, argv)
-    assert code == 3 and "cannot read the rewrite policy" in output
+    assert code == 3 and "cannot read the config file" in output
     assert saved == BROKEN
 
 
@@ -566,5 +580,27 @@ def test_a_dangling_config_symlink_refuses(monkeypatch, tmp_path):
     link.symlink_to(tmp_path / "missing" / "config.json")
     monkeypatch.setattr(util, "CONFIG_PATH", link)
     monkeypatch.delenv("GDOC_REWRITE_POLICY", raising=False)
-    with pytest.raises(GdocError, match="cannot read the rewrite policy"):
+    with pytest.raises(GdocError, match="cannot read the config file"):
         util.get_rewrite_policy()
+
+
+def test_setting_the_default_account_keeps_a_broken_file(monkeypatch, tmp_path):
+    """Every config writer refuses a file that does not parse, so a strict
+    policy in it is never replaced by defaults."""
+    from gdoc import util
+    from gdoc.util import GdocError
+
+    config = tmp_path / "config.json"
+    config.write_text(BROKEN)
+    monkeypatch.setattr(util, "CONFIG_PATH", config)
+    with pytest.raises(GdocError, match="cannot read the config file"):
+        util.set_default_account("personal")
+    assert config.read_text() == BROKEN
+
+
+def test_config_refuses_an_invalid_policy_before_saving(monkeypatch, tmp_path):
+    code, output, saved = _config_cli(
+        monkeypatch, tmp_path, ["config", "--page-mode", "paged"],
+        content='{"rewrite_policy": "Strict"}')
+    assert code == 3 and "Invalid rewrite policy" in output
+    assert saved == '{"rewrite_policy": "Strict"}'

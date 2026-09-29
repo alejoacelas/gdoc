@@ -2006,8 +2006,8 @@ def _final_paragraph_reset(content, position, placeholder, tab_id):
 
 # What an `edit` refusal says a suggested rewrite costs (see gdoc.lossy).
 _REWRITE_ROUTE_COST = (
-    "which deletes and reinserts the whole tab: direct styles and heading IDs "
-    "reset, comments anchored in the tab detach, image crops, pending "
+    "which deletes and reinserts the whole tab: direct styles, heading IDs "
+    "and image crops reset, comments anchored in the tab detach, pending "
     "suggestions and rich content need consent, and the rewrite policy may "
     "refuse it"
 )

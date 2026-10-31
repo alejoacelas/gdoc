@@ -731,8 +731,6 @@ All files are stored under `~/.config/gdoc/`:
 
 ## Development
 
-Design constraints and their reasons are recorded in [DECISIONS.md](DECISIONS.md).
-
 ```bash
 # Install dev dependencies
 uv sync --extra dev
